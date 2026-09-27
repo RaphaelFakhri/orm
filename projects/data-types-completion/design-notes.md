@@ -172,8 +172,8 @@ After the upgrade script rewrites a project's files, the user runs `db sign` onc
 
 ### Q1b. A contract in the old format is refused (Will, 2026-09-27)
 
-Loading a SQL contract whose columns or `storage.types` entries carry `nativeType` fails with a message that says the contract predates the change and names the upgrade script. Old-format contracts are rewritten, never read.
+Loading a SQL contract whose columns or `storage.types` entries carry `nativeType` fails like any other invalid contract: the message names the entry that carries the field and says contracts no longer store it. The message does not mention the upgrade script; telling users how to rewrite their files is the upgrade instruction's job, not the loader's. Old-format contracts are rewritten, never read.
 
 **Why:** after the field is dropped, the contract's stored hash no longer matches its content, and accepting it would bypass the snapshot hash check from #30086.
 
-**Consequence:** the test `test/integration/test/contract-format/supabase-before-dbgenerated-removal.test.ts` changes from "the old contract loads" to "the old contract is refused with that message".
+**Consequence:** the test `test/integration/test/contract-format/supabase-before-dbgenerated-removal.test.ts` changes from "the old contract loads" to "the old contract is refused, naming an entry that carries `nativeType`".
