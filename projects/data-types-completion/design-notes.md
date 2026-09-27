@@ -8,7 +8,7 @@ Working notes while the design is settled with Will. Evidence for every statemen
 
 ## Questions to settle
 
-### Q1. Does `contract.json` stop storing a column's `nativeType`?
+### Q1. Does `contract.json` stop storing a column's `nativeType`? (settled below)
 
 ADR 254 says yes ("the contract loses a redundant field"). The cost, from research section 3: the storage hash covers `nativeType`, so removing it changes the storage hash of every SQL contract. That hash is each migration's `from` and `to`, each `migrationHash`, each snapshot directory name, and the `core_hash`, `origin_core_hash` and `destination_core_hash` already written into users' databases. Every user's committed migration history and every database marker would need rewriting before GA. The runtime never reads the stored value; planners and verify can compute it from the data type once the data type owns the name.
 
@@ -19,6 +19,25 @@ ADR 254 says yes ("the contract loses a redundant field"). The cost, from resear
 Checked for (b): for every codec in every committed contract, the name a data type would produce equals the stored name on Postgres. One exception on SQLite: `sql/char@1` columns store `character` (`examples/prisma-8-demo-sqlite/src/prisma/contract.json`), but that codec represents `sqlite/text`, whose name would be `text`. Either SQLite registers a separate `sqlite/character` data type, or those contracts' hashes move.
 
 **Recommendation: (b).** Everything else the project wants works without removing the field, and (a) makes every RC user rewrite migration history and database state.
+
+### Q1a. How do databases that recorded old hashes keep working?
+
+Each database stores its current storage hash in the marker and, per applied migration, the `migration_hash`, `origin_core_hash` and `destination_core_hash` (`packages/3-targets/6-adapters/postgres/src/core/control-adapter.ts:143-145, 294, 406, 434`). `migrate` looks up the marker's hash as a node of the migration graph (`packages/1-framework/3-tooling/cli/src/control-api/operations/migrate.ts:395-470`), and `migration status` matches ledger rows by `migrationHash` (`migration-status-overlay.ts:56-58`). After the file rewrite, none of the old hashes are in the graph, so every command that reads a database would treat it as unknown. A file-only upgrade script cannot change database rows.
+
+- **(a) Rename map, applied automatically.** The upgrade script writes a map of every old hash to its new hash next to the migrations. Every command that reads a marker or ledger row translates an old hash through the map. Commands that already write to the database (`migrate`, `db sign`, `db update`, `db init`) also rewrite the translated rows in the same transaction. Deploy pipelines need no new step.
+- **(b) A one-time database command.** A new command rewrites the marker and ledger rows of one database from the map. Every environment runs it once before its next `migrate`; until then commands fail with a message naming the command.
+- **(c) `db sign`.** Resets the marker only. The ledger keeps old hashes, so `migration status` shows every applied migration as not applied.
+
+**Recommendation: (a).**
+
+### Q1b. Does a contract in the old format still load?
+
+The loader rejects unknown keys (`packages/2-sql/1-core/contract/src/ir/storage-entry-schemas.ts:37-70`), and a contract's stored hash no longer matches after the field is dropped, which the snapshot check refuses (#30086). The test that loads the Supabase contract from before `dbgenerated` was removed (`test/integration/test/contract-format/`) carries `nativeType`.
+
+- **(a)** Refuse it, with a message that names the upgrade script. Old-format contracts are always rewritten, never read.
+- **(b)** Accept it by dropping `nativeType` on load and ignoring its stored hash.
+
+**Recommendation: (a).** A contract whose hash cannot be checked is the failure #30086 exists to prevent.
 
 ### Q2. Where do a data type's database name, other names and parameters live?
 
@@ -131,4 +150,14 @@ TML-3055 plans to retire both in favour of mixins. This project changes the temp
 
 ## Settled
 
-None yet.
+### Q1. `contract.json` stops storing a column's `nativeType` (Will, 2026-09-27)
+
+Option (a). The column keeps `codecId` and `typeParams`; its database name is derived from the codec's data type and the parameters wherever it is needed. The same applies to named `storage.types` entries.
+
+**Why:** 8.0 has not shipped, so this is the last point at which the contract format can change without a major version. Leaving a derived copy in the file keeps two sources for one fact forever.
+
+**Accepted cost:** every SQL contract's storage hash changes, and with it every migration's `from`, `to` and `migrationHash`, every snapshot directory name, and the hashes recorded in users' databases. Users get a mechanical upgrade that rewrites their files, so nobody edits hashes by hand.
+
+**Assumes:** the rewrite needs no network and no database, so it can ship as an upgrade-instruction script. A migration hash is a pure function of `migration.json` without its own hash and `ops.json` (`packages/1-framework/3-tooling/migration/src/hash.ts:89-100`), and a storage hash is a pure function of the contract JSON, so both can be recomputed from files alone.
+
+**Follow-up questions this opens:** how databases that recorded the old hashes keep working (Q1a); whether a contract in the old format still loads (Q1b).
