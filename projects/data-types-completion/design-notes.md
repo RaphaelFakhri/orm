@@ -20,7 +20,7 @@ Checked for (b): for every codec in every committed contract, the name a data ty
 
 **Recommendation: (b).** Everything else the project wants works without removing the field, and (a) makes every RC user rewrite migration history and database state.
 
-### Q1a. How do databases that recorded old hashes keep working?
+### Q1a. How do databases that recorded old hashes keep working? (settled below)
 
 Each database stores its current storage hash in the marker and, per applied migration, the `migration_hash`, `origin_core_hash` and `destination_core_hash` (`packages/3-targets/6-adapters/postgres/src/core/control-adapter.ts:143-145, 294, 406, 434`). `migrate` looks up the marker's hash as a node of the migration graph (`packages/1-framework/3-tooling/cli/src/control-api/operations/migrate.ts:395-470`), and `migration status` matches ledger rows by `migrationHash` (`migration-status-overlay.ts:56-58`). After the file rewrite, none of the old hashes are in the graph, so every command that reads a database would treat it as unknown. A file-only upgrade script cannot change database rows.
 
@@ -30,7 +30,7 @@ Each database stores its current storage hash in the marker and, per applied mig
 
 **Recommendation: (a).**
 
-### Q1b. Does a contract in the old format still load?
+### Q1b. Does a contract in the old format still load? (settled below)
 
 The loader rejects unknown keys (`packages/2-sql/1-core/contract/src/ir/storage-entry-schemas.ts:37-70`), and a contract's stored hash no longer matches after the field is dropped, which the snapshot check refuses (#30086). The test that loads the Supabase contract from before `dbgenerated` was removed (`test/integration/test/contract-format/`) carries `nativeType`.
 
@@ -161,3 +161,19 @@ Option (a). The column keeps `codecId` and `typeParams`; its database name is de
 **Assumes:** the rewrite needs no network and no database, so it can ship as an upgrade-instruction script. A migration hash is a pure function of `migration.json` without its own hash and `ops.json` (`packages/1-framework/3-tooling/migration/src/hash.ts:89-100`), and a storage hash is a pure function of the contract JSON, so both can be recomputed from files alone.
 
 **Follow-up questions this opens:** how databases that recorded the old hashes keep working (Q1a); whether a contract in the old format still loads (Q1b).
+
+### Q1a. Databases are re-signed with `db sign` (Will, 2026-09-27)
+
+After the upgrade script rewrites a project's files, the user runs `db sign` once against every database. `db sign` verifies that the database schema matches the new contract and writes the new storage hash into the marker. There is no hash map and no automatic translation.
+
+**Why:** it reuses a command that exists and does exactly this job; no new mechanism has to be built, tested and later removed.
+
+**Accepted cost:** ledger rows keep the old migration hashes. `migration status` works out pending migrations from the marker (`packages/1-framework/3-tooling/cli/src/control-api/operations/migration-status-overlay.ts:19-54`), so nothing shows as pending, but migrations applied before the upgrade lose their "applied" label. Until a database is re-signed, commands that read its marker find a hash that is not in the migration graph; the upgrade instruction tells users to sign every environment before its next `migrate`.
+
+### Q1b. A contract in the old format is refused (Will, 2026-09-27)
+
+Loading a SQL contract whose columns or `storage.types` entries carry `nativeType` fails with a message that says the contract predates the change and names the upgrade script. Old-format contracts are rewritten, never read.
+
+**Why:** after the field is dropped, the contract's stored hash no longer matches its content, and accepting it would bypass the snapshot hash check from #30086.
+
+**Consequence:** the test `test/integration/test/contract-format/supabase-before-dbgenerated-removal.test.ts` changes from "the old contract loads" to "the old contract is refused with that message".
