@@ -14,8 +14,10 @@ model Post {
   id    Int     @id
   title String
   body  String?
+}
 
-  @@fullTextSearch(search, [title, body])
+scopes Post {
+  search fullTextSearch([title, body])
 }
 ```
 
@@ -38,13 +40,15 @@ db.User.where({ id }).include('posts', (posts) => posts.scopes.search.fulltext(q
 - **There is no MySQL target.**
 - **Two spikes showed the types work without the caller writing any.** Contributions register their types in a registry interface the ORM client declares. With scopes declared on the model and none in use, this adds 0.12% to type checking on the demo application. See [the first findings](spikes/type-composition.md) and [the findings for declared scopes](spikes/declared-scopes.md).
 - **The contract lists its extensions**, and a client refuses to start when one of them was not passed to it.
-- **A model in the contract has no `scopes` member**, and no package contributes to the domain plane. An attribute lowers to either a storage entity or an index, not to several things.
+- **A model in the contract has no `scopes` member**, and no package contributes to the domain plane. The schema language has no way to declare one: a model body holds fields and `@@` attributes, and a top-level block's body holds `key = value` lines and `@@` attributes.
 - **Contract deserialization keeps an unknown `scopes` key on a model** without a validator change, as the second spike found.
 
 ## Decided
 
 - **Scopes are declared on the model in the contract's domain plane.** Each has a name, an open scope type id, and parameters. The full-text scope's one parameter names its index.
-- **One attribute, `@@fullTextSearch`, declares the scope and creates its index.** It replaces `@@fullTextIndex`. The author names the scope, and the index name is generated unless `map:` gives one. An index without a scope is written with `@@index(expression: ...)`.
+- **Scopes are declared in a top-level `scopes <Model> { }` block**, one line for each scope: the name, then the kind of scope with its arguments, as `search fullTextSearch([title, body])`. A declaration creates the scope and its index. The index name is generated unless `map:` gives one.
+- **`fullTextSearch` replaces `@@fullTextIndex`.** An index without a scope is written with `@@index(expression: ...)`.
+- **The Prisma 7 grammar does not get the block.**
 - **No kind or type id on the index.**
 - **The TypeScript builder declares scopes through a `scopes` method on the model.** The target contributes the helper, so nothing is imported: `.scopes(({ fields, scopes }) => ({ search: scopes.fullTextSearch([[fields.title, fields.subtitle], fields.body]) }))`. The key is the scope's name.
 - **The index expression contains only what the search needs.** `setweight` appears only when there is more than one weight group, and `coalesce` only when there is more than one field. A search over one field therefore has the expression `to_tsvector(language, column)`, which is the one `fullTextMatches` on that column uses.
@@ -63,13 +67,14 @@ db.User.where({ id }).include('posts', (posts) => posts.scopes.search.fulltext(q
 ## Place in the larger world
 
 - **Framework contract.** A model gains a `scopes` member with a fixed shape: name, scope type, parameters. The framework knows no scope type.
-- **Authoring.** Attribute lowering can return an index and a scope together. The TypeScript contract builder gets the same ability.
+- **Schema language.** The parser, binder, formatter, printer and language server gain the `scopes` block. Its lines are read as a name followed by a constructor with arguments. Packages supply the kinds of scope through a new kind of authoring contribution, and each produces a scope and an index together.
+- **TypeScript contract builder.** Gains the `scopes` method on a model, with the same contributions.
 - **ORM client (`sql-orm-client`).** Gains the `scopes` member on collections, the registry and interface that contributions satisfy, a check at construction that each declared scope has a contribution and an index, and default-order handling.
-- **Postgres target.** May reference the ORM client's interface type directly. Owns the full-text scope type: its attribute, the structured index, its DDL, and the scope's operations. Reuses the existing full-text lowering and the `tsquery` helpers.
+- **Postgres target.** May reference the ORM client's interface type directly. Owns the full-text scope type: its declaration form, the structured index, its DDL, and the scope's operations. Reuses the existing full-text lowering and the `tsquery` helpers.
 - **Postgres facade.** Its signature does not change. It passes the runtime contributions from the target and from `extensions` to the ORM client.
 - **Package build.** Rewrites the internal module name in a registry declaration to the published one.
 - **Contract and emitter.** Carry the scope on the model and the index as structured data. No types describing the ORM client are emitted.
-- **Migrations and upgrades.** A changed index representation changes storage hashes of contracts that declare a full-text index. The feature has no consumers yet, so no migration path from the opaque representation is provided. Replacing `@@fullTextIndex` needs an upgrade instruction.
+- **Migrations and upgrades.** A changed index representation changes storage hashes of contracts that declare a full-text index. The feature has no consumers yet, so no migration path from the opaque representation is provided. Removing `@@fullTextIndex` needs an upgrade instruction.
 - **Mongo ORM client.** Out of scope for delivery, but the design must not rule it out; the ADR records the MongoDB constraints.
 
 ## Cross-cutting requirements
@@ -117,6 +122,6 @@ None.
 - [ADR 175 — Shared ORM Collection interface](../../docs/architecture%20docs/adrs/ADR%20175%20-%20Shared%20ORM%20Collection%20interface.md): collections and custom collection classes.
 - [ADR 180 — Dot-path field accessor](../../docs/architecture%20docs/adrs/ADR%20180%20-%20Dot-path%20field%20accessor.md): separate namespaces for user-chosen and framework-chosen names.
 - [ADR 174 — Aggregate roots and relation strategies](../../docs/architecture%20docs/adrs/ADR%20174%20-%20Aggregate%20roots%20and%20relation%20strategies.md): what a root is, and why a search is not one.
-- [ADR 236 — Target-contributed model attributes](../../docs/architecture%20docs/adrs/ADR%20236%20-%20Target-contributed%20model%20attributes.md): how an attribute produces contract data.
+- [ADR 236 — Target-contributed model attributes](../../docs/architecture%20docs/adrs/ADR%20236%20-%20Target-contributed%20model%20attributes.md): how a package's attribute produces contract data, which a scope declaration parallels.
 - [ADR 206 — Operations as TypeScript functions](../../docs/architecture%20docs/adrs/ADR%20206%20-%20Operations%20as%20TypeScript%20functions.md): the column operations and `tsquery` helpers.
 - Code: `packages/3-extensions/sql-orm-client/src/collection.ts` (class-based cloning, aggregate reducers), `packages/3-extensions/sql-orm-client/src/orm.ts` (collection registry and client types), `packages/3-targets/3-targets/postgres/src/core/full-text-index-expression.ts` (index expression renderer).

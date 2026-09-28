@@ -16,8 +16,10 @@ model Post {
   userId Int
   title  String
   body   String?
+}
 
-  @@fullTextSearch(search, [title, body])
+scopes Post {
+  search fullTextSearch([title, body])
 }
 ```
 
@@ -29,7 +31,7 @@ const q = websearchToTsquery('postgres index');
 const posts = await db.Post.scopes.search.fulltext(q).limit(10).all();
 ```
 
-The result is ten posts, best match first. The database answers the query from an index that the same attribute created.
+The result is ten posts, best match first. The database answers the query from an index that the declaration created.
 
 ## Decision
 
@@ -37,7 +39,7 @@ A **scope** is a named way to find a model's entities that goes beyond filtering
 
 1. **A scope is declared on the model in the contract**, with a name, a scope type, and parameters.
 2. **A scope type is an open id.** A target or an extension introduces it, and supplies what the ORM client offers for it.
-3. **One schema attribute declares the scope and creates the storage that serves it.**
+3. **The author declares scopes in a `scopes` block for the model.** A declaration also creates the storage that serves the scope.
 4. **The ORM client offers each scope at `collection.scopes.<name>`**, on every collection of the model.
 5. **A scope operation returns a collection.** It narrows the collection and sets a default order, which an explicit `orderBy` replaces.
 
@@ -72,10 +74,21 @@ Some searches can be written as an operation on a column, such as `p.title.fullT
 ### 1. The author declares the search
 
 ```prisma
-@@fullTextSearch(search, [[title, subtitle], body])
+model Post {
+  id       Int     @id
+  title    String
+  subtitle String?
+  body     String?
+}
+
+scopes Post {
+  search fullTextSearch([[title, subtitle], body])
+}
 ```
 
-- **The first argument is the scope's name.** It is the name the application uses.
+- **A `scopes` block names its model.** The model must be declared in the same namespace, and has at most one `scopes` block.
+- **Each line is a scope.** The name is on the left, as a field's name is. The scope's kind and its arguments are on the right, as a field's type is.
+- **`fullTextSearch` comes from the Postgres target.** A scope from an extension carries the extension's name, as its types do: `pgvector.nearest(embedding)`.
 - **The list gives the fields in order of weight.** Fields in a nested list share a weight. Here `title` and `subtitle` count most, and `body` counts less.
 - **The index is created for the author.** Its name is generated from the table and the scope, here `post_search`. `map: "existing_index_name"` uses an index that already exists under that exact name.
 
@@ -87,11 +100,13 @@ model('Post', { fields: { id, title, subtitle, body } }).scopes(({ fields, scope
 }));
 ```
 
-The attribute is named for the search because that is what the author wants. The index is how they get it. An author who wants an index and no scope writes `@@index(expression: ...)`.
+The author declares the search because that is what they want. The index is how they get it. An author who wants an index and no scope writes `@@index(expression: ...)` on the model.
+
+**Why a block of its own.** A `model` block describes the shape of the model, and its `@@` attributes describe the model as a whole. A scope is neither. It is a named way to find the model's entities. In its own block, the scope's name is on the left, as every name in the schema language is, and the `model` block keeps its meaning.
 
 ### 2. The contract records a scope and an index
 
-The contract has two planes. The domain plane describes models and their fields. The storage plane describes tables, columns and indexes. The attribute writes to both:
+The contract has two planes. The domain plane describes models and their fields. The storage plane describes tables, columns and indexes. A scope declaration writes to both:
 
 ```json
 {
@@ -241,7 +256,7 @@ LIMIT 10
 | Party | Owns |
 | --- | --- |
 | Framework | The `scopes` member of a model in the contract, and its shape |
-| Target or extension that introduces a scope type | The schema attribute, the index and its DDL, the operations, and their line in the type registry |
+| Target or extension that introduces a scope type | The scope's declaration form in the schema language, the index and its DDL, the operations, and their line in the type registry |
 | ORM client | The `scopes` member of a collection, the interface suppliers satisfy, the type registry, and applying what a supplier returns |
 | Adapter | Turning the finished query into SQL, as for any other query |
 
@@ -249,7 +264,8 @@ LIMIT 10
 
 **For the contract and authoring**
 
-- **A schema attribute can produce a domain scope and a storage index together.**
+- **A scope declaration produces a domain scope and a storage index together.**
+- **The schema language gains a `scopes` block**, which the framework owns, and a way for packages to supply the kinds of scope that may appear in it.
 - **Packages write to the domain plane**, through the `scopes` member only.
 - **The contract validator cannot check a scope's parameters**, because it does not know the packages' scope types. The client checks when it is constructed. It refuses to start when a scope's type has no supplier or its index does not exist, and the error names what is missing.
 
@@ -298,7 +314,11 @@ The contract records a scope in the same way for every database: a name, a scope
 
 ### How the author writes it
 
-- **One attribute for the index and another, or an optional argument, for the scope.** Almost every author who wants the index wants to query it. This makes the common case the longer one to write.
+- **An attribute on the model, as `@@fullTextSearch(search, [title, body])`.** The scope's name is an argument among others. Everywhere else in the schema language, a name is on the left of what it names.
+- **A `scopes` block nested in the model.** No block nests in a model. A reader learns that everything in a `model` block describes the model's shape, and a nested block breaks that.
+- **A line in the model that starts with a keyword, as `scope search = ...`.** No line in a model starts with a keyword.
+- **A line in the model written as a field, as `search fullTextSearch(...)`.** A reader cannot tell a scope from a field, and a scope and a field could not share a name.
+- **One declaration for the index and another, or an optional argument, for the scope.** Almost every author who wants the index wants to query it. This makes the common case the longer one to write.
 
 ### How the application reaches it
 
@@ -352,7 +372,7 @@ ORDER BY MATCH(title, body) AGAINST (? IN NATURAL LANGUAGE MODE) DESC;
 
 - The rule that the query is rendered from the index applies here in a stricter form than in Postgres.
 - The query never names the index. The scope's `index` parameter is for the supplier, which reads the columns from it.
-- Weights belong to the target's attribute, not to the general design. The MySQL attribute would take a flat list of fields.
+- Weights belong to the scope type, not to the general design. The MySQL declaration would take a flat list of fields.
 
 ### MongoDB text index
 
@@ -437,7 +457,7 @@ The index here is a search index. It is a different kind of object from an ordin
 
 - **A search takes a collection and returns a collection.** That holds whether the search is a filter, a filter with an order, or a stage.
 - **The contract's record is the same:** a name, a scope type, and parameters that the scope type defines.
-- **Everything else belongs to the scope type:** the attribute's arguments, the form of weights, the operations and their argument types, and how many scopes of that type a model may have.
+- **Everything else belongs to the scope type:** the declaration's arguments, the form of weights, the operations and their argument types, and how many scopes of that type a model may have.
 
 ## Appendix B: scopes that are not searches
 
@@ -453,8 +473,10 @@ model Booking {
   roomId   Int
   startsAt DateTime
   endsAt   DateTime
+}
 
-  @@period(during, [startsAt, endsAt])
+scopes Booking {
+  during period([startsAt, endsAt])
 }
 ```
 
@@ -486,8 +508,10 @@ Tags are stored as a JSON array on the post.
 model Post {
   id   Int  @id
   tags Json
+}
 
-  @@members(tagged, tags, as: "CHAR(40)")
+scopes Post {
+  tagged members(tags, as: "CHAR(40)")
 }
 ```
 
@@ -519,8 +543,10 @@ model Place {
   name     String
   open     Boolean
   location Json
+}
 
-  @@geo(nearby, location)
+scopes Place {
+  nearby geo(location)
 }
 ```
 
