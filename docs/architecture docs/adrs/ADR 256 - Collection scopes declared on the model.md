@@ -253,7 +253,9 @@ LIMIT 10
 
 ## Other databases
 
-The contract records a scope in the same way for every database: a name, a scope type, and the index that serves it. What differs is the scope type's operations and what its supplier returns.
+The design must serve databases other than Postgres. This section summarises how three other kinds of search would use it. [The appendix](#appendix-scopes-on-other-databases) gives the detail for each.
+
+The contract records a scope in the same way for every database: a name, a scope type, and parameters. What differs is the parameters, the scope type's operations, and what its supplier returns.
 
 | | Postgres | MySQL | MongoDB text index | MongoDB Atlas Search |
 | --- | --- | --- | --- | --- |
@@ -299,3 +301,127 @@ The contract records a scope in the same way for every database: a name, a scope
 - **As a type argument inferred when the client is constructed.** TypeScript infers none once the contract type is written, so the application would have to write the types.
 - **Built into the client's types for the target's own scope types.** An extension's scope types are not known in advance.
 - **By extending the collection class.** A class cannot be typed from the index of whichever model it is applied to.
+
+## Appendix: scopes on other databases
+
+Each case below shows the database's own syntax, what the contract would record, what the supplier would return, and what the case shows about the design. None of these scope types exists. They are here to show that the design can carry them.
+
+The facts about the MongoDB text index were checked against a running MongoDB. The facts about MySQL and MongoDB Atlas Search come from their documentation.
+
+### MySQL full-text index
+
+```sql
+CREATE FULLTEXT INDEX post_search ON post (title, body);
+
+SELECT ... FROM post
+WHERE MATCH(title, body) AGAINST (? IN NATURAL LANGUAGE MODE)
+ORDER BY MATCH(title, body) AGAINST (? IN NATURAL LANGUAGE MODE) DESC;
+```
+
+**The contract:**
+
+```json
+"scopes": { "search": { "type": "mysql/full-text@1", "params": { "index": "post_search" } } }
+```
+
+**What the database requires**
+
+- The column list in `MATCH(...)` must be the column list of one full-text index. A query with another list fails.
+- An index has no weight for each column and no language. It may name a parser.
+- A query has a mode: natural language, boolean, or natural language with query expansion. Boolean mode has its own operators in the search text.
+- A table may have several full-text indexes.
+
+**What the supplier returns.** A filter, `MATCH(...) AGAINST (...)`, and a default order by the same expression. It writes the column list from the index.
+
+**Operations.** One for each mode, for example `natural(text)` and `boolean(text)`. They take a string.
+
+**What it shows**
+
+- The rule that the query is rendered from the index applies here in a stricter form than in Postgres.
+- The query never names the index. The scope's `index` parameter is for the supplier, which reads the columns from it.
+- Weights belong to the target's attribute, not to the general design. The MySQL attribute would take a flat list of fields.
+
+### MongoDB text index
+
+```js
+db.post.createIndex({ title: "text", body: "text" }, { weights: { title: 10, body: 1 } })
+
+db.post.aggregate([
+  { $match: { $text: { $search: "postgres index" }, userId: 7 } },
+  { $sort: { score: { $meta: "textScore" } } },
+])
+```
+
+**The contract.** The storage plane already records a text index with its weights and language. A MongoDB index in the contract has keys and no name:
+
+```json
+{ "keys": [{ "field": "title", "direction": "text" }, { "field": "body", "direction": "text" }], "weights": { "title": 10, "body": 1 } }
+```
+
+A collection has at most one text index, so the scope needs no parameter to find it:
+
+```json
+"scopes": { "search": { "type": "mongo/text@1", "params": {} } }
+```
+
+**What the database requires**
+
+- A collection has at most one text index.
+- `$text` must be in the first stage of the pipeline. That stage may hold other filters too.
+- `$text` is accepted inside a `$lookup` sub-pipeline.
+- Matches come back in no particular order unless the query sorts by the text score.
+- A weight is a number from 1 to 99999 for each field.
+
+**What the supplier returns.** A `$text` filter and a default sort by the text score.
+
+**What it shows**
+
+- A model can have at most one scope of this type. The limit belongs to the scope type.
+- The ORM client, not the caller, places the search in the first stage. It can, because a collection builds its query at the terminal method.
+- A scope works inside an include.
+- Parameters differ between scope types. This one has none.
+- The form of weights differs between databases: ordered groups in Postgres, numbers here.
+
+### MongoDB Atlas Search and vector search
+
+```js
+db.post.aggregate([
+  { $search: { index: "post_search", text: { query: "postgres index", path: ["title", "body"] } } },
+  { $match: { userId: 7 } },
+])
+
+db.post.aggregate([
+  { $vectorSearch: { index: "post_embedding", path: "embedding", queryVector: [...], numCandidates: 200, limit: 10 } },
+])
+```
+
+**The contract:**
+
+```json
+"scopes": { "search": { "type": "mongo/atlas-search@1", "params": { "index": "post_search" } } }
+```
+
+The index here is a search index. It is a different kind of object from an ordinary MongoDB index, and the storage plane would have to record it.
+
+**What the database requires**
+
+- `$search` and `$vectorSearch` are pipeline stages. They cannot be written inside `$match`.
+- The stage must be the first in the pipeline.
+- The stage names its index.
+- Results come back ordered by score.
+- `$vectorSearch` takes its own limit, and its own filter over fields that the index lists.
+- A collection may have several search indexes.
+
+**What the supplier returns.** A first stage. It returns no filter and no order.
+
+**What it shows**
+
+- A search is not always a filter. This is the case that rules out a search field used inside `where`, because `where` lets the caller combine filters with `or` and `not`, and a stage cannot be combined that way.
+- The supplier interface must belong to the ORM client of the database family. The MongoDB ORM client's interface lets a supplier return a first stage. The SQL ORM client's does not need to.
+- Filters the caller adds with `where` run after the search stage. For vector search that can return fewer rows than the limit asked for. A supplier that can pass filters into the stage avoids this, so the MongoDB interface should give the supplier the filters the collection has gathered.
+
+### What the three cases have in common
+
+- **A search takes a collection and returns a collection.** That holds whether the search is a filter, a filter with an order, or a stage.
+- **The contract's record is the same:** a name, a scope type, and parameters that the scope type defines.
+- **Everything else belongs to the scope type:** the attribute's arguments, the form of weights, the operations and their argument types, and how many scopes of that type a model may have.
