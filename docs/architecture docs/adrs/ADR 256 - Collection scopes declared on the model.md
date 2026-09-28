@@ -2,78 +2,132 @@
 
 **Status:** Proposed
 **Date:** 2026-09-28
-**Builds on:** [ADR 172 — Contract domain-storage separation](ADR%20172%20-%20Contract%20domain-storage%20separation.md), [ADR 174 — Aggregate roots and relation strategies](ADR%20174%20-%20Aggregate%20roots%20and%20relation%20strategies.md), [ADR 175 — Shared ORM Collection interface](ADR%20175%20-%20Shared%20ORM%20Collection%20interface.md), [ADR 180 — Dot-path field accessor](ADR%20180%20-%20Dot-path%20field%20accessor.md), [ADR 236 — Target-contributed model attributes](ADR%20236%20-%20Target-contributed%20model%20attributes.md)
+**Builds on:** [ADR 172 — Contract domain-storage separation](ADR%20172%20-%20Contract%20domain-storage%20separation.md), [ADR 174 — Aggregate roots and relation strategies](ADR%20174%20-%20Aggregate%20roots%20and%20relation%20strategies.md), [ADR 175 — Shared ORM Collection interface](ADR%20175%20-%20Shared%20ORM%20Collection%20interface.md), [ADR 236 — Target-contributed model attributes](ADR%20236%20-%20Target-contributed%20model%20attributes.md)
 
 ---
 
 ## At a glance
 
-A model declares a full-text search named `search` over several fields. The earlier a field appears in the list, the more a match in it counts, and fields in a nested list share a weight:
+A schema author says that posts can be searched by text, and that a match in the title counts more than a match in the body:
 
 ```prisma
 model Post {
-  id       Int     @id
-  userId   Int
-  title    String
-  subtitle String?
-  body     String?
+  id     Int     @id
+  userId Int
+  title  String
+  body   String?
 
-  @@fullTextSearch(search, [[title, subtitle], body])
+  @@fullTextSearch(search, [title, body])
 }
 ```
 
-The attribute declares the scope and creates the index that serves it. The contract records both, the scope in the domain plane and the index in the storage plane:
+An application searches posts through the ORM client, by the name the author chose:
+
+```ts
+const q = websearchToTsquery('postgres index');
+
+const posts = await db.Post.scopes.search.fulltext(q).limit(10).all();
+```
+
+The result is ten posts, best match first. The database answers the query from an index that the same attribute created.
+
+## Decision
+
+A **scope** is a named way to find a model's entities that goes beyond filtering on its fields. Full-text search across several fields is the first one.
+
+1. **A scope is declared on the model in the contract**, with a name, a scope type, and parameters.
+2. **A scope type is an open id.** A target or an extension introduces it, and supplies what the ORM client offers for it.
+3. **One schema attribute declares the scope and creates the storage that serves it.**
+4. **The ORM client offers each scope at `collection.scopes.<name>`**, on every collection of the model.
+5. **A scope operation returns a collection.** It narrows the collection and sets a default order, which an explicit `orderBy` replaces.
+
+The rest of this document follows one search from the schema to the SQL, and gives the reason for each choice where it is made.
+
+## The problem a scope solves
+
+Searching several fields at once needs one search document built from all of them, for example the title and the body joined together with the title weighted higher. In Postgres that document is an expression, and an index over the expression makes the search fast.
+
+Two things make this hard to offer through a query interface that knows only fields:
+
+- **The search document is not a field.** The ORM client's row accessor, `p.title`, reaches stored fields and relations. There is nothing to call `fullTextMatches` on.
+- **The query must repeat the index's expression exactly.** Postgres uses an expression index only when the query contains the same expression. If the query lists the fields in another order, or uses another language or weight, the database scans the whole table and reports no error.
+
+A scope gives the search a name on the model, and renders the query from the same definition as the index.
+
+## How it works
+
+### 1. The author declares the search
+
+```prisma
+@@fullTextSearch(search, [[title, subtitle], body])
+```
+
+- **The first argument is the scope's name.** It is the name the application uses.
+- **The list gives the fields in order of weight.** Fields in a nested list share a weight. Here `title` and `subtitle` count most, and `body` counts less.
+- **The index is created for the author.** Its name is generated from the table and the scope, here `post_search`. `map: "existing_index_name"` uses an index that already exists under that exact name.
+
+The attribute is named for the search because that is what the author wants. The index is how they get it. An author who wants an index and no scope writes `@@index(expression: ...)`.
+
+### 2. The contract records a scope and an index
+
+The contract has two planes. The domain plane describes models and their fields. The storage plane describes tables, columns and indexes. The attribute writes to both:
 
 ```json
 {
-  "domain": { "models": { "Post": {
+  "domain": { "namespaces": { "public": { "models": { "Post": {
     "scopes": {
       "search": { "type": "pg/full-text@1", "params": { "index": "post_search" } }
     }
-  } } },
-  "storage": { "tables": { "post": { "indexes": [
-    {
-      "name": "post_search_0a1b2c3d",
-      "prefix": "post_search",
-      "type": "gin",
-      "options": { "fields": [["title", "subtitle"], ["body"]], "language": "english" }
-    }
-  ] } } }
+  } } } } },
+  "storage": { "namespaces": { "public": { "entries": { "table": { "post": {
+    "indexes": [
+      {
+        "name": "post_search_0a1b2c3d",
+        "prefix": "post_search",
+        "type": "gin",
+        "options": { "fields": [["title", "subtitle"], ["body"]], "language": "english" }
+      }
+    ]
+  } } } } } }
 }
 ```
 
-The ORM client offers the scope on every collection of the model:
+**The scope belongs to the domain.** "Posts can be searched, and the search is called `search`" is a statement about posts. It is true whatever database holds them.
+
+**The scope has a type and parameters.** `type` is an open id, as a field's `codecId` is. `pg/full-text@1` belongs to the Postgres target, and any package can introduce another. The framework defines the shape `{ type, params }` and knows no scope type.
+
+**The parameters point at storage.** The full-text scope has one parameter: the name of an index on the model's table. The domain plane may refer to the storage plane, as a model's `storage.table` does. The reverse is not allowed.
+
+**The fields, weights and language stay on the index.** They describe how the database stores the search document, so they are storage facts. The domain plane holds nothing specific to one kind of index.
+
+**The index is data, not a SQL string.** The index expression and the query are both rendered from `options`, by one renderer. That is what keeps them the same.
+
+**The contract does not describe the ORM client.** It says the scope exists and what type it has. It does not say what methods a query interface offers for it. A query interface that has no scopes ignores them, as the SQL builder ignores `roots`.
+
+### 3. The ORM client offers the scope on collections
+
+A collection is the ORM client's object for querying one model: `db.Post`. Methods such as `where` and `limit` each return a new collection, and a terminal method such as `all()` runs the query.
+
+Every collection of a model has a `scopes` member, with one member for each scope the model declares:
 
 ```ts
-import { websearchToTsquery } from '@prisma/orm-postgres/target/full-text';
-
-const q = websearchToTsquery(input);
-
-// best matches first
+// at the start
 db.Post.scopes.search.fulltext(q).limit(10).all();
 
-// chained after other refinements, and ordered explicitly
-db.Post.where((p) => p.userId.eq(userId))
-  .scopes.search.fulltext(q)
-  .orderBy((p) => p.id.desc())
-  .all();
+// after other methods
+db.Post.where((p) => p.userId.eq(userId)).scopes.search.fulltext(q).all();
 
-// inside an include: this user, with their three most relevant posts
+// on the collection of related posts inside an include
 db.User.where({ id: userId }).include('posts', (posts) =>
   posts.scopes.search.fulltext(q).limit(3),
 );
 ```
 
-The client is constructed as it is for any other use. Nothing about scopes is written there:
+**Scopes live under `scopes` and nowhere else.** The contract's author chooses scope names. The ORM client chooses the names of collection methods. Under one member, neither can hide the other, whatever either adds later.
 
-```ts
-import pgvector from '@prisma/orm-extension-pgvector/runtime';
-import postgres from '@prisma/orm-postgres/runtime';
+**A scope works at any position in a chain.** A collection only records what was asked, and builds the query when the terminal method runs. The order of calls does not change the query.
 
-export const db = postgres<Contract>({ contractJson, extensions: [pgvector] });
-```
-
-A shorter name is a method on a custom collection class:
+**A shorter name is a method on a custom collection class:**
 
 ```ts
 class PostCollection extends Collection<Contract, 'Post'> {
@@ -83,38 +137,41 @@ class PostCollection extends Collection<Contract, 'Post'> {
 }
 ```
 
-On Postgres the first query lowers to a match against the indexed expression, ordered by rank:
+### 4. The package that owns the scope type supplies the operations
 
-```sql
-SELECT ... FROM "public"."post"
-WHERE (setweight(to_tsvector('english', "title"), 'A') || setweight(to_tsvector('english', coalesce("subtitle", '')), 'A') || setweight(to_tsvector('english', coalesce("body", '')), 'B')) @@ websearch_to_tsquery('english', $1)
-ORDER BY ts_rank(setweight(...) || setweight(...) || setweight(...), websearch_to_tsquery('english', $1)) DESC
-LIMIT 10
-```
+`fulltext` is not part of the ORM client. The Postgres target supplies it, because `pg/full-text@1` is its scope type. An extension does the same for a scope type of its own.
 
-## Decision
-
-**A scope is a named, chainable way to find a model's entities, declared on the model.** "Posts can be searched by text, and the search is called `search`" is a statement about the domain. Calling a scope operation returns a collection of the same model, narrowed and ordered by the scope's own notion of relevance. Everything that works on a collection works on the result.
-
-**The contract declares scopes in the domain plane.** A model has a `scopes` member. Each scope has a name, a scope type, and the parameters of that type. The framework defines this shape and knows no scope type.
-
-**A scope type is an open id that a target or extension introduces**, as a codec id is. `pg/full-text@1` belongs to the Postgres target. Any package can introduce another.
-
-**A scope's parameters point at the storage that serves it.** The full-text scope has one parameter, the authored name of an index on the model's table. The fields, weights and language are storage facts and stay on the index. The domain holds nothing specific to the index.
-
-**One attribute declares the scope and creates its index.** The author names the scope. The index gets a name generated from the table and the scope, and `map:` adopts an existing index by its exact name. An index without a scope is written with `@@index(expression: ...)`.
-
-**Scopes live under `scopes` on the collection, and nowhere else.** `collection.scopes.<name>` reaches the scope. Scope names share that member only with other scope names, so they cannot collide with a collection method or a custom collection class's method. A caller who wants a shorter name writes a method on a custom collection class.
-
-**A scope is available on every collection of its model.** That includes a collection reached by chaining and the collection handed to an `include` refinement. A collection accumulates state and compiles when a terminal method runs, so the position of a scope call in a chain does not change the query.
-
-**A scope operation sets a default order, and an explicit `orderBy` replaces it.** `scopes.search.fulltext(q)` orders by relevance. Adding `orderBy` anywhere in the chain, before or after the scope call, replaces the relevance order.
-
-**The package that introduces a scope type supplies its operations, through an interface the ORM client defines.** A contribution has two halves. The runtime half travels on the target's or extension's descriptor, which the caller already passes in `extensions`; a descriptor that has nothing to offer the ORM omits it. For a call, it returns a filter and an optional default order. The ORM client applies those to the collection, so the rule for default order lives in one place. The type half is described next.
-
-**Contributions register their types by scope type, and the caller writes no types.** The ORM client package declares an empty interface that acts as a registry keyed by scope type. A contributing package adds its line to that interface in its own type declarations, which TypeScript merges when the package is imported:
+The ORM client defines an interface for this. For a call such as `fulltext(q)`, the supplier returns a filter and, optionally, a default order:
 
 ```ts
+interface ScopeRefinement {
+  readonly filter: AnyExpression;
+  readonly defaultOrderBy?: readonly OrderByItem[];
+}
+```
+
+The ORM client applies both to the collection. The supplier never touches the collection itself.
+
+The supplier's code travels on the descriptor that the application already passes to the client. Nothing new is written when the client is constructed:
+
+```ts
+import pgvector from '@prisma/orm-extension-pgvector/runtime';
+import postgres from '@prisma/orm-postgres/runtime';
+
+export const db = postgres<Contract>({ contractJson, extensions: [pgvector] });
+```
+
+### 5. The types come from a registry
+
+`db.Post.scopes.search.fulltext` must be fully typed, for a scope type from any package, and the application must not have to write a type to get that.
+
+The ORM client package declares an empty interface. It is a list of scope types, and each package adds its own line:
+
+```ts
+// in the ORM client package
+interface ScopeContributions {}
+
+// in the Postgres target's type declarations
 declare module '@prisma/orm-family-sql/orm-client' {
   interface ScopeContributions {
     'pg/full-text@1': FullTextScope;
@@ -122,71 +179,98 @@ declare module '@prisma/orm-family-sql/orm-client' {
 }
 ```
 
-The collection's type reads the model's declared scopes from the contract type and looks each one up in the registry by its scope type. `FullTextScope` has two slots the ORM client fills, the index the scope points at and the collection, so its operations can be typed from the index and can return the model's collection. The client factory's signature does not change, and a contribution from any package is typed the same way as one from the target.
+TypeScript merges the two declarations when the package is imported. `FullTextScope` describes the operations. The ORM client gives it the scope's index and the model's collection, so an operation can be typed from the index and can return the right collection:
 
-**The contract carries no types that describe one query interface.** It states that the scope exists and what type it has. What a query interface offers for a scope type is that interface's own business. A query interface that has no scopes ignores them, as the SQL builder ignores `roots`.
+```ts
+interface FullTextScope {
+  readonly index: unknown;      // filled by the ORM client
+  readonly collection: unknown; // filled by the ORM client
+  readonly operations: {
+    fulltext(query: TsqueryArgument): this['collection'];
+  };
+}
+```
 
-**An index that serves a scope is structured data in the contract.** A scope operation renders its query from the index's fields, weights and language, so the index records those as data and the index expression is rendered from them.
+The collection's type reads the model's scopes from the contract type, and looks up each scope's `type` in the list.
 
-### Responsibilities
+**Why a registry.** The documented way to build a client names the contract type: `postgres<Contract>(...)`. Once one type argument is written, TypeScript infers no others, so a type passed along with `extensions` would have to be written by hand. A registry needs no type argument.
+
+**Why it is affordable.** The collection type is part of every query's type, so every application pays for what it carries. For an application that declares no scope, the `scopes` member adds about a tenth of one percent to type checking.
+
+### 6. The query is ordered by relevance unless the caller orders it
+
+The first query in this document becomes:
+
+```sql
+SELECT ... FROM "public"."post"
+WHERE (setweight(to_tsvector('english', "title"), 'A') || setweight(to_tsvector('english', coalesce("body", '')), 'B'))
+      @@ websearch_to_tsquery('english', $1)
+ORDER BY ts_rank(setweight(...) || setweight(...), websearch_to_tsquery('english', $1)) DESC
+LIMIT 10
+```
+
+**Relevance is a default order.** A call to `orderBy` anywhere in the chain, before or after the scope call, replaces it.
+
+**The index does not order rows.** A Postgres GIN index finds the matching rows and returns them in no particular order. Ordering by relevance ranks every match and sorts them. MongoDB behaves the same way: text matches come back unordered unless the query sorts by score. So relevance order is a choice the scope operation makes for the caller, and the caller can make another.
+
+## Responsibilities
 
 | Party | Owns |
 | --- | --- |
-| Framework | The `scopes` member of a model and its shape: name, scope type, parameters |
-| Contract | The scope on the model, and the index as structured storage data |
-| Target or extension that introduces the scope type | The attribute that declares the scope and its index, the index's DDL, the scope's operations, and their line in the registry |
-| ORM client | The `scopes` member of a collection, the registry and contribution interface, applying a scope's filter and default order, and the collection's types |
-| Adapter | Lowering the resulting query, as for any other |
-
-## Why
-
-**Finding entities is the collection's job, not a property of the entity.** "Posts are found by relevance, and the title counts more than the body" is knowledge about how posts are retrieved. It is not an attribute of a post, so it does not belong on the row accessor beside `title` and `body`. The collection is where ways of retrieving a model already live: `where`, `orderBy`, and the methods of custom collection classes.
-
-**Authors want the search, and the index is how they get it.** Almost nobody wants a full-text index they cannot query. The attribute is therefore named for the search and creates the index. The rarer case of an index alone uses the lower-level `@@index`.
-
-**Declared, not derived.** ADR 174 declares roots in the contract and rejected deriving them from storage. A scope is the same kind of thing: a named way in that has meaning in the domain. Declaring it also makes the lookup exact. Deriving it meant deciding from an index's shape which package should serve it.
-
-**The shape is one the contract already uses.** A field's type is an open id with parameters, `{ codecId, typeParams }`. The domain may refer to storage and not the reverse (ADR 221), as `model.storage` and a many-to-many relation's `through` already do.
-
-**The query and the index must agree, and only a shared definition guarantees it.** Postgres uses an expression index only when the query's expression is the same as the indexed one. When a query restates the field list, order, weights or language by hand, any difference silently turns an indexed search into a sequential scan. A scope renders the query from the index's own definition, so the two cannot differ.
-
-**User-chosen names and ORM-chosen names must not be able to break each other.** ADR 180 keeps scalar fields and operators in separate namespaces for this reason. Scope names are chosen by the contract's author, and collection methods are chosen by the ORM client. Keeping scopes under one member means a scope is always reachable, whatever either side adds later.
-
-**Construction must not need type annotations.** The documented way to build a client writes the contract type explicitly, `postgres<Contract>({ ... })`, and TypeScript stops inferring any further type argument once one is written. A contribution passed as an inferred type argument would therefore force the caller to write its type. A registry needs no type argument, so the call stays as it is and any package can contribute.
-
-**Every user pays for what the collection type carries.** Measured on a real application contract with no scope in use, declared scopes under `scopes` add about a tenth of a percent to the type checker's work. Also placing scopes directly on the collection adds about four percent, for every user, whether or not they declare a scope.
-
-**Relevance order is not a property of the index.** Postgres's GIN index cannot return rows in order; rows matched through it come back in no particular order, and ordering by relevance computes the rank of every matching row and sorts them. MongoDB likewise returns text matches unordered unless the query sorts by the text score. Relevance order is therefore a default the scope operation chooses, which is why a caller can replace it.
+| Framework | The `scopes` member of a model in the contract, and its shape |
+| Target or extension that introduces a scope type | The schema attribute, the index and its DDL, the operations, and their line in the type registry |
+| ORM client | The `scopes` member of a collection, the interface suppliers satisfy, the type registry, and applying the filter and the default order |
+| Adapter | Turning the finished query into SQL, as for any other query |
 
 ## Consequences
 
-- **`@@fullTextSearch` replaces `@@fullTextIndex`.** The index records fields, weights and language as data. A hand-written expression index keeps working as an index and has no scope.
-- **Attribute lowering returns more than one thing.** An attribute returns either a storage entity or an index today (ADR 236). It must be able to return an index and a scope together.
-- **The domain plane gains a member that packages fill.** No package contributes to the domain plane today.
-- **The contract validator cannot check a scope's parameters**, because it does not consult package registries. Index types have the same limit (ADR 210, index-type registry). The client checks at construction that each scope's type has a contribution and that its index exists, and refuses to start otherwise.
-- **Several scopes per model on SQL targets, one text search scope on MongoDB.** MongoDB permits one text index per collection. Postgres permits several indexes and therefore several scopes.
-- **MongoDB's placement rule stays inside the ORM client.** MongoDB accepts a text search only in the first stage of a pipeline, together with any other filters. Because a collection compiles at the terminal method, the Mongo ORM client places the text search and the accumulated filters in that first stage regardless of call order. A text search inside a `$lookup` sub-pipeline is accepted, so scopes work inside includes there too.
-- **Ordering by relevance costs a sort over every match.** A caller who needs only the matching rows can replace the default order with a cheaper one.
-- **Relevance cannot be combined with another sort key.** Replacing is the only interaction between the default order and `orderBy`. Combining them needs a way to refer to the relevance score inside `orderBy`, which this decision does not provide.
-- **Column operations remain.** `fullTextMatches`, `fullTextRank` and `fullTextHeadline` on a single text column are unchanged. `fullTextHeadline` has no scope equivalent, because highlighting needs text and a search document is not text; highlighting stays per column.
-- **A contributing package depends on the ORM client package,** because its type declarations name it.
-- **Published packages must name the published module.** A registry declaration that names an internal module specifier is ignored without an error, and `scopes` comes out empty. The build rewrites the specifier, and a test on the built packages guards it.
-- **Custom collection classes see scopes everywhere.** `this.scopes` is typed inside the class body and after chained calls.
+**For the contract and authoring**
+
+- **A schema attribute can produce a domain scope and a storage index together.**
+- **Packages write to the domain plane**, through the `scopes` member only.
+- **The contract validator cannot check a scope's parameters**, because it does not know the packages' scope types. The client checks when it is constructed. It refuses to start when a scope's type has no supplier or its index does not exist, and the error names what is missing.
+
+**For queries**
+
+- **Ordering by relevance sorts every match.** A caller who does not need it can order by something cheaper.
+- **Relevance cannot be combined with another sort key.** That needs a way to name the relevance score inside `orderBy`, which this decision does not provide.
+- **Operations on a single column are separate.** `fullTextMatches`, `fullTextRank` and `fullTextHeadline` apply to one text column and are not affected. Highlighting has no scope operation, because it needs text and a search document is not text.
+
+**For packages that supply a scope type**
+
+- **The package depends on the ORM client package**, because its type declarations name it.
+- **A published package must name the published module in its registry declaration.** TypeScript ignores a declaration that names a module it cannot find, and reports no error. `scopes` is then empty. The build rewrites internal module names, and a test on the built packages checks the result.
+
+**For other targets**
+
+- **MongoDB allows one text index per collection**, so a MongoDB model has at most one text search scope. Postgres allows several.
+- **MongoDB accepts a text search only in the first stage of a pipeline.** Because a collection builds its query at the terminal method, a MongoDB ORM client can place the search there whatever the order of calls. MongoDB also accepts a text search inside a `$lookup` sub-pipeline, so a scope works inside an include.
 
 ## Alternatives considered
 
-- **Derive scopes from the model's indexes, with nothing in the contract.** The ORM client must then decide from an index's shape which package serves it. Two packages can match one index by accident, and the scope's name is tied to the index's storage name.
-- **A type id or kind field on the index.** It marks a storage object with what a query interface should do with it, and the scope still has no place in the domain. A kind with a fixed set of values could also not be extended by an extension.
-- **Separate attributes, or an optional argument, for the scope and the index.** It makes the common case the exception.
-- **Store the fields and weights on the scope.** It puts data specific to one kind of index into the domain plane.
-- **Make each search an aggregate root beside the model's own.** A root is the entry point to an aggregate, one per directly queryable model. A search is another way into the same aggregate, so this gives one model two roots and blurs what being a root means.
-- **Offer search only as a starting point, not on every collection.** The collection inside an `include` refinement is created by the ORM client from the relation, not started by the caller, so a starting-point-only scope could never be used there.
-- **Put the search document on the row accessor, as `p.search`.** It places something that is not a field in the field namespace, where a model with a field of that name collides with it.
-- **Have the query restate the fields and weights.** Any difference from the index silently disables it.
-- **Model scope operations as query operations.** A query operation applies to a column or expression and returns a value with a codec. A scope operation applies to a collection and returns a collection.
-- **Carry the scope operations' types in the emitted contract.** It couples the contract to one query interface.
-- **Place scopes directly on the collection, as `db.Post.search`, alone or beside `scopes`.** It costs every user about four percent more type checking on a real application contract. A custom collection class with a method of the same name gets a compile error. Alone, it also lets a method added in a later release shadow an existing scope.
-- **Pass contributions as a type argument inferred from the client factory call.** TypeScript infers no further type argument once the contract type is written explicitly, so the caller would have to write the contributions' types.
-- **Build the target's own contributions into the client's types.** It works only for contributions known in advance, and an extension's are not.
-- **Carry contribution types by extending the collection base class.** A class cannot be generic over the literal index of whichever model it is applied to, so it cannot type an operation from the index.
-- **Relevance as a sort key at the point of the call.** The same two calls in a different order would mean different queries, unlike every other collection refinement.
+### Where the scope is recorded
+
+- **Nowhere: the ORM client derives scopes from the model's indexes.** The ORM client must then decide, from the properties an index has, which package serves it. Two packages can claim the same index by accident. The scope's name is also tied to the index's name, which must be unique in the whole database schema.
+- **A type id on the index.** It marks a storage object with what a query interface should do with it. The scope still has no place in the domain.
+- **The fields and weights on the scope.** It puts data about one kind of index into the domain plane.
+- **A second aggregate root for the model.** A root is the entry point to an aggregate, and each queryable model has one (ADR 174). A search is another way into the same aggregate.
+- **The operations' types in the emitted contract.** It ties the contract to one query interface.
+
+### How the author writes it
+
+- **One attribute for the index and another, or an optional argument, for the scope.** Almost every author who wants the index wants to query it. This makes the common case the longer one to write.
+
+### How the application reaches it
+
+- **On the row accessor, as `p.search`.** It puts something that is not a field among the fields, where a field of the same name collides with it.
+- **Directly on the collection, as `db.Post.search`.** A scope and a collection method of the same name collide, and a custom collection class with such a method does not compile. It also costs about four percent more type checking for every application, because of the extra type on every collection.
+- **Only at the start of a query.** The collection inside an `include` is created by the ORM client, not by the caller, so a scope could never be used there.
+- **As an operation on a column.** An operation on a column returns a value. A scope operation applies to a collection and returns a collection.
+- **With the fields and weights written in the query.** Any difference from the index disables it without an error.
+- **Relevance as an ordinary sort key, applied where the scope is called.** The same calls in a different order would then mean different queries, which is true of no other collection method.
+
+### How the types reach the client
+
+- **As a type argument inferred when the client is constructed.** TypeScript infers none once the contract type is written, so the application would have to write the types.
+- **Built into the client's types for the target's own scope types.** An extension's scope types are not known in advance.
+- **By extending the collection class.** A class cannot be typed from the index of whichever model it is applied to.
