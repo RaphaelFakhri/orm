@@ -29,6 +29,19 @@ Existing Prisma 7 users must be able to upgrade. They reacted badly to the relea
 1. **Upgrade:** Prisma 8 can describe every database feature Prisma 7 could describe, so an existing database can be signed. Which gaps to leave is Will's judgment.
 2. **New user:** the getting-started eval passes. Starting a project takes few steps and needs no workarounds. The eval needs an ORM scenario without a deploy, run against every database. The project it builds is not decided.
 
+## Feature status at GA
+
+Row-level security, expression indexes, partial indexes and `@@control` are fully supported at GA, not preview.
+
+## Input not yet decided
+
+From another conversation, 2026-09-28:
+
+- Build `increment`, `decrement` and `firstOrThrow`. None is in the ORM client today.
+- JSON filters and list filters: after GA, unless they are simple to build with field operators. prisma/orm#29834 (list operations) has been open since 2026-07-28 with merge conflicts.
+- Not planned: soft delete, validations, lifecycle callbacks, read replicas.
+- MongoDB referential actions are not for GA (TML-3339). Document deleting children first.
+
 ## Databases
 
 All four at GA: PostgreSQL, SQLite, MySQL/MariaDB, MongoDB. No MySQL target exists in the repo today.
@@ -42,7 +55,7 @@ PostgreSQL must be ready at GA. The other databases can finish after the GA laun
 | 1 | Finish ADR 254, Linear project "Data types own column types" | Design in progress on branch `data-types-completion`. 3 of 16 questions settled. No spec yet. 4 of 9 parts of the ADR are built. |
 | 2 | One CLI and one config file | See below. |
 | 3 | Early MySQL attempt | Not started. Purpose: find shared code that assumes PostgreSQL. |
-| 4 | SQL expression literals | 6 tickets in backlog. Blocked, see below. |
+| 4 | SQL expression literals. Required, because row-level security, expression indexes and partial indexes are fully supported at GA and their syntax must be final. | 6 tickets in backlog. Blocked, see below. |
 | 5 | PSL mixins (TML-3055). They replace type aliases and field presets, which are then removed. | Backlog. No spec and no plan. Large. |
 | In parallel | Upgrade path: Prisma 7 schema gaps, baseline command, upgrade guide rewrite | Will is working on it now. |
 | In parallel | Docs items from the eval | 11 items, 5 high. Owned by the team. |
