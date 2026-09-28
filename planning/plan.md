@@ -29,6 +29,13 @@ Existing Prisma 7 users must be able to upgrade. They reacted badly to the relea
 1. **Upgrade:** Prisma 8 can describe every database feature Prisma 7 could describe, so an existing database can be signed. Which gaps to leave is Will's judgment.
 2. **New user:** the getting-started eval passes. Starting a project takes few steps and needs no workarounds. The eval needs an ORM scenario without a deploy, run against every database. The project it builds is not decided.
 
+## Streams
+
+1. Foundations and breaking changes: the critical path below.
+2. Upgrade path: Prisma 7 schema gaps, baseline command, upgrade guide.
+3. Editor and tools: VS Code extension, multi-file PSL, emulator controls.
+4. Query features. The stream exists whether or not each feature in it is required for GA. Which features are required is not decided.
+
 ## Feature status at GA
 
 Row-level security, expression indexes, partial indexes and `@@control` are fully supported at GA, not preview.
