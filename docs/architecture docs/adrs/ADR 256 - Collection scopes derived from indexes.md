@@ -76,7 +76,7 @@ LIMIT 10
 
 **A scope is a named, chainable way into a model's collection that an index makes possible.** Calling a scope operation returns a collection of the same model, narrowed and ordered by the index's own notion of relevance. Everything that works on a collection works on the result.
 
-**The ORM client derives scopes from the model's indexes. The contract declares no scopes.** The contract states storage facts: this table has this index, over these fields, with these weights. The ORM client reads the indexes of a model's table or collection and offers a scope for each index whose kind has scope operations. This is the same kind of derivation the ORM client already performs when it reads a table's primary key and unique constraints to decide row identity and upsert conflict targets.
+**The ORM client derives scopes from the model's indexes. The contract declares no scopes.** The contract states storage facts: this table has this index, over these fields, with these weights. The ORM client reads the indexes of a model's table or collection and offers a scope for each index that a contribution serves. This is the same kind of derivation the ORM client already performs when it reads a table's primary key and unique constraints to decide row identity and upsert conflict targets.
 
 **A scope's name is the index's authored name, exactly.** The contract records an index's authored name separately from its physical name, so no string transformation is involved. An index authored with `name: "search"` is the scope `search`; an index declared with an exact physical name through `map:` uses that name.
 
@@ -86,9 +86,9 @@ LIMIT 10
 
 **A scope operation sets a default order, and an explicit `orderBy` replaces it.** `scopes.search.fulltext(q)` orders by relevance. Adding `orderBy` anywhere in the chain, before or after the scope call, replaces the relevance order.
 
-**The owner of an index kind supplies its scope operations, through an interface the ORM client defines.** A contribution has two halves. The runtime half travels on the target's or extension's descriptor, which the caller already passes in `extensions`; a descriptor that has nothing to offer the ORM omits it. It says which indexes it serves and, for a call, returns a filter and an optional default order. The ORM client applies those to the collection, so the rule for default order lives in one place. The type half is described next.
+**The package that authors an index supplies its scope operations, through an interface the ORM client defines.** A contribution has two halves. The runtime half travels on the target's or extension's descriptor, which the caller already passes in `extensions`; a descriptor that has nothing to offer the ORM omits it. It says which indexes it serves and, for a call, returns a filter and an optional default order. The ORM client applies those to the collection, so the rule for default order lives in one place. The type half is described next.
 
-**Contributions register their types by index kind, and the caller writes no types.** The ORM client package declares an empty interface that acts as a registry keyed by index kind. A contributing package adds its entry to that interface in its own type declarations, which TypeScript merges when the package is imported:
+**Contributions register their types in a registry, and the caller writes no types.** The ORM client package declares an empty interface that acts as a registry. A key is the contribution's own id. A contributing package adds its entry to that interface in its own type declarations, which TypeScript merges when the package is imported:
 
 ```ts
 declare module '@prisma/orm-family-sql/orm-client' {
@@ -98,7 +98,7 @@ declare module '@prisma/orm-family-sql/orm-client' {
 }
 ```
 
-The collection's type looks up each of the model's indexes in the registry by the index's kind, taken from the contract's literal index data. It uses an entry only when the contract lists the entry's owner, as its target or among its extensions, so two clients with different contracts get different scopes. An entry is an interface with two slots the ORM client fills, the index and the collection, so its operations can be typed from the index and can return the model's collection. The client factory's signature does not change, and a contribution from any package is typed the same way as one from the target.
+**An entry states the shape of the indexes it serves, and an index has the scope when its data fits that shape.** The entry declares a `match` type. The collection's type compares each of the model's indexes, as literal data from the contract, with it. The index carries no field that names its kind, so the set of index kinds is open and any package can add one. The collection's type uses an entry only when the contract lists the entry's owner, as its target or among its extensions, so two clients with different contracts get different scopes. An entry also has two slots the ORM client fills, the index and the collection, so its operations can be typed from the index and can return the model's collection. The client factory's signature does not change, and a contribution from any package is typed the same way as one from the target.
 
 **Types never come from the emitted contract.** The emitted `contract.d.ts` gives the type system access to the contract's data, including each index as literal types. The contract carries no types that describe one query interface, because the ORM client is an interchangeable component the contract must not be coupled to.
 
@@ -109,7 +109,7 @@ The collection's type looks up each of the model's indexes in the registry by th
 | Party | Owns |
 | --- | --- |
 | Contract | The index as structured storage data, with its authored name |
-| Target or extension that owns the index kind | The attribute that authors the index, the index's DDL, the scope operations for that kind, and their registry entry |
+| Target or extension that authors the index | The attribute that authors the index, the index's DDL, its scope operations, and their registry entry |
 | ORM client | The `scopes` member, the registry and contribution interface, applying a scope's filter and default order, and the collection's types |
 | Adapter | Lowering the resulting query, as for any other |
 
@@ -136,6 +136,7 @@ The collection's type looks up each of the model's indexes in the registry by th
 - **The Postgres full-text index changes representation.** It records fields, weights and language as data. A contract that declares a full-text index as a hand-written expression index keeps working as an index and offers no scope.
 - **Column operations remain.** `fullTextMatches`, `fullTextRank` and `fullTextHeadline` on a single text column are unchanged. `fullTextHeadline` has no scope equivalent, because highlighting needs text and a search document is not text; highlighting stays per column.
 - **A package contributes scopes only when the contract lists it.** The contract records the target and the extensions it was built with. The types use that list, and the client already refuses to start when the contract lists an extension that was not passed to it. The types and the runtime therefore agree for every client that starts.
+- **Two entries can match the same index.** The index then offers the operations of both.
 - **A contributing package depends on the ORM client package,** because its type declarations name it.
 - **Published packages must name the published module.** A registry entry that names an internal module specifier is ignored without an error, and `scopes` comes out empty. The build rewrites the specifier, and a test on the built packages guards it.
 - **Custom collection classes see scopes everywhere.** `this.scopes` is typed inside the class body and after chained calls.
@@ -145,6 +146,8 @@ The collection's type looks up each of the model's indexes in the registry by th
 An index could carry a domain name independent of its storage name, as a model has a name independent of its table's. A scope would use the domain name when present. That name would live in the contract's domain plane and refer to the storage index through the contract's entity coordinates.
 
 ## Alternatives considered
+
+- **A kind field on the index, with the registry keyed by it.** A field with a fixed set of values on a generic concept cannot be extended by an extension. Matching by shape needs no such field.
 
 - **Declare scopes in the contract's domain plane, mapped to a storage entity.** The domain entry carries nothing beyond a name that the index already has, and the mapping needs entity coordinates to address an index inside a table or collection, which they cannot do. It also makes every ORM client honour a concept that only some of them need.
 - **Make each search an aggregate root beside the model's own.** A root is the entry point to an aggregate, one per directly queryable model. A search is another way into the same aggregate, so this gives one model two roots and blurs what being a root means.

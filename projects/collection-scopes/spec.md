@@ -36,12 +36,14 @@ db.User.where({ id }).include('posts', (posts) => posts.scopes.search.fulltext(q
 - **The ORM client already installs members by name with precedence.** Aggregate reducers (`count`, `sum`, …) are installed per collection only when the name is free.
 - **MongoDB models text indexes with weights** on `MongoIndex`. Verified against MongoDB: a text search must be in the first pipeline stage, works inside a `$lookup` sub-pipeline, returns results unordered unless sorted by score, and a collection can have one text index.
 - **There is no MySQL target.**
-- **A spike showed the types work without the caller writing any.** Contributions register their types by index kind in a registry interface the ORM client declares. With no scope in use, this adds about half a percent to type checking on the demo application. See [the spike findings](spikes/type-composition.md).
+- **A spike showed the types work without the caller writing any.** Contributions register their types in a registry interface the ORM client declares. With no scope in use, this adds about half a percent to type checking on the demo application. See [the spike findings](spikes/type-composition.md).
 - **The contract lists its target and extensions as literal types**, and a client refuses to start when one of those extensions was not passed to it.
 
 ## Decided
 
 - **One attribute.** `@@fullTextIndex` is widened to take several fields in weight order; no second attribute is added.
+
+- **No kind field on the index.** A registry entry states the shape of the indexes it serves, and an index is matched by its data, as the spike did.
 
 ## Non-goals
 
@@ -98,10 +100,9 @@ db.User.where({ id }).include('posts', (posts) => posts.scopes.search.fulltext(q
 
 ## Open questions
 
-1. **How an index states its kind.** A contract index has no kind field today; it has `type`, `expression` and `options`. Either the structured index gains a kind field and the registry is keyed by it, as ADR 256 describes, or an index is matched to a registry entry by its structure, as the spike did.
-2. **The TypeScript builder's form** of the weighted index. `fullTextIndex` takes one field today.
-3. **What the spike did not test:** two packages registering the same key, filtering registry entries by the contract's extensions, grouped collections, `.variant()`, and contracts with several namespaces.
-4. **An authored name and a generated name look the same in the contract.** An unnamed index gets a generated `prefix`. Full-text indexes must be named, so this delivery is unaffected; an index kind that allows unnamed indexes would produce scopes with generated names.
+1. **The TypeScript builder's form** of the weighted index. `fullTextIndex` takes one field today.
+2. **What the spike did not test:** two packages registering the same key, two entries matching the same index, filtering registry entries by the contract's extensions, grouped collections, `.variant()`, and contracts with several namespaces.
+3. **An authored name and a generated name look the same in the contract.** An unnamed index gets a generated `prefix`. Full-text indexes must be named, so this delivery is unaffected; an index kind that allows unnamed indexes would produce scopes with generated names.
 
 ## References
 
