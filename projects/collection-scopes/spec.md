@@ -1,7 +1,7 @@
 # Collection scopes and weighted full-text search
 
 **Linear project:** none yet.
-**Design record:** [ADR 256 — Collection scopes declared on the model](../../docs/architecture%20docs/adrs/ADR%20256%20-%20Collection%20scopes%20declared%20on%20the%20model.md) (Proposed).
+**Design record:** [ADR 257 — Collection scopes declared on the model](../../docs/architecture%20docs/adrs/ADR%20257%20-%20Collection%20scopes%20declared%20on%20the%20model.md) (Proposed).
 
 ## Purpose
 
@@ -99,7 +99,7 @@ db.User.where({ id }).include('posts', (posts) => posts.scopes.search.fulltext(q
 ## Project Definition of Done
 
 - [ ] Team-DoD floor (repo checks, docs, upgrade instructions, Linear close-out).
-- [ ] ADR 256 is Accepted and matches what shipped, including its examples.
+- [ ] ADR 257 is Accepted and matches what shipped, including its examples.
 - [ ] A model with a weighted multi-field full-text index can be searched through `scopes.<name>.fulltext(query)` on a root collection, a chained collection, an include refinement, and a custom collection class, with whole-result assertions.
 - [ ] Results are ordered by relevance by default, a title match ranks above a body match in a test, and an explicit `orderBy` replaces that order.
 - [ ] `EXPLAIN` shows the planner using the declared index for a scope query.
@@ -118,7 +118,7 @@ None.
 
 ## References
 
-- [ADR 256 — Collection scopes declared on the model](../../docs/architecture%20docs/adrs/ADR%20256%20-%20Collection%20scopes%20declared%20on%20the%20model.md)
+- [ADR 257 — Collection scopes declared on the model](../../docs/architecture%20docs/adrs/ADR%20257%20-%20Collection%20scopes%20declared%20on%20the%20model.md)
 - [ADR 175 — Shared ORM Collection interface](../../docs/architecture%20docs/adrs/ADR%20175%20-%20Shared%20ORM%20Collection%20interface.md): collections and custom collection classes.
 - [ADR 180 — Dot-path field accessor](../../docs/architecture%20docs/adrs/ADR%20180%20-%20Dot-path%20field%20accessor.md): separate namespaces for user-chosen and framework-chosen names.
 - [ADR 174 — Aggregate roots and relation strategies](../../docs/architecture%20docs/adrs/ADR%20174%20-%20Aggregate%20roots%20and%20relation%20strategies.md): what a root is, and why a search is not one.

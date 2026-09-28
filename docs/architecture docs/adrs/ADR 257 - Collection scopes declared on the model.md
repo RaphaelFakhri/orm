@@ -1,4 +1,4 @@
-# ADR 256 — Collection scopes declared on the model
+# ADR 257 — Collection scopes declared on the model
 
 **Status:** Proposed
 **Date:** 2026-09-28

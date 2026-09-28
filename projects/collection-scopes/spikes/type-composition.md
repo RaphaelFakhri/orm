@@ -1,4 +1,4 @@
-# Spike: is the type composition in ADR 256 tractable?
+# Spike: is the type composition in ADR 257 tractable?
 
 **Date:** 2026-09-27
 **Branch:** `spike-collection-scope-types`
@@ -6,7 +6,7 @@
 
 ## Outcome
 
-The first attempt, described first below, did not meet a basic requirement: the caller had to write the contributions' types when constructing the client. The second attempt, under "Cost of cheaper variants", meets it and is the design ADR 256 records: a registry interface keyed by index kind, with scopes under `scopes.<name>` only. Placing scopes directly on the collection was dropped because of its cost.
+The first attempt, described first below, did not meet a basic requirement: the caller had to write the contributions' types when constructing the client. The second attempt, under "Cost of cheaper variants", meets it and is the design ADR 257 records: a registry interface keyed by index kind, with scopes under `scopes.<name>` only. Placing scopes directly on the collection was dropped because of its cost.
 
 ## Answer of the first attempt
 
