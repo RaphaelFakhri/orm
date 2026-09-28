@@ -86,11 +86,12 @@ scopes Post {
 }
 ```
 
-- **A `scopes` block names its model.** The model must be declared in the same namespace, and has at most one `scopes` block.
-- **Each line is a scope.** The name is on the left, as a field's name is. The scope's kind and its arguments are on the right, as a field's type is.
+- **A `scopes` block names its model.** The model must be declared in the same namespace. A model may have several `scopes` blocks, in one file or in several, and they are read as one. Two scopes of one model with the same name are an error.
+- **Each line is a scope, written as a field line is.** The name is on the left, and the scope's kind with its arguments is on the right, where a field has its type. The grammar of the line is the grammar of a field line.
+- **A model's scopes are a namespace of their own.** A scope and a field of the same model may share a name.
 - **`fullTextSearch` comes from the Postgres target.** A scope from an extension carries the extension's name, as its types do: `pgvector.nearest(embedding)`.
 - **The list gives the fields in order of weight.** Fields in a nested list share a weight. Here `title` and `subtitle` count most, and `body` counts less.
-- **The index is created for the author.** Its name is generated from the table and the scope, here `post_search`. `map: "existing_index_name"` uses an index that already exists under that exact name.
+- **The index is created for the author.** Its name is generated from the table and the scope, here `post_search`. `index: "existing_index_name"` names the index exactly, for a database that already has it.
 
 The TypeScript contract builder has the same declaration. The key is the scope's name, and the target contributes the `fullTextSearch` helper:
 
@@ -103,6 +104,8 @@ model('Post', { fields: { id, title, subtitle, body } }).scopes(({ fields, scope
 The author declares the search because that is what they want. The index is how they get it. An author who wants an index and no scope writes `@@index(expression: ...)` on the model.
 
 **Why a block of its own.** A `model` block describes the shape of the model, and its `@@` attributes describe the model as a whole. A scope is neither. It is a named way to find the model's entities. In its own block, the scope's name is on the left, as every name in the schema language is, and the `model` block keeps its meaning.
+
+**The block has the shape of what the application uses.** A `model` block lists the fields of a post. A `scopes` block lists the members of `db.Post.scopes`. The author reads the second as they read the first.
 
 ### 2. The contract records a scope and an index
 

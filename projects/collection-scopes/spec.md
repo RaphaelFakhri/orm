@@ -46,7 +46,7 @@ db.User.where({ id }).include('posts', (posts) => posts.scopes.search.fulltext(q
 ## Decided
 
 - **Scopes are declared on the model in the contract's domain plane.** Each has a name, an open scope type id, and parameters. The full-text scope's one parameter names its index.
-- **Scopes are declared in a top-level `scopes <Model> { }` block**, one line for each scope: the name, then the kind of scope with its arguments, as `search fullTextSearch([title, body])`. A declaration creates the scope and its index. The index name is generated unless `map:` gives one.
+- **Scopes are declared in a top-level `scopes <Model> { }` block**, one line for each scope: the name, then the kind of scope with its arguments, as `search fullTextSearch([title, body])`. A declaration creates the scope and its index. The index name is generated unless `index:` gives one. A line has the grammar of a field line. A model may have several `scopes` blocks, which are read as one, and a model's scopes are a namespace separate from its fields.
 - **`fullTextSearch` replaces `@@fullTextIndex`.** An index without a scope is written with `@@index(expression: ...)`.
 - **The Prisma 7 grammar does not get the block.**
 - **No kind or type id on the index.**
