@@ -33,7 +33,7 @@ Existing Prisma 7 users must be able to upgrade. They reacted badly to the relea
 
 All four at GA: PostgreSQL, SQLite, MySQL/MariaDB, MongoDB. No MySQL target exists in the repo today.
 
-Fallback if time runs out: PostgreSQL is GA, the others are labelled release candidate or early access.
+PostgreSQL must be ready at GA. The other databases can finish after the GA launch, as long as they are visibly on the way. Until each is ready it is labelled release candidate or early access.
 
 ## Required before GA, in order
 
@@ -47,7 +47,7 @@ Fallback if time runs out: PostgreSQL is GA, the others are labelled release can
 | In parallel | Docs items from the eval | 11 items, 5 high. Owned by the team. |
 | In parallel | Multi-file PSL | 2 of 3 parts merged. Language server part open in prisma/orm#30456. |
 | In parallel, Serhii | VS Code extension | Critical. Serhii is working on it. No Linear project found. Must have at GA: the formatter works without the `prisma` CLI installed, go-to-definition into PSL, multi-file PSL support, integration with the `prisma` emulator controls. |
-| Not ordered yet | Emulator controls in the `prisma` CLI | Not tracked. The VS Code extension depends on it. The eval found that stopping `prisma dev` leaves the emulator processes running and that no stop or cleanup command exists. |
+| Not ordered yet | Emulator controls in the `prisma` CLI: start, stop, list, reset. Several emulators of each type can run, so status is a list. | Not tracked. The VS Code extension depends on it. The eval found that stopping `prisma dev` leaves the emulator processes running and that no stop or cleanup command exists. |
 | Not ordered yet | "Contract print and Prisma 7 source follow-ups" | Linear project created 2026-09-28. 18 issues, all backlog, 3 high (TML-3322, 3323, 3326). |
 
 ## One CLI and one config file
@@ -91,7 +91,6 @@ Tracked so far: TML-3340 (docs and the shipped skill name `prisma-composer`). No
 ## Open questions
 
 1. Field presets and `types {}` aliases: remove before GA without mixins, or keep through 8.x?
-2. What must the emulator controls in the CLI do, and who builds them?
 3. Which of the 18 follow-up issues are required for GA?
 4. What is the stopping point for the Prisma 7 schema gaps?
 5. Two documents claim the number ADR 256: the one planned in TML-3288 and the one proposed in prisma/orm#30428.
