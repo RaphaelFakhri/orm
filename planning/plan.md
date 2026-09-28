@@ -46,7 +46,8 @@ Fallback if time runs out: PostgreSQL is GA, the others are labelled release can
 | In parallel | Upgrade path: Prisma 7 schema gaps, baseline command, upgrade guide rewrite | Will is working on it now. |
 | In parallel | Docs items from the eval | 11 items, 5 high. Owned by the team. |
 | In parallel | Multi-file PSL | 2 of 3 parts merged. Language server part open in prisma/orm#30456. |
-| Not ordered yet | VS Code extension | Critical. No tracked work. |
+| In parallel, Serhii | VS Code extension | Critical. Serhii is working on it. No Linear project found. Must have at GA: the formatter works without the `prisma` CLI installed, go-to-definition into PSL, multi-file PSL support, integration with the `prisma` emulator controls. |
+| Not ordered yet | Emulator controls in the `prisma` CLI | Not tracked. The VS Code extension depends on it. The eval found that stopping `prisma dev` leaves the emulator processes running and that no stop or cleanup command exists. |
 | Not ordered yet | "Contract print and Prisma 7 source follow-ups" | Linear project created 2026-09-28. 18 issues, all backlog, 3 high (TML-3322, 3323, 3326). |
 
 ## One CLI and one config file
@@ -70,7 +71,7 @@ Tracked so far: TML-3340 (docs and the shipped skill name `prisma-composer`). No
 ## After GA
 
 - `@hint(was: oldName)`. High user value, additive.
-- PSL mixins (TML-3055). Additive. Open: what happens to the three removals bundled with it (field presets, type aliases, `@db.*`).
+- PSL mixins (TML-3055). Additive. `@db.*` attributes are already removed. Field presets and `types {}` aliases still exist in the code. Open: what happens to those two.
 - Query linting.
 - Querying across contract spaces. Optional, but a competitive advantage.
 - Performance work.
@@ -89,8 +90,8 @@ Tracked so far: TML-3340 (docs and the shipped skill name `prisma-composer`). No
 
 ## Open questions
 
-1. Field presets, type aliases and `@db.*`: remove before GA without mixins, or keep through 8.x?
-2. Where does the VS Code extension go in the order, and who does it?
+1. Field presets and `types {}` aliases: remove before GA without mixins, or keep through 8.x?
+2. What must the emulator controls in the CLI do, and who builds them?
 3. Which of the 18 follow-up issues are required for GA?
 4. What is the stopping point for the Prisma 7 schema gaps?
 5. Two documents claim the number ADR 256: the one planned in TML-3288 and the one proposed in prisma/orm#30428.
