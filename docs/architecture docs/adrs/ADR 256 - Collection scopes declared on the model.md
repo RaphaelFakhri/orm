@@ -149,16 +149,18 @@ class PostCollection extends Collection<Contract, 'Post'> {
 
 `fulltext` is not part of the ORM client. The Postgres target supplies it, because `pg/full-text@1` is its scope type. An extension does the same for a scope type of its own.
 
-The ORM client defines an interface for this. For a call such as `fulltext(q)`, the supplier returns a filter and, optionally, a default order:
+Each ORM client defines an interface for this. In the SQL ORM client, for a call such as `fulltext(q)`, the supplier returns a filter, a default order, or both:
 
 ```ts
 interface ScopeRefinement {
-  readonly filter: AnyExpression;
+  readonly filter?: AnyExpression;
   readonly defaultOrderBy?: readonly OrderByItem[];
 }
 ```
 
-The ORM client applies both to the collection. The supplier never touches the collection itself.
+The ORM client applies them to the collection. The supplier never touches the collection itself.
+
+The interface belongs to the ORM client because the form of a search differs between database families. The contract is the same for all of them. [Other databases](#other-databases) shows why.
 
 The supplier's code travels on the descriptor that the application already passes to the client. Nothing new is written when the client is constructed:
 
@@ -227,7 +229,7 @@ LIMIT 10
 | --- | --- |
 | Framework | The `scopes` member of a model in the contract, and its shape |
 | Target or extension that introduces a scope type | The schema attribute, the index and its DDL, the operations, and their line in the type registry |
-| ORM client | The `scopes` member of a collection, the interface suppliers satisfy, the type registry, and applying the filter and the default order |
+| ORM client | The `scopes` member of a collection, the interface suppliers satisfy, the type registry, and applying what a supplier returns |
 | Adapter | Turning the finished query into SQL, as for any other query |
 
 ## Consequences
@@ -249,10 +251,25 @@ LIMIT 10
 - **The package depends on the ORM client package**, because its type declarations name it.
 - **A published package must name the published module in its registry declaration.** TypeScript ignores a declaration that names a module it cannot find, and reports no error. `scopes` is then empty. The build rewrites internal module names, and a test on the built packages checks the result.
 
-**For other targets**
+## Other databases
 
-- **MongoDB allows one text index per collection**, so a MongoDB model has at most one text search scope. Postgres allows several.
-- **MongoDB accepts a text search only in the first stage of a pipeline.** Because a collection builds its query at the terminal method, a MongoDB ORM client can place the search there whatever the order of calls. MongoDB also accepts a text search inside a `$lookup` sub-pipeline, so a scope works inside an include.
+The contract records a scope in the same way for every database: a name, a scope type, and the index that serves it. What differs is the scope type's operations and what its supplier returns.
+
+| | Postgres | MySQL | MongoDB text index | MongoDB Atlas Search |
+| --- | --- | --- | --- | --- |
+| The query agrees with the index by | Repeating its expression | Repeating its column list | Nothing; a collection has one | Naming it |
+| Weights | Four classes | None | A number for each field | Set in the index or the query |
+| Scopes on one model | Several | Several | One | Several |
+| A search in a query is | A filter | A filter | A filter, in the first stage only | A pipeline stage, the first one |
+| Rows arrive in relevance order | No | Not reliably | No | Yes |
+
+**MySQL.** `MATCH(title, body) AGAINST (?)` must list the same columns as a full-text index. The supplier writes the list from the index, and returns a filter and a default order, as the Postgres supplier does.
+
+**MongoDB text index.** The supplier returns a `$text` filter and a sort by text score. MongoDB accepts `$text` only in the first stage of a pipeline. A collection builds its query at the terminal method, so the MongoDB ORM client places it there whatever the order of calls. MongoDB accepts `$text` inside a `$lookup` sub-pipeline, so a scope works inside an include.
+
+**MongoDB Atlas Search.** The search is a pipeline stage, `$search` or `$vectorSearch`. It cannot be written as a filter. The MongoDB ORM client's interface therefore lets a supplier return a first stage.
+
+**Operations are not portable between databases.** `fulltext(q)` takes a Postgres `tsquery`. A MySQL operation takes a string. Operations belong to the scope type, as column operations belong to the target.
 
 ## Alternatives considered
 
@@ -270,7 +287,7 @@ LIMIT 10
 
 ### How the application reaches it
 
-- **On the row accessor, as `p.search`.** It puts something that is not a field among the fields, where a field of the same name collides with it.
+- **On the row accessor, as `p.search`, used inside `where`.** It puts something that is not a field among the fields, where a field of the same name collides with it. A filter inside `where` also cannot set an order. In MongoDB Atlas Search a search is not a filter at all, and cannot be combined with `or` and `not` as `where` allows.
 - **Directly on the collection, as `db.Post.search`.** A scope and a collection method of the same name collide, and a custom collection class with such a method does not compile. It also costs about four percent more type checking for every application, because of the extra type on every collection.
 - **Only at the start of a query.** The collection inside an `include` is created by the ORM client, not by the caller, so a scope could never be used there.
 - **As an operation on a column.** An operation on a column returns a value. A scope operation applies to a collection and returns a collection.
