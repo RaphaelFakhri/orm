@@ -146,7 +146,31 @@ TML-3055 plans to retire both in favour of mixins. This project changes the temp
 
 ### Q14. A data type writing its own values into migration SQL (TML-3283)
 
-**Recommendation:** out of scope; this project must not make it harder.
+**Answered by Will in the TML-3253 discussion:** no. Values are the codec's job. See the section below. TML-3283 should be closed with that answer.
+
+## Input from the TML-3253 discussion (read 2026-09-28)
+
+TML-3253 is a separate bug slice: literal defaults of `interval`, `bytea` and `timetz` fail `db verify`, and list defaults skip the codec when rendered, so a `bytea[]` default stores the wrong bytes. Its design discussion with Will settled points that bind this project:
+
+1. **Values belong to codecs, not data types (Will).** A codec's sole job is translating between the database representation and the in-memory representation of a column's value. Reading a default the database reports is `codec.decode(text)` then `codec.encodeJson(value)`; writing one into migration SQL is `codec.decodeJson(json)` then `codec.encode(value)`, then quoting. A data type does not parse or print SQL value literals. This answers Q14: a data type never writes values into migration SQL, and TML-3283's question is answered by the codec.
+2. **What a data type does own is unchanged:** its id, its casts, and, from this project, its database name, other names, parameters and how the name is written with them. Those are facts about the type's name, not about values.
+3. **The adapter knows SQL syntax only.** `parsePostgresDefault` becomes syntax-only (strip casts, unquote, split lists, recognise a short list of function names) and hands each value's text to a codec. The per-type regex cases for numeric, int8 and json go.
+4. **TML-3253 needs a lookup this project must supply.** It maps an introspected database type name to a codec, and planned to use codec `targetTypes`, which Q12 deletes. After this project the path is: database type name, to data type (through its name and other names), to a codec of that type. All codecs of one data type share the canonical form, so any of them gives the same JSON; the rule for which one is picked still has to be written down (Q15).
+5. **Shared files.** TML-3253 changes `renderDefaultLiteral`, `pgRenderDdlColumnDefault`, `parsePostgresDefault`, `default-normalizer.ts` and the introspection session settings. This project changes the same functions where they branch on `nativeType`. The two must be sequenced (Q16).
+
+### Q15. Which codec reads a default the database reports?
+
+- **(a)** When verifying, the contract column's own codec. When inferring, where no contract exists, the codec of the constructor `contract infer` prints for that data type (Q8).
+- **(b)** Each data type names one codec for this purpose.
+
+**Recommendation: (a).** It adds no new declaration.
+
+### Q16. Order relative to TML-3253
+
+- **(a)** TML-3253 lands first on today's `targetTypes` lookup; this project then replaces the lookup when it deletes `targetTypes`.
+- **(b)** This project lands the name-to-data-type lookup first, and TML-3253 builds on it.
+
+**Recommendation: (a).** TML-3253 fixes stored wrong data and should not wait for a project.
 
 ## Settled
 
