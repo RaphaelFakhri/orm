@@ -226,7 +226,7 @@ export function createMigrateCommand(createClient: CreateControlClient) {
         db: dbFlag,
         to: flag.string({
           brief:
-            'Target contract reference (hash, prefix, ref name, migration dir name, <dir>^, or ./path)',
+            'Target contract reference (hash, prefix, ref name, migration dir name, or <dir>^)',
           placeholder: 'contract',
         }),
         advanceRef: flag.string({
