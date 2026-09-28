@@ -22,12 +22,8 @@ model Post {
 ```ts
 const q = websearchToTsquery(input);
 
-// short form: the scope sits directly on the collection when no member has its name
-db.Post.search.fulltext(q).limit(10).all();
-db.User.where({ id }).include('posts', (posts) => posts.search.fulltext(q).limit(3));
-
-// full form: always available, whatever the scope is called
 db.Post.scopes.search.fulltext(q).limit(10).all();
+db.User.where({ id }).include('posts', (posts) => posts.scopes.search.fulltext(q).limit(3));
 ```
 
 ## Where things stand (grounded 2026-09-27)
@@ -40,6 +36,8 @@ db.Post.scopes.search.fulltext(q).limit(10).all();
 - **The ORM client already installs members by name with precedence.** Aggregate reducers (`count`, `sum`, …) are installed per collection only when the name is free.
 - **MongoDB models text indexes with weights** on `MongoIndex`. Verified against MongoDB: a text search must be in the first pipeline stage, works inside a `$lookup` sub-pipeline, returns results unordered unless sorted by score, and a collection can have one text index.
 - **There is no MySQL target.**
+- **A spike showed the types work without the caller writing any.** Contributions register their types by index kind in a registry interface the ORM client declares. With no scope in use, this adds about half a percent to type checking on the demo application. See [the spike findings](spikes/type-composition.md).
+- **A contract index does not record which package owns its kind.** The check at client construction needs that to name a missing extension.
 
 ## Non-goals
 
@@ -54,9 +52,10 @@ db.Post.scopes.search.fulltext(q).limit(10).all();
 
 ## Place in the larger world
 
-- **ORM client (`sql-orm-client`).** Gains the `scopes` member, the interface contributions satisfy, class composition per model, and default-order handling.
+- **ORM client (`sql-orm-client`).** Gains the `scopes` member, the registry and interface that contributions satisfy, the check at construction that every registered index kind has a runtime contribution, and default-order handling.
 - **Postgres target.** May reference the ORM client's interface type directly. Owns the full-text index kind: its authoring attribute, its structured representation, its DDL, and its scope operations. Reuses the existing full-text lowering and the `tsquery` helpers.
-- **Postgres facade.** Becomes generic over its extensions so contributions reach the client's types.
+- **Postgres facade.** Its signature does not change. It passes the runtime contributions from the target and from `extensions` to the ORM client.
+- **Package build.** Rewrites the internal module name in a registry declaration to the published one.
 - **Contract and emitter.** Carry the index as structured data. No ORM-specific types are emitted.
 - **Migrations.** A changed index representation changes storage hashes of contracts that declare a full-text index. The feature has no consumers yet, so no migration path from the opaque representation is provided.
 - **Mongo ORM client.** Out of scope for delivery, but the design must not rule it out; the ADR records the MongoDB constraints.
@@ -67,7 +66,9 @@ db.Post.scopes.search.fulltext(q).limit(10).all();
 - **The query expression and the index expression come from one renderer**, so a scope query always matches its index. An integration test proves the planner uses the index, with sequential scans disabled and negative controls.
 - **No special cases by index kind or target in the ORM client.** The ORM client knows the interface; owners of index kinds supply behaviour.
 - **A scope is reachable on every collection of its model**: root, chained, inside an include refinement, and on a custom collection class.
-- **`scopes.<name>` always works.** Direct placement never shadows a collection member or a custom collection member.
+- **Scopes are reached through `scopes.<name>` only.** Nothing is placed directly on the collection.
+- **Constructing a client needs no type arguments or annotations for scopes**, whichever package contributes them, first-party or not.
+- **A user who declares no scope-backing index pays at most one percent more type checking**, measured on `examples/prisma-8-demo`.
 - **Existing column operations and their tests are unchanged.**
 - **User input stays safe.** Scope operations take a `tsquery`, as the column operations do; a plain string does not compile.
 
@@ -84,6 +85,8 @@ db.Post.scopes.search.fulltext(q).limit(10).all();
 - [ ] Results are ordered by relevance by default, a title match ranks above a body match in a test, and an explicit `orderBy` replaces that order.
 - [ ] `EXPLAIN` shows the planner using the declared index for a scope query.
 - [ ] Type tests show the scope and its operation typed from the contract's index data, and show a model without such an index has no scope.
+- [ ] A test on the built, published packages shows a registered scope is typed, so a registry declaration naming an internal module cannot ship.
+- [ ] A client given a contract whose index kind is registered, without the extension that serves it, refuses to start and names the extension.
 - [ ] A second, test-only contribution for a different index kind works without any change to the ORM client, proving the mechanism is general.
 - [ ] `examples/prisma-8-demo` searches posts across more than one field through a scope.
 - [ ] The skill reference and upgrade instructions describe the new index representation and the scope surface.
@@ -91,8 +94,9 @@ db.Post.scopes.search.fulltext(q).limit(10).all();
 ## Open questions
 
 1. **How the weighted index is authored.** The sketch uses a new attribute, `@@fullTextSearch(search, weights: [...])`. The alternative is widening the existing `@@fullTextIndex` to take a weighted field list. Both declare an index; the question is whether one attribute or two.
-2. **Whether the type-level composition is tractable.** A model's collection type becomes the base plus each contribution applied to that model's index data. This needs a spike before the slices that depend on it are sized.
-3. **The TypeScript builder's form** of the weighted index, as the twin of the PSL attribute.
+2. **The TypeScript builder's form** of the weighted index, as the twin of the PSL attribute.
+3. **How a contract index records the package that owns its kind**, so the check at client construction can name a missing extension.
+4. **What the spike did not test:** two packages registering the same index kind, grouped collections, `.variant()`, and contracts with several namespaces.
 
 ## References
 
