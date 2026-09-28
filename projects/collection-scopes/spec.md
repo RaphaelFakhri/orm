@@ -46,6 +46,9 @@ db.User.where({ id }).include('posts', (posts) => posts.scopes.search.fulltext(q
 - **Scopes are declared on the model in the contract's domain plane.** Each has a name, an open scope type id, and parameters. The full-text scope's one parameter names its index.
 - **One attribute, `@@fullTextSearch`, declares the scope and creates its index.** It replaces `@@fullTextIndex`. The author names the scope, and the index name is generated unless `map:` gives one. An index without a scope is written with `@@index(expression: ...)`.
 - **No kind or type id on the index.**
+- **The TypeScript builder declares scopes through a `scopes` method on the model.** The target contributes the helper, so nothing is imported: `.scopes(({ fields, scopes }) => ({ search: scopes.fullTextSearch([[fields.title, fields.subtitle], fields.body]) }))`. The key is the scope's name.
+- **The index expression contains only what the search needs.** `setweight` appears only when there is more than one weight group, and `coalesce` only when there is more than one field. A search over one field therefore has the expression `to_tsvector(language, column)`, which is the one `fullTextMatches` on that column uses.
+- **A scope is in no contract hash**, as the rest of the domain plane is in none. Its index is in the storage hash.
 
 ## Non-goals
 
@@ -98,16 +101,15 @@ db.User.where({ id }).include('posts', (posts) => posts.scopes.search.fulltext(q
 - [ ] Type tests show the scope and its operation typed from the contract's index data, and show a model that declares no scope has none.
 - [ ] A test on the built, published packages shows a registered scope is typed, so a registry declaration naming an internal module cannot ship.
 - [ ] A client refuses to start when a declared scope's type has no contribution, or its index does not exist, and the error names what is missing.
+- [ ] `EXPLAIN` shows `fullTextMatches` on a column using the index of a search declared over that one field.
+- [ ] Tests cover: two packages registering the same scope type, which is a compile error; a grouped collection; a collection after `.variant()`; and a contract with several namespaces.
 - [ ] A second, test-only scope type works without any change to the ORM client or the framework, proving the mechanism is general.
 - [ ] `examples/prisma-8-demo` searches posts across more than one field through a scope.
 - [ ] The skill reference and upgrade instructions describe the new index representation and the scope surface.
 
 ## Open questions
 
-1. **The TypeScript builder's form** of `@@fullTextSearch`. `fullTextIndex` takes one field today and sits in the model's `sql({ indexes })`, which is storage only.
-2. **Whether the column operations keep using the index.** `fullTextMatches` on one column uses an index only when the index expression is exactly `to_tsvector(language, column)`. A weighted index wraps each field in `setweight`. The question is what `@@fullTextSearch` over one field renders.
-3. **Which contract hash a scope belongs to.**
-4. **What the spikes did not test:** two packages registering the same scope type, a scope that names a missing index, grouped collections, `.variant()`, contracts with several namespaces, and the Mongo ORM client.
+None.
 
 ## References
 

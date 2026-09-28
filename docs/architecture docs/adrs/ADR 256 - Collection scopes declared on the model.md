@@ -66,6 +66,14 @@ A scope gives the search a name on the model, and renders the query from the sam
 - **The list gives the fields in order of weight.** Fields in a nested list share a weight. Here `title` and `subtitle` count most, and `body` counts less.
 - **The index is created for the author.** Its name is generated from the table and the scope, here `post_search`. `map: "existing_index_name"` uses an index that already exists under that exact name.
 
+The TypeScript contract builder has the same declaration. The key is the scope's name, and the target contributes the `fullTextSearch` helper:
+
+```ts
+model('Post', { fields: { id, title, subtitle, body } }).scopes(({ fields, scopes }) => ({
+  search: scopes.fullTextSearch([[fields.title, fields.subtitle], fields.body]),
+}));
+```
+
 The attribute is named for the search because that is what the author wants. The index is how they get it. An author who wants an index and no scope writes `@@index(expression: ...)`.
 
 ### 2. The contract records a scope and an index
@@ -234,7 +242,7 @@ LIMIT 10
 
 - **Ordering by relevance sorts every match.** A caller who does not need it can order by something cheaper.
 - **Relevance cannot be combined with another sort key.** That needs a way to name the relevance score inside `orderBy`, which this decision does not provide.
-- **Operations on a single column are separate.** `fullTextMatches`, `fullTextRank` and `fullTextHeadline` apply to one text column and are not affected. Highlighting has no scope operation, because it needs text and a search document is not text.
+- **Operations on a single column are separate, and can share an index with a scope.** `fullTextMatches`, `fullTextRank` and `fullTextHeadline` apply to one text column. The index expression contains weights only when the search has more than one weight group, so a search over one field has the same expression as `fullTextMatches` on that field, and both use the one index. Highlighting has no scope operation, because it needs text and a search document is not text.
 
 **For packages that supply a scope type**
 
