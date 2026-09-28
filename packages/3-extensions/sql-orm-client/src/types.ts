@@ -1101,6 +1101,12 @@ export type ModelTableIndexes<
       : readonly []
     : readonly [];
 
+export type ModelDeclaredScopes<
+  TContract extends Contract<SqlStorage>,
+  ModelName extends string,
+  NsId extends string = never,
+> = ModelDef<TContract, ModelName, NsId> extends { readonly scopes: infer Scopes } ? Scopes : {};
+
 type FieldsOf<
   TContract extends Contract<SqlStorage>,
   ModelName extends string,

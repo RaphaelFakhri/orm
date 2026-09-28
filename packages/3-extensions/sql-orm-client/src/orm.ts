@@ -123,19 +123,20 @@ function assertRequiredScopeContributionsProvided(
   contributions: ReadonlyArray<{ readonly id: string }>,
 ): void {
   const provided = new Set(contributions.map((contribution) => contribution.id));
-  for (const [namespaceId, namespace] of Object.entries(contract.storage.namespaces)) {
-    for (const [tableName, table] of Object.entries(namespace.entries.table ?? {})) {
-      for (const index of table.indexes ?? []) {
-        const required = index.options?.['requiresScopes'];
-        if (!Array.isArray(required)) continue;
-        for (const id of required) {
-          if (provided.has(id)) continue;
-          throw ormError(
-            'ORM.ARGUMENT_INVALID',
-            `Index '${index.name}' on table '${namespaceId}.${tableName}' needs the collection scope contribution '${id}', but no component passed to the client provides it. Pass the extension that declares '${id}' in \`extensions\`.`,
-            { meta: { method: 'orm', argument: 'context', key: id } },
-          );
-        }
+  for (const [namespaceId, namespace] of Object.entries(contract.domain.namespaces)) {
+    for (const [modelName, model] of Object.entries(namespace.models)) {
+      const declared =
+        blindCast<
+          { readonly scopes?: Record<string, { readonly type: string }> },
+          'spike: declared scopes are not in the model entry type yet'
+        >(model).scopes ?? {};
+      for (const [scopeName, scope] of Object.entries(declared)) {
+        if (provided.has(scope.type)) continue;
+        throw ormError(
+          'ORM.ARGUMENT_INVALID',
+          `Scope '${scopeName}' on model '${namespaceId}.${modelName}' needs the collection scope contribution '${scope.type}', but no component passed to the client provides it. Pass the extension that declares '${scope.type}' in \`extensions\`.`,
+          { meta: { method: 'orm', argument: 'context', key: scope.type } },
+        );
       }
     }
   }

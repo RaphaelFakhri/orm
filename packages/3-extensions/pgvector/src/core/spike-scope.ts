@@ -8,7 +8,6 @@ export interface SpikeExtensionOperations<Index, Coll> {
 }
 
 export interface SpikeExtensionScope extends ScopeOperationsShape {
-  readonly match: { readonly type: 'gin' };
   readonly operations: SpikeExtensionOperations<this['index'], this['collection']>;
 }
 
@@ -20,7 +19,6 @@ declare module '@internal/sql-orm-client' {
 
 export const spikeExtensionScopes: SqlCollectionScopeContribution = {
   id: 'pgvector/spike',
-  matches: (index) => index['type'] === 'gin',
   operations: (_index, context) => ({
     titleStartsWith: (...args: never[]) => {
       const [prefix] = args as unknown as [string];

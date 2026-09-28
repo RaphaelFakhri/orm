@@ -18,9 +18,15 @@ function scopedContract(): ScopedContract {
     expression: 'to_tsvector(\'english\', "title")',
     unique: false,
     type: 'gin',
-    options: { language: 'english', weights: [['title']], requiresScopes: ['test/fulltext'] },
+    options: { language: 'english', weights: [['title']] },
   });
   posts.indexes = [...posts.indexes, fullText('search'), fullText('where'), fullText('published')];
+  const scope = (index: string) => ({ type: 'test/fulltext', params: { index } });
+  json.domain.namespaces.public.models.Post.scopes = {
+    search: scope('search'),
+    where: scope('where'),
+    published: scope('published'),
+  };
   return deserializeTestContract(json) as unknown as ScopedContract;
 }
 
@@ -57,7 +63,7 @@ describe('collection scopes', () => {
       collectionScopes: [brinScopes],
     };
     expect(() => orm({ runtime, context })).toThrow(
-      /Index 'search' on table 'public.posts' needs the collection scope contribution 'test\/fulltext'/,
+      /Scope 'search' on model 'public.Post' needs the collection scope contribution 'test\/fulltext'/,
     );
   });
 

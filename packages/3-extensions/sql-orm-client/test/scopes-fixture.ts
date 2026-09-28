@@ -79,7 +79,49 @@ export type PostIndexes = readonly [
   },
 ];
 
-export type ScopedContract = WithTableIndexes<'posts', PostIndexes>;
+export interface PostScopes {
+  readonly search: {
+    readonly type: 'test/fulltext';
+    readonly params: { readonly index: 'search' };
+  };
+  readonly where: { readonly type: 'test/fulltext'; readonly params: { readonly index: 'where' } };
+  readonly published: {
+    readonly type: 'test/fulltext';
+    readonly params: { readonly index: 'published' };
+  };
+  readonly byViews: { readonly type: 'test/brin'; readonly params: { readonly index: 'byViews' } };
+  readonly unregistered: {
+    readonly type: 'test/unregistered';
+    readonly params: { readonly index: 'search' };
+  };
+}
+
+type Domain = TestContract['domain'];
+type DomainNamespaces = Domain['namespaces'];
+type DomainPublic = DomainNamespaces['public'];
+type Models = DomainPublic['models'];
+
+type WithModelScopes<TContract, Model extends keyof Models, Scopes> = Omit<TContract, 'domain'> & {
+  readonly domain: ReplaceKey<
+    Domain,
+    'namespaces',
+    ReplaceKey<
+      DomainNamespaces,
+      'public',
+      ReplaceKey<
+        DomainPublic,
+        'models',
+        ReplaceKey<Models, Model, Models[Model] & { readonly scopes: Scopes }>
+      >
+    >
+  >;
+};
+
+export type ScopedContract = WithModelScopes<
+  WithTableIndexes<'posts', PostIndexes>,
+  'Post',
+  PostScopes
+>;
 
 export interface FakeTsQuery {
   readonly kind: 'tsquery';
@@ -88,14 +130,6 @@ export interface FakeTsQuery {
 
 export function fakeTsQuery(text: string): FakeTsQuery {
   return { kind: 'tsquery', text };
-}
-
-interface FullTextIndexMatch {
-  readonly type: 'gin';
-  readonly options: {
-    readonly language: string;
-    readonly weights: readonly (readonly string[])[];
-  };
 }
 
 type WeightedColumn<Index> = Index extends {
@@ -114,7 +148,6 @@ interface FullTextOperations<Index, Coll> {
 }
 
 interface FullTextScope extends ScopeOperationsShape {
-  readonly match: FullTextIndexMatch;
   readonly operations: FullTextOperations<this['index'], this['collection']>;
 }
 
@@ -127,7 +160,6 @@ declare module '../src/scopes' {
 
 export const fullTextScopes: SqlCollectionScopeContribution = {
   id: 'test/fulltext',
-  matches: (index) => index['type'] === 'gin' && typeof index['options'] === 'object',
   operations: (index, context) => {
     const options = index['options'] as {
       language: string;
@@ -152,13 +184,11 @@ interface BrinOperations<Coll> {
 }
 
 interface BrinScope extends ScopeOperationsShape {
-  readonly match: { readonly type: 'brin' };
   readonly operations: BrinOperations<this['collection']>;
 }
 
 export const brinScopes: SqlCollectionScopeContribution = {
   id: 'test/brin',
-  matches: (index) => index['type'] === 'brin',
   operations: (index, context) => {
     const column = ColumnRef.of(context.tableName, (index['columns'] as string[])[0] ?? 'id');
     return {

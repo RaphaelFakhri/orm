@@ -1,27 +1,19 @@
 /**
- * The type-level half of a contribution. TypeScript has no higher-kinded types, so the operations are written against two input slots that the ORM client fills in: `index` is the literal index entry from the contract and `collection` is the collection type every operation returns. `match` is the structural type an index entry must be assignable to.
+ * The type-level half of a contribution. TypeScript has no higher-kinded types, so the operations are written against two input slots that the ORM client fills in: `index` is the literal index entry the declared scope names and `collection` is the collection type every operation returns.
  */
 export interface ScopeOperationsShape {
-  readonly match: unknown;
   readonly index: unknown;
   readonly collection: unknown;
   readonly operations: object;
 }
 
 /**
- * Registry of collection scope contributions, keyed by contribution id. A contributing package adds its entry by declaration merging.
+ * Registry of collection scope contributions, keyed by scope type id. A contributing package adds its entry by declaration merging.
  */
 // biome-ignore lint/suspicious/noEmptyInterface: contributions are added by declaration merging
 export interface CollectionScopeRegistry {}
 
 type RegistryIds = keyof CollectionScopeRegistry;
-
-type MatchingIds<Index> = {
-  [Id in RegistryIds]: Index extends CollectionScopeRegistry[Id]['match' &
-    keyof CollectionScopeRegistry[Id]]
-    ? Id
-    : never;
-}[RegistryIds];
 
 type ApplyShape<Shape, Index, Coll> = Shape & {
   readonly index: Index;
@@ -30,45 +22,41 @@ type ApplyShape<Shape, Index, Coll> = Shape & {
   ? Operations
   : never;
 
-type UnionToIntersection<U> = (U extends unknown ? (value: U) => void : never) extends (
-  value: infer I,
-) => void
-  ? I
-  : never;
-
-export type ScopeOperationsFor<Index, Coll> = UnionToIntersection<
-  MatchingIds<Index> extends infer Id
-    ? Id extends RegistryIds
-      ? ApplyShape<CollectionScopeRegistry[Id], Index, Coll>
-      : never
-    : never
->;
-
 export type AuthoredIndexName<Index> = Index extends { readonly prefix: infer P extends string }
   ? P
   : Index extends { readonly name: infer N extends string }
     ? N
     : never;
 
-type ScopeKey<Index> = [MatchingIds<Index>] extends [never]
-  ? never
-  : string extends AuthoredIndexName<Index>
-    ? never
-    : AuthoredIndexName<Index>;
-
-export type ScopeNamesOfIndexes<Indexes> = Indexes extends readonly unknown[]
-  ? Indexes[number] extends infer Index
-    ? Index extends unknown
-      ? ScopeKey<Index>
-      : never
+type IndexNamed<Index, Name> = Index extends unknown
+  ? [AuthoredIndexName<Index>] extends [Name]
+    ? Index
     : never
   : never;
 
-export type ScopesOfIndexes<Indexes, Coll> = Indexes extends readonly unknown[]
-  ? {
-      readonly [Index in Indexes[number] as ScopeKey<Index>]: ScopeOperationsFor<Index, Coll>;
-    }
-  : Record<never, never>;
+type IndexOfScope<Scope, Indexes> = Scope extends {
+  readonly params: { readonly index: infer Name };
+}
+  ? Indexes extends readonly unknown[]
+    ? IndexNamed<Indexes[number], Name>
+    : never
+  : never;
+
+type RegisteredTypeOf<Scope> = Scope extends { readonly type: infer Type }
+  ? Type extends RegistryIds
+    ? Type
+    : never
+  : never;
+
+export type DeclaredScopes<Scopes, Indexes, Coll> = {
+  readonly [Name in keyof Scopes as [RegisteredTypeOf<Scopes[Name]>] extends [never]
+    ? never
+    : Name]: ApplyShape<
+    CollectionScopeRegistry[RegisteredTypeOf<Scopes[Name]>],
+    IndexOfScope<Scopes[Name], Indexes>,
+    Coll
+  >;
+};
 
 export function authoredIndexName(index: Readonly<Record<string, unknown>>): string | undefined {
   if (typeof index['prefix'] === 'string') return index['prefix'];

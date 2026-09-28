@@ -118,7 +118,6 @@ export interface CollectionScopeOperationContext {
  */
 export interface SqlCollectionScopeContribution {
   readonly id: string;
-  matches(index: Readonly<Record<string, unknown>>): boolean;
   operations(
     index: Readonly<Record<string, unknown>>,
     context: CollectionScopeOperationContext,

@@ -112,8 +112,8 @@ import {
   mergeAnnotations,
 } from './query-plan';
 import { queryPlanRows } from './query-plan-rows';
-import { authoredIndexName, type ScopesOfIndexes } from './scopes';
-import type { ModelTableIndexes } from './types';
+import { authoredIndexName, type DeclaredScopes } from './scopes';
+import type { ModelDeclaredScopes, ModelTableIndexes } from './types';
 import {
   type AggregateBuilder,
   type AggregateIncludeReducers,
@@ -307,22 +307,33 @@ class CollectionImpl<
       contributions.length === 0
         ? []
         : (storageTableIndexes(this.contract, this.namespaceId, this.tableName) ?? []);
-    for (const index of indexes) {
-      const name = authoredIndexName(index);
-      if (name === undefined) continue;
-      for (const contribution of contributions) {
-        if (!contribution.matches(index)) continue;
-        const implementations = contribution.operations(index, {
-          tableName: this.tableName,
-          namespaceId: this.namespaceId,
-          modelName: this.modelName,
-        });
-        const operations = scopes[name] ?? {};
-        scopes[name] = operations;
-        for (const [operationName, implementation] of Object.entries(implementations)) {
-          operations[operationName] = (...args: never[]) =>
-            this.#applyScopeRefinement(implementation(...args));
-        }
+    const model = modelOf(this.contract, this.namespaceId, this.modelName);
+    const declared =
+      blindCast<
+        {
+          readonly scopes?: Record<
+            string,
+            { readonly type: string; readonly params: { readonly index: string } }
+          >;
+        },
+        'spike: declared scopes are not in the model entry type yet'
+      >(model ?? {}).scopes ?? {};
+    for (const [name, scope] of Object.entries(declared)) {
+      const contribution = contributions.find((candidate) => candidate.id === scope.type);
+      const index = indexes.find(
+        (candidate) => authoredIndexName(candidate) === scope.params.index,
+      );
+      if (contribution === undefined || index === undefined) continue;
+      const implementations = contribution.operations(index, {
+        tableName: this.tableName,
+        namespaceId: this.namespaceId,
+        modelName: this.modelName,
+      });
+      const operations: Record<string, (...args: never[]) => unknown> = {};
+      scopes[name] = operations;
+      for (const [operationName, implementation] of Object.entries(implementations)) {
+        operations[operationName] = (...args: never[]) =>
+          this.#applyScopeRefinement(implementation(...args));
       }
     }
     Object.defineProperty(this, 'scopes', { value: scopes, enumerable: false });
@@ -2919,7 +2930,8 @@ export type CollectionScopes<
   ModelName extends string,
   Row,
   State extends CollectionTypeState,
-> = ScopesOfIndexes<
+> = DeclaredScopes<
+  ModelDeclaredScopes<TContract, ModelName, State['nsId']>,
   ModelTableIndexes<TContract, ModelName, State['nsId']>,
   Collection<TContract, ModelName, Row, WithWhereState<State>>
 >;

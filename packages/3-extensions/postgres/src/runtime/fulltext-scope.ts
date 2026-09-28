@@ -13,7 +13,6 @@ export interface PostgresFullTextOperations<Index, Coll> {
 }
 
 export interface PostgresFullTextScope extends ScopeOperationsShape {
-  readonly match: { readonly type: 'gin'; readonly expression: string };
   readonly operations: PostgresFullTextOperations<this['index'], this['collection']>;
 }
 
@@ -25,7 +24,6 @@ declare module '@internal/sql-orm-client' {
 
 export const postgresFullTextScopes: SqlCollectionScopeContribution = {
   id: 'postgres/fulltext',
-  matches: (index) => index['type'] === 'gin' && typeof index['expression'] === 'string',
   operations: (_index, context) => ({
     fulltext: (...args: never[]) => {
       const [query] = args as unknown as [TsQuery];

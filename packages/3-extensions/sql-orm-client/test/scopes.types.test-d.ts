@@ -12,7 +12,7 @@ const q = fakeTsQuery('hello');
 
 const db = orm({ runtime, context });
 
-test('a scope exists under the authored index name, from contract index data alone', () => {
+test('a declared scope exists under its declared name', () => {
   expectTypeOf(db.public.Post.scopes).not.toBeAny();
   expectTypeOf(db.public.Post.scopes.search.fulltext).toBeFunction();
   expectTypeOf(db.public.Post.scopes.search.fulltext).parameter(0).toEqualTypeOf<FakeTsQuery>();
@@ -21,14 +21,14 @@ test('a scope exists under the authored index name, from contract index data alo
   >();
 });
 
-test('the physical name of a wire-named index is not a scope', () => {
-  // @ts-expect-error the scope is named by the authored prefix, not the hashed name
-  db.public.Post.scopes.search_0a1b2c3d;
+test('an index with no declared scope offers no scope', () => {
+  // @ts-expect-error no scope is declared for this index
+  db.public.Post.scopes.posts_user_id_idx;
 });
 
-test('an index whose kind has no contribution offers no scope', () => {
-  // @ts-expect-error a plain btree index matches no contribution
-  db.public.Post.scopes.posts_user_id_idx;
+test('a declared scope whose type is not in the registry is omitted', () => {
+  // @ts-expect-error test/unregistered has no registry entry
+  db.public.Post.scopes.unregistered;
 });
 
 test('operations read the literal index data', () => {
@@ -95,11 +95,11 @@ test('a scope named like a collection member is reachable under scopes', () => {
   db.public.Post.where.fulltext(q);
 });
 
-test('a model with no such index has an empty scopes object', () => {
+test('a model with no declared scopes has an empty scopes object', () => {
   // biome-ignore lint/complexity/noBannedTypes: the empty object type is the assertion
   expectTypeOf(db.public.User.scopes).toEqualTypeOf<{}>();
   expectTypeOf<keyof typeof db.public.User.scopes>().toBeNever();
-  // @ts-expect-error User has no index with a contribution
+  // @ts-expect-error User declares no scopes
   db.public.User.scopes.search;
 });
 
@@ -118,6 +118,7 @@ const custom = orm({ runtime, context, collections: { Post: PostCollection } });
 test('a custom collection class has scopes, inside the class and after a chained call', () => {
   expectTypeOf(custom.public.Post.published).toBeFunction();
   expectTypeOf(custom.public.Post.scopes.published.fulltext).toBeFunction();
+  expectTypeOf(custom.public.Post.relevant).returns.not.toBeAny();
   custom.public.Post.relevant(q).scopes.search.fulltext(q);
   custom.public.Post.where({ id: 1 }).scopes.search.fulltext(q).limit(1);
 });
