@@ -43,6 +43,7 @@ PostgreSQL must be ready at GA. The other databases can finish after the GA laun
 | 2 | One CLI and one config file | See below. |
 | 3 | Early MySQL attempt | Not started. Purpose: find shared code that assumes PostgreSQL. |
 | 4 | SQL expression literals | 6 tickets in backlog. Blocked, see below. |
+| 5 | PSL mixins (TML-3055). They replace type aliases and field presets, which are then removed. | Backlog. No spec and no plan. Large. |
 | In parallel | Upgrade path: Prisma 7 schema gaps, baseline command, upgrade guide rewrite | Will is working on it now. |
 | In parallel | Docs items from the eval | 11 items, 5 high. Owned by the team. |
 | In parallel | Multi-file PSL | 2 of 3 parts merged. Language server part open in prisma/orm#30456. |
@@ -71,7 +72,7 @@ Tracked so far: TML-3340 (docs and the shipped skill name `prisma-composer`). No
 ## After GA
 
 - `@hint(was: oldName)`. High user value, additive.
-- PSL mixins (TML-3055). Additive. `@db.*` attributes are already removed. Field presets and `types {}` aliases still exist in the code. Open: what happens to those two.
+- Migration runner service. Optional.
 - Query linting.
 - Querying across contract spaces. Optional, but a competitive advantage.
 - Performance work.
@@ -82,15 +83,18 @@ Tracked so far: TML-3340 (docs and the shipped skill name `prisma-composer`). No
 - Asks.
 - The getting-started eval harness.
 
-## Not placed yet
+## This week
 
-- Migration runner service.
-- Manifesto.
-- Package consolidation (stop publishing about 60 internal packages).
+- Publish the manifesto on 2026-09-28 or 2026-09-29. Pull request prisma/prisma-orm-messaging#17.
+
+## Already done
+
+- Package consolidation. Internal packages are no longer published.
+- `@db.*` attributes are removed.
 
 ## Open questions
 
-1. Field presets and `types {}` aliases: remove before GA without mixins, or keep through 8.x?
+1. When does shaping of PSL mixins start? It has no spec and is the largest item on the critical path.
 3. Which of the 18 follow-up issues are required for GA?
 4. What is the stopping point for the Prisma 7 schema gaps?
 5. Two documents claim the number ADR 256: the one planned in TML-3288 and the one proposed in prisma/orm#30428.
