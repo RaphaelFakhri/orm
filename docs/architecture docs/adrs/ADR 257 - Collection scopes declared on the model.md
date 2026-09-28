@@ -44,7 +44,7 @@ A **scope** is a named way to find a model's entities that a filter on its field
 
 1. **The author declares a model's scopes in a `scopes` block**, one line for each: a name, then the kind of scope and its arguments.
 2. **A declaration creates the storage that serves the scope**, such as an index.
-3. **The contract records each scope on its model**, with a name, a scope type, and parameters.
+3. **The contract records each scope on its model**, with a name, a scope type, a reference to the storage that serves it, and parameters.
 4. **A scope type is an open id.** A target or an extension introduces it, and supplies the operations the ORM client offers for it.
 5. **The ORM client offers each scope at `collection.scopes.<name>`**, on every collection of the model.
 6. **A scope operation takes a collection and returns a collection.** It may set a default order, which an explicit `orderBy` replaces.
@@ -120,7 +120,11 @@ The contract is the file that the schema is compiled to. It has two planes. The 
 {
   "domain": { "namespaces": { "public": { "models": { "Post": {
     "scopes": {
-      "search": { "type": "pg/full-text@1", "params": { "index": "post_search" } }
+      "search": {
+        "type": "pg/full-text@1",
+        "target": { "plane": "storage", "namespaceId": "public", "entityKind": "table", "entityName": "post" },
+        "params": { "index": "post_search" }
+      }
     }
   } } } } },
   "storage": { "namespaces": { "public": { "entries": { "table": { "post": {
@@ -140,11 +144,15 @@ An index has two names. `prefix` is the name it was given. `name` is its name in
 
 **The scope belongs to the domain.** "Posts can be searched, and the search is called `search`" is a statement about posts. It is true whatever database holds them.
 
-**The scope has a type and parameters.** The kind of scope in the schema, `fullTextSearch`, becomes a scope type in the contract, `pg/full-text@1`. A scope type is an open id, as a field's `codecId` is: any package can introduce one. The framework defines the shape `{ type, params }` and knows no scope type.
+**The scope has a type.** The kind of scope in the schema, `fullTextSearch`, becomes a scope type in the contract, `pg/full-text@1`. A scope type is an open id, as a field's `codecId` is: any package can introduce one. The framework defines the shape `{ type, target, params }` and knows no scope type.
 
-**The parameters point at storage.** The full-text scope has one parameter, the name of an index on the model's table. The domain plane may refer to the storage plane, as a model's `storage.table` does. The reverse is not allowed.
+**`target` is a reference to the storage entity that serves the scope.** It is an entity coordinate, the form the contract uses for every reference to an entity (ADR 221). It names the plane, the namespace, the kind of entity and the entity. It takes an optional `spaceId` when the entity belongs to another contract space (ADR 226). The domain plane may refer to the storage plane. The reverse is not allowed.
 
-**The fields, weights and language stay on the index.** They describe how the database stores the search document, so they are storage facts. The domain plane holds nothing about one kind of index.
+**`target` is outside `params`, so the framework can read it.** The contract validator checks that the entity exists. Tools that follow references between entities see this one. Neither needs to know the scope type.
+
+**`params` belongs to the scope type.** The full-text scope has one parameter, the name of an index. An index is not an entity. It is part of its table, so it is named inside the entity that `target` addresses. A foreign key names its columns in the same way: a full reference to the table, then the columns' names.
+
+**The fields, weights and language stay on the index.** In Postgres they are part of the index's expression, so they are storage facts.
 
 **The index is data, not a SQL string.** One renderer produces the index's expression and the query's expression from `options`. That is what keeps them the same.
 
@@ -287,21 +295,23 @@ Some searches can be written as an operation on a column. `p.title.fullTextMatch
 
 The design is meant for any database and for more than text search. Two appendices test that.
 
-**Other databases.** [Appendix A](#appendix-a-scopes-on-other-databases) shows text search on MySQL and on MongoDB.
+**Other databases.** [Appendix A](#appendix-a-scopes-on-other-databases) shows text search on MySQL, SQLite and MongoDB.
 
-| | Postgres | MySQL | MongoDB text index | MongoDB Atlas Search |
-| --- | --- | --- | --- | --- |
-| The query agrees with the index by | Repeating its expression | Repeating its column list | Nothing; a collection has one | Naming it |
-| Weights | Four classes | None | A number for each field | Set in the index or the query |
-| Scopes on one model | Several | Several | One | Several |
-| A search in a query is | A filter | A filter | A filter, in the first step only | A step, the first one |
-| Rows arrive in relevance order | No | Not reliably | No | Yes |
+| | Postgres | MySQL | SQLite | MongoDB text index | MongoDB Atlas Search |
+| --- | --- | --- | --- | --- | --- |
+| The storage that serves the search | An index on the table | An index on the table | A separate search table | An index on the collection | A separate search index |
+| `target` addresses | The model's table | The model's table | The search table | The model's collection | The search index |
+| The query agrees with the storage by | Repeating its expression | Repeating its column list | Naming the search table | Nothing; a collection has one | Naming the index |
+| Weights | Four classes, in the index | None | A number for each field, in the query | A number for each field, in the index | Set in the index or the query |
+| Scopes on one model | Several | Several | Several | One | Several |
+| A search in a query is | A filter | A filter | A filter on another table | A filter, in the first step only | A step, the first one |
+| Rows arrive in relevance order | No | Not reliably | No | No | Yes |
 
 **Other kinds of scope.** [Appendix B](#appendix-b-scopes-that-are-not-searches) shows three scopes that are not text searches: bookings that overlap a period, posts that carry a tag, and places near a point.
 
 **What holds in every case**
 
-- **The contract's record is the same:** a name, a scope type, and parameters that the scope type defines.
+- **The contract's record is the same:** a name, a scope type, a reference to a storage entity, and parameters that the scope type defines.
 - **A scope operation takes a collection and returns a collection.** That holds whether the database runs it as a filter, as a filter with an order, or as a step of the query.
 
 **What differs in every case**
@@ -316,7 +326,8 @@ The design is meant for any database and for more than text search. Two appendic
 
 - **A scope declaration produces a domain scope and a storage index together.**
 - **Packages write to the domain plane**, through the `scopes` member only.
-- **The contract validator cannot check a scope's parameters**, because it does not know the packages' scope types. The client checks when it is constructed. It refuses to start when a scope's type has no supplier or its index does not exist, and the error names what is missing.
+- **The contract validator checks a scope's `target`, and cannot check its `params`**, because it does not know the packages' scope types. The client checks the parameters when it is constructed. It refuses to start when a scope's type has no supplier or its index does not exist, and the error names what is missing.
+- **For a scope served by the model's own table, `target` repeats what `model.storage` says.** The validator checks that they agree.
 
 **For queries**
 
@@ -335,6 +346,8 @@ The design is meant for any database and for more than text search. Two appendic
 ### Where the scope is recorded
 
 - **Nowhere: the ORM client derives scopes from the model's indexes.** The ORM client must then decide, from the properties an index has, which package serves it. Two packages can claim the same index by accident. The scope's name is also tied to the index's name, which must be unique in the whole database schema.
+- **The index named by a bare string, with no `target`.** The reader must work out which table is meant, which ADR 221 rules out for references. It cannot name an entity in another contract space, and the framework cannot see it.
+- **An index as an entity of its own, addressed by a coordinate.** Indexes would leave their tables in the contract, which changes the schema differ, the migration planner and every storage hash. In MySQL and MongoDB an index's name is unique only in its table, and an entity's name must be unique in its namespace.
 - **A type id on the index.** It marks a storage object with what a query interface should do with it. The scope still has no place in the domain.
 - **The fields and weights on the scope.** It puts data about one kind of index into the domain plane.
 - **A second aggregate root for the model.** A root is the entry point to an aggregate, and each queryable model has one (ADR 174). A search is another way into the same aggregate.
@@ -382,7 +395,11 @@ ORDER BY MATCH(title, body) AGAINST (? IN NATURAL LANGUAGE MODE) DESC;
 **The contract:**
 
 ```json
-"scopes": { "search": { "type": "mysql/full-text@1", "params": { "index": "post_search" } } }
+"scopes": { "search": {
+  "type": "mysql/full-text@1",
+  "target": { "plane": "storage", "namespaceId": "app", "entityKind": "table", "entityName": "post" },
+  "params": { "index": "post_search" }
+} }
 ```
 
 **What the database requires**
@@ -400,7 +417,43 @@ ORDER BY MATCH(title, body) AGAINST (? IN NATURAL LANGUAGE MODE) DESC;
 
 - The rule that the query is rendered from the index applies here in a stricter form than in Postgres.
 - The query never names the index. The scope's `index` parameter is for the supplier, which reads the columns from it.
+- MySQL index names are unique only in their table. The reference still identifies one index, because it names the index inside the table that `target` addresses.
 - Weights belong to the scope type, not to the general design. The MySQL declaration would take a flat list of fields.
+
+### SQLite full-text search
+
+```sql
+CREATE VIRTUAL TABLE post_search USING fts5(title, body, content='post', content_rowid='id');
+
+SELECT ... FROM post
+WHERE post.id IN (SELECT rowid FROM post_search WHERE post_search MATCH ?)
+ORDER BY (SELECT bm25(post_search, 10.0, 1.0) FROM post_search WHERE rowid = post.id AND post_search MATCH ?);
+```
+
+**The contract:**
+
+```json
+"scopes": { "search": {
+  "type": "sqlite/full-text@1",
+  "target": { "plane": "storage", "namespaceId": "__unbound__", "entityKind": "searchTable", "entityName": "post_search" },
+  "params": { "weights": { "title": 10, "body": 1 } }
+} }
+```
+
+**What the database requires**
+
+- The search text is held in a separate table of a special kind, not in an index on the model's table.
+- That table must be kept in step with the model's table, usually by triggers.
+- The query searches the search table and joins the result to the model's table by row id.
+- Weights are arguments of the ranking function in the query. The database does not store them.
+
+**What the supplier returns.** A filter that selects from the search table, and a default order by rank.
+
+**What it shows**
+
+- The storage that serves a scope need not be the model's table. `target` addresses the search table, which is an entity of its own.
+- The supplier creates more than one storage object: the search table and the triggers.
+- Where weights live depends on the database. SQLite does not store them, so they are parameters of the scope.
 
 ### MongoDB text index
 
@@ -422,7 +475,11 @@ db.post.aggregate([
 A collection has at most one text index, so the scope needs no parameter to find it:
 
 ```json
-"scopes": { "search": { "type": "mongo/text@1", "params": {} } }
+"scopes": { "search": {
+  "type": "mongo/text@1",
+  "target": { "plane": "storage", "namespaceId": "__unbound__", "entityKind": "collection", "entityName": "post" },
+  "params": {}
+} }
 ```
 
 **What the database requires**
@@ -440,7 +497,7 @@ A collection has at most one text index, so the scope needs no parameter to find
 - A model can have at most one scope of this type. The limit belongs to the scope type.
 - The ORM client, not the caller, places the search in the first stage. It can, because a collection builds its query at the terminal method.
 - A scope works inside an include.
-- Parameters differ between scope types. This one has none.
+- Parameters differ between scope types. This one has none: `target` addresses the collection, and the collection has one text index.
 - The form of weights differs between databases: ordered groups in Postgres, numbers here.
 
 ### MongoDB Atlas Search and vector search
@@ -459,10 +516,14 @@ db.post.aggregate([
 **The contract:**
 
 ```json
-"scopes": { "search": { "type": "mongo/atlas-search@1", "params": { "index": "post_search" } } }
+"scopes": { "search": {
+  "type": "mongo/atlas-search@1",
+  "target": { "plane": "storage", "namespaceId": "__unbound__", "entityKind": "searchIndex", "entityName": "post_search" },
+  "params": {}
+} }
 ```
 
-The index here is a search index. It is a different kind of object from an ordinary MongoDB index, and the storage plane would have to record it.
+The index here is a search index. It is a different kind of object from an ordinary MongoDB index. The storage plane would record it as an entity of its own, and `target` addresses it directly.
 
 **What the database requires**
 
@@ -484,7 +545,7 @@ The index here is a search index. It is a different kind of object from an ordin
 ### What the three cases have in common
 
 - **A search takes a collection and returns a collection.** That holds whether the search is a filter, a filter with an order, or a stage.
-- **The contract's record is the same:** a name, a scope type, and parameters that the scope type defines.
+- **The contract's record is the same:** a name, a scope type, a reference to a storage entity, and parameters that the scope type defines.
 - **Everything else belongs to the scope type:** the declaration's arguments, the form of weights, the operations and their argument types, and how many scopes of that type a model may have.
 
 ## Appendix B: scopes that are not searches
@@ -511,7 +572,11 @@ scopes Booking {
 ```
 
 ```json
-"scopes": { "during": { "type": "pg/period@1", "params": { "index": "booking_during" } } }
+"scopes": { "during": {
+  "type": "pg/period@1",
+  "target": { "plane": "storage", "namespaceId": "public", "entityKind": "table", "entityName": "booking" },
+  "params": { "index": "booking_during" }
+} }
 ```
 
 ```ts
@@ -546,7 +611,11 @@ scopes Post {
 ```
 
 ```json
-"scopes": { "tagged": { "type": "mysql/members@1", "params": { "index": "post_tagged" } } }
+"scopes": { "tagged": {
+  "type": "mysql/members@1",
+  "target": { "plane": "storage", "namespaceId": "app", "entityKind": "table", "entityName": "post" },
+  "params": { "index": "post_tagged" }
+} }
 ```
 
 ```ts
@@ -581,7 +650,11 @@ scopes Place {
 ```
 
 ```json
-"scopes": { "nearby": { "type": "mongo/geo@1", "params": { "field": "location" } } }
+"scopes": { "nearby": {
+  "type": "mongo/geo@1",
+  "target": { "plane": "storage", "namespaceId": "__unbound__", "entityKind": "collection", "entityName": "place" },
+  "params": { "field": "location" }
+} }
 ```
 
 ```ts
@@ -604,7 +677,7 @@ db.place.aggregate([
 **What it shows**
 
 - The stage takes the caller's filters inside itself, in `query`. The supplier must receive the filters the collection has gathered.
-- The parameter names a field, not an index, because a MongoDB index in the contract has no name.
+- The parameter names a field, not an index, because a MongoDB index in the contract has no name. The field is named inside the collection that `target` addresses.
 - The database computes a value for each row, the distance. A scope operation cannot give it to the caller.
 
 ### What a supplier returns, across all the cases
@@ -613,10 +686,11 @@ db.place.aggregate([
 | --- | --- | --- | --- | --- |
 | Postgres full-text search | Yes | Yes | | Relevance |
 | MySQL full-text search | Yes | Yes | | Relevance |
+| SQLite full-text search | Yes | Yes | | Rank |
 | MongoDB text index | Yes | Yes | | Text score |
 | MongoDB Atlas Search | | | Yes | Score |
 | Postgres period | Yes | | | |
 | MySQL tags | Yes | | | |
 | MongoDB geographic search | | | Yes | Distance |
 
-The contract's record is the same in every row: a name, a scope type, and parameters that the scope type defines.
+The contract's record is the same in every row: a name, a scope type, a reference to a storage entity, and parameters that the scope type defines.

@@ -45,7 +45,7 @@ db.User.where({ id }).include('posts', (posts) => posts.scopes.search.fulltext(q
 
 ## Decided
 
-- **Scopes are declared on the model in the contract's domain plane.** Each has a name, an open scope type id, and parameters. The full-text scope's one parameter names its index.
+- **Scopes are declared on the model in the contract's domain plane.** Each has a name, an open scope type id, a `target`, and parameters. `target` is an entity coordinate for the storage entity that serves the scope, with an optional `spaceId`. The full-text scope's target is the model's table, and its one parameter names an index of that table.
 - **Scopes are declared in a top-level `scopes <Model> { }` block**, one line for each scope: the name, then the kind of scope with its arguments, as `search fullTextSearch([title, body])`. A declaration creates the scope and its index. The index name is generated unless `index:` gives one. A line has the grammar of a field line. A model may have several `scopes` blocks, which are read as one, and a model's scopes are a namespace separate from its fields.
 - **`fullTextSearch` replaces `@@fullTextIndex`.** An index without a scope is written with `@@index(expression: ...)`.
 - **The Prisma 7 grammar does not get the block.**
@@ -66,7 +66,7 @@ db.User.where({ id }).include('posts', (posts) => posts.scopes.search.fulltext(q
 
 ## Place in the larger world
 
-- **Framework contract.** A model gains a `scopes` member with a fixed shape: name, scope type, parameters. The framework knows no scope type.
+- **Framework contract.** A model gains a `scopes` member with a fixed shape: name, scope type, target, parameters. The framework knows no scope type. The contract validator checks that each target exists, and that a target in the model's own space agrees with `model.storage`.
 - **Schema language.** The parser, binder, formatter, printer and language server gain the `scopes` block. Its lines are read as a name followed by a constructor with arguments. Packages supply the kinds of scope through a new kind of authoring contribution, and each produces a scope and an index together.
 - **TypeScript contract builder.** Gains the `scopes` method on a model, with the same contributions.
 - **ORM client (`sql-orm-client`).** Gains the `scopes` member on collections, the registry and interface that contributions satisfy, a check at construction that each declared scope has a contribution and an index, and default-order handling.
