@@ -54,6 +54,19 @@ Two things make this hard to offer through a query interface that knows only fie
 
 A scope gives the search a name on the model, and renders the query from the same definition as the index.
 
+## When something is a scope
+
+Some searches can be written as an operation on a column, such as `p.title.fullTextMatches(q)`. The rule for choosing is:
+
+- **It is an operation on a column** when it applies to one stored field and returns a value.
+- **It is a scope** when at least one of these is true:
+  - it spans several fields;
+  - it sets an order;
+  - the database runs it as a step of its own, not as a filter;
+  - the query must repeat an expression from the index that the author did not write.
+
+[Appendix B](#appendix-b-scopes-that-are-not-searches) applies the rule to three cases that are not text searches.
+
 ## How it works
 
 ### 1. The author declares the search
@@ -243,7 +256,7 @@ LIMIT 10
 **For queries**
 
 - **Ordering by relevance sorts every match.** A caller who does not need it can order by something cheaper.
-- **Relevance cannot be combined with another sort key.** That needs a way to name the relevance score inside `orderBy`, which this decision does not provide.
+- **A scope operation gives the caller no value for each row.** The relevance score of a search and the distance of a geographic search are such values. The caller cannot select them, and cannot combine them with another sort key in `orderBy`. Adding this later does not change what the contract records.
 - **Operations on a single column are separate, and can share an index with a scope.** `fullTextMatches`, `fullTextRank` and `fullTextHeadline` apply to one text column. The index expression contains weights only when the search has more than one weight group, so a search over one field has the same expression as `fullTextMatches` on that field, and both use the one index. Highlighting has no scope operation, because it needs text and a search document is not text.
 
 **For packages that supply a scope type**
@@ -253,7 +266,7 @@ LIMIT 10
 
 ## Other databases
 
-The design must serve databases other than Postgres. This section summarises how three other kinds of search would use it. [The appendix](#appendix-scopes-on-other-databases) gives the detail for each.
+The design must serve databases other than Postgres. This section summarises how three other kinds of search would use it. [Appendix A](#appendix-a-scopes-on-other-databases) gives the detail for each.
 
 The contract records a scope in the same way for every database: a name, a scope type, and parameters. What differs is the parameters, the scope type's operations, and what its supplier returns.
 
@@ -302,7 +315,7 @@ The contract records a scope in the same way for every database: a name, a scope
 - **Built into the client's types for the target's own scope types.** An extension's scope types are not known in advance.
 - **By extending the collection class.** A class cannot be typed from the index of whichever model it is applied to.
 
-## Appendix: scopes on other databases
+## Appendix A: scopes on other databases
 
 Each case below shows the database's own syntax, what the contract would record, what the supplier would return, and what the case shows about the design. None of these scope types exists. They are here to show that the design can carry them.
 
@@ -425,3 +438,129 @@ The index here is a search index. It is a different kind of object from an ordin
 - **A search takes a collection and returns a collection.** That holds whether the search is a filter, a filter with an order, or a stage.
 - **The contract's record is the same:** a name, a scope type, and parameters that the scope type defines.
 - **Everything else belongs to the scope type:** the attribute's arguments, the form of weights, the operations and their argument types, and how many scopes of that type a model may have.
+
+## Appendix B: scopes that are not searches
+
+A scope is a general mechanism. Each case below is a scope that is not a text search, on a different database. None of these scope types exists. The database syntax comes from each database's documentation.
+
+### Postgres: bookings by period
+
+A booking has a start and an end. The application asks which bookings overlap a given period.
+
+```prisma
+model Booking {
+  id       Int      @id
+  roomId   Int
+  startsAt DateTime
+  endsAt   DateTime
+
+  @@period(during, [startsAt, endsAt])
+}
+```
+
+```json
+"scopes": { "during": { "type": "pg/period@1", "params": { "index": "booking_during" } } }
+```
+
+```ts
+db.Booking.where({ roomId }).scopes.during.overlapping(from, to).all();
+db.Booking.scopes.during.containing(instant).all();
+```
+
+```sql
+CREATE INDEX booking_during ON booking USING gist (tstzrange(starts_at, ends_at));
+
+SELECT ... FROM booking
+WHERE room_id = $1 AND tstzrange(starts_at, ends_at) && tstzrange($2, $3);
+```
+
+**Why it is a scope.** It spans two fields, and the query must repeat the index's expression.
+
+**What it shows.** A scope can be a plain filter. It has no relevance and sets no order.
+
+### MySQL: posts by tag
+
+Tags are stored as a JSON array on the post.
+
+```prisma
+model Post {
+  id   Int  @id
+  tags Json
+
+  @@members(tagged, tags, as: "CHAR(40)")
+}
+```
+
+```json
+"scopes": { "tagged": { "type": "mysql/members@1", "params": { "index": "post_tagged" } } }
+```
+
+```ts
+db.Post.scopes.tagged.with('postgres').all();
+db.Post.scopes.tagged.withAny(['postgres', 'mysql']).all();
+```
+
+```sql
+CREATE INDEX post_tagged ON post ((CAST(tags->'$[*]' AS CHAR(40) ARRAY)));
+
+SELECT ... FROM post WHERE 'postgres' MEMBER OF (tags->'$[*]');
+SELECT ... FROM post WHERE JSON_OVERLAPS(tags->'$[*]', CAST('["postgres","mysql"]' AS JSON));
+```
+
+**Why it is a scope.** MySQL uses the index only through three functions, and only with the same JSON path and the same cast type as the index. The query must repeat an expression the author did not write.
+
+**What it shows.** This case is the closest to the line. It has one field and sets no order, so it could be an operation on the column. Only the last condition of the rule makes it a scope.
+
+### MongoDB: places near a point
+
+```prisma
+model Place {
+  id       ObjectId @id
+  name     String
+  open     Boolean
+  location Json
+
+  @@geo(nearby, location)
+}
+```
+
+```json
+"scopes": { "nearby": { "type": "mongo/geo@1", "params": { "field": "location" } } }
+```
+
+```ts
+db.Place.where({ open: true }).scopes.nearby.near({ lng, lat }, { maxMetres: 2000 }).all();
+```
+
+```js
+db.place.createIndex({ location: "2dsphere" })
+
+db.place.aggregate([
+  { $geoNear: {
+      near: { type: "Point", coordinates: [lng, lat] },
+      key: "location", maxDistance: 2000,
+      distanceField: "distance", query: { open: true } } },
+])
+```
+
+**Why it is a scope.** MongoDB runs it as a pipeline stage that must come first, and it returns rows nearest first.
+
+**What it shows**
+
+- The stage takes the caller's filters inside itself, in `query`. The supplier must receive the filters the collection has gathered.
+- The parameter names a field, not an index, because a MongoDB index in the contract has no name.
+- The database computes a value for each row, the distance. A scope operation cannot give it to the caller.
+
+### What a supplier returns, across all the cases
+
+| Case | Filter | Default order | First stage | Value for each row |
+| --- | --- | --- | --- | --- |
+| Postgres full-text search | Yes | Yes | | Relevance |
+| MySQL full-text search | Yes | Yes | | Relevance |
+| MongoDB text index | Yes | Yes | | Text score |
+| MongoDB Atlas Search | | | Yes | Score |
+| Postgres period | Yes | | | |
+| MySQL tags | Yes | | | |
+| MongoDB geographic search | | | Yes | Distance |
+
+The contract's record is the same in every row: a name, a scope type, and parameters that the scope type defines.
