@@ -15,7 +15,7 @@ model Post {
   title String
   body  String?
 
-  @@fullTextSearch(search, weights: [title, body])
+  @@fullTextIndex([title, body], name: "search")
 }
 ```
 
@@ -37,7 +37,11 @@ db.User.where({ id }).include('posts', (posts) => posts.scopes.search.fulltext(q
 - **MongoDB models text indexes with weights** on `MongoIndex`. Verified against MongoDB: a text search must be in the first pipeline stage, works inside a `$lookup` sub-pipeline, returns results unordered unless sorted by score, and a collection can have one text index.
 - **There is no MySQL target.**
 - **A spike showed the types work without the caller writing any.** Contributions register their types by index kind in a registry interface the ORM client declares. With no scope in use, this adds about half a percent to type checking on the demo application. See [the spike findings](spikes/type-composition.md).
-- **A contract index does not record which package owns its kind.** The check at client construction needs that to name a missing extension.
+- **The contract lists its target and extensions as literal types**, and a client refuses to start when one of those extensions was not passed to it.
+
+## Decided
+
+- **One attribute.** `@@fullTextIndex` is widened to take several fields in weight order; no second attribute is added.
 
 ## Non-goals
 
@@ -52,7 +56,7 @@ db.User.where({ id }).include('posts', (posts) => posts.scopes.search.fulltext(q
 
 ## Place in the larger world
 
-- **ORM client (`sql-orm-client`).** Gains the `scopes` member, the registry and interface that contributions satisfy, the check at construction that every registered index kind has a runtime contribution, and default-order handling.
+- **ORM client (`sql-orm-client`).** Gains the `scopes` member, the registry and interface that contributions satisfy, types that use a registry entry only when the contract lists its owner, and default-order handling.
 - **Postgres target.** May reference the ORM client's interface type directly. Owns the full-text index kind: its authoring attribute, its structured representation, its DDL, and its scope operations. Reuses the existing full-text lowering and the `tsquery` helpers.
 - **Postgres facade.** Its signature does not change. It passes the runtime contributions from the target and from `extensions` to the ORM client.
 - **Package build.** Rewrites the internal module name in a registry declaration to the published one.
@@ -64,6 +68,7 @@ db.User.where({ id }).include('posts', (posts) => posts.scopes.search.fulltext(q
 
 - **The contract is not coupled to the ORM client.** Nothing emitted into `contract.json` or `contract.d.ts` describes scopes, collection members, or any one query interface.
 - **The query expression and the index expression come from one renderer**, so a scope query always matches its index. An integration test proves the planner uses the index, with sequential scans disabled and negative controls.
+- **The `Collection` type's `scopes` member is written inline.** Moving it into a helper type alias fails with a circular reference. A test and a note in the code protect it.
 - **No special cases by index kind or target in the ORM client.** The ORM client knows the interface; owners of index kinds supply behaviour.
 - **A scope is reachable on every collection of its model**: root, chained, inside an include refinement, and on a custom collection class.
 - **Scopes are reached through `scopes.<name>` only.** Nothing is placed directly on the collection.
@@ -86,17 +91,17 @@ db.User.where({ id }).include('posts', (posts) => posts.scopes.search.fulltext(q
 - [ ] `EXPLAIN` shows the planner using the declared index for a scope query.
 - [ ] Type tests show the scope and its operation typed from the contract's index data, and show a model without such an index has no scope.
 - [ ] A test on the built, published packages shows a registered scope is typed, so a registry declaration naming an internal module cannot ship.
-- [ ] A client given a contract whose index kind is registered, without the extension that serves it, refuses to start and names the extension.
+- [ ] Type tests show two contracts with different extensions get different scopes in one program, and the cost of that filter is measured on `examples/prisma-8-demo`.
 - [ ] A second, test-only contribution for a different index kind works without any change to the ORM client, proving the mechanism is general.
 - [ ] `examples/prisma-8-demo` searches posts across more than one field through a scope.
 - [ ] The skill reference and upgrade instructions describe the new index representation and the scope surface.
 
 ## Open questions
 
-1. **How the weighted index is authored.** The sketch uses a new attribute, `@@fullTextSearch(search, weights: [...])`. The alternative is widening the existing `@@fullTextIndex` to take a weighted field list. Both declare an index; the question is whether one attribute or two.
-2. **The TypeScript builder's form** of the weighted index, as the twin of the PSL attribute.
-3. **How a contract index records the package that owns its kind**, so the check at client construction can name a missing extension.
-4. **What the spike did not test:** two packages registering the same index kind, grouped collections, `.variant()`, and contracts with several namespaces.
+1. **How an index states its kind.** A contract index has no kind field today; it has `type`, `expression` and `options`. Either the structured index gains a kind field and the registry is keyed by it, as ADR 256 describes, or an index is matched to a registry entry by its structure, as the spike did.
+2. **The TypeScript builder's form** of the weighted index. `fullTextIndex` takes one field today.
+3. **What the spike did not test:** two packages registering the same key, filtering registry entries by the contract's extensions, grouped collections, `.variant()`, and contracts with several namespaces.
+4. **An authored name and a generated name look the same in the contract.** An unnamed index gets a generated `prefix`. Full-text indexes must be named, so this delivery is unaffected; an index kind that allows unnamed indexes would produce scopes with generated names.
 
 ## References
 

@@ -8,7 +8,7 @@
 
 ## At a glance
 
-A model declares a full-text index over several fields. The earlier a field appears in `weights`, the more a match in it counts, and fields in a nested list share a weight:
+A model declares a full-text index over several fields. The earlier a field appears in the list, the more a match in it counts, and fields in a nested list share a weight:
 
 ```prisma
 model Post {
@@ -18,7 +18,7 @@ model Post {
   subtitle String?
   body     String?
 
-  @@fullTextSearch(search, weights: [[title, subtitle], body])
+  @@fullTextIndex([[title, subtitle], body], name: "search")
 }
 ```
 
@@ -98,7 +98,7 @@ declare module '@prisma/orm-family-sql/orm-client' {
 }
 ```
 
-The collection's type looks up each of the model's indexes in the registry by the index's kind, taken from the contract's literal index data. An entry is an interface with two slots the ORM client fills, the index and the collection, so its operations can be typed from the index and can return the model's collection. The client factory's signature does not change, and a contribution from any package is typed the same way as one from the target.
+The collection's type looks up each of the model's indexes in the registry by the index's kind, taken from the contract's literal index data. It uses an entry only when the contract lists the entry's owner, as its target or among its extensions, so two clients with different contracts get different scopes. An entry is an interface with two slots the ORM client fills, the index and the collection, so its operations can be typed from the index and can return the model's collection. The client factory's signature does not change, and a contribution from any package is typed the same way as one from the target.
 
 **Types never come from the emitted contract.** The emitted `contract.d.ts` gives the type system access to the contract's data, including each index as literal types. The contract carries no types that describe one query interface, because the ORM client is an interchangeable component the contract must not be coupled to.
 
@@ -135,7 +135,7 @@ The collection's type looks up each of the model's indexes in the registry by th
 - **Relevance cannot be combined with another sort key.** Replacing is the only interaction between the default order and `orderBy`. Combining them needs a way to refer to the relevance score inside `orderBy`, which this decision does not provide.
 - **The Postgres full-text index changes representation.** It records fields, weights and language as data. A contract that declares a full-text index as a hand-written expression index keeps working as an index and offers no scope.
 - **Column operations remain.** `fullTextMatches`, `fullTextRank` and `fullTextHeadline` on a single text column are unchanged. `fullTextHeadline` has no scope equivalent, because highlighting needs text and a search document is not text; highlighting stays per column.
-- **The registry belongs to the whole program.** The types cannot tell which extensions a particular client was given. The client therefore checks at construction that every index with a registered kind has a contribution at runtime, and refuses to start with an error naming the missing extension.
+- **A package contributes scopes only when the contract lists it.** The contract records the target and the extensions it was built with. The types use that list, and the client already refuses to start when the contract lists an extension that was not passed to it. The types and the runtime therefore agree for every client that starts.
 - **A contributing package depends on the ORM client package,** because its type declarations name it.
 - **Published packages must name the published module.** A registry entry that names an internal module specifier is ignored without an error, and `scopes` comes out empty. The build rewrites the specifier, and a test on the built packages guards it.
 - **Custom collection classes see scopes everywhere.** `this.scopes` is typed inside the class body and after chained calls.
