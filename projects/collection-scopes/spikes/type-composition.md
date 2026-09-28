@@ -2,9 +2,13 @@
 
 **Date:** 2026-09-27
 **Branch:** `spike-collection-scope-types`
-**Question:** spec open question 2, "Whether the type-level composition is tractable."
+**Question:** can a model's collection type carry scopes typed from the contract's index data and from any package's contribution?
 
-## Answer
+## Outcome
+
+The first attempt, described first below, did not meet a basic requirement: the caller had to write the contributions' types when constructing the client. The second attempt, under "Cost of cheaper variants", meets it and is the design ADR 256 records: a registry interface keyed by index kind, with scopes under `scopes.<name>` only. Placing scopes directly on the collection was dropped because of its cost.
+
+## Answer of the first attempt
 
 **Tractable, with caveats.** All five requirements compile and are covered by type tests that fail when the behaviour breaks. No "type instantiation is excessively deep" error appeared, in the package or in `examples/prisma-8-demo`. Three caveats need a design decision before the slices are sized. They are listed under "Caveats".
 
