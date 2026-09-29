@@ -15,11 +15,6 @@ import { InternalError } from '@internal/utils/internal-error';
 import type { Type } from 'arktype';
 import type { CodecLookup } from './codec-types';
 import type { DataTypeId } from './data-type';
-import type {
-  DefaultFunctionLoweringContext,
-  LoweredDefaultResult,
-  TaggedLiteralValue,
-} from './mutation-default-types';
 import type { AuthoringOption } from './option-descriptor';
 import type { ParsedPslExtensionBlock, PslSpan } from './psl-extension-block';
 import { runtimeError } from './runtime-error';
@@ -577,43 +572,6 @@ export interface DataTypeAuthoringEntry {
   readonly written: DataTypeWrittenForm;
   readonly print: (value: JsonValue) => string;
   readonly documentation: string;
-  readonly lower?: never;
-}
-
-/**
- * A tag whose body the family lowers itself rather than reading as a value of a data type. It sits
- * in the same map under a reserved key, because it names no type. ADR 254.
- */
-export interface DataTypeLoweringAuthoringEntry {
-  readonly written: { readonly kind: 'tag'; readonly tag: string };
-  readonly documentation: string;
-  readonly lower: (input: {
-    readonly literal: TaggedLiteralValue;
-    readonly context: DefaultFunctionLoweringContext;
-  }) => LoweredDefaultResult;
-}
-
-export type AuthoringDataTypeEntry = DataTypeAuthoringEntry | DataTypeLoweringAuthoringEntry;
-
-const LOWERING_ENTRY_PREFIX = 'lowering:';
-
-/**
- * The key a lowering entry sits under. A data type id is `owner/name`, so a key carrying this
- * prefix can never collide with one.
- */
-export function loweringEntryKey(tag: string): string {
-  return `${LOWERING_ENTRY_PREFIX}${tag}`;
-}
-
-export function isLoweringEntryKey(key: string): boolean {
-  return key.startsWith(LOWERING_ENTRY_PREFIX);
-}
-
-/** Which of the two kinds of entry this is; the only place the discriminating key is named. */
-export function isDataTypeLoweringEntry(
-  entry: AuthoringDataTypeEntry,
-): entry is DataTypeLoweringAuthoringEntry {
-  return 'lower' in entry && entry.lower !== undefined;
 }
 
 export interface AuthoringContributions {
@@ -642,11 +600,8 @@ export interface AuthoringContributions {
    */
   readonly modelAttributes?: AuthoringModelAttributeDescriptorNamespace;
   readonly attributeSpecs?: AuthoringAttributeSpecContributions;
-  /**
-   * PSL support for the data types this contribution owns, keyed by data type id, plus any
-   * lowering entries under their reserved keys. ADR 254.
-   */
-  readonly dataTypes?: Readonly<Record<string, AuthoringDataTypeEntry>>;
+  /** PSL support for the data types this contribution owns, keyed by data type id. ADR 254. */
+  readonly dataTypes?: Readonly<Record<string, DataTypeAuthoringEntry>>;
   /**
    * Names the top-level type constructor that stores embedded value-object
    * fields (fields typed as a value-object `type` block). A single named
