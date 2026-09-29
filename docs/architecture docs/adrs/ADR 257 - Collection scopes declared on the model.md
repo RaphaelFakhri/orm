@@ -40,12 +40,14 @@ The result is ten posts, best match first. The database answers from an index th
 
 ## Decision
 
-A **scope** is a named way to find a model's entities that a filter on its fields cannot express. A search across several fields is one example.
+A **scope** is a named query on a model that has meaning in the domain, such as "search posts by text". It takes a collection and returns a collection, so it chains with every other query method.
+
+This decision gives a target or an extension a way to offer a kind of scope. The schema author declares a scope of that kind and writes no query code. The package then adds two things: what the scope needs in the database, such as an index, and the scope itself on the model's collection, fully typed.
 
 1. **The author declares a model's scopes in a `scopes` block**, one line for each: a name, then the kind of scope and its arguments.
 2. **A declaration creates the storage that serves the scope**, such as an index.
 3. **The contract records each scope on its model**, with a name, a scope type, a reference to the storage that serves it, and parameters.
-4. **A scope type is an open id.** A target or an extension introduces it, and supplies the operations the ORM client offers for it.
+4. **A scope type is an open id.** A target or an extension introduces it, and supplies the operations the ORM client offers for it. It builds them from public query operations.
 5. **The ORM client offers each scope at `collection.scopes.<name>`**, on every collection of the model.
 6. **A scope operation takes a collection and returns a collection.** It may set a default order, which an explicit `orderBy` replaces.
 
@@ -53,14 +55,22 @@ The rest of this document states the problem, then follows one search from the s
 
 ## The problem a scope solves
 
-To search several fields at once, the database builds one search document from all of them. For posts, that is the title and the body joined together, with the title given more weight. In Postgres the document is an expression, and an index over that expression makes the search fast.
+An application can already search posts with public query operations. The operations name the fields and their weights in the query:
 
-A query interface that knows only fields cannot offer this, for two reasons:
+```ts
+db.Post.where((p, fns) => fns.fullTextMatches([[p.title], [p.body]], q))
+  .orderBy((p, fns) => fns.fullTextRank([[p.title], [p.body]], q).desc());
+```
 
-- **The search document is not a field.** In the ORM client, `p.title` reaches a stored field, and operations such as "contains" are called on it. No field holds the search document, so there is nothing to call a search operation on.
-- **The query must repeat the index's expression exactly.** Postgres uses an expression index only when the query contains the same expression. If the query lists the fields in another order, or uses another language or another weight, the database reads the whole table and reports no error.
+Written this way, the search has three problems:
 
-A scope gives the search a name on the model. It renders the query from the same definition as the index, so the two cannot differ.
+- **The fields and weights are repeated in every query.**
+- **The query must repeat the index's expression exactly.** Postgres uses an expression index only when the query contains the same expression. If a query lists the fields in another order, or uses another language or another weight, the database reads the whole table and reports no error.
+- **The search has no name.** "Search posts" is part of the domain, and nothing in the schema says that posts can be searched.
+
+An application can remove the repetition by writing a method on a custom collection class. The author must still write that method, and must still keep it equal to the index.
+
+A scope declared in the schema removes all three. The author declares the search once. The index and the query are both produced from that declaration.
 
 ## How it works
 
@@ -206,6 +216,16 @@ interface ScopeRefinement {
 
 The ORM client applies them to the collection. The supplier never touches the collection itself.
 
+**A supplier builds what it returns from public query operations.** The Postgres supplier's `fulltext(q)` is equal to this, with the fields and weights taken from the scope's index:
+
+```ts
+collection
+  .where((p, fns) => fns.fullTextMatches([[p.title, p.subtitle], [p.body]], q))
+  .orderBy((p, fns) => fns.fullTextRank([[p.title, p.subtitle], [p.body]], q).desc());
+```
+
+An application may call the same operations itself. It then names the fields and weights in its own query, and keeping them equal to an index is its own responsibility.
+
 **Each ORM client defines its own interface**, because the form of a search differs between database families. In MongoDB a search can be a step of the query, not a filter. The contract is the same for all of them. See [Generality](#generality).
 
 **The application writes nothing new to get the operations.** A target and an extension each export a descriptor, an object that describes what the package adds. The application already passes extensions' descriptors when it constructs the client, and the supplier's code travels on them:
@@ -280,16 +300,21 @@ The expression after `WHERE` is the index's expression.
 | ORM client | The `scopes` member of a collection, the interface suppliers satisfy, the type registry, and applying what a supplier returns |
 | Adapter | Turning the finished query into SQL, as for any other query |
 
-## When something is a scope
+## Scopes the application writes itself
 
-Some searches can be written as an operation on a column. `p.title.fullTextMatches(q)` searches one field. The rule for choosing is:
+A schema author chooses among the kinds of scope that packages offer. The schema language has no way to write an arbitrary query.
 
-- **It is an operation on a column** when it applies to one stored field and returns a value.
-- **It is a scope** when at least one of these is true:
-  - it spans several fields;
-  - it sets an order;
-  - the database runs it as a step of the query, not as a filter;
-  - the query must repeat an expression from the index that the author did not write.
+An application that wants a scope with its own conditions writes a method on a custom collection class (ADR 175):
+
+```ts
+class PostCollection extends Collection<Contract, 'Post'> {
+  publishedBy(userId: string) {
+    return this.where({ userId, published: true }).orderBy((p) => p.createdAt.desc());
+  }
+}
+```
+
+Both are scopes. One is declared in the schema and provided by a package. The other is written by the application.
 
 ## Generality
 
@@ -367,7 +392,7 @@ The design is meant for any database and for more than text search. Two appendic
 - **Directly on the collection, as `db.Post.search`.** A scope and a collection method of the same name collide, and a custom collection class with such a method does not compile. It also costs about four percent more type checking for every application, because of the extra type on every collection.
 - **Only at the start of a query.** The collection inside an `include` is created by the ORM client, not by the caller, so a scope could never be used there.
 - **As an operation on a column.** An operation on a column returns a value. A scope operation applies to a collection and returns a collection.
-- **With the fields and weights written in the query.** Any difference from the index disables it without an error.
+- **Only the public query operations, with the fields and weights written in each query.** Any difference from the index disables it without an error, and the search has no name in the schema. The operations remain, as what a scope is built from.
 - **Relevance as an ordinary sort key, applied where the scope is called.** The same calls in a different order would then mean different queries, which is true of no other collection method.
 
 ### How the types reach the client
@@ -591,7 +616,7 @@ SELECT ... FROM booking
 WHERE room_id = $1 AND tstzrange(starts_at, ends_at) && tstzrange($2, $3);
 ```
 
-**Why it is a scope.** It spans two fields, and the query must repeat the index's expression.
+**Why a package would offer it.** The query must repeat the index's expression, which spans two fields.
 
 **What it shows.** A scope can be a plain filter. It has no relevance and sets no order.
 
@@ -630,9 +655,9 @@ SELECT ... FROM post WHERE 'postgres' MEMBER OF (tags->'$[*]');
 SELECT ... FROM post WHERE JSON_OVERLAPS(tags->'$[*]', CAST('["postgres","mysql"]' AS JSON));
 ```
 
-**Why it is a scope.** MySQL uses the index only through three functions, and only with the same JSON path and the same cast type as the index. The query must repeat an expression the author did not write.
+**Why a package would offer it.** MySQL uses the index only through three functions, and only with the same JSON path and the same cast type as the index. The author did not write that expression and should not have to repeat it.
 
-**What it shows.** This case is the closest to the line. It has one field and sets no order, so it could be an operation on the column. Only the last condition of the rule makes it a scope.
+**What it shows.** A scope can cover one field and set no order. An operation on the column could do the same work, if the caller repeats the path and the cast type.
 
 ### MongoDB: places near a point
 
@@ -672,7 +697,7 @@ db.place.aggregate([
 ])
 ```
 
-**Why it is a scope.** MongoDB runs it as a pipeline stage that must come first, and it returns rows nearest first.
+**Why a package would offer it.** MongoDB runs it as a pipeline stage that must come first. No method of a collection produces that stage, so an application cannot write this scope itself.
 
 **What it shows**
 

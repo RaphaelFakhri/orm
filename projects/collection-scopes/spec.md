@@ -49,6 +49,8 @@ db.User.where({ id }).include('posts', (posts) => posts.scopes.search.fulltext(q
 - **Scopes are declared in a top-level `scopes <Model> { }` block**, one line for each scope: the name, then the kind of scope with its arguments, as `search fullTextSearch([title, body])`. A declaration creates the scope and its index. The index name is generated unless `index:` gives one. A line has the grammar of a field line. A model may have several `scopes` blocks, which are read as one, and a model's scopes are a namespace separate from its fields.
 - **`fullTextSearch` replaces `@@fullTextIndex`.** An index without a scope is written with `@@index(expression: ...)`.
 - **The Prisma 7 grammar does not get the block.**
+- **A scope's operations are built from public query operations.** `fullTextMatches` and `fullTextRank` take several fields in weight groups, and ORM predicates receive `fns` as the SQL builder's do. An application may call them directly.
+- **An arbitrary scope is a method on a custom collection class.** The schema language offers only the kinds of scope that packages supply.
 - **No kind or type id on the index.**
 - **The TypeScript builder declares scopes through a `scopes` method on the model.** The target contributes the helper, so nothing is imported: `.scopes(({ fields, scopes }) => ({ search: scopes.fullTextSearch([[fields.title, fields.subtitle], fields.body]) }))`. The key is the scope's name.
 - **The index expression contains only what the search needs.** `setweight` appears only when there is more than one weight group, and `coalesce` only when there is more than one field. A search over one field therefore has the expression `to_tsvector(language, column)`, which is the one `fullTextMatches` on that column uses.
@@ -70,6 +72,7 @@ db.User.where({ id }).include('posts', (posts) => posts.scopes.search.fulltext(q
 - **Schema language.** The parser, binder, formatter, printer and language server gain the `scopes` block. Its lines are read as a name followed by a constructor with arguments. Packages supply the kinds of scope through a new kind of authoring contribution, and each produces a scope and an index together.
 - **TypeScript contract builder.** Gains the `scopes` method on a model, with the same contributions.
 - **ORM client (`sql-orm-client`).** Gains the `scopes` member on collections, the registry and interface that contributions satisfy, a check at construction that each declared scope has a contribution and an index, and default-order handling.
+- **ORM client predicates.** `where` and `orderBy` callbacks receive `fns`.
 - **Postgres target.** May reference the ORM client's interface type directly. Owns the full-text scope type: its declaration form, the structured index, its DDL, and the scope's operations. Reuses the existing full-text lowering and the `tsquery` helpers.
 - **Postgres facade.** Its signature does not change. It passes the runtime contributions from the target and from `extensions` to the ORM client.
 - **Package build.** Rewrites the internal module name in a registry declaration to the published one.
@@ -88,7 +91,7 @@ db.User.where({ id }).include('posts', (posts) => posts.scopes.search.fulltext(q
 - **Scopes are reached through `scopes.<name>` only.** Nothing is placed directly on the collection.
 - **Constructing a client needs no type arguments or annotations for scopes**, whichever package contributes them, first-party or not.
 - **A user who declares no scope pays at most one percent more type checking**, measured on `examples/prisma-8-demo`.
-- **Existing column operations and their tests are unchanged.**
+- **Existing column operations on one field keep their behaviour.** The operations over several fields are added beside them.
 - **User input stays safe.** Scope operations take a `tsquery`, as the column operations do; a plain string does not compile.
 
 ## Transitional-shape constraints
