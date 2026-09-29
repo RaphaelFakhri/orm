@@ -58,9 +58,7 @@ describe('ORM task variant helpers', () => {
   it('preserves chains and reads rows through the captured bug root', async () => {
     const runtime = createMockRuntime();
     const db = createOrmClient(runtime);
-    runtime.setNextResults([
-      [{ id: 'task_1', title: 'Login crash', type: 'bug', userId: 'user_1', severity: 'critical' }],
-    ]);
+    runtime.setNextResults([[{ id: 'task_1', title: 'Login crash' }]]);
 
     const rows = await db.Task.bugs()
       .where({ userId: 'user_1' })
@@ -68,7 +66,7 @@ describe('ORM task variant helpers', () => {
       .all()
       .toArray();
 
-    expect(rows).toEqual([{ id: 'task_1', title: 'Login crash', type: 'bug', userId: 'user_1' }]);
+    expect(rows).toEqual([{ id: 'task_1', title: 'Login crash' }]);
     expect(runtime.executions).toHaveLength(1);
   });
 

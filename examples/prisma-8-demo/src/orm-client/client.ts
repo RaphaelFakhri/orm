@@ -9,6 +9,7 @@ import {
   PostCollection,
   TagCollection,
   type TaskCollectionConstructor,
+  type TaskCollectionSurface,
   type TaskVariantRoots,
   UserCollection,
 } from './collections';
@@ -25,7 +26,8 @@ type DemoCollections = {
   Task: TaskCollectionConstructor;
 };
 
-type DemoOrmClient = ReturnType<typeof orm<Contract, DemoCollections>>['public'];
+type DemoOrmClientBase = ReturnType<typeof orm<Contract, DemoCollections>>['public'];
+type DemoOrmClient = Omit<DemoOrmClientBase, 'Task'> & { readonly Task: TaskCollectionSurface };
 
 export function createOrmClient(runtime: Runtime): DemoOrmClient {
   let roots: TaskVariantRoots;
@@ -41,5 +43,8 @@ export function createOrmClient(runtime: Runtime): DemoOrmClient {
     },
   }).public;
   roots = { Bug: client.Bug, Feature: client.Feature };
-  return client;
+  return blindCast<
+    DemoOrmClient,
+    'Task custom collection constructor publishes the zero-argument helper surface for this client'
+  >(client);
 }
