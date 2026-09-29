@@ -1083,6 +1083,23 @@ type ResolvedNsId<
       : never
   : NsId;
 
+export type ModelTableIndexes<
+  TContract extends Contract<SqlStorage>,
+  ModelName extends string,
+  NsId extends string = never,
+> =
+  ModelDef<TContract, ModelName, NsId> extends {
+    readonly storage: { readonly table: infer TableName extends string };
+  }
+    ? TContract['storage']['namespaces'][ResolvedNsId<TContract, ModelName, NsId>] extends {
+        readonly entries: {
+          readonly table: { readonly [K in TableName]: { readonly indexes: infer Indexes } };
+        };
+      }
+      ? Indexes
+      : readonly []
+    : readonly [];
+
 type FieldsOf<
   TContract extends Contract<SqlStorage>,
   ModelName extends string,

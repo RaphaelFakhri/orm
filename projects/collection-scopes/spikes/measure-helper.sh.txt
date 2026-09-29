@@ -1,0 +1,52 @@
+#!/bin/zsh
+# usage: zsh measure-helper.sh.txt <label> [package-probe] [demo-probe] [demo-contract-patch-script]
+# Run from the repo root, after `pnpm build`, on the working tree state to measure.
+# Every typecheck runs twice. SKIP_BASE=1 skips the runs without probes. Output goes to wip/spike/out/<label>.
+set -u
+export PATH=/Users/wmadden/.local/share/mise/installs/node/24.13.0/bin:$PATH
+setopt null_glob
+ROOT=$(pwd)
+LABEL=$1
+PKG_PROBE=${2:-}
+DEMO_PROBE=${3:-}
+PATCH=${4:-}
+OUT=$ROOT/wip/spike/out/$LABEL
+mkdir -p $OUT
+PKG=$ROOT/packages/3-extensions/sql-orm-client
+DEMO=$ROOT/examples/prisma-8-demo
+
+rm -f $PKG/test/zz-*.test-d.ts $DEMO/test/zz-*.test-d.ts
+
+cat > $PKG/tsconfig.nohelper.json <<EOT
+{ "extends": "./tsconfig.json", "exclude": ["dist","dist-tsc","dist-tsc-prod","node_modules","test/fulltext-search*"] }
+EOT
+for run in 1 2; do
+  [ -n "${SKIP_BASE:-}" ] && break
+  (cd $PKG && pnpm typecheck -p tsconfig.nohelper.json --extendedDiagnostics > $OUT/pkg-base-$run.txt 2>&1; echo "exit $?" >> $OUT/pkg-base-$run.txt)
+done
+if [ -n "$PKG_PROBE" ]; then
+  cp $PKG_PROBE $PKG/test/zz-probe.test-d.ts
+  for run in 1 2; do
+    (cd $PKG && pnpm typecheck -p tsconfig.nohelper.json --extendedDiagnostics > $OUT/pkg-probe-$run.txt 2>&1; echo "exit $?" >> $OUT/pkg-probe-$run.txt)
+  done
+  rm -f $PKG/test/zz-probe.test-d.ts
+fi
+rm $PKG/tsconfig.nohelper.json
+
+for run in 1 2; do
+  [ -n "${SKIP_BASE:-}" ] && break
+  (cd $DEMO && pnpm typecheck --extendedDiagnostics > $OUT/demo-base-$run.txt 2>&1; echo "exit $?" >> $OUT/demo-base-$run.txt)
+done
+if [ -n "$DEMO_PROBE" ]; then
+  if [ -n "$PATCH" ]; then
+    cp $DEMO/src/prisma/contract.d.ts $OUT/contract.d.ts.orig
+    node $PATCH $DEMO/src/prisma/contract.d.ts || exit 1
+  fi
+  cp $DEMO_PROBE $DEMO/test/zz-probe.test-d.ts
+  for run in 1 2; do
+    (cd $DEMO && pnpm typecheck --extendedDiagnostics > $OUT/demo-probe-$run.txt 2>&1; echo "exit $?" >> $OUT/demo-probe-$run.txt)
+  done
+  rm -f $DEMO/test/zz-probe.test-d.ts
+  if [ -n "$PATCH" ]; then cp $OUT/contract.d.ts.orig $DEMO/src/prisma/contract.d.ts; fi
+fi
+for f in $OUT/pkg-*.txt $OUT/demo-*.txt; do echo "== ${f:t}"; grep -E '^(Instantiations|Check time|exit)|error TS' $f | head -8; done

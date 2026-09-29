@@ -1,5 +1,23 @@
 export { Collection } from '../collection';
 export { all, and, not, or } from '../filters';
+export {
+  type CollectionCoordinates,
+  type FullTextIndexName,
+  type FullTextQuery,
+  type FullTextScope,
+  type FullTextScopeObjects,
+  type FullTextSearchOptions,
+  type FullTextSearchScopes,
+  type FullTextSearchScopesOf,
+  type FullTextSearchStep,
+  fullTextQuery,
+  fullTextSearch,
+  fulltextScopeObjects,
+  fulltextSearchScopes,
+  type ModelFullTextIndexes,
+  type SearchableCollection,
+  searchFullText,
+} from '../fulltext-search';
 export { GroupedCollection } from '../grouped-collection';
 export { createModelAccessor } from '../model-accessor';
 export type { OrmOptions } from '../orm';

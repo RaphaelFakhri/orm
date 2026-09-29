@@ -1,0 +1,83 @@
+// usage: node gen-probes.mjs.txt <out-dir>
+// Writes one probe per (target, option, use count). A probe has ten call sites.
+// With N uses, the first N sites go through the helper; the rest use the collection directly.
+import { mkdirSync, writeFileSync } from 'node:fs';
+
+const out = process.argv[2];
+mkdirSync(out, { recursive: true });
+
+const targets = {
+  pkg: {
+    header: `import { Collection } from '../src/collection';
+import { fullTextQuery, fullTextSearch, fulltextScopeObjects, fulltextSearchScopes, searchFullText } from '../src/fulltext-search';
+import { type SearchContract, searchSetup } from './fulltext-search-fixture';
+
+const { db } = searchSetup();
+const Post = db.public.Post;
+const User = db.public.User;
+type ProbeContract = SearchContract;
+`,
+    name: 'post_title_body_search',
+    userId: '1',
+  },
+  demo: {
+    header: `import { Collection, fullTextQuery, fullTextSearch, fulltextScopeObjects, fulltextSearchScopes, searchFullText } from '@prisma/orm-postgres/orm-client';
+import type { PostgresClient } from '@prisma/orm-postgres/runtime';
+import type { Contract } from '../src/prisma/contract.d';
+
+declare const db: PostgresClient<Contract>;
+const Post = db.orm.public.Post;
+const User = db.orm.public.User;
+type ProbeContract = Contract;
+`,
+    name: 'post_title_search',
+    userId: "'u1'",
+  },
+};
+
+const options = {
+  A: (t, n, o) => `fulltextSearchScopes(${t}).${n}(q${o})`,
+  B: (t, n, o) => `fulltextScopeObjects(${t}).${n}.fulltext(q${o})`,
+  C: (t, n, o) => `searchFullText(${t}, '${n}', q${o})`,
+  D: (t, n, o) => `fullTextSearch('${n}', q${o})(${t})`,
+  E: (t, n, o) => `${t}.pipe(fullTextSearch('${n}', q${o}))`,
+};
+
+function probe(target, option, uses) {
+  const { header, name, userId } = targets[target];
+  const site = (i, t, only) =>
+    i <= uses ? options[option](t, name, only ? `, { only: 'title' }` : '') : t;
+  return `${header}
+const q = fullTextQuery('hello');
+const keep = [fullTextSearch, fulltextScopeObjects, fulltextSearchScopes, searchFullText];
+
+class ProbePostCollection extends Collection<ProbeContract, 'Post'> {
+  a() {
+    return ${site(5, 'this')};
+  }
+  b() {
+    return ${site(9, 'this', true)}.limit(2);
+  }
+}
+
+export const s1 = ${site(1, 'Post')}.limit(10).all();
+export const s2 = ${site(2, `Post.where({ userId: ${userId} })`)}.select('id', 'title').all();
+export const s3 = ${site(3, "Post.select('id', 'title')")}.first();
+export const s4 = User.include('posts', (posts) => ${site(4, 'posts')}.limit(3)).all();
+export const s5 = ProbePostCollection;
+export const s6 = ${site(6, 'Post', true)}.all();
+export const s7 = ${site(7, 'Post.orderBy((p) => p.id.asc())')}.limit(1).all();
+export const s8 = User.where({ id: ${userId} }).include('posts', (posts) => ${site(8, "posts.select('id')")}).first();
+export const s10 = ${site(10, `Post.where({ userId: ${userId} }).limit(5)`)}.all();
+export { keep, q };
+`;
+}
+
+for (const target of Object.keys(targets)) {
+  writeFileSync(`${out}/${target}-0.test-d.ts`, probe(target, 'A', 0));
+  for (const option of Object.keys(options)) {
+    for (const uses of [1, 10]) {
+      writeFileSync(`${out}/${target}-${option}-${uses}.test-d.ts`, probe(target, option, uses));
+    }
+  }
+}

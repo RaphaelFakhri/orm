@@ -1,0 +1,17 @@
+import { readFileSync, writeFileSync } from 'node:fs';
+
+const path = process.argv[2];
+const source = readFileSync(path, 'utf8');
+const anchor = /(readonly prefix: 'post_title_search';\n)(\s+)readonly expression: [^\n]+\n\s+readonly unique: false;\n\s+readonly type: 'gin';\n/;
+if (!anchor.test(source)) throw new Error('post_title_search index not found in contract.d.ts');
+const patched = source.replace(
+  anchor,
+  (_, prefix, indent) =>
+    `${prefix}${indent}readonly unique: false;\n` +
+    `${indent}readonly type: 'gin';\n` +
+    `${indent}readonly options: {\n` +
+    `${indent}  readonly fields: readonly [readonly ['title']];\n` +
+    `${indent}  readonly language: 'english';\n` +
+    `${indent}};\n`,
+);
+writeFileSync(path, patched);
