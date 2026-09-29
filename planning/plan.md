@@ -49,7 +49,20 @@ Existing Prisma 7 users must be able to upgrade. They reacted badly to the relea
 | Verify cursor pagination and fix its behavior for 8.x | Prisma 8 starts after the cursor row. Prisma 7 includes it. 13 ported tests fail on it. Nobody has confirmed the difference is deliberate, and the docs do not mention it. After GA it cannot change. |
 | Correct the query reference in the agent skill (`skills/prisma-8/references/queries-postgres.md`) | Urgent, same kind of fault as TML-3340. It sends users to `db.sql` for set operations and window functions, and neither exists. `prisma init` copies the skill into every new project. |
 | Correct the other documents that contradict the code | Listed in [query-feature-gaps.md](query-feature-gaps.md). |
+| Design how a query leaves fields out, the Prisma 8 replacement for `omit` | Design work. If it is not built by GA, a clear plan must exist. |
 | Large `IN` lists | Prisma 8 does not split them. On PostgreSQL an oversized query drops the connection. Lowest priority on this list. |
+
+## After the plan is finished
+
+Update every record that contradicts the code. Known so far: the non-portable and failing test records under `test/integration/test/ports/`, and the documents listed in [query-feature-gaps.md](query-feature-gaps.md). Four stale records found so far: nulls ordering, full-text search, raw SQL, comparing two columns.
+
+## Principle
+
+Prisma 8 does not build implicit behavior that the user did not ask for. Automatic batching of lookups is the example.
+
+## Query features: high priority
+
+Nested writes on relations: `update`, `delete`, `upsert`, `set` and `connectOrCreate`. Only `create`, `connect` and `disconnect` exist on SQL today. Traversing relations is one of the main reasons to use an ORM. Earlier work deferred this to TML-2781.
 
 ## Query features: decided
 
@@ -63,15 +76,14 @@ Existing Prisma 7 users must be able to upgrade. They reacted badly to the relea
 | Soft delete, validation rules, lifecycle hooks, read replicas | Not planned. |
 | MongoDB referential actions | Not for GA. |
 | Comparing two columns in `where` | Already exists. The record that says otherwise is out of date. |
+| Automatic batching of single-row lookups | Never. See the principle above. |
 
 ## Query features: not decided
 
 - `increment`, `decrement`, `firstOrThrow` on the query. Proposed for building.
 - JSON filters and list filters. Proposed for after GA unless simple.
-- Nested writes beyond `create`, `connect` and `disconnect`. Nested `update`, `delete`, `upsert`, `set` and `connectOrCreate` do not exist on SQL.
 - Transaction isolation levels, timeouts, nested transactions.
 - Relation load strategy.
-- Automatic batching of single-row lookups.
 
 ## Feature status at GA
 
