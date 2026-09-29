@@ -614,7 +614,7 @@ describe('MTI variant mutation guards', () => {
 
   it('createAll() with the skip option throws for MTI variants', async () => {
     const { collection } = createReturningMixedPolyCollection();
-    const narrowed = collection.variant('Feature' as never) as typeof collection;
+    const narrowed = collection.variant(featureRoot) as typeof collection;
     expect(() =>
       narrowed.createAll([{ title: 'X', priority: 1 } as never], { onConflict: 'skip' }),
     ).toThrow(
@@ -628,7 +628,7 @@ describe('MTI variant mutation guards', () => {
 
   it('createAndCount() with the skip option keeps the createAndCount() message for MTI variants', async () => {
     const { collection } = createReturningMixedPolyCollection();
-    const narrowed = collection.variant('Feature' as never) as typeof collection;
+    const narrowed = collection.variant(featureRoot) as typeof collection;
     await expect(
       narrowed.createAndCount([{ title: 'X', priority: 1 } as never], { onConflict: 'skip' }),
     ).rejects.toThrow(
@@ -683,8 +683,16 @@ describe('MTI variant create (two-INSERT orchestration)', () => {
     const applyMutationDefaults = vi.fn(baseContext.applyMutationDefaults);
     const context = { ...baseContext, contract, applyMutationDefaults };
     const runtime = createMockRuntime();
-    const collection = new Collection({ runtime, context }, 'Task', { namespaceId: 'public' });
-    const narrowed = collection.variant('Feature' as never) as typeof collection;
+    const db = blindCast<
+      {
+        readonly public: {
+          readonly Task: Collection<typeof contract, 'Task'>;
+          readonly Feature: never;
+        };
+      },
+      'patched returning mixed polymorphism test contract adds Task variants outside the static fixture type'
+    >(orm({ runtime, context }));
+    const narrowed = db.public.Task.variant(db.public.Feature) as typeof db.public.Task;
     const input = Array.from({ length: count }, (_, index) => ({
       title: `Feature ${index}`,
       priority: index,

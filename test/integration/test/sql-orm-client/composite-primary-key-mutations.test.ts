@@ -3,9 +3,10 @@ import postgresAdapter from '@internal/adapter-postgres/runtime';
 import type { Contract } from '@internal/contract/types';
 import { defineContract, field, model, rel } from '@internal/postgres/contract-builder';
 import type { SqlStorage } from '@internal/sql-contract/types';
-import { Collection } from '@internal/sql-orm-client';
+import { Collection, orm } from '@internal/sql-orm-client';
 import { createExecutionContext, createSqlExecutionStack } from '@internal/sql-runtime';
 import postgresTarget from '@internal/target-postgres/runtime';
+import { blindCast } from '@internal/utils/casts';
 import { describe, expect, it } from 'vitest';
 import { authorSqlContractFromPsl } from '../scalar-lists/psl-list-authoring';
 import { timeouts, withPushedContractRuntime } from './integration-helpers';
@@ -97,6 +98,7 @@ async function authorVehiclesContract(): Promise<Contract<SqlStorage>> {
 async function withVehicles(
   fn: (
     vehicles: Collection<Contract<SqlStorage>, string>,
+    truck: never,
     runtime: PgIntegrationRuntime,
   ) => Promise<void>,
 ): Promise<void> {
@@ -106,7 +108,16 @@ async function withVehicles(
     stack: createSqlExecutionStack({ target: postgresTarget, adapter: postgresAdapter }),
   });
   await withPushedContractRuntime(contract, async (runtime) => {
-    await fn(new Collection({ runtime, context }, 'Vehicle', { namespaceId: 'public' }), runtime);
+    const db = blindCast<
+      {
+        readonly public: {
+          readonly Vehicle: Collection<Contract<SqlStorage>, string>;
+          readonly Truck: never;
+        };
+      },
+      'PSL-authored vehicles contract exposes Vehicle and Truck roots'
+    >(orm({ runtime, context }));
+    await fn(db.public.Vehicle, db.public.Truck, runtime);
   });
 }
 
@@ -121,9 +132,9 @@ async function seedTrucks(runtime: PgIntegrationRuntime): Promise<void> {
   `);
 }
 
-async function readTrucks(vehicles: Collection<Contract<SqlStorage>, string>) {
+async function readTrucks(vehicles: Collection<Contract<SqlStorage>, string>, truck: never) {
   return vehicles
-    .variant('Truck' as never)
+    .variant(truck)
     .select('tenantId', 'id', 'name', 'payload')
     .orderBy([(v) => v['tenantId']!.asc(), (v) => v['id']!.asc()])
     .all();
@@ -199,10 +210,10 @@ describe('integration/mutations on a composite primary key', () => {
   it(
     'an MTI variant read joins its table on every primary-key column',
     async () => {
-      await withVehicles(async (vehicles, runtime) => {
+      await withVehicles(async (vehicles, truck, runtime) => {
         await seedTrucks(runtime);
 
-        expect(await readTrucks(vehicles)).toEqual([
+        expect(await readTrucks(vehicles, truck)).toEqual([
           { tenantId: 1, id: 1, name: 'Hauler', payload: 5 },
           { tenantId: 1, id: 2, name: 'Tipper', payload: 9 },
           { tenantId: 2, id: 1, name: 'Mover', payload: 5 },
@@ -215,15 +226,15 @@ describe('integration/mutations on a composite primary key', () => {
   it(
     'an MTI variant create writes every primary-key column to the variant table',
     async () => {
-      await withVehicles(async (vehicles, runtime) => {
+      await withVehicles(async (vehicles, truck, runtime) => {
         await seedTrucks(runtime);
 
         const created = await vehicles
-          .variant('Truck' as never)
+          .variant(truck)
           .create({ tenantId: 1, id: 3, name: 'Loader', payload: 7 } as never);
 
         expect(created).toEqual({ tenantId: 1, id: 3, kind: 'truck', name: 'Loader', payload: 7 });
-        expect(await readTrucks(vehicles)).toEqual([
+        expect(await readTrucks(vehicles, truck)).toEqual([
           { tenantId: 1, id: 1, name: 'Hauler', payload: 5 },
           { tenantId: 1, id: 2, name: 'Tipper', payload: 9 },
           { tenantId: 1, id: 3, name: 'Loader', payload: 7 },
@@ -237,16 +248,16 @@ describe('integration/mutations on a composite primary key', () => {
   it(
     'updateAndCount() on an MTI variant changes only the matching rows',
     async () => {
-      await withVehicles(async (vehicles, runtime) => {
+      await withVehicles(async (vehicles, truck, runtime) => {
         await seedTrucks(runtime);
 
         const count = await vehicles
-          .variant('Truck' as never)
+          .variant(truck)
           .where((v) => v['payload']!.eq(9))
           .updateAndCount({ name: 'Renamed' } as never);
 
         expect(count).toBe(1);
-        expect(await readTrucks(vehicles)).toEqual([
+        expect(await readTrucks(vehicles, truck)).toEqual([
           { tenantId: 1, id: 1, name: 'Hauler', payload: 5 },
           { tenantId: 1, id: 2, name: 'Renamed', payload: 9 },
           { tenantId: 2, id: 1, name: 'Mover', payload: 5 },
@@ -259,16 +270,16 @@ describe('integration/mutations on a composite primary key', () => {
   it(
     'deleteAndCount() on an MTI variant deletes only the matching rows',
     async () => {
-      await withVehicles(async (vehicles, runtime) => {
+      await withVehicles(async (vehicles, truck, runtime) => {
         await seedTrucks(runtime);
 
         const count = await vehicles
-          .variant('Truck' as never)
+          .variant(truck)
           .where((v) => v['payload']!.eq(9))
           .deleteAndCount();
 
         expect(count).toBe(1);
-        expect(await readTrucks(vehicles)).toEqual([
+        expect(await readTrucks(vehicles, truck)).toEqual([
           { tenantId: 1, id: 1, name: 'Hauler', payload: 5 },
           { tenantId: 2, id: 1, name: 'Mover', payload: 5 },
         ]);
