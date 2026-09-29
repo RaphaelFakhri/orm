@@ -6,17 +6,20 @@
  */
 
 import type { JsonValue } from '@internal/contract/types';
-import type { AuthoringDataTypeEntry } from '@internal/framework-components/authoring';
-import { loweringEntryKey } from '@internal/framework-components/authoring';
+import type { DataTypeAuthoringEntry } from '@internal/framework-components/authoring';
 import {
   type Cast,
   createDataTypeLookup,
   type DataType,
   dataType,
 } from '@internal/framework-components/codec';
+import {
+  SQL_EXPRESSION_DATA_TYPE_ID,
+  sqlExpressionAuthoringEntry,
+  sqlExpressionDataType,
+} from '@internal/sql-contract/sql-expression';
 import { structuredError } from '@internal/utils/structured-error';
 import type { DataTypeSupport } from '../src/data-type-default';
-import { sqlLiteralTagLowering } from './fixture-sql-tag';
 
 const unchanged: Cast = (value) => value;
 const asText: Cast = (value) => String(value);
@@ -104,6 +107,7 @@ export const fixtureDataTypes: readonly DataType[] = [
   pgTimestamptz,
   pgEnum,
   pgvectorVector,
+  sqlExpressionDataType,
 ];
 
 function classifyNumber(
@@ -143,7 +147,7 @@ function parseJson(text: string): JsonValue {
   }
 }
 
-export const fixtureDataTypeEntries: Readonly<Record<string, AuthoringDataTypeEntry>> = {
+export const fixtureDataTypeEntries: Readonly<Record<string, DataTypeAuthoringEntry>> = {
   [pgText.id]: {
     written: { kind: 'plain', syntax: 'string', parse: (text) => text },
     print: (value) => String(value),
@@ -169,8 +173,7 @@ export const fixtureDataTypeEntries: Readonly<Record<string, AuthoringDataTypeEn
     print: (value) => JSON.stringify(value),
     documentation: 'Reads the body as a JSON document and stores it as the default value.',
   },
-  [loweringEntryKey('sql')]: sqlLiteralTagLowering('sql'),
-  [loweringEntryKey('pg.sql')]: sqlLiteralTagLowering('pg.sql'),
+  [SQL_EXPRESSION_DATA_TYPE_ID]: sqlExpressionAuthoringEntry,
 };
 
 export const fixtureDataTypeSupport: DataTypeSupport = {

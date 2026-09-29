@@ -320,8 +320,9 @@ describe('sqlAttributeSpecs.field.default', () => {
       },
       {
         label: 'sql`...`',
-        tags: ['sql', 'pg.sql'],
-        documentation: "Uses the SQL in the string, verbatim, as the column's default expression.",
+        tags: ['sql'],
+        documentation:
+          "SQL in the target database's language. Prisma passes it to the database unchanged.",
       },
     ]);
   });

@@ -1,4 +1,4 @@
-import type { AuthoringDataTypeEntry } from '@internal/framework-components/authoring';
+import type { DataTypeAuthoringEntry } from '@internal/framework-components/authoring';
 import { structuredError } from '@internal/utils/structured-error';
 import { describe, expect, it } from 'vitest';
 import { createTestSqlNamespace } from '../../../1-core/contract/test/test-support';
@@ -16,7 +16,7 @@ import { sqlStorageFromSuccessfulSqlInterpretation } from './interpret-sql-contr
 describe('interpretPslDocumentToSqlContract tagged literal defaults', () => {
   const builtinControlMutationDefaults = createBuiltinLikeControlMutationDefaults();
   /** A tag naming a data type that is not the JSON one, to exercise the other bodies a tag holds. */
-  const withBoolTag: Readonly<Record<string, AuthoringDataTypeEntry>> = {
+  const withBoolTag: Readonly<Record<string, DataTypeAuthoringEntry>> = {
     ...fixtureDataTypeSupport.entries,
     'pg/bool': {
       written: {
@@ -77,7 +77,6 @@ describe('interpretPslDocumentToSqlContract tagged literal defaults', () => {
   it.each([
     ['backtick string', 'v String @default(sql`md5(random()::text)`)'],
     ['double-quoted string', 'v String @default(sql"md5(random()::text)")'],
-    ['pg.sql tag', 'v String @default(pg.sql`md5(random()::text)`)'],
   ])('lowers the %s to a function default with the canonical body', (_name, fieldLine) => {
     expect(columnDefault(fieldLine, 'v')).toEqual({
       kind: 'function',
@@ -136,12 +135,12 @@ describe('interpretPslDocumentToSqlContract tagged literal defaults', () => {
   });
 
   it('rejects an unregistered tag at the literal and lists the known tags', () => {
-    expect(diagnostics('v String @default(sqlite.sql`x`)')).toEqual([
+    expect(diagnostics('v String @default(pg.sql`x`)')).toEqual([
       {
-        code: 'PSL_UNKNOWN_DEFAULT_LITERAL_TAG',
-        message: 'Unknown literal tag "sqlite.sql". Known tags: json, sql, pg.sql.',
+        code: 'PSL_UNKNOWN_LITERAL_TAG',
+        message: 'Unknown literal tag "pg.sql". Known tags: json, sql.',
         sourceId: 'schema.prisma',
-        span: lineThreeSpan(21, 'sqlite.sql`x`'.length),
+        span: lineThreeSpan(21, 'pg.sql`x`'.length),
       },
     ]);
   });
@@ -178,24 +177,25 @@ describe('interpretPslDocumentToSqlContract tagged literal defaults', () => {
 
   it('rejects a body the SQL check refuses', () => {
     expect(diagnostics('v String @default(sql`x; drop table t`)')).toEqual([
-      expect.objectContaining({
+      {
         code: 'PSL_INVALID_DEFAULT_SQL',
         message:
           'Default SQL must not contain semicolons, SQL comment tokens, dollar-quoting, or subqueries.',
         sourceId: 'schema.prisma',
-      }),
+        span: lineThreeSpan(21, 'sql`x; drop table t`'.length),
+      },
     ]);
   });
 
   it.each([
-    ['sql', 'now', 'v DateTime @default(sql`now()`)'],
-    ['sql', 'autoincrement', 'v Int @default(sql`autoincrement()`)'],
-    ['pg.sql', 'now', 'v DateTime @default(pg.sql`now()`)'],
-  ])('refuses %s`%s()`, naming the tag and the form to write', (tag, name, fieldLine) => {
+    ['now', 'v DateTime @default(sql`now()`)'],
+    ['autoincrement', 'v Int @default(sql`autoincrement()`)'],
+    ['now', 'tags DateTime[] @default(sql`now()`)'],
+  ])('refuses sql`%s()`, naming the form to write', (name, fieldLine) => {
     expect(diagnostics(fieldLine)).toEqual([
       expect.objectContaining({
         code: 'PSL_INVALID_DEFAULT_SQL',
-        message: `Write @default(${name}()) instead of ${tag}\`${name}()\`; ${name}() is a Prisma default function, not raw SQL.`,
+        message: `Write @default(${name}()) instead of sql\`${name}()\`; ${name}() is a Prisma default function, not raw SQL.`,
       }),
     ]);
   });
@@ -238,28 +238,27 @@ describe('interpretPslDocumentToSqlContract tagged literal defaults', () => {
 
     it('refuses a body that is not a JSON document', () => {
       expect(diagnostics('v Jsonb @default(json`{ plan }`)')).toEqual([
-        expect.objectContaining({ code: 'PSL_INVALID_JSON_LITERAL' }),
+        expect.objectContaining({ code: 'PSL_INVALID_LITERAL' }),
       ]);
     });
 
     it('refuses a JSON document on a column whose type does not cast from one', () => {
       expect(diagnostics('v Int @default(json`1`)')).toEqual([
         expect.objectContaining({
-          code: 'PSL_DEFAULT_TYPE_INCOMPATIBLE',
+          code: 'PSL_VALUE_TYPE_INCOMPATIBLE',
           message: expect.stringContaining('pg/int4 has no cast from pg/json'),
         }),
       ]);
     });
   });
 
-  it('refuses a lowering tag as an element of a list literal, at the element', () => {
-    expect(diagnostics('v Jsonb[] @default([json`{}`, sql`md5(x)`])')).toEqual([
+  it('refuses a sql literal as an element of a list literal through the cast rule', () => {
+    expect(diagnostics('tags String[] @default([sql`md5(x)`])')).toEqual([
       expect.objectContaining({
-        code: 'PSL_INVALID_DEFAULT_LITERAL',
+        code: 'PSL_VALUE_TYPE_INCOMPATIBLE',
         message:
-          'Literal tag "sql" produces a default of its own and cannot be an element of a list literal.',
+          'Field "Lit.tags" at element 1: pg/text has no cast from sql/expression; it casts from nothing',
         sourceId: 'schema.prisma',
-        span: lineThreeSpan(33, 11),
       }),
     ]);
   });
@@ -278,7 +277,7 @@ describe('interpretPslDocumentToSqlContract tagged literal defaults', () => {
     it.each(['TRUE', 'True', 'yes', '1', ''])('refuses the body %o', (body) => {
       expect(diagnostics(`v Boolean @default(bool\`${body}\`)`, withBoolTag)).toEqual([
         expect.objectContaining({
-          code: 'PSL_INVALID_DEFAULT_LITERAL',
+          code: 'PSL_INVALID_LITERAL',
           message: expect.stringContaining(`"${body}" is not a boolean.`),
         }),
       ]);
