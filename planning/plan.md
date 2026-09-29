@@ -61,6 +61,17 @@ Update every record that contradicts the code. Known so far: the non-portable an
 1. Prisma 8 does not build implicit behavior that the user did not ask for. Automatic batching of lookups is the example.
 2. Every design accounts for all four databases, even when only PostgreSQL ships the feature at GA. Take this as given. Do not ask Will to confirm it.
 
+## Upgrade path: what Prisma 8 must describe
+
+| Prisma 7 feature | Decision |
+| --- | --- |
+| Views | After GA. They are a preview feature in Prisma 7. |
+| Native types with no codec: `citext`, `bit`, `varbit`, `xml`, `oid` | Add codecs (TML-3270). |
+| `money` | Can get a codec. Low priority: the PostgreSQL `money` type is considered bad practice. |
+| `Unsupported("...")` columns | Not decided. Will needs to be convinced Prisma 8 wants this at all. |
+| `relationMode = "prisma"` | Not decided. |
+| Referential actions on MongoDB | After GA. |
+
 ## Query features: required for GA
 
 Transaction options: isolation levels, timeouts, and transactions inside transactions. None exists today. The runtime docs mark them as deferred. The databases differ here (SQLite has no isolation levels, MongoDB has its own transaction model), so the design lets each database state what it supports.
