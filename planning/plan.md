@@ -54,12 +54,16 @@ Existing Prisma 7 users must be able to upgrade. They reacted badly to the relea
 
 ## After the plan is finished
 
+Remove the `pg/opaque` codec from the deferred list in `projects/prisma7-contract-source/spec.md`, and fix `contract infer` printing `Unsupported(...)`.
+
 Update every record that contradicts the code. Known so far: the non-portable and failing test records under `test/integration/test/ports/`, and the documents listed in [query-feature-gaps.md](query-feature-gaps.md). Four stale records found so far: nulls ordering, full-text search, raw SQL, comparing two columns.
 
 ## Principles
 
 1. Prisma 8 does not build implicit behavior that the user did not ask for. Automatic batching of lookups is the example.
 2. Every design accounts for all four databases, even when only PostgreSQL ships the feature at GA. Take this as given. Do not ask Will to confirm it.
+3. Everything in a contract can be verified against the database. Nothing in a contract is opaque or untyped.
+4. The Prisma 7 contract source describes a database. It does not commit Prisma 8 to reproducing Prisma 7 query behavior.
 
 ## Upgrade path: what Prisma 8 must describe
 
@@ -68,8 +72,8 @@ Update every record that contradicts the code. Known so far: the non-portable an
 | Views | After GA. They are a preview feature in Prisma 7. |
 | Native types with no codec: `citext`, `bit`, `varbit`, `xml`, `oid` | Add codecs (TML-3270). |
 | `money` | Can get a codec. Low priority: the PostgreSQL `money` type is considered bad practice. |
-| `Unsupported("...")` columns | Not decided. Will needs to be convinced Prisma 8 wants this at all. |
-| `relationMode = "prisma"` | Not decided. |
+| `Unsupported("...")` columns, or any opaque or untyped column | Never. A column the contract cannot describe cannot be verified. TML-3271 is canceled. A column type Prisma 8 cannot describe needs a codec. |
+| `relationMode = "prisma"` | Never. Prisma 8 will not imitate foreign keys in the client. The upgrade guide tells those users to add foreign keys. |
 | Referential actions on MongoDB | After GA. |
 
 Stopping point for the open upgrade issues: every urgent and high issue is closed before GA. Medium and low issues may remain. The issues are in two Linear projects: "Prisma 7 contract source: gaps and defects" and "Contract print and Prisma 7 source follow-ups".
