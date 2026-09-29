@@ -1,0 +1,71 @@
+{
+  "contract": "test/integration/test/ports/prisma/functional/issues-TML-1664-unknown-enum-value-read-error/_fixture/generated/contract.json",
+  "target": "postgres",
+  "extensions": [],
+  "planned": {
+    "kind": "success",
+    "operations": [
+      {
+        "id": "createNativeEnumType.Status",
+        "label": "Create enum type \"Status\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "type",
+            "name": "Status"
+          }
+        },
+        "precheck": [],
+        "execute": [
+          {
+            "description": "create enum type \"Status\"",
+            "sql": "CREATE TYPE \"public\".\"Status\" AS ENUM ('ACTIVE', 'INACTIVE')",
+            "params": []
+          }
+        ],
+        "postcheck": []
+      },
+      {
+        "id": "table.user",
+        "label": "Create table \"user\"",
+        "summary": "Creates table \"user\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "table",
+            "name": "user"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure table \"user\" does not exist",
+            "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+            "params": [
+              "\"public\".\"user\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "create table \"user\"",
+            "sql": "CREATE TABLE \"public\".\"user\" (\n  \"id\" text NOT NULL,\n  \"status\" \"Status\" NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+            "params": []
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify table \"user\" exists",
+            "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+            "params": [
+              "\"public\".\"user\""
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

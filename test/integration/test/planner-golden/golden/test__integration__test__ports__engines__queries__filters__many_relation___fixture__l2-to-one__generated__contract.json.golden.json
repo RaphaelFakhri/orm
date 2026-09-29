@@ -1,0 +1,292 @@
+{
+  "contract": "test/integration/test/ports/engines/queries/filters/many_relation/_fixture/l2-to-one/generated/contract.json",
+  "target": "postgres",
+  "extensions": [],
+  "planned": {
+    "kind": "success",
+    "operations": [
+      {
+        "id": "table.blog",
+        "label": "Create table \"blog\"",
+        "summary": "Creates table \"blog\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "table",
+            "name": "blog"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure table \"blog\" does not exist",
+            "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+            "params": [
+              "\"public\".\"blog\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "create table \"blog\"",
+            "sql": "CREATE TABLE \"public\".\"blog\" (\n  \"id\" int4 NOT NULL,\n  \"name\" text NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+            "params": []
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify table \"blog\" exists",
+            "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+            "params": [
+              "\"public\".\"blog\""
+            ]
+          }
+        ]
+      },
+      {
+        "id": "table.comment",
+        "label": "Create table \"comment\"",
+        "summary": "Creates table \"comment\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "table",
+            "name": "comment"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure table \"comment\" does not exist",
+            "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+            "params": [
+              "\"public\".\"comment\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "create table \"comment\"",
+            "sql": "CREATE TABLE \"public\".\"comment\" (\n  \"id\" int4 NOT NULL,\n  \"popularity\" int4 NOT NULL,\n  \"postId\" int4 NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+            "params": []
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify table \"comment\" exists",
+            "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+            "params": [
+              "\"public\".\"comment\""
+            ]
+          }
+        ]
+      },
+      {
+        "id": "table.post",
+        "label": "Create table \"post\"",
+        "summary": "Creates table \"post\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "table",
+            "name": "post"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure table \"post\" does not exist",
+            "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+            "params": [
+              "\"public\".\"post\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "create table \"post\"",
+            "sql": "CREATE TABLE \"public\".\"post\" (\n  \"blog_id\" int4 NOT NULL,\n  \"id\" int4 NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+            "params": []
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify table \"post\" exists",
+            "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+            "params": [
+              "\"public\".\"post\""
+            ]
+          }
+        ]
+      },
+      {
+        "id": "unique.comment.comment_postId_key",
+        "label": "Add unique constraint on \"comment\" (postId)",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "unique",
+            "name": "comment_postId_key",
+            "table": "comment"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure constraint \"comment_postId_key\" does not exist",
+            "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+            "params": [
+              "comment_postId_key",
+              "public",
+              "\"public\".\"comment\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "add unique constraint \"comment_postId_key\"",
+            "sql": "ALTER TABLE \"public\".\"comment\" ADD CONSTRAINT \"comment_postId_key\" UNIQUE (\"postId\")"
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify constraint \"comment_postId_key\" exists",
+            "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+            "params": [
+              "comment_postId_key",
+              "public",
+              "\"public\".\"comment\""
+            ]
+          }
+        ]
+      },
+      {
+        "id": "index.post.post_blog_id_idx_aa2309ad",
+        "label": "Create index \"post_blog_id_idx_aa2309ad\" on \"post\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "index",
+            "name": "post_blog_id_idx_aa2309ad",
+            "table": "post"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure index \"post_blog_id_idx_aa2309ad\" does not exist",
+            "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+            "params": [
+              "\"public\".\"post_blog_id_idx_aa2309ad\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "create index \"post_blog_id_idx_aa2309ad\"",
+            "sql": "CREATE INDEX \"post_blog_id_idx_aa2309ad\" ON \"public\".\"post\" (\"blog_id\")",
+            "params": []
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify index \"post_blog_id_idx_aa2309ad\" exists",
+            "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+            "params": [
+              "\"public\".\"post_blog_id_idx_aa2309ad\""
+            ]
+          }
+        ]
+      },
+      {
+        "id": "foreignKey.comment.comment_postId_fkey",
+        "label": "Add foreign key \"comment_postId_fkey\" on \"comment\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "foreignKey",
+            "name": "comment_postId_fkey",
+            "table": "comment"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure FK \"comment_postId_fkey\" does not exist",
+            "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+            "params": [
+              "comment_postId_fkey",
+              "public",
+              "\"public\".\"comment\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "add FK \"comment_postId_fkey\"",
+            "sql": "ALTER TABLE \"public\".\"comment\"\nADD CONSTRAINT \"comment_postId_fkey\"\nFOREIGN KEY (\"postId\")\nREFERENCES \"public\".\"post\" (\"id\")"
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify FK \"comment_postId_fkey\" exists",
+            "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+            "params": [
+              "comment_postId_fkey",
+              "public",
+              "\"public\".\"comment\""
+            ]
+          }
+        ]
+      },
+      {
+        "id": "foreignKey.post.post_blog_id_fkey",
+        "label": "Add foreign key \"post_blog_id_fkey\" on \"post\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "foreignKey",
+            "name": "post_blog_id_fkey",
+            "table": "post"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure FK \"post_blog_id_fkey\" does not exist",
+            "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+            "params": [
+              "post_blog_id_fkey",
+              "public",
+              "\"public\".\"post\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "add FK \"post_blog_id_fkey\"",
+            "sql": "ALTER TABLE \"public\".\"post\"\nADD CONSTRAINT \"post_blog_id_fkey\"\nFOREIGN KEY (\"blog_id\")\nREFERENCES \"public\".\"blog\" (\"id\")"
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify FK \"post_blog_id_fkey\" exists",
+            "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+            "params": [
+              "post_blog_id_fkey",
+              "public",
+              "\"public\".\"post\""
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

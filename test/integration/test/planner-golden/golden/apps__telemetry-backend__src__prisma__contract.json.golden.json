@@ -1,0 +1,88 @@
+{
+  "contract": "apps/telemetry-backend/src/prisma/contract.json",
+  "target": "postgres",
+  "extensions": [],
+  "planned": {
+    "kind": "success",
+    "operations": [
+      {
+        "id": "table.telemetry_event",
+        "label": "Create table \"telemetry_event\"",
+        "summary": "Creates table \"telemetry_event\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "table",
+            "name": "telemetry_event"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure table \"telemetry_event\" does not exist",
+            "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+            "params": [
+              "\"public\".\"telemetry_event\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "create table \"telemetry_event\"",
+            "sql": "CREATE TABLE \"public\".\"telemetry_event\" (\n  \"agent\" text,\n  \"arch\" text NOT NULL,\n  \"command\" text NOT NULL,\n  \"databaseTarget\" text,\n  \"exitCode\" int4,\n  \"extensions\" jsonb NOT NULL,\n  \"flags\" jsonb NOT NULL,\n  \"id\" BIGSERIAL NOT NULL,\n  \"ingestedAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"installationId\" text NOT NULL,\n  \"os\" text NOT NULL,\n  \"packageManager\" text,\n  \"runtimeName\" text NOT NULL,\n  \"runtimeVersion\" text NOT NULL,\n  \"tsVersion\" text,\n  \"version\" text NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+            "params": []
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify table \"telemetry_event\" exists",
+            "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+            "params": [
+              "\"public\".\"telemetry_event\""
+            ]
+          }
+        ]
+      },
+      {
+        "id": "index.telemetry_event.telemetry_event_ingestedAt_idx_272db6ba",
+        "label": "Create index \"telemetry_event_ingestedAt_idx_272db6ba\" on \"telemetry_event\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "index",
+            "name": "telemetry_event_ingestedAt_idx_272db6ba",
+            "table": "telemetry_event"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure index \"telemetry_event_ingestedAt_idx_272db6ba\" does not exist",
+            "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+            "params": [
+              "\"public\".\"telemetry_event_ingestedAt_idx_272db6ba\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "create index \"telemetry_event_ingestedAt_idx_272db6ba\"",
+            "sql": "CREATE INDEX \"telemetry_event_ingestedAt_idx_272db6ba\" ON \"public\".\"telemetry_event\" (\"ingestedAt\")",
+            "params": []
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify index \"telemetry_event_ingestedAt_idx_272db6ba\" exists",
+            "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+            "params": [
+              "\"public\".\"telemetry_event_ingestedAt_idx_272db6ba\""
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,297 @@
+{
+  "contract": "examples/prisma-8-demo-sqlite/src/prisma/contract.json",
+  "target": "sqlite",
+  "extensions": [],
+  "planned": {
+    "kind": "success",
+    "operations": [
+      {
+        "id": "table.post",
+        "label": "Create table post",
+        "summary": "Creates table post with required columns",
+        "operationClass": "additive",
+        "target": {
+          "id": "sqlite",
+          "details": {
+            "schema": "main",
+            "objectType": "table",
+            "name": "post"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure table \"post\" does not exist",
+            "sql": "SELECT COUNT(*) = 0 AS \"result\" FROM \"sqlite_master\" WHERE (\"type\" = ? AND \"name\" = ?)",
+            "params": [
+              "table",
+              "post"
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "create table \"post\"",
+            "sql": "CREATE TABLE \"post\" (\n  \"createdAt\" TEXT NOT NULL DEFAULT (datetime('now')),\n  \"id\" CHARACTER NOT NULL,\n  \"impressionCount\" INTEGER,\n  \"title\" TEXT NOT NULL,\n  \"userId\" CHARACTER NOT NULL,\n  \"viewCount\" INTEGER,\n  PRIMARY KEY (\"id\"),\n  CONSTRAINT \"post_userId_fkey\" FOREIGN KEY (\"userId\") REFERENCES \"user\" (\"id\")\n)",
+            "params": []
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify table \"post\" exists",
+            "sql": "SELECT COUNT(*) > 0 AS \"result\" FROM \"sqlite_master\" WHERE (\"type\" = ? AND \"name\" = ?)",
+            "params": [
+              "table",
+              "post"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "table.post_tag",
+        "label": "Create table post_tag",
+        "summary": "Creates table post_tag with required columns",
+        "operationClass": "additive",
+        "target": {
+          "id": "sqlite",
+          "details": {
+            "schema": "main",
+            "objectType": "table",
+            "name": "post_tag"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure table \"post_tag\" does not exist",
+            "sql": "SELECT COUNT(*) = 0 AS \"result\" FROM \"sqlite_master\" WHERE (\"type\" = ? AND \"name\" = ?)",
+            "params": [
+              "table",
+              "post_tag"
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "create table \"post_tag\"",
+            "sql": "CREATE TABLE \"post_tag\" (\n  \"postId\" CHARACTER NOT NULL,\n  \"tagId\" CHARACTER NOT NULL,\n  PRIMARY KEY (\"postId\", \"tagId\"),\n  CONSTRAINT \"post_tag_postId_fkey\" FOREIGN KEY (\"postId\") REFERENCES \"post\" (\"id\"),\n  CONSTRAINT \"post_tag_tagId_fkey\" FOREIGN KEY (\"tagId\") REFERENCES \"tag\" (\"id\")\n)",
+            "params": []
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify table \"post_tag\" exists",
+            "sql": "SELECT COUNT(*) > 0 AS \"result\" FROM \"sqlite_master\" WHERE (\"type\" = ? AND \"name\" = ?)",
+            "params": [
+              "table",
+              "post_tag"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "table.tag",
+        "label": "Create table tag",
+        "summary": "Creates table tag with required columns",
+        "operationClass": "additive",
+        "target": {
+          "id": "sqlite",
+          "details": {
+            "schema": "main",
+            "objectType": "table",
+            "name": "tag"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure table \"tag\" does not exist",
+            "sql": "SELECT COUNT(*) = 0 AS \"result\" FROM \"sqlite_master\" WHERE (\"type\" = ? AND \"name\" = ?)",
+            "params": [
+              "table",
+              "tag"
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "create table \"tag\"",
+            "sql": "CREATE TABLE \"tag\" (\n  \"id\" CHARACTER NOT NULL,\n  \"label\" TEXT NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+            "params": []
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify table \"tag\" exists",
+            "sql": "SELECT COUNT(*) > 0 AS \"result\" FROM \"sqlite_master\" WHERE (\"type\" = ? AND \"name\" = ?)",
+            "params": [
+              "table",
+              "tag"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "table.user",
+        "label": "Create table user",
+        "summary": "Creates table user with required columns",
+        "operationClass": "additive",
+        "target": {
+          "id": "sqlite",
+          "details": {
+            "schema": "main",
+            "objectType": "table",
+            "name": "user"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure table \"user\" does not exist",
+            "sql": "SELECT COUNT(*) = 0 AS \"result\" FROM \"sqlite_master\" WHERE (\"type\" = ? AND \"name\" = ?)",
+            "params": [
+              "table",
+              "user"
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "create table \"user\"",
+            "sql": "CREATE TABLE \"user\" (\n  \"createdAt\" TEXT NOT NULL DEFAULT (datetime('now')),\n  \"displayName\" TEXT NOT NULL,\n  \"email\" TEXT NOT NULL,\n  \"id\" CHARACTER NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+            "params": []
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify table \"user\" exists",
+            "sql": "SELECT COUNT(*) > 0 AS \"result\" FROM \"sqlite_master\" WHERE (\"type\" = ? AND \"name\" = ?)",
+            "params": [
+              "table",
+              "user"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "index.post.post_userId_idx_a489d58a",
+        "label": "Create index post_userId_idx_a489d58a on post",
+        "summary": "Creates index post_userId_idx_a489d58a on post",
+        "operationClass": "additive",
+        "target": {
+          "id": "sqlite",
+          "details": {
+            "schema": "main",
+            "objectType": "index",
+            "name": "post_userId_idx_a489d58a",
+            "table": "post"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure index \"post_userId_idx_a489d58a\" is missing",
+            "sql": "SELECT COUNT(*) = 0 AS \"result\" FROM \"sqlite_master\" WHERE (\"type\" = ? AND \"name\" = ?)",
+            "params": [
+              "index",
+              "post_userId_idx_a489d58a"
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "create index \"post_userId_idx_a489d58a\"",
+            "sql": "CREATE INDEX \"post_userId_idx_a489d58a\" ON \"post\" (\"userId\")"
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify index \"post_userId_idx_a489d58a\" exists",
+            "sql": "SELECT COUNT(*) > 0 AS \"result\" FROM \"sqlite_master\" WHERE (\"type\" = ? AND \"name\" = ?)",
+            "params": [
+              "index",
+              "post_userId_idx_a489d58a"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "index.post_tag.post_tag_postId_idx_a7a72715",
+        "label": "Create index post_tag_postId_idx_a7a72715 on post_tag",
+        "summary": "Creates index post_tag_postId_idx_a7a72715 on post_tag",
+        "operationClass": "additive",
+        "target": {
+          "id": "sqlite",
+          "details": {
+            "schema": "main",
+            "objectType": "index",
+            "name": "post_tag_postId_idx_a7a72715",
+            "table": "post_tag"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure index \"post_tag_postId_idx_a7a72715\" is missing",
+            "sql": "SELECT COUNT(*) = 0 AS \"result\" FROM \"sqlite_master\" WHERE (\"type\" = ? AND \"name\" = ?)",
+            "params": [
+              "index",
+              "post_tag_postId_idx_a7a72715"
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "create index \"post_tag_postId_idx_a7a72715\"",
+            "sql": "CREATE INDEX \"post_tag_postId_idx_a7a72715\" ON \"post_tag\" (\"postId\")"
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify index \"post_tag_postId_idx_a7a72715\" exists",
+            "sql": "SELECT COUNT(*) > 0 AS \"result\" FROM \"sqlite_master\" WHERE (\"type\" = ? AND \"name\" = ?)",
+            "params": [
+              "index",
+              "post_tag_postId_idx_a7a72715"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "index.post_tag.post_tag_tagId_idx_86854244",
+        "label": "Create index post_tag_tagId_idx_86854244 on post_tag",
+        "summary": "Creates index post_tag_tagId_idx_86854244 on post_tag",
+        "operationClass": "additive",
+        "target": {
+          "id": "sqlite",
+          "details": {
+            "schema": "main",
+            "objectType": "index",
+            "name": "post_tag_tagId_idx_86854244",
+            "table": "post_tag"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure index \"post_tag_tagId_idx_86854244\" is missing",
+            "sql": "SELECT COUNT(*) = 0 AS \"result\" FROM \"sqlite_master\" WHERE (\"type\" = ? AND \"name\" = ?)",
+            "params": [
+              "index",
+              "post_tag_tagId_idx_86854244"
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "create index \"post_tag_tagId_idx_86854244\"",
+            "sql": "CREATE INDEX \"post_tag_tagId_idx_86854244\" ON \"post_tag\" (\"tagId\")"
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify index \"post_tag_tagId_idx_86854244\" exists",
+            "sql": "SELECT COUNT(*) > 0 AS \"result\" FROM \"sqlite_master\" WHERE (\"type\" = ? AND \"name\" = ?)",
+            "params": [
+              "index",
+              "post_tag_tagId_idx_86854244"
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,214 @@
+{
+  "contract": "test/integration/test/ports/prisma/functional/optimistic-concurrency-control/_fixture/generated/contract.json",
+  "target": "postgres",
+  "extensions": [],
+  "planned": {
+    "kind": "success",
+    "operations": [
+      {
+        "id": "table.child",
+        "label": "Create table \"child\"",
+        "summary": "Creates table \"child\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "table",
+            "name": "child"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure table \"child\" does not exist",
+            "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+            "params": [
+              "\"public\".\"child\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "create table \"child\"",
+            "sql": "CREATE TABLE \"public\".\"child\" (\n  \"id\" text NOT NULL,\n  \"parentId\" text NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+            "params": []
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify table \"child\" exists",
+            "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+            "params": [
+              "\"public\".\"child\""
+            ]
+          }
+        ]
+      },
+      {
+        "id": "table.resource",
+        "label": "Create table \"resource\"",
+        "summary": "Creates table \"resource\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "table",
+            "name": "resource"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure table \"resource\" does not exist",
+            "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+            "params": [
+              "\"public\".\"resource\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "create table \"resource\"",
+            "sql": "CREATE TABLE \"public\".\"resource\" (\n  \"id\" text NOT NULL,\n  \"occStamp\" int4 DEFAULT 0 NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+            "params": []
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify table \"resource\" exists",
+            "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+            "params": [
+              "\"public\".\"resource\""
+            ]
+          }
+        ]
+      },
+      {
+        "id": "unique.child.child_parentId_key",
+        "label": "Add unique constraint on \"child\" (parentId)",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "unique",
+            "name": "child_parentId_key",
+            "table": "child"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure constraint \"child_parentId_key\" does not exist",
+            "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+            "params": [
+              "child_parentId_key",
+              "public",
+              "\"public\".\"child\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "add unique constraint \"child_parentId_key\"",
+            "sql": "ALTER TABLE \"public\".\"child\" ADD CONSTRAINT \"child_parentId_key\" UNIQUE (\"parentId\")"
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify constraint \"child_parentId_key\" exists",
+            "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+            "params": [
+              "child_parentId_key",
+              "public",
+              "\"public\".\"child\""
+            ]
+          }
+        ]
+      },
+      {
+        "id": "unique.resource.resource_occStamp_key",
+        "label": "Add unique constraint on \"resource\" (occStamp)",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "unique",
+            "name": "resource_occStamp_key",
+            "table": "resource"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure constraint \"resource_occStamp_key\" does not exist",
+            "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+            "params": [
+              "resource_occStamp_key",
+              "public",
+              "\"public\".\"resource\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "add unique constraint \"resource_occStamp_key\"",
+            "sql": "ALTER TABLE \"public\".\"resource\" ADD CONSTRAINT \"resource_occStamp_key\" UNIQUE (\"occStamp\")"
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify constraint \"resource_occStamp_key\" exists",
+            "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+            "params": [
+              "resource_occStamp_key",
+              "public",
+              "\"public\".\"resource\""
+            ]
+          }
+        ]
+      },
+      {
+        "id": "foreignKey.child.child_parentId_fkey",
+        "label": "Add foreign key \"child_parentId_fkey\" on \"child\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "foreignKey",
+            "name": "child_parentId_fkey",
+            "table": "child"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure FK \"child_parentId_fkey\" does not exist",
+            "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+            "params": [
+              "child_parentId_fkey",
+              "public",
+              "\"public\".\"child\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "add FK \"child_parentId_fkey\"",
+            "sql": "ALTER TABLE \"public\".\"child\"\nADD CONSTRAINT \"child_parentId_fkey\"\nFOREIGN KEY (\"parentId\")\nREFERENCES \"public\".\"resource\" (\"id\")\nON DELETE CASCADE"
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify FK \"child_parentId_fkey\" exists",
+            "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+            "params": [
+              "child_parentId_fkey",
+              "public",
+              "\"public\".\"child\""
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,203 @@
+{
+  "contract": "test/integration/test/ports/prisma/functional/multi-schema/_fixture/different-names/generated/contract.json",
+  "target": "postgres",
+  "extensions": [],
+  "planned": {
+    "kind": "success",
+    "operations": [
+      {
+        "id": "schema.base",
+        "label": "Create schema \"base\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres"
+        },
+        "precheck": [],
+        "execute": [
+          {
+            "description": "Create schema \"base\"",
+            "sql": "CREATE SCHEMA IF NOT EXISTS \"base\"",
+            "params": []
+          }
+        ],
+        "postcheck": []
+      },
+      {
+        "id": "schema.transactional",
+        "label": "Create schema \"transactional\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres"
+        },
+        "precheck": [],
+        "execute": [
+          {
+            "description": "Create schema \"transactional\"",
+            "sql": "CREATE SCHEMA IF NOT EXISTS \"transactional\"",
+            "params": []
+          }
+        ],
+        "postcheck": []
+      },
+      {
+        "id": "table.some_table_user",
+        "label": "Create table \"some_table_user\"",
+        "summary": "Creates table \"some_table_user\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "base",
+            "objectType": "table",
+            "name": "some_table_user"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure table \"some_table_user\" does not exist",
+            "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+            "params": [
+              "\"base\".\"some_table_user\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "create table \"some_table_user\"",
+            "sql": "CREATE TABLE \"base\".\"some_table_user\" (\n  \"email\" text NOT NULL,\n  \"id\" text NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+            "params": []
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify table \"some_table_user\" exists",
+            "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+            "params": [
+              "\"base\".\"some_table_user\""
+            ]
+          }
+        ]
+      },
+      {
+        "id": "table.some_table_post",
+        "label": "Create table \"some_table_post\"",
+        "summary": "Creates table \"some_table_post\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "transactional",
+            "objectType": "table",
+            "name": "some_table_post"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure table \"some_table_post\" does not exist",
+            "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+            "params": [
+              "\"transactional\".\"some_table_post\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "create table \"some_table_post\"",
+            "sql": "CREATE TABLE \"transactional\".\"some_table_post\" (\n  \"authorId\" text NOT NULL,\n  \"id\" text NOT NULL,\n  \"title\" text NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+            "params": []
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify table \"some_table_post\" exists",
+            "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+            "params": [
+              "\"transactional\".\"some_table_post\""
+            ]
+          }
+        ]
+      },
+      {
+        "id": "index.some_table_post.some_table_post_authorId_idx_e47547ed",
+        "label": "Create index \"some_table_post_authorId_idx_e47547ed\" on \"some_table_post\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "transactional",
+            "objectType": "index",
+            "name": "some_table_post_authorId_idx_e47547ed",
+            "table": "some_table_post"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure index \"some_table_post_authorId_idx_e47547ed\" does not exist",
+            "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+            "params": [
+              "\"transactional\".\"some_table_post_authorId_idx_e47547ed\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "create index \"some_table_post_authorId_idx_e47547ed\"",
+            "sql": "CREATE INDEX \"some_table_post_authorId_idx_e47547ed\" ON \"transactional\".\"some_table_post\" (\"authorId\")",
+            "params": []
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify index \"some_table_post_authorId_idx_e47547ed\" exists",
+            "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+            "params": [
+              "\"transactional\".\"some_table_post_authorId_idx_e47547ed\""
+            ]
+          }
+        ]
+      },
+      {
+        "id": "foreignKey.some_table_post.some_table_post_authorId_fkey",
+        "label": "Add foreign key \"some_table_post_authorId_fkey\" on \"some_table_post\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "transactional",
+            "objectType": "foreignKey",
+            "name": "some_table_post_authorId_fkey",
+            "table": "some_table_post"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure FK \"some_table_post_authorId_fkey\" does not exist",
+            "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+            "params": [
+              "some_table_post_authorId_fkey",
+              "transactional",
+              "\"transactional\".\"some_table_post\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "add FK \"some_table_post_authorId_fkey\"",
+            "sql": "ALTER TABLE \"transactional\".\"some_table_post\"\nADD CONSTRAINT \"some_table_post_authorId_fkey\"\nFOREIGN KEY (\"authorId\")\nREFERENCES \"base\".\"some_table_user\" (\"id\")"
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify FK \"some_table_post_authorId_fkey\" exists",
+            "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+            "params": [
+              "some_table_post_authorId_fkey",
+              "transactional",
+              "\"transactional\".\"some_table_post\""
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "contract": "packages/3-extensions/postgis/src/contract.json",
+  "target": "postgres",
+  "extensions": [],
+  "planned": {
+    "kind": "success",
+    "operations": []
+  }
+}

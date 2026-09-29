@@ -1,0 +1,49 @@
+{
+  "contract": "test/integration/test/authoring/parity/default-data-types/expected.contract.json",
+  "target": "postgres",
+  "extensions": [],
+  "planned": {
+    "kind": "success",
+    "operations": [
+      {
+        "id": "table.t",
+        "label": "Create table \"t\"",
+        "summary": "Creates table \"t\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "table",
+            "name": "t"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure table \"t\" does not exist",
+            "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+            "params": [
+              "\"public\".\"t\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "create table \"t\"",
+            "sql": "CREATE TABLE \"public\".\"t\" (\n  \"active\" bool DEFAULT true NOT NULL,\n  \"count\" int4 DEFAULT 100000 NOT NULL,\n  \"docs\" jsonb[] DEFAULT ARRAY['{}', '[]']::jsonb[] NOT NULL,\n  \"id\" SERIAL NOT NULL,\n  \"meta\" jsonb DEFAULT '{\"plan\":\"free\",\"seats\":1}'::jsonb NOT NULL,\n  \"name\" text DEFAULT 'anonymous' NOT NULL,\n  \"price\" numeric(10,2) DEFAULT '1.50'::numeric(10,2) NOT NULL,\n  \"ratio\" float8 DEFAULT 1.5 NOT NULL,\n  \"scores\" int4[] DEFAULT ARRAY[1, 2]::int4[] NOT NULL,\n  \"small\" int2 DEFAULT 100 NOT NULL,\n  PRIMARY KEY (\"id\"),\n  CONSTRAINT \"t_docs_elem_not_null_3ecbeb56\" CHECK (array_position(\"docs\", NULL) IS NULL),\n  CONSTRAINT \"t_scores_elem_not_null_0d0de0bd\" CHECK (array_position(\"scores\", NULL) IS NULL)\n)",
+            "params": []
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify table \"t\" exists",
+            "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+            "params": [
+              "\"public\".\"t\""
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

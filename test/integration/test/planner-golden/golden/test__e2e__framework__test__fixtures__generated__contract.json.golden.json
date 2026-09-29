@@ -1,0 +1,328 @@
+{
+  "contract": "test/e2e/framework/test/fixtures/generated/contract.json",
+  "target": "postgres",
+  "extensions": [
+    "arktype-json",
+    "pgvector"
+  ],
+  "planned": {
+    "kind": "success",
+    "operations": [
+      {
+        "id": "table.comment",
+        "label": "Create table \"comment\"",
+        "summary": "Creates table \"comment\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "table",
+            "name": "comment"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure table \"comment\" does not exist",
+            "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+            "params": [
+              "\"public\".\"comment\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "create table \"comment\"",
+            "sql": "CREATE TABLE \"public\".\"comment\" (\n  \"content\" text NOT NULL,\n  \"created_at\" timestamptz DEFAULT (now()) NOT NULL,\n  \"id\" SERIAL NOT NULL,\n  \"postId\" int4 NOT NULL,\n  \"update_at\" timestamptz,\n  PRIMARY KEY (\"id\")\n)",
+            "params": []
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify table \"comment\" exists",
+            "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+            "params": [
+              "\"public\".\"comment\""
+            ]
+          }
+        ]
+      },
+      {
+        "id": "table.embedding",
+        "label": "Create table \"embedding\"",
+        "summary": "Creates table \"embedding\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "table",
+            "name": "embedding"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure table \"embedding\" does not exist",
+            "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+            "params": [
+              "\"public\".\"embedding\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "create table \"embedding\"",
+            "sql": "CREATE TABLE \"public\".\"embedding\" (\n  \"embedding\" vector(1536) NOT NULL,\n  \"id\" SERIAL NOT NULL,\n  \"profile\" jsonb NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+            "params": []
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify table \"embedding\" exists",
+            "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+            "params": [
+              "\"public\".\"embedding\""
+            ]
+          }
+        ]
+      },
+      {
+        "id": "table.event",
+        "label": "Create table \"event\"",
+        "summary": "Creates table \"event\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "table",
+            "name": "event"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure table \"event\" does not exist",
+            "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+            "params": [
+              "\"public\".\"event\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "create table \"event\"",
+            "sql": "CREATE TABLE \"public\".\"event\" (\n  \"created_at\" timestamptz DEFAULT (now()) NOT NULL,\n  \"id\" character(36) NOT NULL,\n  \"name\" text NOT NULL,\n  \"scheduled_at\" timestamptz DEFAULT '2024-01-15 10:30:00+00'::timestamptz NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+            "params": []
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify table \"event\" exists",
+            "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+            "params": [
+              "\"public\".\"event\""
+            ]
+          }
+        ]
+      },
+      {
+        "id": "table.literal_defaults",
+        "label": "Create table \"literal_defaults\"",
+        "summary": "Creates table \"literal_defaults\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "table",
+            "name": "literal_defaults"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure table \"literal_defaults\" does not exist",
+            "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+            "params": [
+              "\"public\".\"literal_defaults\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "create table \"literal_defaults\"",
+            "sql": "CREATE TABLE \"public\".\"literal_defaults\" (\n  \"active\" bool DEFAULT true NOT NULL,\n  \"big_count\" int8 DEFAULT '9007199254740991'::int8 NOT NULL,\n  \"id\" SERIAL NOT NULL,\n  \"label\" text DEFAULT 'draft' NOT NULL,\n  \"metadata\" jsonb DEFAULT '{\"key\":\"default\"}'::jsonb NOT NULL,\n  \"rating\" float8 DEFAULT 3.14 NOT NULL,\n  \"score\" int4 DEFAULT 0 NOT NULL,\n  \"tags\" jsonb DEFAULT '[\"alpha\",\"beta\"]'::jsonb NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+            "params": []
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify table \"literal_defaults\" exists",
+            "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+            "params": [
+              "\"public\".\"literal_defaults\""
+            ]
+          }
+        ]
+      },
+      {
+        "id": "table.param_types",
+        "label": "Create table \"param_types\"",
+        "summary": "Creates table \"param_types\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "table",
+            "name": "param_types"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure table \"param_types\" does not exist",
+            "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+            "params": [
+              "\"public\".\"param_types\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "create table \"param_types\"",
+            "sql": "CREATE TABLE \"public\".\"param_types\" (\n  \"bits\" bit varying(12),\n  \"code\" character(16),\n  \"created_at\" timestamptz(3),\n  \"duration\" interval(6),\n  \"flags\" bit(8),\n  \"id\" SERIAL NOT NULL,\n  \"name\" character varying(255),\n  \"price\" numeric(10,2),\n  \"starts_at\" time(2),\n  \"starts_at_tz\" timetz(2),\n  PRIMARY KEY (\"id\")\n)",
+            "params": []
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify table \"param_types\" exists",
+            "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+            "params": [
+              "\"public\".\"param_types\""
+            ]
+          }
+        ]
+      },
+      {
+        "id": "table.post",
+        "label": "Create table \"post\"",
+        "summary": "Creates table \"post\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "table",
+            "name": "post"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure table \"post\" does not exist",
+            "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+            "params": [
+              "\"public\".\"post\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "create table \"post\"",
+            "sql": "CREATE TABLE \"public\".\"post\" (\n  \"created_at\" timestamptz DEFAULT (now()) NOT NULL,\n  \"id\" SERIAL NOT NULL,\n  \"meta\" json,\n  \"published\" bool NOT NULL,\n  \"title\" text NOT NULL,\n  \"update_at\" timestamptz,\n  \"userId\" int4 NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+            "params": []
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify table \"post\" exists",
+            "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+            "params": [
+              "\"public\".\"post\""
+            ]
+          }
+        ]
+      },
+      {
+        "id": "table.user",
+        "label": "Create table \"user\"",
+        "summary": "Creates table \"user\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "table",
+            "name": "user"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure table \"user\" does not exist",
+            "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+            "params": [
+              "\"public\".\"user\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "create table \"user\"",
+            "sql": "CREATE TABLE \"public\".\"user\" (\n  \"created_at\" timestamptz DEFAULT (now()) NOT NULL,\n  \"email\" character varying(255) NOT NULL,\n  \"id\" SERIAL NOT NULL,\n  \"profile\" jsonb,\n  \"update_at\" timestamptz,\n  PRIMARY KEY (\"id\")\n)",
+            "params": []
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify table \"user\" exists",
+            "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+            "params": [
+              "\"public\".\"user\""
+            ]
+          }
+        ]
+      },
+      {
+        "id": "unique.user.user_email_key",
+        "label": "Add unique constraint on \"user\" (email)",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "unique",
+            "name": "user_email_key",
+            "table": "user"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure constraint \"user_email_key\" does not exist",
+            "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+            "params": [
+              "user_email_key",
+              "public",
+              "\"public\".\"user\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "add unique constraint \"user_email_key\"",
+            "sql": "ALTER TABLE \"public\".\"user\" ADD CONSTRAINT \"user_email_key\" UNIQUE (\"email\")"
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify constraint \"user_email_key\" exists",
+            "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+            "params": [
+              "user_email_key",
+              "public",
+              "\"public\".\"user\""
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,90 @@
+{
+  "contract": "examples/paradedb-demo/src/prisma/contract.json",
+  "target": "postgres",
+  "extensions": [
+    "paradedb"
+  ],
+  "planned": {
+    "kind": "success",
+    "operations": [
+      {
+        "id": "table.item",
+        "label": "Create table \"item\"",
+        "summary": "Creates table \"item\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "table",
+            "name": "item"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure table \"item\" does not exist",
+            "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+            "params": [
+              "\"public\".\"item\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "create table \"item\"",
+            "sql": "CREATE TABLE \"public\".\"item\" (\n  \"category\" text NOT NULL,\n  \"description\" text NOT NULL,\n  \"id\" int4 NOT NULL,\n  \"rating\" int4 NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+            "params": []
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify table \"item\" exists",
+            "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+            "params": [
+              "\"public\".\"item\""
+            ]
+          }
+        ]
+      },
+      {
+        "id": "index.item.item_bm25_idx_3b626832",
+        "label": "Create index \"item_bm25_idx_3b626832\" on \"item\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "index",
+            "name": "item_bm25_idx_3b626832",
+            "table": "item"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure index \"item_bm25_idx_3b626832\" does not exist",
+            "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+            "params": [
+              "\"public\".\"item_bm25_idx_3b626832\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "create index \"item_bm25_idx_3b626832\"",
+            "sql": "CREATE INDEX \"item_bm25_idx_3b626832\" ON \"public\".\"item\" USING \"bm25\" (\"id\", \"description\", \"category\", \"rating\") WITH (\"key_field\" = 'id')",
+            "params": []
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify index \"item_bm25_idx_3b626832\" exists",
+            "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+            "params": [
+              "\"public\".\"item_bm25_idx_3b626832\""
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

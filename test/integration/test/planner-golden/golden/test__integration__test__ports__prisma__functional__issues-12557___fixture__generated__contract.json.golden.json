@@ -1,0 +1,373 @@
+{
+  "contract": "test/integration/test/ports/prisma/functional/issues-12557/_fixture/generated/contract.json",
+  "target": "postgres",
+  "extensions": [],
+  "planned": {
+    "kind": "success",
+    "operations": [
+      {
+        "id": "table.brand",
+        "label": "Create table \"brand\"",
+        "summary": "Creates table \"brand\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "table",
+            "name": "brand"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure table \"brand\" does not exist",
+            "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+            "params": [
+              "\"public\".\"brand\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "create table \"brand\"",
+            "sql": "CREATE TABLE \"public\".\"brand\" (\n  \"id\" text NOT NULL,\n  \"name\" text NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+            "params": []
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify table \"brand\" exists",
+            "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+            "params": [
+              "\"public\".\"brand\""
+            ]
+          }
+        ]
+      },
+      {
+        "id": "table.category",
+        "label": "Create table \"category\"",
+        "summary": "Creates table \"category\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "table",
+            "name": "category"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure table \"category\" does not exist",
+            "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+            "params": [
+              "\"public\".\"category\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "create table \"category\"",
+            "sql": "CREATE TABLE \"public\".\"category\" (\n  \"id\" text NOT NULL,\n  \"name\" text NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+            "params": []
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify table \"category\" exists",
+            "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+            "params": [
+              "\"public\".\"category\""
+            ]
+          }
+        ]
+      },
+      {
+        "id": "table.categoryBrand",
+        "label": "Create table \"categoryBrand\"",
+        "summary": "Creates table \"categoryBrand\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "table",
+            "name": "categoryBrand"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure table \"categoryBrand\" does not exist",
+            "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+            "params": [
+              "\"public\".\"categoryBrand\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "create table \"categoryBrand\"",
+            "sql": "CREATE TABLE \"public\".\"categoryBrand\" (\n  \"brandId\" text NOT NULL,\n  \"categoryId\" text NOT NULL,\n  PRIMARY KEY (\"categoryId\", \"brandId\")\n)",
+            "params": []
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify table \"categoryBrand\" exists",
+            "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+            "params": [
+              "\"public\".\"categoryBrand\""
+            ]
+          }
+        ]
+      },
+      {
+        "id": "unique.brand.brand_name_key",
+        "label": "Add unique constraint on \"brand\" (name)",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "unique",
+            "name": "brand_name_key",
+            "table": "brand"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure constraint \"brand_name_key\" does not exist",
+            "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+            "params": [
+              "brand_name_key",
+              "public",
+              "\"public\".\"brand\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "add unique constraint \"brand_name_key\"",
+            "sql": "ALTER TABLE \"public\".\"brand\" ADD CONSTRAINT \"brand_name_key\" UNIQUE (\"name\")"
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify constraint \"brand_name_key\" exists",
+            "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+            "params": [
+              "brand_name_key",
+              "public",
+              "\"public\".\"brand\""
+            ]
+          }
+        ]
+      },
+      {
+        "id": "unique.category.category_name_key",
+        "label": "Add unique constraint on \"category\" (name)",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "unique",
+            "name": "category_name_key",
+            "table": "category"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure constraint \"category_name_key\" does not exist",
+            "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+            "params": [
+              "category_name_key",
+              "public",
+              "\"public\".\"category\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "add unique constraint \"category_name_key\"",
+            "sql": "ALTER TABLE \"public\".\"category\" ADD CONSTRAINT \"category_name_key\" UNIQUE (\"name\")"
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify constraint \"category_name_key\" exists",
+            "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+            "params": [
+              "category_name_key",
+              "public",
+              "\"public\".\"category\""
+            ]
+          }
+        ]
+      },
+      {
+        "id": "index.categoryBrand.categoryBrand_brandId_idx_02e95397",
+        "label": "Create index \"categoryBrand_brandId_idx_02e95397\" on \"categoryBrand\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "index",
+            "name": "categoryBrand_brandId_idx_02e95397",
+            "table": "categoryBrand"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure index \"categoryBrand_brandId_idx_02e95397\" does not exist",
+            "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+            "params": [
+              "\"public\".\"categoryBrand_brandId_idx_02e95397\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "create index \"categoryBrand_brandId_idx_02e95397\"",
+            "sql": "CREATE INDEX \"categoryBrand_brandId_idx_02e95397\" ON \"public\".\"categoryBrand\" (\"brandId\")",
+            "params": []
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify index \"categoryBrand_brandId_idx_02e95397\" exists",
+            "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+            "params": [
+              "\"public\".\"categoryBrand_brandId_idx_02e95397\""
+            ]
+          }
+        ]
+      },
+      {
+        "id": "index.categoryBrand.categoryBrand_categoryId_idx_15c304f2",
+        "label": "Create index \"categoryBrand_categoryId_idx_15c304f2\" on \"categoryBrand\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "index",
+            "name": "categoryBrand_categoryId_idx_15c304f2",
+            "table": "categoryBrand"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure index \"categoryBrand_categoryId_idx_15c304f2\" does not exist",
+            "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+            "params": [
+              "\"public\".\"categoryBrand_categoryId_idx_15c304f2\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "create index \"categoryBrand_categoryId_idx_15c304f2\"",
+            "sql": "CREATE INDEX \"categoryBrand_categoryId_idx_15c304f2\" ON \"public\".\"categoryBrand\" (\"categoryId\")",
+            "params": []
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify index \"categoryBrand_categoryId_idx_15c304f2\" exists",
+            "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+            "params": [
+              "\"public\".\"categoryBrand_categoryId_idx_15c304f2\""
+            ]
+          }
+        ]
+      },
+      {
+        "id": "foreignKey.categoryBrand.categoryBrand_categoryId_fkey",
+        "label": "Add foreign key \"categoryBrand_categoryId_fkey\" on \"categoryBrand\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "foreignKey",
+            "name": "categoryBrand_categoryId_fkey",
+            "table": "categoryBrand"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure FK \"categoryBrand_categoryId_fkey\" does not exist",
+            "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+            "params": [
+              "categoryBrand_categoryId_fkey",
+              "public",
+              "\"public\".\"categoryBrand\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "add FK \"categoryBrand_categoryId_fkey\"",
+            "sql": "ALTER TABLE \"public\".\"categoryBrand\"\nADD CONSTRAINT \"categoryBrand_categoryId_fkey\"\nFOREIGN KEY (\"categoryId\")\nREFERENCES \"public\".\"category\" (\"id\")\nON DELETE CASCADE"
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify FK \"categoryBrand_categoryId_fkey\" exists",
+            "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+            "params": [
+              "categoryBrand_categoryId_fkey",
+              "public",
+              "\"public\".\"categoryBrand\""
+            ]
+          }
+        ]
+      },
+      {
+        "id": "foreignKey.categoryBrand.categoryBrand_brandId_fkey",
+        "label": "Add foreign key \"categoryBrand_brandId_fkey\" on \"categoryBrand\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "foreignKey",
+            "name": "categoryBrand_brandId_fkey",
+            "table": "categoryBrand"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure FK \"categoryBrand_brandId_fkey\" does not exist",
+            "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+            "params": [
+              "categoryBrand_brandId_fkey",
+              "public",
+              "\"public\".\"categoryBrand\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "add FK \"categoryBrand_brandId_fkey\"",
+            "sql": "ALTER TABLE \"public\".\"categoryBrand\"\nADD CONSTRAINT \"categoryBrand_brandId_fkey\"\nFOREIGN KEY (\"brandId\")\nREFERENCES \"public\".\"brand\" (\"id\")\nON DELETE CASCADE"
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify FK \"categoryBrand_brandId_fkey\" exists",
+            "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+            "params": [
+              "categoryBrand_brandId_fkey",
+              "public",
+              "\"public\".\"categoryBrand\""
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

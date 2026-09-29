@@ -1,0 +1,331 @@
+{
+  "contract": "test/integration/test/ports/prisma/functional/issues-17005-args-type-conflict/_fixture/generated/contract.json",
+  "target": "postgres",
+  "extensions": [],
+  "planned": {
+    "kind": "success",
+    "operations": [
+      {
+        "id": "table.media",
+        "label": "Create table \"media\"",
+        "summary": "Creates table \"media\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "table",
+            "name": "media"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure table \"media\" does not exist",
+            "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+            "params": [
+              "\"public\".\"media\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "create table \"media\"",
+            "sql": "CREATE TABLE \"public\".\"media\" (\n  \"id\" text NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+            "params": []
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify table \"media\" exists",
+            "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+            "params": [
+              "\"public\".\"media\""
+            ]
+          }
+        ]
+      },
+      {
+        "id": "table.post",
+        "label": "Create table \"post\"",
+        "summary": "Creates table \"post\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "table",
+            "name": "post"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure table \"post\" does not exist",
+            "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+            "params": [
+              "\"public\".\"post\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "create table \"post\"",
+            "sql": "CREATE TABLE \"public\".\"post\" (\n  \"id\" text NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+            "params": []
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify table \"post\" exists",
+            "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+            "params": [
+              "\"public\".\"post\""
+            ]
+          }
+        ]
+      },
+      {
+        "id": "table.postMedia",
+        "label": "Create table \"postMedia\"",
+        "summary": "Creates table \"postMedia\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "table",
+            "name": "postMedia"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure table \"postMedia\" does not exist",
+            "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+            "params": [
+              "\"public\".\"postMedia\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "create table \"postMedia\"",
+            "sql": "CREATE TABLE \"public\".\"postMedia\" (\n  \"id\" text NOT NULL,\n  \"mediaId\" text NOT NULL,\n  \"postId\" text NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+            "params": []
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify table \"postMedia\" exists",
+            "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+            "params": [
+              "\"public\".\"postMedia\""
+            ]
+          }
+        ]
+      },
+      {
+        "id": "unique.postMedia.postMedia_postId_mediaId_key",
+        "label": "Add unique constraint on \"postMedia\" (postId, mediaId)",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "unique",
+            "name": "postMedia_postId_mediaId_key",
+            "table": "postMedia"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure constraint \"postMedia_postId_mediaId_key\" does not exist",
+            "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+            "params": [
+              "postMedia_postId_mediaId_key",
+              "public",
+              "\"public\".\"postMedia\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "add unique constraint \"postMedia_postId_mediaId_key\"",
+            "sql": "ALTER TABLE \"public\".\"postMedia\" ADD CONSTRAINT \"postMedia_postId_mediaId_key\" UNIQUE (\"postId\", \"mediaId\")"
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify constraint \"postMedia_postId_mediaId_key\" exists",
+            "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+            "params": [
+              "postMedia_postId_mediaId_key",
+              "public",
+              "\"public\".\"postMedia\""
+            ]
+          }
+        ]
+      },
+      {
+        "id": "index.postMedia.postMedia_mediaId_idx_6b06655c",
+        "label": "Create index \"postMedia_mediaId_idx_6b06655c\" on \"postMedia\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "index",
+            "name": "postMedia_mediaId_idx_6b06655c",
+            "table": "postMedia"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure index \"postMedia_mediaId_idx_6b06655c\" does not exist",
+            "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+            "params": [
+              "\"public\".\"postMedia_mediaId_idx_6b06655c\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "create index \"postMedia_mediaId_idx_6b06655c\"",
+            "sql": "CREATE INDEX \"postMedia_mediaId_idx_6b06655c\" ON \"public\".\"postMedia\" (\"mediaId\")",
+            "params": []
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify index \"postMedia_mediaId_idx_6b06655c\" exists",
+            "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+            "params": [
+              "\"public\".\"postMedia_mediaId_idx_6b06655c\""
+            ]
+          }
+        ]
+      },
+      {
+        "id": "index.postMedia.postMedia_postId_idx_a7a72715",
+        "label": "Create index \"postMedia_postId_idx_a7a72715\" on \"postMedia\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "index",
+            "name": "postMedia_postId_idx_a7a72715",
+            "table": "postMedia"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure index \"postMedia_postId_idx_a7a72715\" does not exist",
+            "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+            "params": [
+              "\"public\".\"postMedia_postId_idx_a7a72715\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "create index \"postMedia_postId_idx_a7a72715\"",
+            "sql": "CREATE INDEX \"postMedia_postId_idx_a7a72715\" ON \"public\".\"postMedia\" (\"postId\")",
+            "params": []
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify index \"postMedia_postId_idx_a7a72715\" exists",
+            "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+            "params": [
+              "\"public\".\"postMedia_postId_idx_a7a72715\""
+            ]
+          }
+        ]
+      },
+      {
+        "id": "foreignKey.postMedia.postMedia_postId_fkey",
+        "label": "Add foreign key \"postMedia_postId_fkey\" on \"postMedia\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "foreignKey",
+            "name": "postMedia_postId_fkey",
+            "table": "postMedia"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure FK \"postMedia_postId_fkey\" does not exist",
+            "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+            "params": [
+              "postMedia_postId_fkey",
+              "public",
+              "\"public\".\"postMedia\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "add FK \"postMedia_postId_fkey\"",
+            "sql": "ALTER TABLE \"public\".\"postMedia\"\nADD CONSTRAINT \"postMedia_postId_fkey\"\nFOREIGN KEY (\"postId\")\nREFERENCES \"public\".\"post\" (\"id\")"
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify FK \"postMedia_postId_fkey\" exists",
+            "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+            "params": [
+              "postMedia_postId_fkey",
+              "public",
+              "\"public\".\"postMedia\""
+            ]
+          }
+        ]
+      },
+      {
+        "id": "foreignKey.postMedia.postMedia_mediaId_fkey",
+        "label": "Add foreign key \"postMedia_mediaId_fkey\" on \"postMedia\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "foreignKey",
+            "name": "postMedia_mediaId_fkey",
+            "table": "postMedia"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure FK \"postMedia_mediaId_fkey\" does not exist",
+            "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+            "params": [
+              "postMedia_mediaId_fkey",
+              "public",
+              "\"public\".\"postMedia\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "add FK \"postMedia_mediaId_fkey\"",
+            "sql": "ALTER TABLE \"public\".\"postMedia\"\nADD CONSTRAINT \"postMedia_mediaId_fkey\"\nFOREIGN KEY (\"mediaId\")\nREFERENCES \"public\".\"media\" (\"id\")"
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify FK \"postMedia_mediaId_fkey\" exists",
+            "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+            "params": [
+              "postMedia_mediaId_fkey",
+              "public",
+              "\"public\".\"postMedia\""
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

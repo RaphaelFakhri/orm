@@ -1,0 +1,331 @@
+{
+  "contract": "test/integration/test/ports/prisma/functional/issues-12378/_fixture/generated/contract.json",
+  "target": "postgres",
+  "extensions": [],
+  "planned": {
+    "kind": "success",
+    "operations": [
+      {
+        "id": "table.user",
+        "label": "Create table \"user\"",
+        "summary": "Creates table \"user\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "table",
+            "name": "user"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure table \"user\" does not exist",
+            "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+            "params": [
+              "\"public\".\"user\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "create table \"user\"",
+            "sql": "CREATE TABLE \"public\".\"user\" (\n  \"email\" text NOT NULL,\n  \"id\" text NOT NULL,\n  \"name\" text,\n  PRIMARY KEY (\"id\")\n)",
+            "params": []
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify table \"user\" exists",
+            "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+            "params": [
+              "\"public\".\"user\""
+            ]
+          }
+        ]
+      },
+      {
+        "id": "table.usersOnWorkspaces",
+        "label": "Create table \"usersOnWorkspaces\"",
+        "summary": "Creates table \"usersOnWorkspaces\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "table",
+            "name": "usersOnWorkspaces"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure table \"usersOnWorkspaces\" does not exist",
+            "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+            "params": [
+              "\"public\".\"usersOnWorkspaces\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "create table \"usersOnWorkspaces\"",
+            "sql": "CREATE TABLE \"public\".\"usersOnWorkspaces\" (\n  \"userId\" text NOT NULL,\n  \"workspaceId\" text NOT NULL,\n  PRIMARY KEY (\"userId\", \"workspaceId\")\n)",
+            "params": []
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify table \"usersOnWorkspaces\" exists",
+            "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+            "params": [
+              "\"public\".\"usersOnWorkspaces\""
+            ]
+          }
+        ]
+      },
+      {
+        "id": "table.workspace",
+        "label": "Create table \"workspace\"",
+        "summary": "Creates table \"workspace\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "table",
+            "name": "workspace"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure table \"workspace\" does not exist",
+            "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+            "params": [
+              "\"public\".\"workspace\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "create table \"workspace\"",
+            "sql": "CREATE TABLE \"public\".\"workspace\" (\n  \"id\" text NOT NULL,\n  \"name\" text NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+            "params": []
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify table \"workspace\" exists",
+            "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+            "params": [
+              "\"public\".\"workspace\""
+            ]
+          }
+        ]
+      },
+      {
+        "id": "unique.user.user_email_key",
+        "label": "Add unique constraint on \"user\" (email)",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "unique",
+            "name": "user_email_key",
+            "table": "user"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure constraint \"user_email_key\" does not exist",
+            "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+            "params": [
+              "user_email_key",
+              "public",
+              "\"public\".\"user\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "add unique constraint \"user_email_key\"",
+            "sql": "ALTER TABLE \"public\".\"user\" ADD CONSTRAINT \"user_email_key\" UNIQUE (\"email\")"
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify constraint \"user_email_key\" exists",
+            "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+            "params": [
+              "user_email_key",
+              "public",
+              "\"public\".\"user\""
+            ]
+          }
+        ]
+      },
+      {
+        "id": "index.usersOnWorkspaces.usersOnWorkspaces_userId_idx_a489d58a",
+        "label": "Create index \"usersOnWorkspaces_userId_idx_a489d58a\" on \"usersOnWorkspaces\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "index",
+            "name": "usersOnWorkspaces_userId_idx_a489d58a",
+            "table": "usersOnWorkspaces"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure index \"usersOnWorkspaces_userId_idx_a489d58a\" does not exist",
+            "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+            "params": [
+              "\"public\".\"usersOnWorkspaces_userId_idx_a489d58a\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "create index \"usersOnWorkspaces_userId_idx_a489d58a\"",
+            "sql": "CREATE INDEX \"usersOnWorkspaces_userId_idx_a489d58a\" ON \"public\".\"usersOnWorkspaces\" (\"userId\")",
+            "params": []
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify index \"usersOnWorkspaces_userId_idx_a489d58a\" exists",
+            "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+            "params": [
+              "\"public\".\"usersOnWorkspaces_userId_idx_a489d58a\""
+            ]
+          }
+        ]
+      },
+      {
+        "id": "index.usersOnWorkspaces.usersOnWorkspaces_workspaceId_idx_ba65f874",
+        "label": "Create index \"usersOnWorkspaces_workspaceId_idx_ba65f874\" on \"usersOnWorkspaces\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "index",
+            "name": "usersOnWorkspaces_workspaceId_idx_ba65f874",
+            "table": "usersOnWorkspaces"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure index \"usersOnWorkspaces_workspaceId_idx_ba65f874\" does not exist",
+            "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+            "params": [
+              "\"public\".\"usersOnWorkspaces_workspaceId_idx_ba65f874\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "create index \"usersOnWorkspaces_workspaceId_idx_ba65f874\"",
+            "sql": "CREATE INDEX \"usersOnWorkspaces_workspaceId_idx_ba65f874\" ON \"public\".\"usersOnWorkspaces\" (\"workspaceId\")",
+            "params": []
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify index \"usersOnWorkspaces_workspaceId_idx_ba65f874\" exists",
+            "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+            "params": [
+              "\"public\".\"usersOnWorkspaces_workspaceId_idx_ba65f874\""
+            ]
+          }
+        ]
+      },
+      {
+        "id": "foreignKey.usersOnWorkspaces.usersOnWorkspaces_userId_fkey",
+        "label": "Add foreign key \"usersOnWorkspaces_userId_fkey\" on \"usersOnWorkspaces\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "foreignKey",
+            "name": "usersOnWorkspaces_userId_fkey",
+            "table": "usersOnWorkspaces"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure FK \"usersOnWorkspaces_userId_fkey\" does not exist",
+            "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+            "params": [
+              "usersOnWorkspaces_userId_fkey",
+              "public",
+              "\"public\".\"usersOnWorkspaces\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "add FK \"usersOnWorkspaces_userId_fkey\"",
+            "sql": "ALTER TABLE \"public\".\"usersOnWorkspaces\"\nADD CONSTRAINT \"usersOnWorkspaces_userId_fkey\"\nFOREIGN KEY (\"userId\")\nREFERENCES \"public\".\"user\" (\"id\")"
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify FK \"usersOnWorkspaces_userId_fkey\" exists",
+            "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+            "params": [
+              "usersOnWorkspaces_userId_fkey",
+              "public",
+              "\"public\".\"usersOnWorkspaces\""
+            ]
+          }
+        ]
+      },
+      {
+        "id": "foreignKey.usersOnWorkspaces.usersOnWorkspaces_workspaceId_fkey",
+        "label": "Add foreign key \"usersOnWorkspaces_workspaceId_fkey\" on \"usersOnWorkspaces\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "foreignKey",
+            "name": "usersOnWorkspaces_workspaceId_fkey",
+            "table": "usersOnWorkspaces"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure FK \"usersOnWorkspaces_workspaceId_fkey\" does not exist",
+            "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+            "params": [
+              "usersOnWorkspaces_workspaceId_fkey",
+              "public",
+              "\"public\".\"usersOnWorkspaces\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "add FK \"usersOnWorkspaces_workspaceId_fkey\"",
+            "sql": "ALTER TABLE \"public\".\"usersOnWorkspaces\"\nADD CONSTRAINT \"usersOnWorkspaces_workspaceId_fkey\"\nFOREIGN KEY (\"workspaceId\")\nREFERENCES \"public\".\"workspace\" (\"id\")"
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify FK \"usersOnWorkspaces_workspaceId_fkey\" exists",
+            "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+            "params": [
+              "usersOnWorkspaces_workspaceId_fkey",
+              "public",
+              "\"public\".\"usersOnWorkspaces\""
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

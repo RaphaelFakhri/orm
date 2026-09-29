@@ -1,0 +1,49 @@
+{
+  "contract": "test/integration/test/ports/engines/queries/filters/field_reference/json_filter/_fixture/list/generated/contract.json",
+  "target": "postgres",
+  "extensions": [],
+  "planned": {
+    "kind": "success",
+    "operations": [
+      {
+        "id": "table.testModel",
+        "label": "Create table \"testModel\"",
+        "summary": "Creates table \"testModel\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "table",
+            "name": "testModel"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure table \"testModel\" does not exist",
+            "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+            "params": [
+              "\"public\".\"testModel\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "create table \"testModel\"",
+            "sql": "CREATE TABLE \"public\".\"testModel\" (\n  \"id\" int4 NOT NULL,\n  \"json\" jsonb,\n  \"json_list\" jsonb[] NOT NULL,\n  \"json_list2\" jsonb[] NOT NULL,\n  PRIMARY KEY (\"id\"),\n  CONSTRAINT \"testModel_json_list2_elem_not_null_20d8b6cb\" CHECK (array_position(\"json_list2\", NULL) IS NULL),\n  CONSTRAINT \"testModel_json_list_elem_not_null_e81a57de\" CHECK (array_position(\"json_list\", NULL) IS NULL)\n)",
+            "params": []
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify table \"testModel\" exists",
+            "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+            "params": [
+              "\"public\".\"testModel\""
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

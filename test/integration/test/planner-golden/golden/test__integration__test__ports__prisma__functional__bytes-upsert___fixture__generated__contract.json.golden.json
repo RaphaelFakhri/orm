@@ -1,0 +1,91 @@
+{
+  "contract": "test/integration/test/ports/prisma/functional/bytes-upsert/_fixture/generated/contract.json",
+  "target": "postgres",
+  "extensions": [],
+  "planned": {
+    "kind": "success",
+    "operations": [
+      {
+        "id": "table.testByteId",
+        "label": "Create table \"testByteId\"",
+        "summary": "Creates table \"testByteId\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "table",
+            "name": "testByteId"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure table \"testByteId\" does not exist",
+            "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+            "params": [
+              "\"public\".\"testByteId\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "create table \"testByteId\"",
+            "sql": "CREATE TABLE \"public\".\"testByteId\" (\n  \"bytes\" bytea NOT NULL,\n  \"id\" text NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+            "params": []
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify table \"testByteId\" exists",
+            "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+            "params": [
+              "\"public\".\"testByteId\""
+            ]
+          }
+        ]
+      },
+      {
+        "id": "unique.testByteId.testByteId_bytes_key",
+        "label": "Add unique constraint on \"testByteId\" (bytes)",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "unique",
+            "name": "testByteId_bytes_key",
+            "table": "testByteId"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure constraint \"testByteId_bytes_key\" does not exist",
+            "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+            "params": [
+              "testByteId_bytes_key",
+              "public",
+              "\"public\".\"testByteId\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "add unique constraint \"testByteId_bytes_key\"",
+            "sql": "ALTER TABLE \"public\".\"testByteId\" ADD CONSTRAINT \"testByteId_bytes_key\" UNIQUE (\"bytes\")"
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify constraint \"testByteId_bytes_key\" exists",
+            "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+            "params": [
+              "testByteId_bytes_key",
+              "public",
+              "\"public\".\"testByteId\""
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "contract": "packages/3-extensions/paradedb/migrations/snapshots/0c0734babd6eeb868fee1f281ca96963022475611560e9f170f465daa35f8599/contract.json",
+  "target": "postgres",
+  "extensions": [],
+  "planned": {
+    "kind": "success",
+    "operations": []
+  }
+}

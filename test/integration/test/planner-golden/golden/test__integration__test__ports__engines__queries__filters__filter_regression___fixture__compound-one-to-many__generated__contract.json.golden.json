@@ -1,0 +1,169 @@
+{
+  "contract": "test/integration/test/ports/engines/queries/filters/filter_regression/_fixture/compound-one-to-many/generated/contract.json",
+  "target": "postgres",
+  "extensions": [],
+  "planned": {
+    "kind": "success",
+    "operations": [
+      {
+        "id": "table.company",
+        "label": "Create table \"company\"",
+        "summary": "Creates table \"company\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "table",
+            "name": "company"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure table \"company\" does not exist",
+            "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+            "params": [
+              "\"public\".\"company\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "create table \"company\"",
+            "sql": "CREATE TABLE \"public\".\"company\" (\n  \"id\" int4 NOT NULL,\n  \"id2\" int4 NOT NULL,\n  \"name\" text,\n  PRIMARY KEY (\"id\", \"id2\")\n)",
+            "params": []
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify table \"company\" exists",
+            "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+            "params": [
+              "\"public\".\"company\""
+            ]
+          }
+        ]
+      },
+      {
+        "id": "table.location",
+        "label": "Create table \"location\"",
+        "summary": "Creates table \"location\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "table",
+            "name": "location"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure table \"location\" does not exist",
+            "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+            "params": [
+              "\"public\".\"location\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "create table \"location\"",
+            "sql": "CREATE TABLE \"public\".\"location\" (\n  \"companyId\" int4,\n  \"companyId2\" int4,\n  \"id\" int4 NOT NULL,\n  \"name\" text,\n  PRIMARY KEY (\"id\")\n)",
+            "params": []
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify table \"location\" exists",
+            "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+            "params": [
+              "\"public\".\"location\""
+            ]
+          }
+        ]
+      },
+      {
+        "id": "index.location.location_companyId_companyId2_idx_f8ab63d6",
+        "label": "Create index \"location_companyId_companyId2_idx_f8ab63d6\" on \"location\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "index",
+            "name": "location_companyId_companyId2_idx_f8ab63d6",
+            "table": "location"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure index \"location_companyId_companyId2_idx_f8ab63d6\" does not exist",
+            "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+            "params": [
+              "\"public\".\"location_companyId_companyId2_idx_f8ab63d6\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "create index \"location_companyId_companyId2_idx_f8ab63d6\"",
+            "sql": "CREATE INDEX \"location_companyId_companyId2_idx_f8ab63d6\" ON \"public\".\"location\" (\"companyId\", \"companyId2\")",
+            "params": []
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify index \"location_companyId_companyId2_idx_f8ab63d6\" exists",
+            "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+            "params": [
+              "\"public\".\"location_companyId_companyId2_idx_f8ab63d6\""
+            ]
+          }
+        ]
+      },
+      {
+        "id": "foreignKey.location.location_companyId_companyId2_fkey",
+        "label": "Add foreign key \"location_companyId_companyId2_fkey\" on \"location\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "foreignKey",
+            "name": "location_companyId_companyId2_fkey",
+            "table": "location"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure FK \"location_companyId_companyId2_fkey\" does not exist",
+            "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+            "params": [
+              "location_companyId_companyId2_fkey",
+              "public",
+              "\"public\".\"location\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "add FK \"location_companyId_companyId2_fkey\"",
+            "sql": "ALTER TABLE \"public\".\"location\"\nADD CONSTRAINT \"location_companyId_companyId2_fkey\"\nFOREIGN KEY (\"companyId\", \"companyId2\")\nREFERENCES \"public\".\"company\" (\"id\", \"id2\")"
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify FK \"location_companyId_companyId2_fkey\" exists",
+            "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+            "params": [
+              "location_companyId_companyId2_fkey",
+              "public",
+              "\"public\".\"location\""
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

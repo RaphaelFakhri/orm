@@ -1,0 +1,289 @@
+{
+  "contract": "test/integration/test/ports/prisma/functional/issues-27511-include-enum-array/_fixture/generated/contract.json",
+  "target": "postgres",
+  "extensions": [],
+  "planned": {
+    "kind": "success",
+    "operations": [
+      {
+        "id": "table.workspace_member",
+        "label": "Create table \"workspace_member\"",
+        "summary": "Creates table \"workspace_member\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "table",
+            "name": "workspace_member"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure table \"workspace_member\" does not exist",
+            "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+            "params": [
+              "\"public\".\"workspace_member\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "create table \"workspace_member\"",
+            "sql": "CREATE TABLE \"public\".\"workspace_member\" (\n  \"id\" character varying(30) NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+            "params": []
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify table \"workspace_member\" exists",
+            "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+            "params": [
+              "\"public\".\"workspace_member\""
+            ]
+          }
+        ]
+      },
+      {
+        "id": "table.workspace_member_role",
+        "label": "Create table \"workspace_member_role\"",
+        "summary": "Creates table \"workspace_member_role\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "table",
+            "name": "workspace_member_role"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure table \"workspace_member_role\" does not exist",
+            "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+            "params": [
+              "\"public\".\"workspace_member_role\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "create table \"workspace_member_role\"",
+            "sql": "CREATE TABLE \"public\".\"workspace_member_role\" (\n  \"memberId\" text NOT NULL,\n  \"roleId\" text NOT NULL,\n  PRIMARY KEY (\"memberId\", \"roleId\")\n)",
+            "params": []
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify table \"workspace_member_role\" exists",
+            "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+            "params": [
+              "\"public\".\"workspace_member_role\""
+            ]
+          }
+        ]
+      },
+      {
+        "id": "table.workspace_role",
+        "label": "Create table \"workspace_role\"",
+        "summary": "Creates table \"workspace_role\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "table",
+            "name": "workspace_role"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure table \"workspace_role\" does not exist",
+            "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+            "params": [
+              "\"public\".\"workspace_role\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "create table \"workspace_role\"",
+            "sql": "CREATE TABLE \"public\".\"workspace_role\" (\n  \"id\" character varying(30) NOT NULL,\n  \"name\" text NOT NULL,\n  \"permissions\" text[] NOT NULL,\n  PRIMARY KEY (\"id\"),\n  CONSTRAINT \"workspace_role_permissions_check_f45c4d4b\" CHECK (\"permissions\"::text[] <@ ARRAY['HELLO', 'WORLD']::text[]),\n  CONSTRAINT \"workspace_role_permissions_elem_not_null_318e2952\" CHECK (array_position(\"permissions\", NULL) IS NULL)\n)",
+            "params": []
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify table \"workspace_role\" exists",
+            "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+            "params": [
+              "\"public\".\"workspace_role\""
+            ]
+          }
+        ]
+      },
+      {
+        "id": "index.workspace_member_role.workspace_member_role_memberId_idx_76b3c263",
+        "label": "Create index \"workspace_member_role_memberId_idx_76b3c263\" on \"workspace_member_role\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "index",
+            "name": "workspace_member_role_memberId_idx_76b3c263",
+            "table": "workspace_member_role"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure index \"workspace_member_role_memberId_idx_76b3c263\" does not exist",
+            "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+            "params": [
+              "\"public\".\"workspace_member_role_memberId_idx_76b3c263\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "create index \"workspace_member_role_memberId_idx_76b3c263\"",
+            "sql": "CREATE INDEX \"workspace_member_role_memberId_idx_76b3c263\" ON \"public\".\"workspace_member_role\" (\"memberId\")",
+            "params": []
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify index \"workspace_member_role_memberId_idx_76b3c263\" exists",
+            "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+            "params": [
+              "\"public\".\"workspace_member_role_memberId_idx_76b3c263\""
+            ]
+          }
+        ]
+      },
+      {
+        "id": "index.workspace_member_role.workspace_member_role_roleId_idx_ffccc9a4",
+        "label": "Create index \"workspace_member_role_roleId_idx_ffccc9a4\" on \"workspace_member_role\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "index",
+            "name": "workspace_member_role_roleId_idx_ffccc9a4",
+            "table": "workspace_member_role"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure index \"workspace_member_role_roleId_idx_ffccc9a4\" does not exist",
+            "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+            "params": [
+              "\"public\".\"workspace_member_role_roleId_idx_ffccc9a4\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "create index \"workspace_member_role_roleId_idx_ffccc9a4\"",
+            "sql": "CREATE INDEX \"workspace_member_role_roleId_idx_ffccc9a4\" ON \"public\".\"workspace_member_role\" (\"roleId\")",
+            "params": []
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify index \"workspace_member_role_roleId_idx_ffccc9a4\" exists",
+            "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+            "params": [
+              "\"public\".\"workspace_member_role_roleId_idx_ffccc9a4\""
+            ]
+          }
+        ]
+      },
+      {
+        "id": "foreignKey.workspace_member_role.workspace_member_role_memberId_fkey",
+        "label": "Add foreign key \"workspace_member_role_memberId_fkey\" on \"workspace_member_role\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "foreignKey",
+            "name": "workspace_member_role_memberId_fkey",
+            "table": "workspace_member_role"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure FK \"workspace_member_role_memberId_fkey\" does not exist",
+            "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+            "params": [
+              "workspace_member_role_memberId_fkey",
+              "public",
+              "\"public\".\"workspace_member_role\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "add FK \"workspace_member_role_memberId_fkey\"",
+            "sql": "ALTER TABLE \"public\".\"workspace_member_role\"\nADD CONSTRAINT \"workspace_member_role_memberId_fkey\"\nFOREIGN KEY (\"memberId\")\nREFERENCES \"public\".\"workspace_member\" (\"id\")"
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify FK \"workspace_member_role_memberId_fkey\" exists",
+            "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+            "params": [
+              "workspace_member_role_memberId_fkey",
+              "public",
+              "\"public\".\"workspace_member_role\""
+            ]
+          }
+        ]
+      },
+      {
+        "id": "foreignKey.workspace_member_role.workspace_member_role_roleId_fkey",
+        "label": "Add foreign key \"workspace_member_role_roleId_fkey\" on \"workspace_member_role\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "foreignKey",
+            "name": "workspace_member_role_roleId_fkey",
+            "table": "workspace_member_role"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure FK \"workspace_member_role_roleId_fkey\" does not exist",
+            "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+            "params": [
+              "workspace_member_role_roleId_fkey",
+              "public",
+              "\"public\".\"workspace_member_role\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "add FK \"workspace_member_role_roleId_fkey\"",
+            "sql": "ALTER TABLE \"public\".\"workspace_member_role\"\nADD CONSTRAINT \"workspace_member_role_roleId_fkey\"\nFOREIGN KEY (\"roleId\")\nREFERENCES \"public\".\"workspace_role\" (\"id\")"
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify FK \"workspace_member_role_roleId_fkey\" exists",
+            "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+            "params": [
+              "workspace_member_role_roleId_fkey",
+              "public",
+              "\"public\".\"workspace_member_role\""
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,214 @@
+{
+  "contract": "test/integration/test/ports/prisma/functional/legacy-optional-relation-filters/_fixture/generated/contract.json",
+  "target": "postgres",
+  "extensions": [],
+  "planned": {
+    "kind": "success",
+    "operations": [
+      {
+        "id": "table.bio",
+        "label": "Create table \"bio\"",
+        "summary": "Creates table \"bio\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "table",
+            "name": "bio"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure table \"bio\" does not exist",
+            "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+            "params": [
+              "\"public\".\"bio\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "create table \"bio\"",
+            "sql": "CREATE TABLE \"public\".\"bio\" (\n  \"id\" text NOT NULL,\n  \"text\" text,\n  \"userId\" text,\n  PRIMARY KEY (\"id\")\n)",
+            "params": []
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify table \"bio\" exists",
+            "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+            "params": [
+              "\"public\".\"bio\""
+            ]
+          }
+        ]
+      },
+      {
+        "id": "table.user",
+        "label": "Create table \"user\"",
+        "summary": "Creates table \"user\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "table",
+            "name": "user"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure table \"user\" does not exist",
+            "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+            "params": [
+              "\"public\".\"user\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "create table \"user\"",
+            "sql": "CREATE TABLE \"public\".\"user\" (\n  \"email\" text NOT NULL,\n  \"id\" text NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+            "params": []
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify table \"user\" exists",
+            "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+            "params": [
+              "\"public\".\"user\""
+            ]
+          }
+        ]
+      },
+      {
+        "id": "unique.bio.bio_userId_key",
+        "label": "Add unique constraint on \"bio\" (userId)",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "unique",
+            "name": "bio_userId_key",
+            "table": "bio"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure constraint \"bio_userId_key\" does not exist",
+            "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+            "params": [
+              "bio_userId_key",
+              "public",
+              "\"public\".\"bio\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "add unique constraint \"bio_userId_key\"",
+            "sql": "ALTER TABLE \"public\".\"bio\" ADD CONSTRAINT \"bio_userId_key\" UNIQUE (\"userId\")"
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify constraint \"bio_userId_key\" exists",
+            "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+            "params": [
+              "bio_userId_key",
+              "public",
+              "\"public\".\"bio\""
+            ]
+          }
+        ]
+      },
+      {
+        "id": "unique.user.user_email_key",
+        "label": "Add unique constraint on \"user\" (email)",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "unique",
+            "name": "user_email_key",
+            "table": "user"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure constraint \"user_email_key\" does not exist",
+            "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+            "params": [
+              "user_email_key",
+              "public",
+              "\"public\".\"user\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "add unique constraint \"user_email_key\"",
+            "sql": "ALTER TABLE \"public\".\"user\" ADD CONSTRAINT \"user_email_key\" UNIQUE (\"email\")"
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify constraint \"user_email_key\" exists",
+            "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+            "params": [
+              "user_email_key",
+              "public",
+              "\"public\".\"user\""
+            ]
+          }
+        ]
+      },
+      {
+        "id": "foreignKey.bio.bio_userId_fkey",
+        "label": "Add foreign key \"bio_userId_fkey\" on \"bio\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "foreignKey",
+            "name": "bio_userId_fkey",
+            "table": "bio"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure FK \"bio_userId_fkey\" does not exist",
+            "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+            "params": [
+              "bio_userId_fkey",
+              "public",
+              "\"public\".\"bio\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "add FK \"bio_userId_fkey\"",
+            "sql": "ALTER TABLE \"public\".\"bio\"\nADD CONSTRAINT \"bio_userId_fkey\"\nFOREIGN KEY (\"userId\")\nREFERENCES \"public\".\"user\" (\"id\")"
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify FK \"bio_userId_fkey\" exists",
+            "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+            "params": [
+              "bio_userId_fkey",
+              "public",
+              "\"public\".\"bio\""
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,295 @@
+{
+  "contract": "test/integration/test/ports/prisma/functional/relation-mode-gh-1-to-1/_fixture/setnull-map/generated/contract.json",
+  "target": "postgres",
+  "extensions": [],
+  "planned": {
+    "kind": "success",
+    "operations": [
+      {
+        "id": "table.ProfileOneToOne_AtAtMap",
+        "label": "Create table \"ProfileOneToOne_AtAtMap\"",
+        "summary": "Creates table \"ProfileOneToOne_AtAtMap\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "table",
+            "name": "ProfileOneToOne_AtAtMap"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure table \"ProfileOneToOne_AtAtMap\" does not exist",
+            "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+            "params": [
+              "\"public\".\"ProfileOneToOne_AtAtMap\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "create table \"ProfileOneToOne_AtAtMap\"",
+            "sql": "CREATE TABLE \"public\".\"ProfileOneToOne_AtAtMap\" (\n  \"enabled_AtMap\" bool,\n  \"id_AtMap\" text NOT NULL,\n  \"userId_AtMap\" text NOT NULL,\n  PRIMARY KEY (\"id_AtMap\")\n)",
+            "params": []
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify table \"ProfileOneToOne_AtAtMap\" exists",
+            "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+            "params": [
+              "\"public\".\"ProfileOneToOne_AtAtMap\""
+            ]
+          }
+        ]
+      },
+      {
+        "id": "table.ProfileOptionalOneToOne_AtAtMap",
+        "label": "Create table \"ProfileOptionalOneToOne_AtAtMap\"",
+        "summary": "Creates table \"ProfileOptionalOneToOne_AtAtMap\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "table",
+            "name": "ProfileOptionalOneToOne_AtAtMap"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure table \"ProfileOptionalOneToOne_AtAtMap\" does not exist",
+            "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+            "params": [
+              "\"public\".\"ProfileOptionalOneToOne_AtAtMap\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "create table \"ProfileOptionalOneToOne_AtAtMap\"",
+            "sql": "CREATE TABLE \"public\".\"ProfileOptionalOneToOne_AtAtMap\" (\n  \"enabled_AtMap\" bool,\n  \"id\" text NOT NULL,\n  \"userId_AtMap\" text,\n  PRIMARY KEY (\"id\")\n)",
+            "params": []
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify table \"ProfileOptionalOneToOne_AtAtMap\" exists",
+            "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+            "params": [
+              "\"public\".\"ProfileOptionalOneToOne_AtAtMap\""
+            ]
+          }
+        ]
+      },
+      {
+        "id": "table.UserOneToOne_AtAtMap",
+        "label": "Create table \"UserOneToOne_AtAtMap\"",
+        "summary": "Creates table \"UserOneToOne_AtAtMap\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "table",
+            "name": "UserOneToOne_AtAtMap"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure table \"UserOneToOne_AtAtMap\" does not exist",
+            "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+            "params": [
+              "\"public\".\"UserOneToOne_AtAtMap\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "create table \"UserOneToOne_AtAtMap\"",
+            "sql": "CREATE TABLE \"public\".\"UserOneToOne_AtAtMap\" (\n  \"enabled_AtMap\" bool,\n  \"id_AtMap\" text NOT NULL,\n  PRIMARY KEY (\"id_AtMap\")\n)",
+            "params": []
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify table \"UserOneToOne_AtAtMap\" exists",
+            "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+            "params": [
+              "\"public\".\"UserOneToOne_AtAtMap\""
+            ]
+          }
+        ]
+      },
+      {
+        "id": "unique.ProfileOneToOne_AtAtMap.ProfileOneToOne_AtAtMap_userId_AtMap_key",
+        "label": "Add unique constraint on \"ProfileOneToOne_AtAtMap\" (userId_AtMap)",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "unique",
+            "name": "ProfileOneToOne_AtAtMap_userId_AtMap_key",
+            "table": "ProfileOneToOne_AtAtMap"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure constraint \"ProfileOneToOne_AtAtMap_userId_AtMap_key\" does not exist",
+            "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+            "params": [
+              "ProfileOneToOne_AtAtMap_userId_AtMap_key",
+              "public",
+              "\"public\".\"ProfileOneToOne_AtAtMap\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "add unique constraint \"ProfileOneToOne_AtAtMap_userId_AtMap_key\"",
+            "sql": "ALTER TABLE \"public\".\"ProfileOneToOne_AtAtMap\" ADD CONSTRAINT \"ProfileOneToOne_AtAtMap_userId_AtMap_key\" UNIQUE (\"userId_AtMap\")"
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify constraint \"ProfileOneToOne_AtAtMap_userId_AtMap_key\" exists",
+            "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+            "params": [
+              "ProfileOneToOne_AtAtMap_userId_AtMap_key",
+              "public",
+              "\"public\".\"ProfileOneToOne_AtAtMap\""
+            ]
+          }
+        ]
+      },
+      {
+        "id": "unique.ProfileOptionalOneToOne_AtAtMap.ProfileOptionalOneToOne_AtAtMap_userId_AtMap_key",
+        "label": "Add unique constraint on \"ProfileOptionalOneToOne_AtAtMap\" (userId_AtMap)",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "unique",
+            "name": "ProfileOptionalOneToOne_AtAtMap_userId_AtMap_key",
+            "table": "ProfileOptionalOneToOne_AtAtMap"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure constraint \"ProfileOptionalOneToOne_AtAtMap_userId_AtMap_key\" does not exist",
+            "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+            "params": [
+              "ProfileOptionalOneToOne_AtAtMap_userId_AtMap_key",
+              "public",
+              "\"public\".\"ProfileOptionalOneToOne_AtAtMap\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "add unique constraint \"ProfileOptionalOneToOne_AtAtMap_userId_AtMap_key\"",
+            "sql": "ALTER TABLE \"public\".\"ProfileOptionalOneToOne_AtAtMap\" ADD CONSTRAINT \"ProfileOptionalOneToOne_AtAtMap_userId_AtMap_key\" UNIQUE (\"userId_AtMap\")"
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify constraint \"ProfileOptionalOneToOne_AtAtMap_userId_AtMap_key\" exists",
+            "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+            "params": [
+              "ProfileOptionalOneToOne_AtAtMap_userId_AtMap_key",
+              "public",
+              "\"public\".\"ProfileOptionalOneToOne_AtAtMap\""
+            ]
+          }
+        ]
+      },
+      {
+        "id": "foreignKey.ProfileOneToOne_AtAtMap.ProfileOneToOne_AtAtMap_userId_AtMap_fkey",
+        "label": "Add foreign key \"ProfileOneToOne_AtAtMap_userId_AtMap_fkey\" on \"ProfileOneToOne_AtAtMap\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "foreignKey",
+            "name": "ProfileOneToOne_AtAtMap_userId_AtMap_fkey",
+            "table": "ProfileOneToOne_AtAtMap"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure FK \"ProfileOneToOne_AtAtMap_userId_AtMap_fkey\" does not exist",
+            "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+            "params": [
+              "ProfileOneToOne_AtAtMap_userId_AtMap_fkey",
+              "public",
+              "\"public\".\"ProfileOneToOne_AtAtMap\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "add FK \"ProfileOneToOne_AtAtMap_userId_AtMap_fkey\"",
+            "sql": "ALTER TABLE \"public\".\"ProfileOneToOne_AtAtMap\"\nADD CONSTRAINT \"ProfileOneToOne_AtAtMap_userId_AtMap_fkey\"\nFOREIGN KEY (\"userId_AtMap\")\nREFERENCES \"public\".\"UserOneToOne_AtAtMap\" (\"id_AtMap\")"
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify FK \"ProfileOneToOne_AtAtMap_userId_AtMap_fkey\" exists",
+            "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+            "params": [
+              "ProfileOneToOne_AtAtMap_userId_AtMap_fkey",
+              "public",
+              "\"public\".\"ProfileOneToOne_AtAtMap\""
+            ]
+          }
+        ]
+      },
+      {
+        "id": "foreignKey.ProfileOptionalOneToOne_AtAtMap.ProfileOptionalOneToOne_AtAtMap_userId_AtMap_fkey",
+        "label": "Add foreign key \"ProfileOptionalOneToOne_AtAtMap_userId_AtMap_fkey\" on \"ProfileOptionalOneToOne_AtAtMap\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "foreignKey",
+            "name": "ProfileOptionalOneToOne_AtAtMap_userId_AtMap_fkey",
+            "table": "ProfileOptionalOneToOne_AtAtMap"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure FK \"ProfileOptionalOneToOne_AtAtMap_userId_AtMap_fkey\" does not exist",
+            "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+            "params": [
+              "ProfileOptionalOneToOne_AtAtMap_userId_AtMap_fkey",
+              "public",
+              "\"public\".\"ProfileOptionalOneToOne_AtAtMap\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "add FK \"ProfileOptionalOneToOne_AtAtMap_userId_AtMap_fkey\"",
+            "sql": "ALTER TABLE \"public\".\"ProfileOptionalOneToOne_AtAtMap\"\nADD CONSTRAINT \"ProfileOptionalOneToOne_AtAtMap_userId_AtMap_fkey\"\nFOREIGN KEY (\"userId_AtMap\")\nREFERENCES \"public\".\"UserOneToOne_AtAtMap\" (\"id_AtMap\")\nON DELETE SET NULL\nON UPDATE SET NULL"
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify FK \"ProfileOptionalOneToOne_AtAtMap_userId_AtMap_fkey\" exists",
+            "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+            "params": [
+              "ProfileOptionalOneToOne_AtAtMap_userId_AtMap_fkey",
+              "public",
+              "\"public\".\"ProfileOptionalOneToOne_AtAtMap\""
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

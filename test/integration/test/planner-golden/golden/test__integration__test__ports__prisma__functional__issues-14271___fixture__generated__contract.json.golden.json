@@ -1,0 +1,253 @@
+{
+  "contract": "test/integration/test/ports/prisma/functional/issues-14271/_fixture/generated/contract.json",
+  "target": "postgres",
+  "extensions": [],
+  "planned": {
+    "kind": "success",
+    "operations": [
+      {
+        "id": "table.batteryLevel",
+        "label": "Create table \"batteryLevel\"",
+        "summary": "Creates table \"batteryLevel\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "table",
+            "name": "batteryLevel"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure table \"batteryLevel\" does not exist",
+            "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+            "params": [
+              "\"public\".\"batteryLevel\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "create table \"batteryLevel\"",
+            "sql": "CREATE TABLE \"public\".\"batteryLevel\" (\n  \"hubId\" int4,\n  \"id\" SERIAL NOT NULL,\n  \"name\" text NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+            "params": []
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify table \"batteryLevel\" exists",
+            "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+            "params": [
+              "\"public\".\"batteryLevel\""
+            ]
+          }
+        ]
+      },
+      {
+        "id": "table.hub",
+        "label": "Create table \"hub\"",
+        "summary": "Creates table \"hub\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "table",
+            "name": "hub"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure table \"hub\" does not exist",
+            "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+            "params": [
+              "\"public\".\"hub\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "create table \"hub\"",
+            "sql": "CREATE TABLE \"public\".\"hub\" (\n  \"id\" SERIAL NOT NULL,\n  \"name\" text NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+            "params": []
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify table \"hub\" exists",
+            "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+            "params": [
+              "\"public\".\"hub\""
+            ]
+          }
+        ]
+      },
+      {
+        "id": "unique.batteryLevel.batteryLevel_name_key",
+        "label": "Add unique constraint on \"batteryLevel\" (name)",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "unique",
+            "name": "batteryLevel_name_key",
+            "table": "batteryLevel"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure constraint \"batteryLevel_name_key\" does not exist",
+            "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+            "params": [
+              "batteryLevel_name_key",
+              "public",
+              "\"public\".\"batteryLevel\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "add unique constraint \"batteryLevel_name_key\"",
+            "sql": "ALTER TABLE \"public\".\"batteryLevel\" ADD CONSTRAINT \"batteryLevel_name_key\" UNIQUE (\"name\")"
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify constraint \"batteryLevel_name_key\" exists",
+            "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+            "params": [
+              "batteryLevel_name_key",
+              "public",
+              "\"public\".\"batteryLevel\""
+            ]
+          }
+        ]
+      },
+      {
+        "id": "unique.hub.hub_name_key",
+        "label": "Add unique constraint on \"hub\" (name)",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "unique",
+            "name": "hub_name_key",
+            "table": "hub"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure constraint \"hub_name_key\" does not exist",
+            "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+            "params": [
+              "hub_name_key",
+              "public",
+              "\"public\".\"hub\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "add unique constraint \"hub_name_key\"",
+            "sql": "ALTER TABLE \"public\".\"hub\" ADD CONSTRAINT \"hub_name_key\" UNIQUE (\"name\")"
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify constraint \"hub_name_key\" exists",
+            "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+            "params": [
+              "hub_name_key",
+              "public",
+              "\"public\".\"hub\""
+            ]
+          }
+        ]
+      },
+      {
+        "id": "index.batteryLevel.batteryLevel_hubId_idx_4895e1fd",
+        "label": "Create index \"batteryLevel_hubId_idx_4895e1fd\" on \"batteryLevel\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "index",
+            "name": "batteryLevel_hubId_idx_4895e1fd",
+            "table": "batteryLevel"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure index \"batteryLevel_hubId_idx_4895e1fd\" does not exist",
+            "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+            "params": [
+              "\"public\".\"batteryLevel_hubId_idx_4895e1fd\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "create index \"batteryLevel_hubId_idx_4895e1fd\"",
+            "sql": "CREATE INDEX \"batteryLevel_hubId_idx_4895e1fd\" ON \"public\".\"batteryLevel\" (\"hubId\")",
+            "params": []
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify index \"batteryLevel_hubId_idx_4895e1fd\" exists",
+            "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+            "params": [
+              "\"public\".\"batteryLevel_hubId_idx_4895e1fd\""
+            ]
+          }
+        ]
+      },
+      {
+        "id": "foreignKey.batteryLevel.batteryLevel_hubId_fkey",
+        "label": "Add foreign key \"batteryLevel_hubId_fkey\" on \"batteryLevel\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "foreignKey",
+            "name": "batteryLevel_hubId_fkey",
+            "table": "batteryLevel"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure FK \"batteryLevel_hubId_fkey\" does not exist",
+            "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+            "params": [
+              "batteryLevel_hubId_fkey",
+              "public",
+              "\"public\".\"batteryLevel\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "add FK \"batteryLevel_hubId_fkey\"",
+            "sql": "ALTER TABLE \"public\".\"batteryLevel\"\nADD CONSTRAINT \"batteryLevel_hubId_fkey\"\nFOREIGN KEY (\"hubId\")\nREFERENCES \"public\".\"hub\" (\"id\")\nON DELETE SET NULL"
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify FK \"batteryLevel_hubId_fkey\" exists",
+            "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+            "params": [
+              "batteryLevel_hubId_fkey",
+              "public",
+              "\"public\".\"batteryLevel\""
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

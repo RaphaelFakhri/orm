@@ -1,0 +1,49 @@
+{
+  "contract": "test/integration/test/ports/engines/queries/aggregation/count/_fixture/generated/contract.json",
+  "target": "postgres",
+  "extensions": [],
+  "planned": {
+    "kind": "success",
+    "operations": [
+      {
+        "id": "table.testModel",
+        "label": "Create table \"testModel\"",
+        "summary": "Creates table \"testModel\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "table",
+            "name": "testModel"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure table \"testModel\" does not exist",
+            "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+            "params": [
+              "\"public\".\"testModel\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "create table \"testModel\"",
+            "sql": "CREATE TABLE \"public\".\"testModel\" (\n  \"bInt\" int8,\n  \"bool\" bool,\n  \"bytes\" bytea,\n  \"dt\" timestamptz,\n  \"float\" float8,\n  \"id\" int4 NOT NULL,\n  \"int\" int4,\n  \"string\" text,\n  PRIMARY KEY (\"id\")\n)",
+            "params": []
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify table \"testModel\" exists",
+            "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+            "params": [
+              "\"public\".\"testModel\""
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

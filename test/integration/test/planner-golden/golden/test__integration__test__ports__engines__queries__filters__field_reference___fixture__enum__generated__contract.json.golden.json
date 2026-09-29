@@ -1,0 +1,71 @@
+{
+  "contract": "test/integration/test/ports/engines/queries/filters/field_reference/_fixture/enum/generated/contract.json",
+  "target": "postgres",
+  "extensions": [],
+  "planned": {
+    "kind": "success",
+    "operations": [
+      {
+        "id": "createNativeEnumType.TestEnum",
+        "label": "Create enum type \"TestEnum\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "type",
+            "name": "TestEnum"
+          }
+        },
+        "precheck": [],
+        "execute": [
+          {
+            "description": "create enum type \"TestEnum\"",
+            "sql": "CREATE TYPE \"public\".\"TestEnum\" AS ENUM ('a', 'b', 'c')",
+            "params": []
+          }
+        ],
+        "postcheck": []
+      },
+      {
+        "id": "table.testModel",
+        "label": "Create table \"testModel\"",
+        "summary": "Creates table \"testModel\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "table",
+            "name": "testModel"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure table \"testModel\" does not exist",
+            "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+            "params": [
+              "\"public\".\"testModel\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "create table \"testModel\"",
+            "sql": "CREATE TABLE \"public\".\"testModel\" (\n  \"enum\" \"TestEnum\",\n  \"enum2\" \"TestEnum\"[] NOT NULL,\n  \"id\" int4 NOT NULL,\n  PRIMARY KEY (\"id\"),\n  CONSTRAINT \"testModel_enum2_elem_not_null_dc42b76d\" CHECK (array_position(\"enum2\", NULL) IS NULL)\n)",
+            "params": []
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify table \"testModel\" exists",
+            "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+            "params": [
+              "\"public\".\"testModel\""
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

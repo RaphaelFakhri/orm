@@ -1,0 +1,169 @@
+{
+  "contract": "test/integration/test/authoring/side-by-side/postgres/contract.json",
+  "target": "postgres",
+  "extensions": [],
+  "planned": {
+    "kind": "success",
+    "operations": [
+      {
+        "id": "table.posts",
+        "label": "Create table \"posts\"",
+        "summary": "Creates table \"posts\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "table",
+            "name": "posts"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure table \"posts\" does not exist",
+            "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+            "params": [
+              "\"public\".\"posts\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "create table \"posts\"",
+            "sql": "CREATE TABLE \"public\".\"posts\" (\n  \"authorId\" int4 NOT NULL,\n  \"id\" SERIAL NOT NULL,\n  \"publishedAt\" timestamptz,\n  \"title\" text NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+            "params": []
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify table \"posts\" exists",
+            "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+            "params": [
+              "\"public\".\"posts\""
+            ]
+          }
+        ]
+      },
+      {
+        "id": "table.users",
+        "label": "Create table \"users\"",
+        "summary": "Creates table \"users\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "table",
+            "name": "users"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure table \"users\" does not exist",
+            "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+            "params": [
+              "\"public\".\"users\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "create table \"users\"",
+            "sql": "CREATE TABLE \"public\".\"users\" (\n  \"bio\" text,\n  \"email\" text NOT NULL,\n  \"id\" SERIAL NOT NULL,\n  \"name\" text NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+            "params": []
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify table \"users\" exists",
+            "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+            "params": [
+              "\"public\".\"users\""
+            ]
+          }
+        ]
+      },
+      {
+        "id": "index.posts.posts_authorId_idx_e47547ed",
+        "label": "Create index \"posts_authorId_idx_e47547ed\" on \"posts\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "index",
+            "name": "posts_authorId_idx_e47547ed",
+            "table": "posts"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure index \"posts_authorId_idx_e47547ed\" does not exist",
+            "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+            "params": [
+              "\"public\".\"posts_authorId_idx_e47547ed\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "create index \"posts_authorId_idx_e47547ed\"",
+            "sql": "CREATE INDEX \"posts_authorId_idx_e47547ed\" ON \"public\".\"posts\" (\"authorId\")",
+            "params": []
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify index \"posts_authorId_idx_e47547ed\" exists",
+            "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+            "params": [
+              "\"public\".\"posts_authorId_idx_e47547ed\""
+            ]
+          }
+        ]
+      },
+      {
+        "id": "foreignKey.posts.posts_authorId_fkey",
+        "label": "Add foreign key \"posts_authorId_fkey\" on \"posts\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "foreignKey",
+            "name": "posts_authorId_fkey",
+            "table": "posts"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure FK \"posts_authorId_fkey\" does not exist",
+            "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+            "params": [
+              "posts_authorId_fkey",
+              "public",
+              "\"public\".\"posts\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "add FK \"posts_authorId_fkey\"",
+            "sql": "ALTER TABLE \"public\".\"posts\"\nADD CONSTRAINT \"posts_authorId_fkey\"\nFOREIGN KEY (\"authorId\")\nREFERENCES \"public\".\"users\" (\"id\")"
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify FK \"posts_authorId_fkey\" exists",
+            "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+            "params": [
+              "posts_authorId_fkey",
+              "public",
+              "\"public\".\"posts\""
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

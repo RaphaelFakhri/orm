@@ -1,0 +1,409 @@
+{
+  "contract": "test/integration/test/ports/engines/queries/filters/many_relation/_fixture/25103/generated/contract.json",
+  "target": "postgres",
+  "extensions": [],
+  "planned": {
+    "kind": "success",
+    "operations": [
+      {
+        "id": "table.audience",
+        "label": "Create table \"audience\"",
+        "summary": "Creates table \"audience\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "table",
+            "name": "audience"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure table \"audience\" does not exist",
+            "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+            "params": [
+              "\"public\".\"audience\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "create table \"audience\"",
+            "sql": "CREATE TABLE \"public\".\"audience\" (\n  \"deletedAt\" timestamptz,\n  \"id\" text NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+            "params": []
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify table \"audience\" exists",
+            "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+            "params": [
+              "\"public\".\"audience\""
+            ]
+          }
+        ]
+      },
+      {
+        "id": "table.contact",
+        "label": "Create table \"contact\"",
+        "summary": "Creates table \"contact\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "table",
+            "name": "contact"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure table \"contact\" does not exist",
+            "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+            "params": [
+              "\"public\".\"contact\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "create table \"contact\"",
+            "sql": "CREATE TABLE \"public\".\"contact\" (\n  \"id\" text NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+            "params": []
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify table \"contact\" exists",
+            "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+            "params": [
+              "\"public\".\"contact\""
+            ]
+          }
+        ]
+      },
+      {
+        "id": "table.identity",
+        "label": "Create table \"identity\"",
+        "summary": "Creates table \"identity\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "table",
+            "name": "identity"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure table \"identity\" does not exist",
+            "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+            "params": [
+              "\"public\".\"identity\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "create table \"identity\"",
+            "sql": "CREATE TABLE \"public\".\"identity\" (\n  \"contactId\" text NOT NULL,\n  \"id\" text NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+            "params": []
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify table \"identity\" exists",
+            "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+            "params": [
+              "\"public\".\"identity\""
+            ]
+          }
+        ]
+      },
+      {
+        "id": "table.subscription",
+        "label": "Create table \"subscription\"",
+        "summary": "Creates table \"subscription\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "table",
+            "name": "subscription"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure table \"subscription\" does not exist",
+            "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+            "params": [
+              "\"public\".\"subscription\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "create table \"subscription\"",
+            "sql": "CREATE TABLE \"public\".\"subscription\" (\n  \"audienceId\" text NOT NULL,\n  \"id\" text NOT NULL,\n  \"identityId\" text NOT NULL,\n  \"optedOutAt\" timestamptz,\n  PRIMARY KEY (\"id\")\n)",
+            "params": []
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify table \"subscription\" exists",
+            "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+            "params": [
+              "\"public\".\"subscription\""
+            ]
+          }
+        ]
+      },
+      {
+        "id": "index.identity.identity_contactId_idx_ec98db2a",
+        "label": "Create index \"identity_contactId_idx_ec98db2a\" on \"identity\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "index",
+            "name": "identity_contactId_idx_ec98db2a",
+            "table": "identity"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure index \"identity_contactId_idx_ec98db2a\" does not exist",
+            "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+            "params": [
+              "\"public\".\"identity_contactId_idx_ec98db2a\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "create index \"identity_contactId_idx_ec98db2a\"",
+            "sql": "CREATE INDEX \"identity_contactId_idx_ec98db2a\" ON \"public\".\"identity\" (\"contactId\")",
+            "params": []
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify index \"identity_contactId_idx_ec98db2a\" exists",
+            "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+            "params": [
+              "\"public\".\"identity_contactId_idx_ec98db2a\""
+            ]
+          }
+        ]
+      },
+      {
+        "id": "index.subscription.subscription_audienceId_idx_7242acd1",
+        "label": "Create index \"subscription_audienceId_idx_7242acd1\" on \"subscription\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "index",
+            "name": "subscription_audienceId_idx_7242acd1",
+            "table": "subscription"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure index \"subscription_audienceId_idx_7242acd1\" does not exist",
+            "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+            "params": [
+              "\"public\".\"subscription_audienceId_idx_7242acd1\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "create index \"subscription_audienceId_idx_7242acd1\"",
+            "sql": "CREATE INDEX \"subscription_audienceId_idx_7242acd1\" ON \"public\".\"subscription\" (\"audienceId\")",
+            "params": []
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify index \"subscription_audienceId_idx_7242acd1\" exists",
+            "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+            "params": [
+              "\"public\".\"subscription_audienceId_idx_7242acd1\""
+            ]
+          }
+        ]
+      },
+      {
+        "id": "index.subscription.subscription_identityId_idx_e29a7785",
+        "label": "Create index \"subscription_identityId_idx_e29a7785\" on \"subscription\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "index",
+            "name": "subscription_identityId_idx_e29a7785",
+            "table": "subscription"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure index \"subscription_identityId_idx_e29a7785\" does not exist",
+            "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+            "params": [
+              "\"public\".\"subscription_identityId_idx_e29a7785\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "create index \"subscription_identityId_idx_e29a7785\"",
+            "sql": "CREATE INDEX \"subscription_identityId_idx_e29a7785\" ON \"public\".\"subscription\" (\"identityId\")",
+            "params": []
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify index \"subscription_identityId_idx_e29a7785\" exists",
+            "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+            "params": [
+              "\"public\".\"subscription_identityId_idx_e29a7785\""
+            ]
+          }
+        ]
+      },
+      {
+        "id": "foreignKey.identity.identity_contactId_fkey",
+        "label": "Add foreign key \"identity_contactId_fkey\" on \"identity\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "foreignKey",
+            "name": "identity_contactId_fkey",
+            "table": "identity"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure FK \"identity_contactId_fkey\" does not exist",
+            "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+            "params": [
+              "identity_contactId_fkey",
+              "public",
+              "\"public\".\"identity\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "add FK \"identity_contactId_fkey\"",
+            "sql": "ALTER TABLE \"public\".\"identity\"\nADD CONSTRAINT \"identity_contactId_fkey\"\nFOREIGN KEY (\"contactId\")\nREFERENCES \"public\".\"contact\" (\"id\")"
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify FK \"identity_contactId_fkey\" exists",
+            "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+            "params": [
+              "identity_contactId_fkey",
+              "public",
+              "\"public\".\"identity\""
+            ]
+          }
+        ]
+      },
+      {
+        "id": "foreignKey.subscription.subscription_audienceId_fkey",
+        "label": "Add foreign key \"subscription_audienceId_fkey\" on \"subscription\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "foreignKey",
+            "name": "subscription_audienceId_fkey",
+            "table": "subscription"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure FK \"subscription_audienceId_fkey\" does not exist",
+            "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+            "params": [
+              "subscription_audienceId_fkey",
+              "public",
+              "\"public\".\"subscription\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "add FK \"subscription_audienceId_fkey\"",
+            "sql": "ALTER TABLE \"public\".\"subscription\"\nADD CONSTRAINT \"subscription_audienceId_fkey\"\nFOREIGN KEY (\"audienceId\")\nREFERENCES \"public\".\"audience\" (\"id\")"
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify FK \"subscription_audienceId_fkey\" exists",
+            "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+            "params": [
+              "subscription_audienceId_fkey",
+              "public",
+              "\"public\".\"subscription\""
+            ]
+          }
+        ]
+      },
+      {
+        "id": "foreignKey.subscription.subscription_identityId_fkey",
+        "label": "Add foreign key \"subscription_identityId_fkey\" on \"subscription\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "foreignKey",
+            "name": "subscription_identityId_fkey",
+            "table": "subscription"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure FK \"subscription_identityId_fkey\" does not exist",
+            "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+            "params": [
+              "subscription_identityId_fkey",
+              "public",
+              "\"public\".\"subscription\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "add FK \"subscription_identityId_fkey\"",
+            "sql": "ALTER TABLE \"public\".\"subscription\"\nADD CONSTRAINT \"subscription_identityId_fkey\"\nFOREIGN KEY (\"identityId\")\nREFERENCES \"public\".\"identity\" (\"id\")"
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify FK \"subscription_identityId_fkey\" exists",
+            "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+            "params": [
+              "subscription_identityId_fkey",
+              "public",
+              "\"public\".\"subscription\""
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

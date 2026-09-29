@@ -1,0 +1,91 @@
+{
+  "contract": "test/integration/test/ports/prisma/functional/issues-29176-cursor-parameter-regression/_fixture/generated/contract.json",
+  "target": "postgres",
+  "extensions": [],
+  "planned": {
+    "kind": "success",
+    "operations": [
+      {
+        "id": "table.listResult",
+        "label": "Create table \"listResult\"",
+        "summary": "Creates table \"listResult\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "table",
+            "name": "listResult"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure table \"listResult\" does not exist",
+            "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+            "params": [
+              "\"public\".\"listResult\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "create table \"listResult\"",
+            "sql": "CREATE TABLE \"public\".\"listResult\" (\n  \"connection_uuid\" text NOT NULL,\n  \"id\" text NOT NULL,\n  \"query_ref\" text NOT NULL,\n  \"result_index\" int4 NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+            "params": []
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify table \"listResult\" exists",
+            "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+            "params": [
+              "\"public\".\"listResult\""
+            ]
+          }
+        ]
+      },
+      {
+        "id": "unique.listResult.listResult_connection_uuid_query_ref_result_index_key",
+        "label": "Add unique constraint on \"listResult\" (connection_uuid, query_ref, result_index)",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "unique",
+            "name": "listResult_connection_uuid_query_ref_result_index_key",
+            "table": "listResult"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure constraint \"listResult_connection_uuid_query_ref_result_index_key\" does not exist",
+            "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+            "params": [
+              "listResult_connection_uuid_query_ref_result_index_key",
+              "public",
+              "\"public\".\"listResult\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "add unique constraint \"listResult_connection_uuid_query_ref_result_index_key\"",
+            "sql": "ALTER TABLE \"public\".\"listResult\" ADD CONSTRAINT \"listResult_connection_uuid_query_ref_result_index_key\" UNIQUE (\"connection_uuid\", \"query_ref\", \"result_index\")"
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify constraint \"listResult_connection_uuid_query_ref_result_index_key\" exists",
+            "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+            "params": [
+              "listResult_connection_uuid_query_ref_result_index_key",
+              "public",
+              "\"public\".\"listResult\""
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

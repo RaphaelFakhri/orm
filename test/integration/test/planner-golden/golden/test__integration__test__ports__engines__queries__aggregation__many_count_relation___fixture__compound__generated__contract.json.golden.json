@@ -1,0 +1,532 @@
+{
+  "contract": "test/integration/test/ports/engines/queries/aggregation/many_count_relation/_fixture/compound/generated/contract.json",
+  "target": "postgres",
+  "extensions": [],
+  "planned": {
+    "kind": "success",
+    "operations": [
+      {
+        "id": "table.objective",
+        "label": "Create table \"objective\"",
+        "summary": "Creates table \"objective\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "table",
+            "name": "objective"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure table \"objective\" does not exist",
+            "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+            "params": [
+              "\"public\".\"objective\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "create table \"objective\"",
+            "sql": "CREATE TABLE \"public\".\"objective\" (\n  \"id\" SERIAL NOT NULL,\n  \"name\" text NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+            "params": []
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify table \"objective\" exists",
+            "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+            "params": [
+              "\"public\".\"objective\""
+            ]
+          }
+        ]
+      },
+      {
+        "id": "table.user",
+        "label": "Create table \"user\"",
+        "summary": "Creates table \"user\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "table",
+            "name": "user"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure table \"user\" does not exist",
+            "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+            "params": [
+              "\"public\".\"user\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "create table \"user\"",
+            "sql": "CREATE TABLE \"public\".\"user\" (\n  \"id\" SERIAL NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+            "params": []
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify table \"user\" exists",
+            "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+            "params": [
+              "\"public\".\"user\""
+            ]
+          }
+        ]
+      },
+      {
+        "id": "table.userToObjective",
+        "label": "Create table \"userToObjective\"",
+        "summary": "Creates table \"userToObjective\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "table",
+            "name": "userToObjective"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure table \"userToObjective\" does not exist",
+            "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+            "params": [
+              "\"public\".\"userToObjective\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "create table \"userToObjective\"",
+            "sql": "CREATE TABLE \"public\".\"userToObjective\" (\n  \"objectiveId\" int4 NOT NULL,\n  \"userId\" int4 NOT NULL,\n  PRIMARY KEY (\"userId\", \"objectiveId\")\n)",
+            "params": []
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify table \"userToObjective\" exists",
+            "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+            "params": [
+              "\"public\".\"userToObjective\""
+            ]
+          }
+        ]
+      },
+      {
+        "id": "table.vote",
+        "label": "Create table \"vote\"",
+        "summary": "Creates table \"vote\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "table",
+            "name": "vote"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure table \"vote\" does not exist",
+            "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+            "params": [
+              "\"public\".\"vote\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "create table \"vote\"",
+            "sql": "CREATE TABLE \"public\".\"vote\" (\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"followerId\" int4 NOT NULL,\n  \"objectiveId\" int4 NOT NULL,\n  \"userId\" int4 NOT NULL,\n  PRIMARY KEY (\"userId\", \"objectiveId\")\n)",
+            "params": []
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify table \"vote\" exists",
+            "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+            "params": [
+              "\"public\".\"vote\""
+            ]
+          }
+        ]
+      },
+      {
+        "id": "unique.objective.objective_name_key",
+        "label": "Add unique constraint on \"objective\" (name)",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "unique",
+            "name": "objective_name_key",
+            "table": "objective"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure constraint \"objective_name_key\" does not exist",
+            "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+            "params": [
+              "objective_name_key",
+              "public",
+              "\"public\".\"objective\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "add unique constraint \"objective_name_key\"",
+            "sql": "ALTER TABLE \"public\".\"objective\" ADD CONSTRAINT \"objective_name_key\" UNIQUE (\"name\")"
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify constraint \"objective_name_key\" exists",
+            "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+            "params": [
+              "objective_name_key",
+              "public",
+              "\"public\".\"objective\""
+            ]
+          }
+        ]
+      },
+      {
+        "id": "index.userToObjective.userToObjective_objectiveId_idx_c2dde538",
+        "label": "Create index \"userToObjective_objectiveId_idx_c2dde538\" on \"userToObjective\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "index",
+            "name": "userToObjective_objectiveId_idx_c2dde538",
+            "table": "userToObjective"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure index \"userToObjective_objectiveId_idx_c2dde538\" does not exist",
+            "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+            "params": [
+              "\"public\".\"userToObjective_objectiveId_idx_c2dde538\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "create index \"userToObjective_objectiveId_idx_c2dde538\"",
+            "sql": "CREATE INDEX \"userToObjective_objectiveId_idx_c2dde538\" ON \"public\".\"userToObjective\" (\"objectiveId\")",
+            "params": []
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify index \"userToObjective_objectiveId_idx_c2dde538\" exists",
+            "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+            "params": [
+              "\"public\".\"userToObjective_objectiveId_idx_c2dde538\""
+            ]
+          }
+        ]
+      },
+      {
+        "id": "index.userToObjective.userToObjective_userId_idx_a489d58a",
+        "label": "Create index \"userToObjective_userId_idx_a489d58a\" on \"userToObjective\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "index",
+            "name": "userToObjective_userId_idx_a489d58a",
+            "table": "userToObjective"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure index \"userToObjective_userId_idx_a489d58a\" does not exist",
+            "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+            "params": [
+              "\"public\".\"userToObjective_userId_idx_a489d58a\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "create index \"userToObjective_userId_idx_a489d58a\"",
+            "sql": "CREATE INDEX \"userToObjective_userId_idx_a489d58a\" ON \"public\".\"userToObjective\" (\"userId\")",
+            "params": []
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify index \"userToObjective_userId_idx_a489d58a\" exists",
+            "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+            "params": [
+              "\"public\".\"userToObjective_userId_idx_a489d58a\""
+            ]
+          }
+        ]
+      },
+      {
+        "id": "index.vote.vote_objectiveId_followerId_idx_84a17adf",
+        "label": "Create index \"vote_objectiveId_followerId_idx_84a17adf\" on \"vote\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "index",
+            "name": "vote_objectiveId_followerId_idx_84a17adf",
+            "table": "vote"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure index \"vote_objectiveId_followerId_idx_84a17adf\" does not exist",
+            "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+            "params": [
+              "\"public\".\"vote_objectiveId_followerId_idx_84a17adf\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "create index \"vote_objectiveId_followerId_idx_84a17adf\"",
+            "sql": "CREATE INDEX \"vote_objectiveId_followerId_idx_84a17adf\" ON \"public\".\"vote\" (\"objectiveId\", \"followerId\")",
+            "params": []
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify index \"vote_objectiveId_followerId_idx_84a17adf\" exists",
+            "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+            "params": [
+              "\"public\".\"vote_objectiveId_followerId_idx_84a17adf\""
+            ]
+          }
+        ]
+      },
+      {
+        "id": "index.vote.vote_userId_idx_a489d58a",
+        "label": "Create index \"vote_userId_idx_a489d58a\" on \"vote\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "index",
+            "name": "vote_userId_idx_a489d58a",
+            "table": "vote"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure index \"vote_userId_idx_a489d58a\" does not exist",
+            "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+            "params": [
+              "\"public\".\"vote_userId_idx_a489d58a\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "create index \"vote_userId_idx_a489d58a\"",
+            "sql": "CREATE INDEX \"vote_userId_idx_a489d58a\" ON \"public\".\"vote\" (\"userId\")",
+            "params": []
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify index \"vote_userId_idx_a489d58a\" exists",
+            "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+            "params": [
+              "\"public\".\"vote_userId_idx_a489d58a\""
+            ]
+          }
+        ]
+      },
+      {
+        "id": "foreignKey.userToObjective.userToObjective_userId_fkey",
+        "label": "Add foreign key \"userToObjective_userId_fkey\" on \"userToObjective\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "foreignKey",
+            "name": "userToObjective_userId_fkey",
+            "table": "userToObjective"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure FK \"userToObjective_userId_fkey\" does not exist",
+            "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+            "params": [
+              "userToObjective_userId_fkey",
+              "public",
+              "\"public\".\"userToObjective\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "add FK \"userToObjective_userId_fkey\"",
+            "sql": "ALTER TABLE \"public\".\"userToObjective\"\nADD CONSTRAINT \"userToObjective_userId_fkey\"\nFOREIGN KEY (\"userId\")\nREFERENCES \"public\".\"user\" (\"id\")"
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify FK \"userToObjective_userId_fkey\" exists",
+            "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+            "params": [
+              "userToObjective_userId_fkey",
+              "public",
+              "\"public\".\"userToObjective\""
+            ]
+          }
+        ]
+      },
+      {
+        "id": "foreignKey.userToObjective.userToObjective_objectiveId_fkey",
+        "label": "Add foreign key \"userToObjective_objectiveId_fkey\" on \"userToObjective\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "foreignKey",
+            "name": "userToObjective_objectiveId_fkey",
+            "table": "userToObjective"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure FK \"userToObjective_objectiveId_fkey\" does not exist",
+            "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+            "params": [
+              "userToObjective_objectiveId_fkey",
+              "public",
+              "\"public\".\"userToObjective\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "add FK \"userToObjective_objectiveId_fkey\"",
+            "sql": "ALTER TABLE \"public\".\"userToObjective\"\nADD CONSTRAINT \"userToObjective_objectiveId_fkey\"\nFOREIGN KEY (\"objectiveId\")\nREFERENCES \"public\".\"objective\" (\"id\")"
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify FK \"userToObjective_objectiveId_fkey\" exists",
+            "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+            "params": [
+              "userToObjective_objectiveId_fkey",
+              "public",
+              "\"public\".\"userToObjective\""
+            ]
+          }
+        ]
+      },
+      {
+        "id": "foreignKey.vote.vote_userId_fkey",
+        "label": "Add foreign key \"vote_userId_fkey\" on \"vote\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "foreignKey",
+            "name": "vote_userId_fkey",
+            "table": "vote"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure FK \"vote_userId_fkey\" does not exist",
+            "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+            "params": [
+              "vote_userId_fkey",
+              "public",
+              "\"public\".\"vote\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "add FK \"vote_userId_fkey\"",
+            "sql": "ALTER TABLE \"public\".\"vote\"\nADD CONSTRAINT \"vote_userId_fkey\"\nFOREIGN KEY (\"userId\")\nREFERENCES \"public\".\"user\" (\"id\")"
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify FK \"vote_userId_fkey\" exists",
+            "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+            "params": [
+              "vote_userId_fkey",
+              "public",
+              "\"public\".\"vote\""
+            ]
+          }
+        ]
+      },
+      {
+        "id": "foreignKey.vote.vote_objectiveId_followerId_fkey",
+        "label": "Add foreign key \"vote_objectiveId_followerId_fkey\" on \"vote\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "foreignKey",
+            "name": "vote_objectiveId_followerId_fkey",
+            "table": "vote"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure FK \"vote_objectiveId_followerId_fkey\" does not exist",
+            "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+            "params": [
+              "vote_objectiveId_followerId_fkey",
+              "public",
+              "\"public\".\"vote\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "add FK \"vote_objectiveId_followerId_fkey\"",
+            "sql": "ALTER TABLE \"public\".\"vote\"\nADD CONSTRAINT \"vote_objectiveId_followerId_fkey\"\nFOREIGN KEY (\"objectiveId\", \"followerId\")\nREFERENCES \"public\".\"userToObjective\" (\"userId\", \"objectiveId\")"
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify FK \"vote_objectiveId_followerId_fkey\" exists",
+            "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+            "params": [
+              "vote_objectiveId_followerId_fkey",
+              "public",
+              "\"public\".\"vote\""
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

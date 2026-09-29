@@ -1,0 +1,172 @@
+{
+  "contract": "test/integration/test/ports/prisma/functional/default-selection/_fixture/generated/contract.json",
+  "target": "postgres",
+  "extensions": [],
+  "planned": {
+    "kind": "success",
+    "operations": [
+      {
+        "id": "table.model",
+        "label": "Create table \"model\"",
+        "summary": "Creates table \"model\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "table",
+            "name": "model"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure table \"model\" does not exist",
+            "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+            "params": [
+              "\"public\".\"model\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "create table \"model\"",
+            "sql": "CREATE TABLE \"public\".\"model\" (\n  \"enum\" text NOT NULL,\n  \"enumList\" text[] NOT NULL,\n  \"id\" text NOT NULL,\n  \"list\" text[] NOT NULL,\n  \"otherId\" text NOT NULL,\n  \"value\" text NOT NULL,\n  PRIMARY KEY (\"id\"),\n  CONSTRAINT \"model_enumList_check_b238669f\" CHECK (\"enumList\"::text[] <@ ARRAY['A', 'B']::text[]),\n  CONSTRAINT \"model_enumList_elem_not_null_a1f4c8cf\" CHECK (array_position(\"enumList\", NULL) IS NULL),\n  CONSTRAINT \"model_enum_check_b2f5fa62\" CHECK (\"enum\" IN ('A', 'B')),\n  CONSTRAINT \"model_list_elem_not_null_dfa8eb59\" CHECK (array_position(\"list\", NULL) IS NULL)\n)",
+            "params": []
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify table \"model\" exists",
+            "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+            "params": [
+              "\"public\".\"model\""
+            ]
+          }
+        ]
+      },
+      {
+        "id": "table.other",
+        "label": "Create table \"other\"",
+        "summary": "Creates table \"other\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "table",
+            "name": "other"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure table \"other\" does not exist",
+            "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+            "params": [
+              "\"public\".\"other\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "create table \"other\"",
+            "sql": "CREATE TABLE \"public\".\"other\" (\n  \"id\" text NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+            "params": []
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify table \"other\" exists",
+            "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+            "params": [
+              "\"public\".\"other\""
+            ]
+          }
+        ]
+      },
+      {
+        "id": "unique.model.model_otherId_key",
+        "label": "Add unique constraint on \"model\" (otherId)",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "unique",
+            "name": "model_otherId_key",
+            "table": "model"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure constraint \"model_otherId_key\" does not exist",
+            "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+            "params": [
+              "model_otherId_key",
+              "public",
+              "\"public\".\"model\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "add unique constraint \"model_otherId_key\"",
+            "sql": "ALTER TABLE \"public\".\"model\" ADD CONSTRAINT \"model_otherId_key\" UNIQUE (\"otherId\")"
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify constraint \"model_otherId_key\" exists",
+            "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+            "params": [
+              "model_otherId_key",
+              "public",
+              "\"public\".\"model\""
+            ]
+          }
+        ]
+      },
+      {
+        "id": "foreignKey.model.model_otherId_fkey",
+        "label": "Add foreign key \"model_otherId_fkey\" on \"model\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "foreignKey",
+            "name": "model_otherId_fkey",
+            "table": "model"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure FK \"model_otherId_fkey\" does not exist",
+            "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+            "params": [
+              "model_otherId_fkey",
+              "public",
+              "\"public\".\"model\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "add FK \"model_otherId_fkey\"",
+            "sql": "ALTER TABLE \"public\".\"model\"\nADD CONSTRAINT \"model_otherId_fkey\"\nFOREIGN KEY (\"otherId\")\nREFERENCES \"public\".\"other\" (\"id\")"
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify FK \"model_otherId_fkey\" exists",
+            "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+            "params": [
+              "model_otherId_fkey",
+              "public",
+              "\"public\".\"model\""
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

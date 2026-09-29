@@ -19,7 +19,8 @@
       "!**/sql-contract.json",
       "!**/mongo-contract.json",
       "!**/migrations/*/*/migration.json",
-      "!**/migrations/*/*/ops.json"
+      "!**/migrations/*/*/ops.json",
+      "!**/planner-golden/golden/*.golden.json"
     ]
   },
   "formatter": {

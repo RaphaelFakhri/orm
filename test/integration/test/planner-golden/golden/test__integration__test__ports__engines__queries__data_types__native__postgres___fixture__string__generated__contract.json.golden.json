@@ -1,0 +1,172 @@
+{
+  "contract": "test/integration/test/ports/engines/queries/data_types/native/postgres/_fixture/string/generated/contract.json",
+  "target": "postgres",
+  "extensions": [],
+  "planned": {
+    "kind": "success",
+    "operations": [
+      {
+        "id": "table.Child",
+        "label": "Create table \"Child\"",
+        "summary": "Creates table \"Child\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "table",
+            "name": "Child"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure table \"Child\" does not exist",
+            "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+            "params": [
+              "\"public\".\"Child\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "create table \"Child\"",
+            "sql": "CREATE TABLE \"public\".\"Child\" (\n  \"bit\" bit(4) NOT NULL,\n  \"char\" character(10) NOT NULL,\n  \"id\" int4 NOT NULL,\n  \"ip\" inet NOT NULL,\n  \"text\" text NOT NULL,\n  \"uuid\" uuid NOT NULL,\n  \"vBit\" bit varying(5) NOT NULL,\n  \"vChar\" character varying(11) NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+            "params": []
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify table \"Child\" exists",
+            "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+            "params": [
+              "\"public\".\"Child\""
+            ]
+          }
+        ]
+      },
+      {
+        "id": "table.Parent",
+        "label": "Create table \"Parent\"",
+        "summary": "Creates table \"Parent\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "table",
+            "name": "Parent"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure table \"Parent\" does not exist",
+            "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+            "params": [
+              "\"public\".\"Parent\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "create table \"Parent\"",
+            "sql": "CREATE TABLE \"public\".\"Parent\" (\n  \"childId\" int4,\n  \"id\" int4 NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+            "params": []
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify table \"Parent\" exists",
+            "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+            "params": [
+              "\"public\".\"Parent\""
+            ]
+          }
+        ]
+      },
+      {
+        "id": "unique.Parent.Parent_childId_key",
+        "label": "Add unique constraint on \"Parent\" (childId)",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "unique",
+            "name": "Parent_childId_key",
+            "table": "Parent"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure constraint \"Parent_childId_key\" does not exist",
+            "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+            "params": [
+              "Parent_childId_key",
+              "public",
+              "\"public\".\"Parent\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "add unique constraint \"Parent_childId_key\"",
+            "sql": "ALTER TABLE \"public\".\"Parent\" ADD CONSTRAINT \"Parent_childId_key\" UNIQUE (\"childId\")"
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify constraint \"Parent_childId_key\" exists",
+            "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+            "params": [
+              "Parent_childId_key",
+              "public",
+              "\"public\".\"Parent\""
+            ]
+          }
+        ]
+      },
+      {
+        "id": "foreignKey.Parent.Parent_childId_fkey",
+        "label": "Add foreign key \"Parent_childId_fkey\" on \"Parent\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "foreignKey",
+            "name": "Parent_childId_fkey",
+            "table": "Parent"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure FK \"Parent_childId_fkey\" does not exist",
+            "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+            "params": [
+              "Parent_childId_fkey",
+              "public",
+              "\"public\".\"Parent\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "add FK \"Parent_childId_fkey\"",
+            "sql": "ALTER TABLE \"public\".\"Parent\"\nADD CONSTRAINT \"Parent_childId_fkey\"\nFOREIGN KEY (\"childId\")\nREFERENCES \"public\".\"Child\" (\"id\")"
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify FK \"Parent_childId_fkey\" exists",
+            "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+            "params": [
+              "Parent_childId_fkey",
+              "public",
+              "\"public\".\"Parent\""
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

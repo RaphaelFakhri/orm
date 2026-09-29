@@ -1,0 +1,169 @@
+{
+  "contract": "test/integration/test/ports/engines/queries/aggregation/group_by/_fixture/main/generated/contract.json",
+  "target": "postgres",
+  "extensions": [],
+  "planned": {
+    "kind": "success",
+    "operations": [
+      {
+        "id": "table.a",
+        "label": "Create table \"a\"",
+        "summary": "Creates table \"a\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "table",
+            "name": "a"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure table \"a\" does not exist",
+            "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+            "params": [
+              "\"public\".\"a\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "create table \"a\"",
+            "sql": "CREATE TABLE \"public\".\"a\" (\n  \"b_id\" int4,\n  \"float\" float8 NOT NULL,\n  \"id\" int4 NOT NULL,\n  \"int\" int4 NOT NULL,\n  \"string\" text NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+            "params": []
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify table \"a\" exists",
+            "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+            "params": [
+              "\"public\".\"a\""
+            ]
+          }
+        ]
+      },
+      {
+        "id": "table.b",
+        "label": "Create table \"b\"",
+        "summary": "Creates table \"b\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "table",
+            "name": "b"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure table \"b\" does not exist",
+            "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+            "params": [
+              "\"public\".\"b\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "create table \"b\"",
+            "sql": "CREATE TABLE \"public\".\"b\" (\n  \"field\" text NOT NULL,\n  \"id\" int4 NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+            "params": []
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify table \"b\" exists",
+            "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+            "params": [
+              "\"public\".\"b\""
+            ]
+          }
+        ]
+      },
+      {
+        "id": "index.a.a_b_id_idx_fddc7dbe",
+        "label": "Create index \"a_b_id_idx_fddc7dbe\" on \"a\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "index",
+            "name": "a_b_id_idx_fddc7dbe",
+            "table": "a"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure index \"a_b_id_idx_fddc7dbe\" does not exist",
+            "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+            "params": [
+              "\"public\".\"a_b_id_idx_fddc7dbe\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "create index \"a_b_id_idx_fddc7dbe\"",
+            "sql": "CREATE INDEX \"a_b_id_idx_fddc7dbe\" ON \"public\".\"a\" (\"b_id\")",
+            "params": []
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify index \"a_b_id_idx_fddc7dbe\" exists",
+            "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+            "params": [
+              "\"public\".\"a_b_id_idx_fddc7dbe\""
+            ]
+          }
+        ]
+      },
+      {
+        "id": "foreignKey.a.a_b_id_fkey",
+        "label": "Add foreign key \"a_b_id_fkey\" on \"a\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "foreignKey",
+            "name": "a_b_id_fkey",
+            "table": "a"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure FK \"a_b_id_fkey\" does not exist",
+            "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+            "params": [
+              "a_b_id_fkey",
+              "public",
+              "\"public\".\"a\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "add FK \"a_b_id_fkey\"",
+            "sql": "ALTER TABLE \"public\".\"a\"\nADD CONSTRAINT \"a_b_id_fkey\"\nFOREIGN KEY (\"b_id\")\nREFERENCES \"public\".\"b\" (\"id\")"
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify FK \"a_b_id_fkey\" exists",
+            "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+            "params": [
+              "a_b_id_fkey",
+              "public",
+              "\"public\".\"a\""
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

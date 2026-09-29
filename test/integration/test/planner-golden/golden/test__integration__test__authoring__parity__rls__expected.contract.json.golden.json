@@ -1,0 +1,510 @@
+{
+  "contract": "test/integration/test/authoring/parity/rls/expected.contract.json",
+  "target": "postgres",
+  "extensions": [],
+  "planned": {
+    "kind": "success",
+    "operations": [
+      {
+        "id": "table.audit_log",
+        "label": "Create table \"audit_log\"",
+        "summary": "Creates table \"audit_log\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "table",
+            "name": "audit_log"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure table \"audit_log\" does not exist",
+            "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+            "params": [
+              "\"public\".\"audit_log\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "create table \"audit_log\"",
+            "sql": "CREATE TABLE \"public\".\"audit_log\" (\n  \"id\" int4 NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+            "params": []
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify table \"audit_log\" exists",
+            "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+            "params": [
+              "\"public\".\"audit_log\""
+            ]
+          }
+        ]
+      },
+      {
+        "id": "table.profile",
+        "label": "Create table \"profile\"",
+        "summary": "Creates table \"profile\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "table",
+            "name": "profile"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure table \"profile\" does not exist",
+            "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+            "params": [
+              "\"public\".\"profile\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "create table \"profile\"",
+            "sql": "CREATE TABLE \"public\".\"profile\" (\n  \"id\" int4 NOT NULL,\n  \"userId\" text NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+            "params": []
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify table \"profile\" exists",
+            "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+            "params": [
+              "\"public\".\"profile\""
+            ]
+          }
+        ]
+      },
+      {
+        "id": "rowLevelSecurity.public.audit_log",
+        "label": "Enable row-level security on \"audit_log\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "rowLevelSecurity",
+            "name": "audit_log"
+          }
+        },
+        "precheck": [
+          {
+            "description": "check RLS is not already enabled on \"audit_log\"",
+            "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_class\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"relnamespace\" WHERE (\"n\".\"nspname\" = $1 AND \"c\".\"relname\" = $2 AND NOT (\"c\".\"relrowsecurity\"))) AS \"result\"",
+            "params": [
+              "public",
+              "audit_log"
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "enable row-level security on \"audit_log\"",
+            "sql": "ALTER TABLE \"public\".\"audit_log\" ENABLE ROW LEVEL SECURITY"
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify row-level security is enabled on \"audit_log\"",
+            "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_class\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"relnamespace\" WHERE (\"n\".\"nspname\" = $1 AND \"c\".\"relname\" = $2 AND \"c\".\"relrowsecurity\")) AS \"result\"",
+            "params": [
+              "public",
+              "audit_log"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "rowLevelSecurity.public.profile",
+        "label": "Enable row-level security on \"profile\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "rowLevelSecurity",
+            "name": "profile"
+          }
+        },
+        "precheck": [
+          {
+            "description": "check RLS is not already enabled on \"profile\"",
+            "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_class\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"relnamespace\" WHERE (\"n\".\"nspname\" = $1 AND \"c\".\"relname\" = $2 AND NOT (\"c\".\"relrowsecurity\"))) AS \"result\"",
+            "params": [
+              "public",
+              "profile"
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "enable row-level security on \"profile\"",
+            "sql": "ALTER TABLE \"public\".\"profile\" ENABLE ROW LEVEL SECURITY"
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify row-level security is enabled on \"profile\"",
+            "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_class\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"relnamespace\" WHERE (\"n\".\"nspname\" = $1 AND \"c\".\"relname\" = $2 AND \"c\".\"relrowsecurity\")) AS \"result\"",
+            "params": [
+              "public",
+              "profile"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "rlsPolicy.public.audit_log.audit_read_aede9d92",
+        "label": "Create RLS policy \"audit_read_aede9d92\" on \"audit_log\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "rlsPolicy",
+            "name": "audit_read_aede9d92",
+            "table": "audit_log"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure RLS policy \"audit_read_aede9d92\" does not exist",
+            "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_policies\" WHERE (\"schemaname\" = $1 AND \"tablename\" = $2 AND \"policyname\" = $3)) AS \"result\"",
+            "params": [
+              "public",
+              "audit_log",
+              "audit_read_aede9d92"
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "create RLS policy \"audit_read_aede9d92\"",
+            "sql": "CREATE POLICY \"audit_read_aede9d92\" ON \"public\".\"audit_log\" AS PERMISSIVE FOR SELECT TO authenticated USING (true)",
+            "params": []
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify RLS policy \"audit_read_aede9d92\" exists",
+            "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_policies\" WHERE (\"schemaname\" = $1 AND \"tablename\" = $2 AND \"policyname\" = $3)) AS \"result\"",
+            "params": [
+              "public",
+              "audit_log",
+              "audit_read_aede9d92"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "rlsPolicy.public.profile.profile_admin_all_8e1f0808",
+        "label": "Create RLS policy \"profile_admin_all_8e1f0808\" on \"profile\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "rlsPolicy",
+            "name": "profile_admin_all_8e1f0808",
+            "table": "profile"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure RLS policy \"profile_admin_all_8e1f0808\" does not exist",
+            "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_policies\" WHERE (\"schemaname\" = $1 AND \"tablename\" = $2 AND \"policyname\" = $3)) AS \"result\"",
+            "params": [
+              "public",
+              "profile",
+              "profile_admin_all_8e1f0808"
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "create RLS policy \"profile_admin_all_8e1f0808\"",
+            "sql": "CREATE POLICY \"profile_admin_all_8e1f0808\" ON \"public\".\"profile\" AS PERMISSIVE FOR ALL TO anon, authenticated USING (true) WITH CHECK (true)",
+            "params": []
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify RLS policy \"profile_admin_all_8e1f0808\" exists",
+            "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_policies\" WHERE (\"schemaname\" = $1 AND \"tablename\" = $2 AND \"policyname\" = $3)) AS \"result\"",
+            "params": [
+              "public",
+              "profile",
+              "profile_admin_all_8e1f0808"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "rlsPolicy.public.profile.profile_owner_delete_1f76e28d",
+        "label": "Create RLS policy \"profile_owner_delete_1f76e28d\" on \"profile\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "rlsPolicy",
+            "name": "profile_owner_delete_1f76e28d",
+            "table": "profile"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure RLS policy \"profile_owner_delete_1f76e28d\" does not exist",
+            "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_policies\" WHERE (\"schemaname\" = $1 AND \"tablename\" = $2 AND \"policyname\" = $3)) AS \"result\"",
+            "params": [
+              "public",
+              "profile",
+              "profile_owner_delete_1f76e28d"
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "create RLS policy \"profile_owner_delete_1f76e28d\"",
+            "sql": "CREATE POLICY \"profile_owner_delete_1f76e28d\" ON \"public\".\"profile\" AS PERMISSIVE FOR DELETE TO authenticated USING (\"userId\"::uuid = auth.uid())",
+            "params": []
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify RLS policy \"profile_owner_delete_1f76e28d\" exists",
+            "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_policies\" WHERE (\"schemaname\" = $1 AND \"tablename\" = $2 AND \"policyname\" = $3)) AS \"result\"",
+            "params": [
+              "public",
+              "profile",
+              "profile_owner_delete_1f76e28d"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "rlsPolicy.public.profile.profile_owner_insert_1f1e2946",
+        "label": "Create RLS policy \"profile_owner_insert_1f1e2946\" on \"profile\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "rlsPolicy",
+            "name": "profile_owner_insert_1f1e2946",
+            "table": "profile"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure RLS policy \"profile_owner_insert_1f1e2946\" does not exist",
+            "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_policies\" WHERE (\"schemaname\" = $1 AND \"tablename\" = $2 AND \"policyname\" = $3)) AS \"result\"",
+            "params": [
+              "public",
+              "profile",
+              "profile_owner_insert_1f1e2946"
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "create RLS policy \"profile_owner_insert_1f1e2946\"",
+            "sql": "CREATE POLICY \"profile_owner_insert_1f1e2946\" ON \"public\".\"profile\" AS PERMISSIVE FOR INSERT TO authenticated WITH CHECK (\"userId\"::uuid = auth.uid())",
+            "params": []
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify RLS policy \"profile_owner_insert_1f1e2946\" exists",
+            "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_policies\" WHERE (\"schemaname\" = $1 AND \"tablename\" = $2 AND \"policyname\" = $3)) AS \"result\"",
+            "params": [
+              "public",
+              "profile",
+              "profile_owner_insert_1f1e2946"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "rlsPolicy.public.profile.profile_owner_read_9f8e536e",
+        "label": "Create RLS policy \"profile_owner_read_9f8e536e\" on \"profile\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "rlsPolicy",
+            "name": "profile_owner_read_9f8e536e",
+            "table": "profile"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure RLS policy \"profile_owner_read_9f8e536e\" does not exist",
+            "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_policies\" WHERE (\"schemaname\" = $1 AND \"tablename\" = $2 AND \"policyname\" = $3)) AS \"result\"",
+            "params": [
+              "public",
+              "profile",
+              "profile_owner_read_9f8e536e"
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "create RLS policy \"profile_owner_read_9f8e536e\"",
+            "sql": "CREATE POLICY \"profile_owner_read_9f8e536e\" ON \"public\".\"profile\" AS PERMISSIVE FOR SELECT TO authenticated USING (\"userId\"::uuid = auth.uid())",
+            "params": []
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify RLS policy \"profile_owner_read_9f8e536e\" exists",
+            "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_policies\" WHERE (\"schemaname\" = $1 AND \"tablename\" = $2 AND \"policyname\" = $3)) AS \"result\"",
+            "params": [
+              "public",
+              "profile",
+              "profile_owner_read_9f8e536e"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "rlsPolicy.public.profile.profile_owner_write_b674cdea",
+        "label": "Create RLS policy \"profile_owner_write_b674cdea\" on \"profile\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "rlsPolicy",
+            "name": "profile_owner_write_b674cdea",
+            "table": "profile"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure RLS policy \"profile_owner_write_b674cdea\" does not exist",
+            "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_policies\" WHERE (\"schemaname\" = $1 AND \"tablename\" = $2 AND \"policyname\" = $3)) AS \"result\"",
+            "params": [
+              "public",
+              "profile",
+              "profile_owner_write_b674cdea"
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "create RLS policy \"profile_owner_write_b674cdea\"",
+            "sql": "CREATE POLICY \"profile_owner_write_b674cdea\" ON \"public\".\"profile\" AS PERMISSIVE FOR UPDATE TO authenticated USING (\"userId\"::uuid = auth.uid()) WITH CHECK (\"userId\"::uuid = auth.uid())",
+            "params": []
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify RLS policy \"profile_owner_write_b674cdea\" exists",
+            "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_policies\" WHERE (\"schemaname\" = $1 AND \"tablename\" = $2 AND \"policyname\" = $3)) AS \"result\"",
+            "params": [
+              "public",
+              "profile",
+              "profile_owner_write_b674cdea"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "rlsPolicy.public.profile.profile_public_read_16dd15e0",
+        "label": "Create RLS policy \"profile_public_read_16dd15e0\" on \"profile\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "rlsPolicy",
+            "name": "profile_public_read_16dd15e0",
+            "table": "profile"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure RLS policy \"profile_public_read_16dd15e0\" does not exist",
+            "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_policies\" WHERE (\"schemaname\" = $1 AND \"tablename\" = $2 AND \"policyname\" = $3)) AS \"result\"",
+            "params": [
+              "public",
+              "profile",
+              "profile_public_read_16dd15e0"
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "create RLS policy \"profile_public_read_16dd15e0\"",
+            "sql": "CREATE POLICY \"profile_public_read_16dd15e0\" ON \"public\".\"profile\" AS PERMISSIVE FOR SELECT TO anon USING (true)",
+            "params": []
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify RLS policy \"profile_public_read_16dd15e0\" exists",
+            "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_policies\" WHERE (\"schemaname\" = $1 AND \"tablename\" = $2 AND \"policyname\" = $3)) AS \"result\"",
+            "params": [
+              "public",
+              "profile",
+              "profile_public_read_16dd15e0"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "rlsPolicy.public.profile.profile_touch_write_4b6e708b",
+        "label": "Create RLS policy \"profile_touch_write_4b6e708b\" on \"profile\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "rlsPolicy",
+            "name": "profile_touch_write_4b6e708b",
+            "table": "profile"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure RLS policy \"profile_touch_write_4b6e708b\" does not exist",
+            "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_policies\" WHERE (\"schemaname\" = $1 AND \"tablename\" = $2 AND \"policyname\" = $3)) AS \"result\"",
+            "params": [
+              "public",
+              "profile",
+              "profile_touch_write_4b6e708b"
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "create RLS policy \"profile_touch_write_4b6e708b\"",
+            "sql": "CREATE POLICY \"profile_touch_write_4b6e708b\" ON \"public\".\"profile\" AS PERMISSIVE FOR UPDATE TO authenticated USING (\"userId\"::uuid = auth.uid())",
+            "params": []
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify RLS policy \"profile_touch_write_4b6e708b\" exists",
+            "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_policies\" WHERE (\"schemaname\" = $1 AND \"tablename\" = $2 AND \"policyname\" = $3)) AS \"result\"",
+            "params": [
+              "public",
+              "profile",
+              "profile_touch_write_4b6e708b"
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

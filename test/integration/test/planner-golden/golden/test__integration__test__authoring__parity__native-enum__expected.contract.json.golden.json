@@ -1,0 +1,149 @@
+{
+  "contract": "test/integration/test/authoring/parity/native-enum/expected.contract.json",
+  "target": "postgres",
+  "extensions": [],
+  "planned": {
+    "kind": "success",
+    "operations": [
+      {
+        "id": "schema.auth",
+        "label": "Create schema \"auth\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres"
+        },
+        "precheck": [],
+        "execute": [
+          {
+            "description": "Create schema \"auth\"",
+            "sql": "CREATE SCHEMA IF NOT EXISTS \"auth\"",
+            "params": []
+          }
+        ],
+        "postcheck": []
+      },
+      {
+        "id": "createNativeEnumType.aal_level",
+        "label": "Create enum type \"aal_level\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "auth",
+            "objectType": "type",
+            "name": "aal_level"
+          }
+        },
+        "precheck": [],
+        "execute": [
+          {
+            "description": "create enum type \"aal_level\"",
+            "sql": "CREATE TYPE \"auth\".\"aal_level\" AS ENUM ('aal1', 'aal2', 'aal3')",
+            "params": []
+          }
+        ],
+        "postcheck": []
+      },
+      {
+        "id": "createNativeEnumType.Role",
+        "label": "Create enum type \"Role\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "type",
+            "name": "Role"
+          }
+        },
+        "precheck": [],
+        "execute": [
+          {
+            "description": "create enum type \"Role\"",
+            "sql": "CREATE TYPE \"public\".\"Role\" AS ENUM ('user', 'admin')",
+            "params": []
+          }
+        ],
+        "postcheck": []
+      },
+      {
+        "id": "table.session",
+        "label": "Create table \"session\"",
+        "summary": "Creates table \"session\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "auth",
+            "objectType": "table",
+            "name": "session"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure table \"session\" does not exist",
+            "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+            "params": [
+              "\"auth\".\"session\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "create table \"session\"",
+            "sql": "CREATE TABLE \"auth\".\"session\" (\n  \"aal\" \"auth\".\"aal_level\",\n  \"id\" SERIAL NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+            "params": []
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify table \"session\" exists",
+            "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+            "params": [
+              "\"auth\".\"session\""
+            ]
+          }
+        ]
+      },
+      {
+        "id": "table.account",
+        "label": "Create table \"account\"",
+        "summary": "Creates table \"account\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "table",
+            "name": "account"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure table \"account\" does not exist",
+            "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+            "params": [
+              "\"public\".\"account\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "create table \"account\"",
+            "sql": "CREATE TABLE \"public\".\"account\" (\n  \"id\" SERIAL NOT NULL,\n  \"role\" \"Role\" NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+            "params": []
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify table \"account\" exists",
+            "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+            "params": [
+              "\"public\".\"account\""
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "contract": "examples/prisma-8-demo/fixtures/long-spine/migrations/snapshots/47f4a4f58e99a479aaa3ba2ff9d00d1728b1c240359e03aa564ae163d63ba8d7/contract.json",
+  "target": "postgres",
+  "extensions": [],
+  "planned": {
+    "kind": "unreadable",
+    "phase": "structural",
+    "message": "Contract structural validation failed: storage.namespaces.__unbound__.entries must be an object (was missing); storage.namespaces.__unbound__.tables must be removed; execution.mutations.defaults[0].ref.namespace must be a string (was missing); extensionPacks must be removed"
+  }
+}

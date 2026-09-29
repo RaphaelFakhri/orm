@@ -1,0 +1,289 @@
+{
+  "contract": "test/integration/test/ports/prisma/functional/relation-mode-gh-1-to-n/_fixture/setnull-plain/generated/contract.json",
+  "target": "postgres",
+  "extensions": [],
+  "planned": {
+    "kind": "success",
+    "operations": [
+      {
+        "id": "table.postOneToMany",
+        "label": "Create table \"postOneToMany\"",
+        "summary": "Creates table \"postOneToMany\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "table",
+            "name": "postOneToMany"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure table \"postOneToMany\" does not exist",
+            "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+            "params": [
+              "\"public\".\"postOneToMany\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "create table \"postOneToMany\"",
+            "sql": "CREATE TABLE \"public\".\"postOneToMany\" (\n  \"authorId\" text NOT NULL,\n  \"id\" text NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+            "params": []
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify table \"postOneToMany\" exists",
+            "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+            "params": [
+              "\"public\".\"postOneToMany\""
+            ]
+          }
+        ]
+      },
+      {
+        "id": "table.postOptionalOneToMany",
+        "label": "Create table \"postOptionalOneToMany\"",
+        "summary": "Creates table \"postOptionalOneToMany\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "table",
+            "name": "postOptionalOneToMany"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure table \"postOptionalOneToMany\" does not exist",
+            "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+            "params": [
+              "\"public\".\"postOptionalOneToMany\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "create table \"postOptionalOneToMany\"",
+            "sql": "CREATE TABLE \"public\".\"postOptionalOneToMany\" (\n  \"authorId\" text,\n  \"id\" text NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+            "params": []
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify table \"postOptionalOneToMany\" exists",
+            "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+            "params": [
+              "\"public\".\"postOptionalOneToMany\""
+            ]
+          }
+        ]
+      },
+      {
+        "id": "table.userOneToMany",
+        "label": "Create table \"userOneToMany\"",
+        "summary": "Creates table \"userOneToMany\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "table",
+            "name": "userOneToMany"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure table \"userOneToMany\" does not exist",
+            "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+            "params": [
+              "\"public\".\"userOneToMany\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "create table \"userOneToMany\"",
+            "sql": "CREATE TABLE \"public\".\"userOneToMany\" (\n  \"enabled\" bool,\n  \"id\" text NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+            "params": []
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify table \"userOneToMany\" exists",
+            "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+            "params": [
+              "\"public\".\"userOneToMany\""
+            ]
+          }
+        ]
+      },
+      {
+        "id": "index.postOneToMany.postOneToMany_authorId_idx_e47547ed",
+        "label": "Create index \"postOneToMany_authorId_idx_e47547ed\" on \"postOneToMany\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "index",
+            "name": "postOneToMany_authorId_idx_e47547ed",
+            "table": "postOneToMany"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure index \"postOneToMany_authorId_idx_e47547ed\" does not exist",
+            "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+            "params": [
+              "\"public\".\"postOneToMany_authorId_idx_e47547ed\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "create index \"postOneToMany_authorId_idx_e47547ed\"",
+            "sql": "CREATE INDEX \"postOneToMany_authorId_idx_e47547ed\" ON \"public\".\"postOneToMany\" (\"authorId\")",
+            "params": []
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify index \"postOneToMany_authorId_idx_e47547ed\" exists",
+            "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+            "params": [
+              "\"public\".\"postOneToMany_authorId_idx_e47547ed\""
+            ]
+          }
+        ]
+      },
+      {
+        "id": "index.postOptionalOneToMany.postOptionalOneToMany_authorId_idx_e47547ed",
+        "label": "Create index \"postOptionalOneToMany_authorId_idx_e47547ed\" on \"postOptionalOneToMany\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "index",
+            "name": "postOptionalOneToMany_authorId_idx_e47547ed",
+            "table": "postOptionalOneToMany"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure index \"postOptionalOneToMany_authorId_idx_e47547ed\" does not exist",
+            "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+            "params": [
+              "\"public\".\"postOptionalOneToMany_authorId_idx_e47547ed\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "create index \"postOptionalOneToMany_authorId_idx_e47547ed\"",
+            "sql": "CREATE INDEX \"postOptionalOneToMany_authorId_idx_e47547ed\" ON \"public\".\"postOptionalOneToMany\" (\"authorId\")",
+            "params": []
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify index \"postOptionalOneToMany_authorId_idx_e47547ed\" exists",
+            "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+            "params": [
+              "\"public\".\"postOptionalOneToMany_authorId_idx_e47547ed\""
+            ]
+          }
+        ]
+      },
+      {
+        "id": "foreignKey.postOneToMany.postOneToMany_authorId_fkey",
+        "label": "Add foreign key \"postOneToMany_authorId_fkey\" on \"postOneToMany\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "foreignKey",
+            "name": "postOneToMany_authorId_fkey",
+            "table": "postOneToMany"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure FK \"postOneToMany_authorId_fkey\" does not exist",
+            "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+            "params": [
+              "postOneToMany_authorId_fkey",
+              "public",
+              "\"public\".\"postOneToMany\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "add FK \"postOneToMany_authorId_fkey\"",
+            "sql": "ALTER TABLE \"public\".\"postOneToMany\"\nADD CONSTRAINT \"postOneToMany_authorId_fkey\"\nFOREIGN KEY (\"authorId\")\nREFERENCES \"public\".\"userOneToMany\" (\"id\")"
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify FK \"postOneToMany_authorId_fkey\" exists",
+            "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+            "params": [
+              "postOneToMany_authorId_fkey",
+              "public",
+              "\"public\".\"postOneToMany\""
+            ]
+          }
+        ]
+      },
+      {
+        "id": "foreignKey.postOptionalOneToMany.postOptionalOneToMany_authorId_fkey",
+        "label": "Add foreign key \"postOptionalOneToMany_authorId_fkey\" on \"postOptionalOneToMany\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "foreignKey",
+            "name": "postOptionalOneToMany_authorId_fkey",
+            "table": "postOptionalOneToMany"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure FK \"postOptionalOneToMany_authorId_fkey\" does not exist",
+            "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+            "params": [
+              "postOptionalOneToMany_authorId_fkey",
+              "public",
+              "\"public\".\"postOptionalOneToMany\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "add FK \"postOptionalOneToMany_authorId_fkey\"",
+            "sql": "ALTER TABLE \"public\".\"postOptionalOneToMany\"\nADD CONSTRAINT \"postOptionalOneToMany_authorId_fkey\"\nFOREIGN KEY (\"authorId\")\nREFERENCES \"public\".\"userOneToMany\" (\"id\")\nON DELETE SET NULL\nON UPDATE SET NULL"
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify FK \"postOptionalOneToMany_authorId_fkey\" exists",
+            "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+            "params": [
+              "postOptionalOneToMany_authorId_fkey",
+              "public",
+              "\"public\".\"postOptionalOneToMany\""
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}
