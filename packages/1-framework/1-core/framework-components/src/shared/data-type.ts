@@ -13,6 +13,8 @@
 
 import type { JsonValue } from '@internal/contract/types';
 import { blindCast } from '@internal/utils/casts';
+import { ifDefined } from '@internal/utils/defined';
+import type { Type } from 'arktype';
 import { runtimeError } from './runtime-error';
 
 /**
@@ -39,12 +41,15 @@ export interface ListCast {
 
 export interface DataType {
   readonly id: DataTypeId;
+  /** An arktype object schema of the type's parameters. A type without one has no parameters. */
+  readonly params?: Type<unknown>;
   /** Keyed by the id of the type each cast takes values of. */
   readonly casts: Readonly<Record<DataTypeId, Cast>>;
   readonly listCast?: ListCast;
 }
 
 export interface DataTypeSpec {
+  readonly params?: Type<unknown>;
   readonly casts?: Readonly<Record<string, Cast>>;
   readonly listCast?: { readonly of: readonly string[]; readonly cast: ListCast['cast'] };
 }
@@ -78,6 +83,7 @@ export function dataType(id: string, spec: DataTypeSpec): DataType {
   const listCast = spec.listCast;
   return {
     id: dataTypeId(id),
+    ...ifDefined('params', spec.params),
     casts,
     ...(listCast === undefined
       ? {}

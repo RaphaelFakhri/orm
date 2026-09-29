@@ -1,3 +1,4 @@
+import { type } from 'arktype';
 import { describe, expect, it } from 'vitest';
 import { createDataTypeLookup, dataType, dataTypeId } from '../src/shared/data-type';
 
@@ -58,6 +59,15 @@ describe('dataType', () => {
         listCast: { of: [dataTypeId('pg/int2'), 'nonsense'], cast: (elements) => [...elements] },
       }),
     ).toThrow();
+  });
+
+  it('carries the parameter schema it is declared with', () => {
+    const params = type({ 'length?': 'number.integer > 0' });
+    expect(dataType('pg/varchar', { params }).params).toBe(params);
+  });
+
+  it('has no parameter schema unless one is declared', () => {
+    expect(dataType('pg/text', {})).not.toHaveProperty('params');
   });
 });
 
