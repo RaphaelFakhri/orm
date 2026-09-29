@@ -3,10 +3,10 @@ import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { fileURLToPath } from 'node:url';
-import { ColumnRef, ProjectionItem, SelectAst } from '@prisma-next/sql-relational-core/ast';
-import { planFromAst } from '@prisma-next/sql-relational-core/plan';
-import sqlite from '@prisma-next/sqlite/runtime';
-import { timeouts } from '@prisma-next/test-utils';
+import { ColumnRef, ProjectionItem, SelectAst } from '@prisma/orm-sqlite/relational-core/ast';
+import { planFromAst } from '@prisma/orm-sqlite/relational-core/plan';
+import sqlite from '@prisma/orm-sqlite/runtime';
+import { timeouts } from '@repo/test-utils';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { Contract } from './fixtures/generated/contract.d';
 import { createSchema, seedData } from './utils';
@@ -51,12 +51,7 @@ describe('transaction e2e via sqlite() facade', { timeout: timeouts.databaseOper
     handle = setupHandle();
     // Schema and seed via the raw DatabaseSync handle before connecting the facade.
     const { rawDb, db } = handle;
-    // Deserialize the contract for schema creation (mirrors utils.ts approach).
-    const { TestSqlContractSerializer } = await import(
-      '../../../../../packages/2-sql/9-family/test/test-sql-contract-serializer'
-    );
-    const contract = new TestSqlContractSerializer().deserializeContract(contractJson) as Contract;
-    createSchema(rawDb, contract);
+    createSchema(rawDb, db.contract);
     seedData(rawDb);
     // Connect the facade and warm up the runtime before any transactions.
     // SQLite uses a single connection; contract verification acquires its own
@@ -135,9 +130,9 @@ describe('transaction e2e via sqlite() facade', { timeout: timeouts.databaseOper
     // it so we can consume it after the transaction ends.
     const escaped = await db.transaction(async (tx) => {
       await tx.orm.User.create({ id: 400, name: 'EscapeUser', email: 'escape@example.com' });
-      // Build a query plan through tx.sql and call tx.execute to get an
+      // Build a query plan through tx.sql and call tx.query to get an
       // AsyncIterableResult; do not await it — just capture the reference.
-      return { rows: tx.execute(tx.sql.users.select('id').build()) };
+      return { rows: tx.query(tx.sql.users.select('id').build()) };
     });
 
     await expect(escaped.rows.toArray()).rejects.toMatchObject({
@@ -161,7 +156,7 @@ describe('transaction e2e via sqlite() facade', { timeout: timeouts.databaseOper
 
       const temp = await tx.tempTable().as(source);
       const rows = await tx
-        .execute(
+        .query(
           planFromAst(
             SelectAst.from(temp.buildAst()).withProjection([
               ProjectionItem.of('id', ColumnRef.of(temp.name, 'id')),
@@ -174,7 +169,7 @@ describe('transaction e2e via sqlite() facade', { timeout: timeouts.databaseOper
         .toArray();
 
       const joinedRows = await tx
-        .execute(
+        .query(
           tx.sql.users
             .innerJoin(temp, (f, fns) => fns.eq(f['users']!['id'], f[temp.name]!['id']))
             .select('name')
@@ -204,7 +199,7 @@ describe('transaction e2e via sqlite() facade', { timeout: timeouts.databaseOper
 
       const temp = await tx.tempTable().as(source);
       const rows = await tx
-        .execute(
+        .query(
           planFromAst(
             SelectAst.from(temp.buildAst()).withProjection([
               ProjectionItem.of('id', ColumnRef.of(temp.name, 'id')),
@@ -217,7 +212,7 @@ describe('transaction e2e via sqlite() facade', { timeout: timeouts.databaseOper
         .toArray();
 
       const joinedRows = await tx
-        .execute(
+        .query(
           tx.sql.users
             .innerJoin(temp, (f, fns) => fns.eq(f['users']!['id'], f[temp.name]!['id']))
             .select('name')

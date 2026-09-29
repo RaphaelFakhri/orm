@@ -1,6 +1,6 @@
 # @internal/sql-relational-core
 
-Schema and column builders, operation attachment, and AST types for Prisma Next.
+Schema and column builders, operation attachment, and AST types for Prisma 8.
 
 ## Package Classification
 
@@ -105,7 +105,6 @@ SQL codec authors extend the framework `CodecImpl` base (and pair the codec with
 import {
   CodecDescriptorImpl,
   CodecImpl,
-  voidParamsSchema,
   type CodecCallContext,
   type CodecInstanceContext,
 } from '@internal/framework-components/codec';
@@ -123,7 +122,7 @@ class PgTextDescriptor extends CodecDescriptorImpl<void> {
   override readonly codecId = 'pg/text@1';
   override readonly traits = ['equality'] as const;
   override readonly targetTypes = ['text'] as const;
-  override readonly paramsSchema = voidParamsSchema;
+  override readonly paramsSchema = undefined;
   override readonly factory = () => (_ctx: CodecInstanceContext) => new PgTextCodec();
 }
 ```
@@ -170,15 +169,6 @@ See [ADR 204 — Single-Path Async Codec Runtime](../../../../docs/architecture%
 - Provides type inference utilities for extracting JavaScript types from codec types (e.g., `ExtractJsTypeFromColumnBuilder`)
 - Defines projection row inference types
 - Defines `AnyColumnBuilder` helper type for accepting column builders with any operation types
-
-## Dependencies
-
-- **`@internal/contract`**: Core contract types
-- **`@internal/operations`**: Operation registry used by schema builders
-- **`@internal/sql-contract`**: SQL contract types (via `@internal/sql-contract/types`)
-- **`arktype`**: Parameter schema typing for codec definitions
-
-**Note**: This package does not depend on specific adapters (e.g., `@internal/adapter-postgres`). Test fixtures define `CodecTypes` inline to remain adapter-agnostic and avoid cyclic dependencies.
 
 ## Package Structure
 

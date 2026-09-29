@@ -1,6 +1,6 @@
 import type { SqlDescribedContractSpace } from '@internal/family-sql/control';
 import type { EnumInfo, PslPrinterOptions } from '@internal/family-sql/psl-infer';
-import { inferRelations, parseRawDefault, toModelName } from '@internal/family-sql/psl-infer';
+import { inferRelations, toModelName } from '@internal/family-sql/psl-infer';
 import { coordinateKey } from '@internal/framework-components/ir';
 import type {
   PslDocumentAst,
@@ -14,7 +14,10 @@ import {
   UNSPECIFIED_PSL_NAMESPACE_ID,
 } from '@internal/framework-components/psl-ast';
 import { SqlSchemaIR, SqlTableIR } from '@internal/sql-schema-ir/types';
+import { parsePostgresDefault } from '../default-normalizer';
 import { postgresError } from '../errors';
+import { createPostgresTypeMap } from '../psl-build/postgres-type-map';
+import { SYNTHETIC_SPAN } from '../psl-build/psl-literals';
 import type { PostgresDatabaseSchemaNode } from '../schema-ir/postgres-database-schema-node';
 import type { PostgresPolicySchemaNode } from '../schema-ir/postgres-policy-schema-node';
 import { buildNativeEnumBlocks, PSL_SCALAR_TYPE_NAMES } from './infer-enum-blocks';
@@ -25,18 +28,17 @@ import {
 } from './infer-foreign-keys';
 import { buildModel } from './infer-model-blocks';
 import { buildFieldNamesByTable, buildTopLevelNameMap, topologicalSort } from './infer-names';
-import { buildPolicyBlocks } from './infer-policy-blocks';
+import { buildIntrospectedPolicyBlocks } from './infer-policy-blocks';
 import { createPostgresDefaultMapping } from './postgres-default-mapping';
-import { createPostgresTypeMap } from './postgres-type-map';
-import { SYNTHETIC_SPAN } from './psl-literals';
 
 /**
  * Infers a PSL AST (for `printPsl`) from an introspected Postgres schema tree.
  *
  * Target-owned inference: it walks the `PostgresDatabaseSchemaNode` tree and
  * owns the Postgres dialect knowledge — the native type map and default map.
- * Relation inference, name transforms, generic default mapping, and raw-default
- * parsing are shape-neutral utilities imported from the SQL family.
+ * It reads raw defaults with `parsePostgresDefault`, the parser introspection
+ * and verify use. Relation inference, name transforms, and generic default
+ * mapping are shape-neutral utilities imported from the SQL family.
  *
  * The tree's tables (across its namespaces — `contract infer` introspects a
  * single live namespace) are gathered into the model set and emitted in one
@@ -217,7 +219,7 @@ export function inferPostgresPslContract(
   const options: PslPrinterOptions = {
     typeMap: createPostgresTypeMap(enumInfo.typeNames),
     defaultMapping: createPostgresDefaultMapping(),
-    parseRawDefault,
+    parseRawDefault: parsePostgresDefault,
     ...(enumDefinitions.size > 0 ? { enumInfo } : {}),
   };
 
@@ -308,7 +310,7 @@ export function buildPslDocumentAst(
   ]);
   const { relationsByTable } = inferRelations(schemaIR.tables, modelNameMap);
 
-  const policyEmission = buildPolicyBlocks(
+  const policyEmission = buildIntrospectedPolicyBlocks(
     rlsExtras?.policiesByTable ?? new Map(),
     modelNameMap,
     new Set([

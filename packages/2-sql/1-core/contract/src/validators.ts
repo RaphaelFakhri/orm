@@ -1,6 +1,7 @@
 import { ContractValidationError } from '@internal/contract/contract-validation-error';
 import {
   type Contract,
+  ContractExecutionSectionSchema,
   type ContractField,
   type ContractModel,
   CrossReferenceSchema,
@@ -17,6 +18,7 @@ import { ifDefined } from '@internal/utils/defined';
 import { type Type, type } from 'arktype';
 import { contractError } from './contract-errors';
 import { composeSqlEntityKinds } from './entity-kinds';
+import { resolveSqlToOneRelationStorage } from './relation-storage';
 
 export {
   CheckConstraintSchema,
@@ -42,40 +44,7 @@ import type {
   StorageTypeInstanceInput,
 } from './types';
 
-const generatorKindSchema = type("'generator'");
 const ControlPolicySchema = type("'managed' | 'tolerated' | 'external' | 'observed'");
-const generatorIdSchema = type('string').narrow((value, ctx) => {
-  return /^[A-Za-z0-9][A-Za-z0-9_-]*$/.test(value) ? true : ctx.mustBe('a flat generator id');
-});
-
-const ExecutionMutationDefaultValueSchema = type({
-  '+': 'reject',
-  kind: generatorKindSchema,
-  id: generatorIdSchema,
-  'params?': 'Record<string, unknown>',
-});
-
-const ExecutionMutationDefaultSchema = type({
-  '+': 'reject',
-  ref: {
-    '+': 'reject',
-    namespace: 'string',
-    table: 'string',
-    column: 'string',
-  },
-  'onCreate?': ExecutionMutationDefaultValueSchema,
-  'onUpdate?': ExecutionMutationDefaultValueSchema,
-});
-
-const ExecutionSchema = type({
-  '+': 'reject',
-  executionHash: 'string',
-  mutations: {
-    '+': 'reject',
-    defaults: ExecutionMutationDefaultSchema.array().readonly(),
-  },
-});
-
 const DomainEnumRefSchema = type({
   plane: "'domain'",
   namespaceId: 'string',
@@ -235,7 +204,7 @@ function validateTableScopedEntryNames(storage: SqlStorage, errors: string[]): v
         const name = record['name'];
         const tableName = record['tableName'];
         if (typeof name !== 'string' || typeof tableName !== 'string') continue;
-        const key = `${tableName} ${name}`;
+        const key = JSON.stringify([tableName, name]);
         seen.set(key, (seen.get(key) ?? 0) + 1);
         if (seen.get(key) === 2) {
           errors.push(
@@ -403,16 +372,24 @@ const ContractManyToManyRelationSchema = type({
   through: ContractRelationThroughSchema,
 });
 
-const ContractNonJunctionRelationSchema = type({
+const ContractToOneRelationSchema = type({
   '+': 'reject',
   to: CrossReferenceSchema,
-  cardinality: "'1:1' | '1:N' | 'N:1'",
+  cardinality: "'1:1' | 'N:1'",
+  'nullable?': 'boolean',
+  on: ContractRelationOnSchema,
+});
+
+const ContractToManyRelationSchema = type({
+  '+': 'reject',
+  to: CrossReferenceSchema,
+  cardinality: "'1:N'",
   on: ContractRelationOnSchema,
 });
 
 const ContractReferenceRelationSchema = ContractManyToManyRelationSchema.or(
-  ContractNonJunctionRelationSchema,
-);
+  ContractToOneRelationSchema,
+).or(ContractToManyRelationSchema);
 
 const ContractEmbedRelationSchema = type({
   '+': 'reject',
@@ -466,7 +443,7 @@ export function createSqlContractSchema(
       }),
     }),
     storage,
-    'execution?': ExecutionSchema,
+    'execution?': ContractExecutionSectionSchema,
   }) as Type<unknown>;
 }
 
@@ -898,7 +875,53 @@ export function validateSqlContractFully<T extends Contract<SqlStorage>>(
   }
   validateModelStorageReferences(validated);
   validateRelationThroughConsistency(validated);
+  validateToOneRelationNullabilityAgainstStorage(validated);
   return validated;
+}
+
+/**
+ * A same-space to-one relation that states `nullable` must agree with its local FK columns:
+ * nullable exactly when one of them is nullable (a column that cannot be resolved counts as
+ * nullable). A relation without the flag is left to hydration, which derives it the same way.
+ */
+function validateToOneRelationNullabilityAgainstStorage(contract: Contract<SqlStorage>): void {
+  for (const [namespaceId, namespace] of Object.entries(contract.domain.namespaces)) {
+    for (const [modelName, model] of Object.entries(namespace.models)) {
+      const storage = blindCast<SqlModelStorage, 'SQL contract model storage'>(model.storage);
+      for (const [relationName, relation] of Object.entries(model.relations)) {
+        const isSameSpaceToOne =
+          'on' in relation &&
+          (relation.cardinality === '1:1' || relation.cardinality === 'N:1') &&
+          relation.to.space === undefined;
+        if (!isSameSpaceToOne || relation.nullable === undefined) continue;
+        const location = `Relation "${relationName}" on model "${namespaceId}:${modelName}"`;
+        const { ownsForeignKey, columns } = resolveSqlToOneRelationStorage(
+          contract,
+          storage,
+          relation,
+        );
+        if (!ownsForeignKey) {
+          if (relation.nullable) continue;
+          throw new ContractValidationError(
+            `${location} is required but does not own the foreign key, so nothing in storage guarantees the related row exists`,
+            'storage',
+          );
+        }
+        const anyNullable = columns.some((column) => column.nullable);
+        if (relation.nullable === anyNullable) continue;
+        const columnList = columns
+          .filter((column) => column.nullable !== relation.nullable)
+          .map((column) => `"${column.name}"`)
+          .join(', ');
+        throw new ContractValidationError(
+          relation.nullable
+            ? `${location} is nullable but every local FK column is NOT NULL (columns ${columnList})`
+            : `${location} is required but a local FK column is nullable (columns ${columnList})`,
+          'storage',
+        );
+      }
+    }
+  }
 }
 
 /** Storage column lookup for through-consistency validation. */

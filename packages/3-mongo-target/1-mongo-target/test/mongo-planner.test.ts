@@ -29,8 +29,8 @@ import {
   MongoSchemaValidator,
 } from '@internal/mongo-schema-ir';
 import { describe, expect, it } from 'vitest';
-import { MongoMigrationPlanner } from '../src/core/mongo-planner';
-import { CollModCall, CreateIndexCall } from '../src/core/op-factory-call';
+import { MongoMigrationPlanner } from '../src/core/migrations/mongo-planner';
+import { CollModCall, CreateIndexCall } from '../src/core/migrations/op-factory-call';
 import type { PlannerProducedMongoMigration } from '../src/exports/control';
 
 const ALL_CLASSES_POLICY: MigrationOperationPolicy = {
@@ -1085,7 +1085,7 @@ describe('MongoMigrationPlanner', () => {
 
     // TML-2486: bare collections (no validator/options/indexes) must still
     // round-trip through `db init`. MongoDB creates collections implicitly
-    // on first insert, but Prisma Next's schema verifier treats a contract-
+    // on first insert, but Prisma 8's schema verifier treats a contract-
     // declared collection that is absent from the live database as a
     // `missing_table` issue. The planner therefore has to emit an explicit
     // createCollection op so the runner provisions the collection before
@@ -1567,7 +1567,7 @@ describe('MongoMigrationPlanner', () => {
     });
   });
 
-  describe('polymorphic collections (FL-09)', () => {
+  describe('polymorphic collections', () => {
     it('does not createCollection for variant names when contract has only the base collection', () => {
       const contract = makeContract({
         tasks: {

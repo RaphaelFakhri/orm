@@ -1,6 +1,7 @@
 import type { PslDiagnosticCode } from '@internal/framework-components/psl-ast';
 import { UNSPECIFIED_PSL_NAMESPACE_ID } from '@internal/framework-components/psl-ast';
-import { type Range, SourceFile } from './source-file';
+import type { PslDiagnostic } from './diagnostic';
+import { PslSources, SourceFile } from './source-file';
 import { DocumentAst } from './syntax/ast/declarations';
 import type { GreenNode } from './syntax/green';
 import { GreenNodeBuilder } from './syntax/green-builder';
@@ -8,16 +9,12 @@ import { createSyntaxTree } from './syntax/red';
 import type { SyntaxKind } from './syntax/syntax-kind';
 import { isTerminatedStringLiteral, type Token, Tokenizer, type TokenKind } from './tokenizer';
 
-export interface ParseDiagnostic {
-  readonly code: PslDiagnosticCode;
-  readonly message: string;
-  readonly range: Range;
-}
+export type ParseDiagnostic = PslDiagnostic;
 
 export interface ParseResult {
   readonly document: DocumentAst;
   readonly diagnostics: readonly ParseDiagnostic[];
-  readonly sourceFile: SourceFile;
+  readonly sources: PslSources;
 }
 
 const TRIVIA_KINDS: ReadonlySet<TokenKind> = new Set<TokenKind>([
@@ -36,7 +33,7 @@ export interface DiagnosticMark {
 }
 
 /**
- * The fault-tolerant parser substrate the grammars drive. Trivia is flushed
+ * The fault-tolerant parser substrate the parse functions below drive. Trivia is flushed
  * into the enclosing open node, so every child node spans exactly its first
  * through last significant token.
  */
@@ -48,9 +45,9 @@ export class Cursor {
   #offset = 0;
   #depth = 0;
 
-  constructor(source: string) {
+  constructor(filename: string, source: string) {
     this.#tokenizer = new Tokenizer(source);
-    this.#sourceFile = new SourceFile(source);
+    this.#sourceFile = new SourceFile(filename, source);
   }
 
   get diagnostics(): readonly ParseDiagnostic[] {
@@ -156,6 +153,7 @@ export class Cursor {
     const start = mark.offset;
     const end = start + mark.length;
     this.#diagnostics.push({
+      filename: this.#sourceFile.filename,
       code,
       message,
       range: {
@@ -186,14 +184,27 @@ export function parseExpression(cursor: Cursor): GreenNode | undefined {
     parseNumberLiteralExpr(cursor) ??
     parseArrayLiteral(cursor) ??
     parseObjectLiteralExpr(cursor) ??
+    parseTaggedLiteral(cursor) ??
     parseFunctionCall(cursor) ??
     parseBooleanLiteralExpr(cursor) ??
     parseIdentifierExpr(cursor)
   );
 }
 
+/** A string literal outside a tagged literal, where a backtick string is refused. */
 export function parseStringLiteralExpr(cursor: Cursor): GreenNode | undefined {
   if (cursor.peekKind() !== 'StringLiteral') return undefined;
+  if (cursor.peekToken().text.startsWith('`')) {
+    cursor.diagnostic(
+      'PSL_BACKTICK_STRING_REQUIRES_TAG',
+      'A backtick string must follow a tag, as in tag`...`.',
+      cursor.mark(),
+    );
+  }
+  return parseStringLiteral(cursor);
+}
+
+function parseStringLiteral(cursor: Cursor): GreenNode {
   const stringMark = cursor.mark();
   const text = cursor.peekToken().text;
   cursor.startNode('StringLiteralExpr');
@@ -255,6 +266,30 @@ function parseQualifiedSegments(cursor: Cursor, separator: 'Colon' | 'Dot'): voi
       );
     }
   }
+}
+
+/**
+ * Whether the next tokens open a tagged literal: a bare `Ident` or a
+ * namespace-qualified `Ident.Ident`, then a string. Trivia may sit anywhere
+ * between them. Bounded like {@link isCallAhead}.
+ */
+function isTaggedLiteralAhead(cursor: Cursor): boolean {
+  if (cursor.peekKind() !== 'Ident') return false;
+  if (cursor.peekKind(1) === 'StringLiteral') return true;
+  return (
+    cursor.peekKind(1) === 'Dot' &&
+    cursor.peekKind(2) === 'Ident' &&
+    cursor.peekKind(3) === 'StringLiteral'
+  );
+}
+
+/** Parses `` tag`body` ``, `tag"body"`, or `tag'body'`: a qualified name, then a string literal. */
+export function parseTaggedLiteral(cursor: Cursor): GreenNode | undefined {
+  if (!isTaggedLiteralAhead(cursor)) return undefined;
+  cursor.startNode('TaggedLiteral');
+  parseQualifiedName(cursor);
+  parseStringLiteral(cursor);
+  return cursor.finishNode();
 }
 
 // Ordering among the `Ident`-leading alternatives is load-bearing: the
@@ -480,12 +515,13 @@ type MemberParser = (cursor: Cursor) => void;
  * Parses a full PSL document. Never throws — malformed input yields diagnostics
  * and a recovered tree, not an exception.
  */
-export function parse(source: string): ParseResult {
-  const cursor = new Cursor(source);
+export function parse(source: string, filename: string): ParseResult {
+  const cursor = new Cursor(filename, source);
   const green = parseDocument(cursor);
   const root = createSyntaxTree(green);
   const document = DocumentAst.cast(root) ?? new DocumentAst(root);
-  return { document, diagnostics: cursor.diagnostics, sourceFile: cursor.sourceFile };
+  const sources = new PslSources([[document.syntax, cursor.sourceFile]]);
+  return { document, diagnostics: cursor.diagnostics, sources };
 }
 
 function parseDocument(cursor: Cursor): GreenNode {
@@ -604,7 +640,7 @@ export function parseGenericBlock(cursor: Cursor): GreenNode | undefined {
     parseIdentifier(cursor);
   }
   if (cursor.peekKind() === 'LBrace') {
-    parseBlockBody(cursor, parseKeyValueMember);
+    parseBlockBody(cursor, genericBlockMemberParser(keyword));
   } else {
     cursor.diagnostic(
       'PSL_INVALID_DECLARATION',
@@ -691,12 +727,30 @@ function parseNamedTypeMember(cursor: Cursor): void {
 }
 
 /**
+ * A `view` body is read like a model body. Every other generic block reads `key = value` entries
+ * and bare keys, and in an `enum` block those may carry `@` attributes (`USER @map("user")`). Each
+ * interpreter decides whether it accepts the block and its members.
+ */
+function genericBlockMemberParser(keyword: string): MemberParser {
+  if (keyword === 'view') return parseModelMember;
+  if (keyword === 'enum') return parseEnumMember;
+  return parseKeyValueMember;
+}
+
+/**
  * A generic-block member is either a `@@`-block attribute or a `key = value`
  * entry. The block-attribute alternative is purely syntactic — it does not judge
  * whether the attribute is valid for the block's kind.
  */
 function parseKeyValueMember(cursor: Cursor): void {
   const node = parseBlockAttribute(cursor) ?? parseKeyValue(cursor);
+  if (!node) {
+    invalidMember(cursor, 'PSL_INVALID_EXTENSION_BLOCK_MEMBER', 'Invalid block entry');
+  }
+}
+
+function parseEnumMember(cursor: Cursor): void {
+  const node = parseBlockAttribute(cursor) ?? parseKeyValue(cursor, { memberAttributes: true });
   if (!node) {
     invalidMember(cursor, 'PSL_INVALID_EXTENSION_BLOCK_MEMBER', 'Invalid block entry');
   }
@@ -748,10 +802,14 @@ export function parseNamedType(cursor: Cursor): GreenNode | undefined {
 
 /**
  * A generic-block entry is either `key = value` or a bare `key` (committing a
- * `KeyValuePair` carrying only the key). A `key =` with no following expression
- * is flagged.
+ * `KeyValuePair` carrying only the key). With `memberAttributes` (enum blocks) any number of `@`
+ * attributes may follow, as in `USER @map("user")`. A `key =` with no following expression is
+ * flagged.
  */
-export function parseKeyValue(cursor: Cursor): GreenNode | undefined {
+export function parseKeyValue(
+  cursor: Cursor,
+  options: { readonly memberAttributes: boolean } = { memberAttributes: false },
+): GreenNode | undefined {
   if (cursor.peekKind() !== 'Ident') return undefined;
   cursor.startNode('KeyValuePair');
   parseIdentifier(cursor);
@@ -764,6 +822,9 @@ export function parseKeyValue(cursor: Cursor): GreenNode | undefined {
         cursor.mark(),
       );
     }
+  }
+  while (options.memberAttributes && cursor.peekKind() === 'At') {
+    parseAttribute(cursor);
   }
   return cursor.finishNode();
 }

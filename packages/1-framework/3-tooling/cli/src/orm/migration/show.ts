@@ -1,4 +1,5 @@
 import { readFile } from 'node:fs/promises';
+import { ormConfigSection } from '@internal/config-loader';
 import type { Contract } from '@internal/contract/types';
 import {
   APP_SPACE_ID,
@@ -33,7 +34,7 @@ import {
   looksLikePath,
   resolveAppTargetPath,
 } from '../../utils/migration-path-target';
-import { ormConfigSection } from '../config-section';
+import { snapshotVerifierFor } from '../../utils/snapshot-content-verification';
 import { defineOrmCommand } from '../define-command';
 import { normalizeError } from '../normalize-error';
 import { appMigrationsDirFor, contractPathFor, displayPath, migrationsDirFor } from './paths';
@@ -223,7 +224,7 @@ export const migrationShowCommand = defineOrmCommand({
   needs: { config: ormConfigSection },
   handler: async (args, ctx) => {
     const { target } = args.positionals;
-    const contractPath = contractPathFor(ctx.config, ctx.cwd);
+    const contractPath = contractPathFor(ctx.config);
     if (contractPath === undefined) {
       return notOk(
         normalizeError(
@@ -234,8 +235,8 @@ export const migrationShowCommand = defineOrmCommand({
         ),
       );
     }
-    const migrationsDir = migrationsDirFor(ctx.config, ctx.cwd);
-    const appMigrationsDir = appMigrationsDirFor(ctx.config, ctx.cwd);
+    const migrationsDir = migrationsDirFor(ctx.config);
+    const appMigrationsDir = appMigrationsDirFor(ctx.config);
     const appMigrationsRelative = displayPath(appMigrationsDir, ctx.cwd);
 
     let contractJson: string;
@@ -278,6 +279,7 @@ export const migrationShowCommand = defineOrmCommand({
       appContract,
       extensions: [],
       deserializeContract: (json) => familyInstance.deserializeContract(json),
+      ...ifDefined('verifySnapshotContent', snapshotVerifierFor(ctx.config)),
     });
     if (!loaded.ok) {
       return notOk(normalizeError(loaded.failure));

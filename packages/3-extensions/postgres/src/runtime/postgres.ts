@@ -1,32 +1,37 @@
-import postgresAdapter from '@prisma-next/adapter-postgres/runtime';
-import { buildNamespacedEnums, type NamespacedEnums } from '@prisma-next/contract/enum-accessor';
-import type { Contract } from '@prisma-next/contract/types';
-import postgresDriver from '@prisma-next/driver-postgres/runtime';
-import { instantiateExecutionStack } from '@prisma-next/framework-components/execution';
-import { sql as sqlBuilder } from '@prisma-next/sql-builder/runtime';
+import postgresAdapter from '@internal/adapter-postgres/runtime';
+import type { NamespacedEnums } from '@internal/contract/enum-accessor';
+import type { Contract } from '@internal/contract/types';
+import postgresDriver, { suppressIdleConnectionErrors } from '@internal/driver-postgres/runtime';
+import { instantiateExecutionStack } from '@internal/framework-components/execution';
+import { sql as sqlBuilder } from '@internal/sql-builder/runtime';
 import type {
   Db,
   QueryContext,
+  RawLane,
   Scope,
   ScopeField,
   SelectQuery,
-} from '@prisma-next/sql-builder/types';
-import type { ExtractCodecTypes, SqlStorage } from '@prisma-next/sql-contract/types';
+} from '@internal/sql-builder/types';
+import type { ExtractCodecTypes, SqlStorage } from '@internal/sql-contract/types';
 import {
   INTERNAL_TO_TEMP_TABLE_QUERY_SOURCE,
   orm as ormBuilder,
-} from '@prisma-next/sql-orm-client';
-import { RawSqlExpr, type SelectAst, TableSource } from '@prisma-next/sql-relational-core/ast';
-import type { CodecTypesBase, RawSqlTag } from '@prisma-next/sql-relational-core/expression';
-import { createRawSql } from '@prisma-next/sql-relational-core/expression';
-import { planFromAst, type SqlQueryPlan } from '@prisma-next/sql-relational-core/plan';
+  type PreparedFrom,
+  prepareQuery,
+} from '@internal/sql-orm-client';
+import { RawQueryAst, type SelectAst, TableSource } from '@internal/sql-relational-core/ast';
+import type { CodecTypesBase } from '@internal/sql-relational-core/expression';
+import {
+  type Preparable,
+  planFromAst,
+  type SqlQueryPlan,
+} from '@internal/sql-relational-core/plan';
 import type {
   BindSiteParams,
   ConnectionContext,
   Declaration,
   ExecutionContext,
   ParamsFromDeclaration,
-  PreparedStatement,
   Runtime,
   SqlExecutionStackWithDriver,
   SqlMiddleware,
@@ -34,23 +39,27 @@ import type {
   SqlRuntimeExtensionDescriptor,
   TransactionContext,
   VerifyMarkerOption,
-} from '@prisma-next/sql-runtime';
+} from '@internal/sql-runtime';
 import {
   createExecutionContext,
   createSqlExecutionStack,
   withConnection,
   withTransaction,
-} from '@prisma-next/sql-runtime';
-import postgresTarget, { PostgresContractSerializer } from '@prisma-next/target-postgres/runtime';
-import { blindCast } from '@prisma-next/utils/casts';
-import { ifDefined } from '@prisma-next/utils/defined';
+} from '@internal/sql-runtime';
+import postgresTarget, { PostgresContractSerializer } from '@internal/target-postgres/runtime';
+import { blindCast, castAs } from '@internal/utils/casts';
+import { ifDefined } from '@internal/utils/defined';
+import { InternalError } from '@internal/utils/internal-error';
 import { type Client, Pool } from 'pg';
+import { postgresError } from '../errors';
+import { buildPostgresStaticContext } from '../static/postgres-static';
 import {
   type PostgresBinding,
   type PostgresBindingInput,
   resolveOptionalPostgresBinding,
   resolvePostgresBinding,
 } from './binding';
+import type { NamespacedNativeEnums } from './native-enums';
 import { PostgresRuntimeImpl } from './postgres-runtime';
 
 export type PostgresTargetId = 'postgres';
@@ -103,6 +112,7 @@ export interface PostgresTransactionContext<TContract extends Contract<SqlStorag
   readonly sql: Db<TContract>;
   readonly orm: OrmClient<TContract>;
   readonly enums: NamespacedEnums<TContract>;
+  readonly nativeEnums: NamespacedNativeEnums<TContract>;
   tempTable(): TempTableBuilder;
 }
 
@@ -111,6 +121,7 @@ export interface PostgresConnectionContext<TContract extends Contract<SqlStorage
   readonly sql: Db<TContract>;
   readonly orm: OrmClient<TContract>;
   readonly enums: NamespacedEnums<TContract>;
+  readonly nativeEnums: NamespacedNativeEnums<TContract>;
   tempTable(): TempTableBuilder;
 }
 
@@ -118,8 +129,10 @@ export interface PostgresClient<TContract extends Contract<SqlStorage>> {
   readonly sql: Db<TContract>;
   readonly orm: OrmClient<TContract>;
   readonly enums: NamespacedEnums<TContract>;
-  readonly raw: RawSqlTag;
+  readonly nativeEnums: NamespacedNativeEnums<TContract>;
+  readonly raw: RawLane<TContract>;
   readonly context: ExecutionContext<TContract>;
+  readonly contract: TContract;
   readonly stack: SqlExecutionStackWithDriver<PostgresTargetId>;
   connect(bindingInput?: PostgresBindingInput): Promise<Runtime>;
   runtime(): Runtime;
@@ -127,12 +140,12 @@ export interface PostgresClient<TContract extends Contract<SqlStorage>> {
   connection<R>(fn: (conn: PostgresConnectionContext<TContract>) => PromiseLike<R>): Promise<R>;
   prepare<
     D extends Declaration<CT>,
-    Row,
-    CT extends CodecTypesBase = ExtractCodecTypes<TContract> & CodecTypesBase,
+    Q extends SqlQueryPlan | Preparable<unknown, unknown>,
+    CT extends CodecTypesBase = ExtractCodecTypes<TContract>,
   >(
     declaration: D,
-    callback: (sql: Db<TContract>, params: BindSiteParams<D>) => SqlQueryPlan<Row>,
-  ): Promise<PreparedStatement<ParamsFromDeclaration<D, CT>, Row>>;
+    callback: (params: BindSiteParams<D>) => Q,
+  ): Promise<PreparedFrom<ParamsFromDeclaration<D, CT>, Q>>;
   close(): Promise<void>;
   [Symbol.asyncDispose](): Promise<void>;
 }
@@ -183,8 +196,13 @@ const contractSerializer = new PostgresContractSerializer();
 function resolveContract<TContract extends Contract<SqlStorage>>(
   options: PostgresOptions<TContract>,
 ): TContract {
-  const contractInput = hasContractJson(options) ? options.contractJson : options.contract;
-  return contractSerializer.deserializeContract(contractInput) as TContract;
+  const contractJson = hasContractJson(options)
+    ? options.contractJson
+    : contractSerializer.serializeContract(options.contract);
+  return blindCast<
+    TContract,
+    'validated contract JSON corresponds to the caller supplied contract type'
+  >(contractSerializer.deserializeContract(contractJson));
 }
 
 function toRuntimeBinding<TContract extends Contract<SqlStorage>>(
@@ -197,11 +215,13 @@ function toRuntimeBinding<TContract extends Contract<SqlStorage>>(
 
   return {
     kind: 'pgPool',
-    pool: new Pool({
-      connectionString: binding.url,
-      connectionTimeoutMillis: options.poolOptions?.connectionTimeoutMillis ?? 20_000,
-      idleTimeoutMillis: options.poolOptions?.idleTimeoutMillis ?? 30_000,
-    }),
+    pool: suppressIdleConnectionErrors(
+      new Pool({
+        connectionString: binding.url,
+        connectionTimeoutMillis: options.poolOptions?.connectionTimeoutMillis ?? 20_000,
+        idleTimeoutMillis: options.poolOptions?.idleTimeoutMillis ?? 30_000,
+      }),
+    ),
   } as const;
 }
 
@@ -270,18 +290,16 @@ function createTempTableBuilder(
         if (rows.length === 0) return;
         const valueRows = rows.map((row) => `(${row.map(toSqlLiteral).join(', ')})`).join(', ');
         const insertSql = `INSERT INTO ${quotedName} VALUES ${valueRows}`;
-        const insertAst = RawSqlExpr.of([insertSql], []);
+        const insertAst = RawQueryAst.affectedCount([insertSql]);
         const insertQueryPlan = planFromAst(insertAst, contract, 'raw.temp-table');
-        await execCtx
-          .execute(
-            Object.freeze({
-              sql: insertAst.fragments[0] ?? '',
-              params: [] as unknown[],
-              ast: insertAst,
-              meta: insertQueryPlan.meta,
-            }),
-          )
-          .toArray();
+        await execCtx.execute(
+          Object.freeze({
+            sql: insertSql,
+            params: [] as unknown[],
+            ast: insertAst,
+            meta: insertQueryPlan.meta,
+          }),
+        );
       } else {
         const source = normalizeQuerySource(
           blindCast<
@@ -296,18 +314,16 @@ function createTempTableBuilder(
           throw new Error('tempTable.append(...) does not accept bind-site parameters.');
         });
         const insertSql = `INSERT INTO ${quotedName} ${lowered.sql}`;
-        const insertAst = RawSqlExpr.of([insertSql], []);
+        const insertAst = RawQueryAst.affectedCount([insertSql]);
         const insertQueryPlan = planFromAst(insertAst, contract, 'raw.temp-table');
-        await execCtx
-          .execute(
-            Object.freeze({
-              sql: insertAst.fragments[0] ?? '',
-              params,
-              ast: insertAst,
-              meta: insertQueryPlan.meta,
-            }),
-          )
-          .toArray();
+        await execCtx.execute(
+          Object.freeze({
+            sql: insertSql,
+            params,
+            ast: insertAst,
+            meta: insertQueryPlan.meta,
+          }),
+        );
       }
     };
 
@@ -328,20 +344,16 @@ function createTempTableBuilder(
         throw new Error('tempTable.as(...) does not accept bind-site parameters.');
       });
 
-      const createAst = RawSqlExpr.of(
-        [
-          `CREATE TEMP TABLE ${quotedTableName}${onCommitDrop ? ' ON COMMIT DROP' : ''} AS ${lowered.sql}`,
-        ],
-        [],
-      );
+      const createSql = `CREATE TEMP TABLE ${quotedTableName}${onCommitDrop ? ' ON COMMIT DROP' : ''} AS ${lowered.sql}`;
+      const createAst = RawQueryAst.affectedCount([createSql]);
       const createQueryPlan = planFromAst(createAst, contract, 'raw.temp-table');
       const createPlan = Object.freeze({
-        sql: createAst.fragments[0] ?? '',
+        sql: createSql,
         params,
         ast: createAst,
         meta: createQueryPlan.meta,
       });
-      await execCtx.execute(createPlan).toArray();
+      await execCtx.execute(createPlan);
 
       const dropPlan = Object.freeze({
         sql: `DROP TABLE IF EXISTS ${quotedTableName}`,
@@ -353,7 +365,7 @@ function createTempTableBuilder(
       const drop = async (): Promise<void> => {
         if (dropped) return;
         dropped = true;
-        await execCtx.execute(dropPlan).toArray();
+        await execCtx.execute(dropPlan);
       };
       if (!onCommitDrop) {
         registerCleanupHook(drop);
@@ -383,20 +395,21 @@ function createTempTableBuilder(
 
       const colDefs = columns.map((c) => `${quoteIdentifier(c.name)} ${c.type}`).join(', ');
       const createSql = `CREATE TEMP TABLE ${quotedTableName} (${colDefs})${onCommitDrop ? ' ON COMMIT DROP' : ''}`;
-      const createAst = RawSqlExpr.of([createSql], []);
+      const createAst = RawQueryAst.affectedCount([createSql]);
       const createQueryPlan = planFromAst(createAst, contract, 'raw.temp-table');
       const createPlan = Object.freeze({
-        sql: createAst.fragments[0] ?? '',
+        sql: createSql,
         params: [] as unknown[],
         ast: createAst,
         meta: createQueryPlan.meta,
       });
-      await execCtx.execute(createPlan).toArray();
+      await execCtx.execute(createPlan);
 
-      const dropAst = RawSqlExpr.of([`DROP TABLE IF EXISTS ${quotedTableName}`], []);
+      const dropSql = `DROP TABLE IF EXISTS ${quotedTableName}`;
+      const dropAst = RawQueryAst.affectedCount([dropSql]);
       const dropQueryPlan = planFromAst(dropAst, contract, 'raw.temp-table');
       const dropPlan = Object.freeze({
-        sql: dropAst.fragments[0] ?? '',
+        sql: dropSql,
         params: [] as unknown[],
         ast: dropAst,
         meta: dropQueryPlan.meta,
@@ -405,7 +418,7 @@ function createTempTableBuilder(
       const drop = async (): Promise<void> => {
         if (dropped) return;
         dropped = true;
-        await execCtx.execute(dropPlan).toArray();
+        await execCtx.execute(dropPlan);
       };
       if (!onCommitDrop) {
         registerCleanupHook(drop);
@@ -443,21 +456,26 @@ export default function postgres<TContract extends Contract<SqlStorage>>(
 ): PostgresClient<TContract> {
   const contract = resolveContract(options);
   let binding = resolveOptionalPostgresBinding(options);
+
   const stack = createSqlExecutionStack({
     target: postgresTarget,
     adapter: postgresAdapter,
     driver: postgresDriver,
-    extensionPacks: options.extensions ?? [],
+    extensions: options.extensions ?? [],
   });
   const stackInstance = instantiateExecutionStack(stack);
 
-  const context = createExecutionContext({
+  const context = createExecutionContext<TContract, PostgresTargetId>({
     contract,
     stack,
+    driver: postgresDriver,
   });
-
-  const rawCodecInferer = stack.adapter.rawCodecInferer;
-  const rawSqlTag: RawSqlTag = createRawSql(rawCodecInferer);
+  const {
+    sql,
+    raw: rawSqlTag,
+    enums,
+    nativeEnums,
+  } = buildPostgresStaticContext<TContract>(context, stack.adapter.rawCodecInferer);
 
   let runtimeInstance: Runtime | undefined;
   let runtimeDriver: { connect(binding: unknown): Promise<void> } | undefined;
@@ -469,7 +487,7 @@ export default function postgres<TContract extends Contract<SqlStorage>>(
 
   const connectDriver = async (resolvedBinding: PostgresBinding): Promise<void> => {
     if (driverConnected) return;
-    if (!runtimeDriver) throw new Error('Postgres runtime driver missing');
+    if (!runtimeDriver) throw new InternalError('Postgres runtime driver missing');
     if (connectPromise) return connectPromise;
     const runtimeBinding = toRuntimeBinding(resolvedBinding, options);
     if (resolvedBinding.kind === 'url' && runtimeBinding.kind === 'pgPool') {
@@ -494,9 +512,14 @@ export default function postgres<TContract extends Contract<SqlStorage>>(
       });
     return connectPromise;
   };
+
   const getRuntime = (): Runtime => {
     if (closed) {
-      throw new Error('Postgres client is closed');
+      throw postgresError('DRIVER.NOT_CONNECTED', 'Postgres client is closed', {
+        why: 'close() was called on this client.',
+        fix: 'Create a new postgres(...) client.',
+        meta: { extension: 'postgres' },
+      });
     }
 
     if (backgroundConnectError !== undefined) {
@@ -509,7 +532,7 @@ export default function postgres<TContract extends Contract<SqlStorage>>(
 
     const driverDescriptor = stack.driver;
     if (!driverDescriptor) {
-      throw new Error('Driver descriptor missing from execution stack');
+      throw new InternalError('Driver descriptor missing from execution stack');
     }
 
     const driver = driverDescriptor.create({
@@ -530,8 +553,12 @@ export default function postgres<TContract extends Contract<SqlStorage>>(
 
     return runtimeInstance;
   };
+
   const orm: OrmClient<TContract> = ormBuilder({
     runtime: {
+      query(plan) {
+        return getRuntime().query(plan);
+      },
       execute(plan) {
         return getRuntime().execute(plan);
       },
@@ -542,28 +569,41 @@ export default function postgres<TContract extends Contract<SqlStorage>>(
     context,
   });
 
-  const sql: Db<TContract> = sqlBuilder<TContract>({ context, rawCodecInferer });
-
-  const enums = blindCast<
-    NamespacedEnums<TContract>,
-    'buildNamespacedEnums returns the namespace-keyed accessor map this contract types'
-  >(Object.freeze(buildNamespacedEnums(contract.domain)));
+  function prepare<
+    D extends Declaration<CT>,
+    Q extends SqlQueryPlan | Preparable<unknown, unknown>,
+    CT extends CodecTypesBase = ExtractCodecTypes<TContract>,
+  >(
+    declaration: D,
+    callback: (params: BindSiteParams<D>) => Q,
+  ): Promise<PreparedFrom<ParamsFromDeclaration<D, CT>, Q>> {
+    return prepareQuery<D, Q, CT>(getRuntime(), declaration, callback);
+  }
 
   return {
     sql,
     orm,
     enums,
+    nativeEnums,
     raw: rawSqlTag,
     context,
+    contract,
     stack,
 
     async connect(bindingInput) {
       if (closed) {
-        throw new Error('Postgres client is closed');
+        throw postgresError('DRIVER.NOT_CONNECTED', 'Postgres client is closed', {
+          why: 'close() was called on this client.',
+          fix: 'Create a new postgres(...) client.',
+          meta: { extension: 'postgres' },
+        });
       }
 
       if (driverConnected || connectPromise) {
-        throw new Error('Postgres client already connected');
+        throw postgresError('DRIVER.ALREADY_CONNECTED', 'Postgres client already connected', {
+          fix: 'Call connect() at most once per client.',
+          meta: { extension: 'postgres' },
+        });
       }
 
       if (bindingInput !== undefined) {
@@ -571,8 +611,10 @@ export default function postgres<TContract extends Contract<SqlStorage>>(
       }
 
       if (binding === undefined) {
-        throw new Error(
+        throw postgresError(
+          'RUNTIME.BINDING_MISSING',
           'Postgres binding not configured. Pass url/pg/binding to postgres(...) or call db.connect({ ... }).',
+          { meta: { extension: 'postgres' } },
         );
       }
 
@@ -589,19 +631,11 @@ export default function postgres<TContract extends Contract<SqlStorage>>(
       return getRuntime();
     },
 
-    prepare<
-      D extends Declaration<CT>,
-      Row,
-      CT extends CodecTypesBase = ExtractCodecTypes<TContract> & CodecTypesBase,
-    >(
-      declaration: D,
-      callback: (sql: Db<TContract>, params: BindSiteParams<D>) => SqlQueryPlan<Row>,
-    ): Promise<PreparedStatement<ParamsFromDeclaration<D, CT>, Row>> {
-      return getRuntime().prepare<D, Row, CT>(declaration, (params) => callback(sql, params));
-    },
+    prepare,
 
     transaction<R>(fn: (tx: PostgresTransactionContext<TContract>) => PromiseLike<R>): Promise<R> {
       return withTransaction(getRuntime(), (txCtx) => {
+        const rawCodecInferer = stack.adapter.rawCodecInferer;
         const txSql: Db<TContract> = sqlBuilder<TContract>({
           context,
           rawCodecInferer,
@@ -609,6 +643,9 @@ export default function postgres<TContract extends Contract<SqlStorage>>(
 
         const txOrm: OrmClient<TContract> = ormBuilder({
           runtime: {
+            query(plan) {
+              return txCtx.query(plan);
+            },
             execute(plan) {
               return txCtx.execute(plan);
             },
@@ -621,11 +658,12 @@ export default function postgres<TContract extends Contract<SqlStorage>>(
         // variable in `withTransaction`) remain wired to the original object.
         // Spreading would evaluate the getter once and freeze its value.
         const tx: PostgresTransactionContext<TContract> = Object.assign(
-          Object.create(txCtx) as TransactionContext,
+          castAs<TransactionContext>(Object.create(txCtx)),
           {
             sql: txSql,
             orm: txOrm,
             enums,
+            nativeEnums,
             tempTable(): TempTableBuilder {
               return createTempTableBuilder(
                 txCtx,
@@ -644,6 +682,7 @@ export default function postgres<TContract extends Contract<SqlStorage>>(
 
     connection<R>(fn: (conn: PostgresConnectionContext<TContract>) => PromiseLike<R>): Promise<R> {
       return withConnection(getRuntime(), (connCtx) => {
+        const rawCodecInferer = stack.adapter.rawCodecInferer;
         const connSql: Db<TContract> = sqlBuilder<TContract>({
           context,
           rawCodecInferer,
@@ -651,6 +690,9 @@ export default function postgres<TContract extends Contract<SqlStorage>>(
 
         const connOrm: OrmClient<TContract> = ormBuilder({
           runtime: {
+            query(plan) {
+              return connCtx.query(plan);
+            },
             execute(plan) {
               return connCtx.execute(plan);
             },
@@ -659,11 +701,12 @@ export default function postgres<TContract extends Contract<SqlStorage>>(
         });
 
         const conn: PostgresConnectionContext<TContract> = Object.assign(
-          Object.create(connCtx) as ConnectionContext,
+          castAs<ConnectionContext>(Object.create(connCtx)),
           {
             sql: connSql,
             orm: connOrm,
             enums,
+            nativeEnums,
             tempTable(): TempTableBuilder {
               return createTempTableBuilder(
                 connCtx,

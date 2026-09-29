@@ -68,8 +68,8 @@ describe('SqlContractSerializer logic validation', () => {
             {
               ref: {
                 namespace: 'public',
-                table: 'User',
-                column: 'id',
+                entry: 'User',
+                field: 'id',
               },
               onCreate: {
                 kind: 'generator',
@@ -352,6 +352,7 @@ describe('SqlContractSerializer logic validation', () => {
           to: crossRef('User'),
           on: { localFields: ['userId'], targetFields: ['id'] },
           cardinality: 'N:1',
+          nullable: false,
         },
       };
       expect(() => validateSqlContractFully<Contract<SqlStorage>>(contract)).not.toThrow();
@@ -364,6 +365,7 @@ describe('SqlContractSerializer logic validation', () => {
           to: crossRef('User'),
           on: { localFields: ['userId'], targetFields: ['id'] },
           cardinality: 'N:1',
+          nullable: false,
         },
       };
       (contractTablesRecord(contract)['Post'] as Record<string, unknown>)['foreignKeys'] = [

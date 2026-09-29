@@ -1,35 +1,38 @@
-import sqliteAdapter from '@prisma-next/adapter-sqlite/runtime';
-import { buildNamespacedEnums, type NamespacedEnums } from '@prisma-next/contract/enum-accessor';
-import type { Contract } from '@prisma-next/contract/types';
-import type { SqliteBinding } from '@prisma-next/driver-sqlite/runtime';
-import sqliteDriver from '@prisma-next/driver-sqlite/runtime';
-import { SqlContractSerializer } from '@prisma-next/family-sql/ir';
-import { instantiateExecutionStack } from '@prisma-next/framework-components/execution';
-import { UNBOUND_NAMESPACE_ID } from '@prisma-next/framework-components/ir';
-import { sql as sqlBuilder } from '@prisma-next/sql-builder/runtime';
+import sqliteAdapter from '@internal/adapter-sqlite/runtime';
+import type { Contract } from '@internal/contract/types';
+import type { SqliteBinding } from '@internal/driver-sqlite/runtime';
+import sqliteDriver from '@internal/driver-sqlite/runtime';
+import { instantiateExecutionStack } from '@internal/framework-components/execution';
+import { UNBOUND_NAMESPACE_ID } from '@internal/framework-components/ir';
+import { sql as sqlBuilder } from '@internal/sql-builder/runtime';
 import type {
   Db,
   QueryContext,
+  RawLane,
   Scope,
   ScopeField,
   SelectQuery,
-} from '@prisma-next/sql-builder/types';
-import type { ExtractCodecTypes, SqlStorage } from '@prisma-next/sql-contract/types';
+} from '@internal/sql-builder/types';
+import type { ExtractCodecTypes, SqlStorage } from '@internal/sql-contract/types';
 import {
   INTERNAL_TO_TEMP_TABLE_QUERY_SOURCE,
   orm as ormBuilder,
-} from '@prisma-next/sql-orm-client';
-import { RawSqlExpr, type SelectAst, TableSource } from '@prisma-next/sql-relational-core/ast';
-import type { CodecTypesBase, RawSqlTag } from '@prisma-next/sql-relational-core/expression';
-import { createRawSql } from '@prisma-next/sql-relational-core/expression';
-import { planFromAst, type SqlQueryPlan } from '@prisma-next/sql-relational-core/plan';
+  type PreparedFrom,
+  prepareQuery,
+} from '@internal/sql-orm-client';
+import { RawQueryAst, type SelectAst, TableSource } from '@internal/sql-relational-core/ast';
+import type { CodecTypesBase } from '@internal/sql-relational-core/expression';
+import {
+  type Preparable,
+  planFromAst,
+  type SqlQueryPlan,
+} from '@internal/sql-relational-core/plan';
 import type {
   BindSiteParams,
   ConnectionContext,
   Declaration,
   ExecutionContext,
   ParamsFromDeclaration,
-  PreparedStatement,
   Runtime,
   SqlExecutionStackWithDriver,
   SqlMiddleware,
@@ -37,16 +40,22 @@ import type {
   SqlRuntimeExtensionDescriptor,
   TransactionContext,
   VerifyMarkerOption,
-} from '@prisma-next/sql-runtime';
+} from '@internal/sql-runtime';
 import {
   createExecutionContext,
   createSqlExecutionStack,
   withConnection,
   withTransaction,
-} from '@prisma-next/sql-runtime';
-import sqliteTarget from '@prisma-next/target-sqlite/runtime';
-import { blindCast, castAs } from '@prisma-next/utils/casts';
-import { ifDefined } from '@prisma-next/utils/defined';
+} from '@internal/sql-runtime';
+import sqliteTarget, {
+  SqliteContractSerializer as SqlContractSerializer,
+} from '@internal/target-sqlite/runtime';
+import { assertDefined } from '@internal/utils/assertions';
+import { blindCast, castAs } from '@internal/utils/casts';
+import { ifDefined } from '@internal/utils/defined';
+import { InternalError } from '@internal/utils/internal-error';
+import { sqliteError } from '../errors';
+import { buildSqliteStaticContext, type SqliteStaticContext } from '../static/sqlite-static';
 import { resolveOptionalSqliteBinding, resolveSqliteBinding } from './binding';
 import { SqliteRuntimeImpl } from './sqlite-runtime';
 
@@ -100,20 +109,23 @@ type UnboundSql<TContract extends Contract<SqlStorage>> =
   Db<TContract>[typeof UNBOUND_NAMESPACE_ID];
 type UnboundOrm<TContract extends Contract<SqlStorage>> =
   OrmClient<TContract>[typeof UNBOUND_NAMESPACE_ID];
-type UnboundEnums<TContract extends Contract<SqlStorage>> =
-  NamespacedEnums<TContract>[typeof UNBOUND_NAMESPACE_ID];
 
-function unboundNamespace<T>(builderOutput: { readonly [UNBOUND_NAMESPACE_ID]?: unknown }): T {
-  return blindCast<T, 'the unbound namespace always exists on a sqlite builder output'>(
-    builderOutput[UNBOUND_NAMESPACE_ID],
-  );
+function unboundOrm<TContract extends Contract<SqlStorage>>(
+  orm: OrmClient<TContract>,
+): UnboundOrm<TContract> {
+  const value = orm[UNBOUND_NAMESPACE_ID];
+  assertDefined(value, 'the unbound namespace always exists on a sqlite builder output');
+  return blindCast<
+    UnboundOrm<TContract>,
+    'OrmClient<TContract> indexed by a literal key widens NsId to string; Collection is invariant in NsId via row/mutation-input types, so the indexed-access type cannot be proven to match the literal-keyed OrmNamespace without this cast'
+  >(value);
 }
 
 export interface SqliteTransactionContext<TContract extends Contract<SqlStorage>>
   extends TransactionContext {
   readonly sql: UnboundSql<TContract>;
   readonly orm: UnboundOrm<TContract>;
-  readonly enums: UnboundEnums<TContract>;
+  readonly enums: SqliteStaticContext<TContract>['enums'];
   tempTable(): TempTableBuilder;
 }
 
@@ -121,27 +133,28 @@ export interface SqliteConnectionContext<TContract extends Contract<SqlStorage>>
   extends ConnectionContext {
   readonly sql: UnboundSql<TContract>;
   readonly orm: UnboundOrm<TContract>;
-  readonly enums: UnboundEnums<TContract>;
+  readonly enums: SqliteStaticContext<TContract>['enums'];
   tempTable(): TempTableBuilder;
 }
 
 export interface SqliteClient<TContract extends Contract<SqlStorage>> {
   readonly sql: UnboundSql<TContract>;
   readonly orm: UnboundOrm<TContract>;
-  readonly enums: UnboundEnums<TContract>;
-  readonly raw: RawSqlTag;
+  readonly enums: SqliteStaticContext<TContract>['enums'];
+  readonly raw: RawLane<TContract>;
   readonly context: ExecutionContext<TContract>;
+  readonly contract: TContract;
   readonly stack: SqlExecutionStackWithDriver<SqliteTargetId>;
   connect(bindingInput?: { readonly path: string }): Promise<Runtime>;
   runtime(): Runtime;
   prepare<
     D extends Declaration<CT>,
-    Row,
-    CT extends CodecTypesBase = ExtractCodecTypes<TContract> & CodecTypesBase,
+    Q extends SqlQueryPlan | Preparable<unknown, unknown>,
+    CT extends CodecTypesBase = ExtractCodecTypes<TContract>,
   >(
     declaration: D,
-    callback: (sql: UnboundSql<TContract>, params: BindSiteParams<D>) => SqlQueryPlan<Row>,
-  ): Promise<PreparedStatement<ParamsFromDeclaration<D, CT>, Row>>;
+    callback: (params: BindSiteParams<D>) => Q,
+  ): Promise<PreparedFrom<ParamsFromDeclaration<D, CT>, Q>>;
   transaction<R>(fn: (tx: SqliteTransactionContext<TContract>) => PromiseLike<R>): Promise<R>;
   connection<R>(fn: (conn: SqliteConnectionContext<TContract>) => PromiseLike<R>): Promise<R>;
   close(): Promise<void>;
@@ -176,11 +189,19 @@ export type SqliteOptions<TContract extends Contract<SqlStorage>> =
 function resolveContract<TContract extends Contract<SqlStorage>>(
   options: SqliteOptions<TContract>,
 ): TContract {
-  const contractInput =
-    'contractJson' in options && options.contractJson !== undefined
-      ? options.contractJson
-      : (options as SqliteOptionsWithContract<TContract>).contract;
-  return new SqlContractSerializer().deserializeContract(contractInput) as TContract;
+  const serializer = new SqlContractSerializer();
+  if ('contractJson' in options && options.contractJson !== undefined) {
+    return blindCast<
+      TContract,
+      'validated contract JSON corresponds to the caller supplied contract type'
+    >(serializer.deserializeContract(options.contractJson));
+  }
+  const contract = options.contract;
+  assertDefined(contract, 'a contract or contractJson is required');
+  return blindCast<
+    TContract,
+    'serialized and validated contract retains the authored contract type'
+  >(serializer.deserializeContract(serializer.serializeContract(contract)));
 }
 
 function quoteIdentifier(name: string): string {
@@ -247,18 +268,16 @@ function createTempTableBuilder(
         if (rows.length === 0) return;
         const valueRows = rows.map((row) => `(${row.map(toSqlLiteral).join(', ')})`).join(', ');
         const insertSql = `INSERT INTO ${quotedName} VALUES ${valueRows}`;
-        const insertAst = RawSqlExpr.of([insertSql], []);
+        const insertAst = RawQueryAst.affectedCount([insertSql]);
         const insertQueryPlan = planFromAst(insertAst, contract, 'raw.temp-table');
-        await execCtx
-          .execute(
-            Object.freeze({
-              sql: insertAst.fragments[0] ?? '',
-              params: [] as unknown[],
-              ast: insertAst,
-              meta: insertQueryPlan.meta,
-            }),
-          )
-          .toArray();
+        await execCtx.execute(
+          Object.freeze({
+            sql: insertSql,
+            params: [] as unknown[],
+            ast: insertAst,
+            meta: insertQueryPlan.meta,
+          }),
+        );
       } else {
         const source = normalizeQuerySource(
           blindCast<
@@ -273,18 +292,16 @@ function createTempTableBuilder(
           throw new Error('tempTable.append(...) does not accept bind-site parameters.');
         });
         const insertSql = `INSERT INTO ${quotedName} ${lowered.sql}`;
-        const insertAst = RawSqlExpr.of([insertSql], []);
+        const insertAst = RawQueryAst.affectedCount([insertSql]);
         const insertQueryPlan = planFromAst(insertAst, contract, 'raw.temp-table');
-        await execCtx
-          .execute(
-            Object.freeze({
-              sql: insertAst.fragments[0] ?? '',
-              params,
-              ast: insertAst,
-              meta: insertQueryPlan.meta,
-            }),
-          )
-          .toArray();
+        await execCtx.execute(
+          Object.freeze({
+            sql: insertSql,
+            params,
+            ast: insertAst,
+            meta: insertQueryPlan.meta,
+          }),
+        );
       }
     };
 
@@ -305,18 +322,16 @@ function createTempTableBuilder(
         throw new Error('tempTable.as(...) does not accept bind-site parameters.');
       });
 
-      const createAst = RawSqlExpr.of(
-        [`CREATE TEMP TABLE ${quotedTableName} AS ${lowered.sql}`],
-        [],
-      );
+      const createSql = `CREATE TEMP TABLE ${quotedTableName} AS ${lowered.sql}`;
+      const createAst = RawQueryAst.affectedCount([createSql]);
       const createQueryPlan = planFromAst(createAst, contract, 'raw.temp-table');
       const createPlan = Object.freeze({
-        sql: createAst.fragments[0] ?? '',
+        sql: createSql,
         params,
         ast: createAst,
         meta: createQueryPlan.meta,
       });
-      await execCtx.execute(createPlan).toArray();
+      await execCtx.execute(createPlan);
 
       const dropPlan = Object.freeze({
         sql: `DROP TABLE IF EXISTS ${quotedTableName}`,
@@ -328,7 +343,7 @@ function createTempTableBuilder(
       const drop = async (): Promise<void> => {
         if (dropped) return;
         dropped = true;
-        await execCtx.execute(dropPlan).toArray();
+        await execCtx.execute(dropPlan);
       };
       registerCleanupHook(drop);
 
@@ -356,20 +371,21 @@ function createTempTableBuilder(
 
       const colDefs = columns.map((c) => `${quoteIdentifier(c.name)} ${c.type}`).join(', ');
       const createSql = `CREATE TEMP TABLE ${quotedTableName} (${colDefs})`;
-      const createAst = RawSqlExpr.of([createSql], []);
+      const createAst = RawQueryAst.affectedCount([createSql]);
       const createQueryPlan = planFromAst(createAst, contract, 'raw.temp-table');
       const createPlan = Object.freeze({
-        sql: createAst.fragments[0] ?? '',
+        sql: createSql,
         params: [] as unknown[],
         ast: createAst,
         meta: createQueryPlan.meta,
       });
-      await execCtx.execute(createPlan).toArray();
+      await execCtx.execute(createPlan);
 
-      const dropAst = RawSqlExpr.of([`DROP TABLE IF EXISTS ${quotedTableName}`], []);
+      const dropSql = `DROP TABLE IF EXISTS ${quotedTableName}`;
+      const dropAst = RawQueryAst.affectedCount([dropSql]);
       const dropQueryPlan = planFromAst(dropAst, contract, 'raw.temp-table');
       const dropPlan = Object.freeze({
-        sql: dropAst.fragments[0] ?? '',
+        sql: dropSql,
         params: [] as unknown[],
         ast: dropAst,
         meta: dropQueryPlan.meta,
@@ -378,7 +394,7 @@ function createTempTableBuilder(
       const drop = async (): Promise<void> => {
         if (dropped) return;
         dropped = true;
-        await execCtx.execute(dropPlan).toArray();
+        await execCtx.execute(dropPlan);
       };
       registerCleanupHook(drop);
 
@@ -407,28 +423,29 @@ export default function sqlite<TContract extends Contract<SqlStorage>>(
 ): SqliteClient<TContract> {
   const contract = resolveContract(options);
   let binding = resolveOptionalSqliteBinding(options);
+
   const stack = createSqlExecutionStack({
     target: sqliteTarget,
     adapter: sqliteAdapter,
     driver: sqliteDriver,
-    extensionPacks: options.extensions ?? [],
+    extensions: options.extensions ?? [],
   });
   const stackInstance = instantiateExecutionStack(stack);
 
-  const context = createExecutionContext({
+  const context = createExecutionContext<TContract, SqliteTargetId>({
     contract,
     stack,
+    driver: sqliteDriver,
   });
-
-  const rawCodecInferer = stack.adapter.rawCodecInferer;
-  const rawSqlTag: RawSqlTag = createRawSql(rawCodecInferer);
-
-  const sql: UnboundSql<TContract> = unboundNamespace(
-    sqlBuilder<TContract>({ context, rawCodecInferer }),
+  const {
+    sql,
+    raw: rawSqlTag,
+    enums,
+  }: SqliteStaticContext<TContract> = buildSqliteStaticContext<TContract>(
+    context,
+    stack.adapter.rawCodecInferer,
   );
-  const enums: UnboundEnums<TContract> = unboundNamespace(
-    Object.freeze(buildNamespacedEnums(contract.domain)),
-  );
+
   let runtimeInstance: Runtime | undefined;
   let runtimeDriver: { connect(binding: unknown): Promise<void> } | undefined;
   let driverConnected = false;
@@ -440,7 +457,7 @@ export default function sqlite<TContract extends Contract<SqlStorage>>(
 
   const connectDriver = async (resolvedBinding: SqliteBinding): Promise<void> => {
     if (driverConnected) return;
-    if (!runtimeDriver) throw new Error('SQLite runtime driver missing');
+    if (!runtimeDriver) throw new InternalError('SQLite runtime driver missing');
     if (connectPromise) return connectPromise;
     connectPromise = runtimeDriver
       .connect(resolvedBinding)
@@ -457,7 +474,9 @@ export default function sqlite<TContract extends Contract<SqlStorage>>(
 
   const getRuntime = (): Runtime => {
     if (closed) {
-      throw new Error('SQLite client is closed');
+      throw sqliteError('DRIVER.NOT_CONNECTED', 'SQLite client is closed', {
+        meta: { extension: 'sqlite' },
+      });
     }
 
     if (backgroundConnectError !== undefined) {
@@ -470,7 +489,7 @@ export default function sqlite<TContract extends Contract<SqlStorage>>(
 
     const driverDescriptor = stack.driver;
     if (!driverDescriptor) {
-      throw new Error('Driver descriptor missing from execution stack');
+      throw new InternalError('Driver descriptor missing from execution stack');
     }
 
     const driver = driverDescriptor.create();
@@ -491,10 +510,13 @@ export default function sqlite<TContract extends Contract<SqlStorage>>(
     return runtimeInstance;
   };
 
-  const orm: UnboundOrm<TContract> = unboundNamespace(
+  const orm: UnboundOrm<TContract> = unboundOrm(
     ormBuilder({
       context,
       runtime: {
+        query(plan) {
+          return getRuntime().query(plan);
+        },
         execute(plan) {
           return getRuntime().execute(plan);
         },
@@ -505,20 +527,36 @@ export default function sqlite<TContract extends Contract<SqlStorage>>(
     }),
   );
 
+  function prepare<
+    D extends Declaration<CT>,
+    Q extends SqlQueryPlan | Preparable<unknown, unknown>,
+    CT extends CodecTypesBase = ExtractCodecTypes<TContract>,
+  >(
+    declaration: D,
+    callback: (params: BindSiteParams<D>) => Q,
+  ): Promise<PreparedFrom<ParamsFromDeclaration<D, CT>, Q>> {
+    return prepareQuery<D, Q, CT>(getRuntime(), declaration, callback);
+  }
+
   return {
     sql,
     orm,
     enums,
     raw: rawSqlTag,
     context,
+    contract,
     stack,
     async connect(bindingInput) {
       if (closed) {
-        throw new Error('SQLite client is closed');
+        throw sqliteError('DRIVER.NOT_CONNECTED', 'SQLite client is closed', {
+          meta: { extension: 'sqlite' },
+        });
       }
 
       if (driverConnected || connectPromise) {
-        throw new Error('SQLite client already connected');
+        throw sqliteError('DRIVER.ALREADY_CONNECTED', 'SQLite client already connected', {
+          meta: { extension: 'sqlite' },
+        });
       }
 
       backgroundConnectError = undefined;
@@ -528,8 +566,10 @@ export default function sqlite<TContract extends Contract<SqlStorage>>(
       }
 
       if (binding === undefined) {
-        throw new Error(
+        throw sqliteError(
+          'RUNTIME.BINDING_MISSING',
           'SQLite binding not configured. Pass path to sqlite(...) or call db.connect({ path }).',
+          { meta: { extension: 'sqlite' } },
         );
       }
 
@@ -544,16 +584,7 @@ export default function sqlite<TContract extends Contract<SqlStorage>>(
     runtime() {
       return getRuntime();
     },
-    prepare<
-      D extends Declaration<CT>,
-      Row,
-      CT extends CodecTypesBase = ExtractCodecTypes<TContract> & CodecTypesBase,
-    >(
-      declaration: D,
-      callback: (sql: UnboundSql<TContract>, params: BindSiteParams<D>) => SqlQueryPlan<Row>,
-    ): Promise<PreparedStatement<ParamsFromDeclaration<D, CT>, Row>> {
-      return getRuntime().prepare<D, Row, CT>(declaration, (params) => callback(sql, params));
-    },
+    prepare,
 
     transaction<R>(fn: (tx: SqliteTransactionContext<TContract>) => PromiseLike<R>): Promise<R> {
       let runtime: ReturnType<typeof getRuntime>;
@@ -563,16 +594,25 @@ export default function sqlite<TContract extends Contract<SqlStorage>>(
         return Promise.reject(err);
       }
       return withTransaction(runtime, (txCtx) => {
-        const txSql: UnboundSql<TContract> = unboundNamespace(
-          sqlBuilder<TContract>({
-            context,
-            rawCodecInferer,
-          }),
+        const rawCodecInferer = stack.adapter.rawCodecInferer;
+        const txSqlNamespace = sqlBuilder<TContract>({ context, rawCodecInferer })[
+          UNBOUND_NAMESPACE_ID
+        ];
+        assertDefined(
+          txSqlNamespace,
+          'the unbound namespace always exists on a sqlite builder output',
         );
+        const txSql: UnboundSql<TContract> = blindCast<
+          UnboundSql<TContract>,
+          'Db<TContract> indexed by a literal key widens NsId to string; TableProxy is invariant in NsId via insert()/update() parameter positions, so the indexed-access type cannot be proven to match the literal-keyed Namespace without this cast'
+        >(txSqlNamespace);
 
-        const txOrm: UnboundOrm<TContract> = unboundNamespace(
+        const txOrm: UnboundOrm<TContract> = unboundOrm(
           ormBuilder({
             runtime: {
+              query(plan) {
+                return txCtx.query(plan);
+              },
               execute(plan) {
                 return txCtx.execute(plan);
               },
@@ -609,16 +649,25 @@ export default function sqlite<TContract extends Contract<SqlStorage>>(
     connection<R>(fn: (conn: SqliteConnectionContext<TContract>) => PromiseLike<R>): Promise<R> {
       try {
         return withConnection(getRuntime(), (connCtx) => {
-          const connSql: UnboundSql<TContract> = unboundNamespace(
-            sqlBuilder<TContract>({
-              context,
-              rawCodecInferer,
-            }),
+          const rawCodecInferer = stack.adapter.rawCodecInferer;
+          const connSqlNamespace = sqlBuilder<TContract>({ context, rawCodecInferer })[
+            UNBOUND_NAMESPACE_ID
+          ];
+          assertDefined(
+            connSqlNamespace,
+            'the unbound namespace always exists on a sqlite builder output',
           );
+          const connSql: UnboundSql<TContract> = blindCast<
+            UnboundSql<TContract>,
+            'Db<TContract> indexed by a literal key widens NsId to string; TableProxy is invariant in NsId via insert()/update() parameter positions, so the indexed-access type cannot be proven to match the literal-keyed Namespace without this cast'
+          >(connSqlNamespace);
 
-          const connOrm: UnboundOrm<TContract> = unboundNamespace(
+          const connOrm: UnboundOrm<TContract> = unboundOrm(
             ormBuilder({
               runtime: {
+                query(plan) {
+                  return connCtx.query(plan);
+                },
                 execute(plan) {
                   return connCtx.execute(plan);
                 },

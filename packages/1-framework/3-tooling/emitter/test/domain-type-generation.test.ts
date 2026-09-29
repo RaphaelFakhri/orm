@@ -315,6 +315,7 @@ describe('generateModelRelationsType', () => {
       author: {
         to: crossRef('User'),
         cardinality: 'N:1',
+        nullable: false,
         on: { localFields: ['authorId'], targetFields: ['_id'] },
       },
     });
@@ -322,6 +323,18 @@ describe('generateModelRelationsType', () => {
     expect(result).toContain('readonly cardinality: "N:1"');
     expect(result).toContain('readonly localFields: readonly ["authorId"]');
     expect(result).toContain('readonly targetFields: readonly ["_id"]');
+  });
+
+  it.each([true, false])('renders nullable: %s on a to-one relation', (nullable) => {
+    const result = generateModelRelationsType({
+      author: {
+        to: crossRef('User'),
+        cardinality: 'N:1',
+        nullable,
+        on: { localFields: ['authorId'], targetFields: ['_id'] },
+      },
+    });
+    expect(result).toContain(`readonly cardinality: "N:1"; readonly nullable: ${nullable};`);
   });
 
   it('skips non-object relations', () => {
@@ -462,6 +475,7 @@ describe('generateModelRelationsType', () => {
       author: {
         to: crossRef('User'),
         cardinality: 'N:1',
+        nullable: false,
         on: { localFields: ['authorId'], targetFields: ['id'] },
       },
     });
@@ -524,15 +538,15 @@ describe('generateImportLines', () => {
   it('merges multiple named imports from the same package onto one line', () => {
     const imports: TypesImportSpec[] = [
       {
-        package: '@internal/adapter-mongo/codec-types',
+        package: '@test/mongo/codec-types',
         named: 'CodecTypes',
         alias: 'MongoCodecTypes',
       },
-      { package: '@internal/adapter-mongo/codec-types', named: 'Vector', alias: 'Vector' },
+      { package: '@test/mongo/codec-types', named: 'Vector', alias: 'Vector' },
     ];
     const lines = generateImportLines(imports);
     expect(lines).toEqual([
-      "import type { CodecTypes as MongoCodecTypes, Vector } from '@internal/adapter-mongo/codec-types';",
+      "import type { CodecTypes as MongoCodecTypes, Vector } from '@test/mongo/codec-types';",
     ]);
   });
 
@@ -1500,5 +1514,22 @@ describe('generateValueObjectsDescriptorType empty-field branch', () => {
       EmptyVO: { fields: {} },
     });
     expect(result).toContain('readonly EmptyVO: { readonly fields: Record<string, never> }');
+  });
+});
+
+describe('serializeValue object key order', () => {
+  it('sorts object keys, so the literal type does not depend on how the value was built', () => {
+    expect(serializeValue({ field: 'email', direction: 1 })).toBe(
+      serializeValue({ direction: 1, field: 'email' }),
+    );
+    expect(serializeValue({ field: 'email', direction: 1 })).toBe(
+      '{ readonly direction: 1; readonly field: "email" }',
+    );
+  });
+
+  it('keeps array order, which is meaningful', () => {
+    expect(serializeValue([{ b: 1 }, { a: 2 }])).toBe(
+      'readonly [{ readonly b: 1 }, { readonly a: 2 }]',
+    );
   });
 });

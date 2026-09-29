@@ -11,6 +11,20 @@ export {
   runBeforeExecuteChain,
   runBeforeQueryChain,
 } from '../execution/before-execute-chain';
+export type {
+  AppliedMutationDefault,
+  GeneratorStability,
+  MutationDefaultGeneratorContributor,
+  MutationDefaults,
+  MutationDefaultsOp,
+  MutationDefaultsOptions,
+  RuntimeMutationDefaultGenerator,
+} from '../execution/mutation-defaults';
+export {
+  applyMutationDefaults,
+  assertMutationDefaultGeneratorsAvailable,
+  collectMutationDefaultGenerators,
+} from '../execution/mutation-defaults';
 export type { ExecutionPlan, QueryPlan, ResultType } from '../execution/query-plan';
 export { checkAborted, raceAgainstAbort } from '../execution/race-against-abort';
 export {
@@ -41,5 +55,7 @@ export type {
   RuntimeStatementStats,
 } from '../execution/runtime-middleware';
 export { checkMiddlewareCompatibility } from '../execution/runtime-middleware';
+export type { RelationNamesOf, Scalars, Shape, ShapeSpec } from '../execution/shape';
+export { RelationKeys } from '../execution/shape';
 export type { LaneMetaBuilder, MetaBuilder } from '../meta-builder';
 export { createMetaBuilder } from '../meta-builder';

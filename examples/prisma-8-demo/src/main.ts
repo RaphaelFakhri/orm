@@ -1,7 +1,7 @@
 /**
  * CLI Application Entry Point (Emitted Contract Workflow)
  *
- * This is a command-line demo application that showcases Prisma Next's query
+ * This is a command-line demo application that showcases Prisma 8's query
  * capabilities using the standard emitted contract workflow:
  * - contract.json (runtime contract data)
  * - contract.d.ts (compile-time types)
@@ -20,6 +20,9 @@
  * - repo-admins [limit]        Admin users via custom collection scope
  * - repo-user <email>          Find a user by email via ORM client first()
  * - repo-posts <userId> [limit] Posts for a user via ORM client API
+ * - orm-user-profile <id>      A user's profile as a `Shape`-declared response
+ *                              type: every scalar but email, posts projected to
+ *                              id/title/tags
  * - repo-dashboard <emailDomain> <postTitleTerm> [limit] [postsPerUser]
  *                              Compound filters + select/include via ORM client
  * - repo-post-feed <postTitleTerm> [limit]
@@ -65,8 +68,12 @@
  *                              Cosine-distance similarity search via ORM client
  * - repo-search-posts <embedding> <maxDistance> [limit]
  *                              Vector similarity search via ORM client
+ * - repo-search-posts-text <query> [limit]
+ *                              Full-text search over post titles via ORM client
  * - users-paginate [cursor]    Cursor-based pagination
  * - similarity-search <vec>    Vector similarity search (pgvector)
+ * - full-text-search <query> [limit]
+ *                              Full-text search with rank and highlighted headline (SQL DSL)
  * - raw-sql-demo [limit]         `fns.raw` in projection + filter + typed-expression
  *                              interpolation, in one query
  * - raw-query-report [limit]     Whole-query raw read: one template, a row spec mixing
@@ -93,12 +100,12 @@
  *                              twice and observes the cache short-circuit.
  * - enum-priority [limit]       Prove PSL-authored Priority enum through the emitted contract:
  *                              db.enums.public.Priority.values (declaration order), typed
- *                              Post.priority read, and ORDER BY returning low→high→urgent
+ *                              Post.priority read, and ORDER BY returning Low (0)→High (1)→Urgent (2)
  * - enum-priority-filter [member] [limit]
  *                              Filter posts by a named Priority member using enum member accessor
  * - enum-default-demo          Insert a Post without `priority` (typed-optional thanks to
  *                              `@default(Low)` in the emitted contract), read it back, and
- *                              confirm the database supplied 'low'
+ *                              confirm the database supplied 0 (Low)
  * - integer-representations [limit]
  *                              The three Post engagement counters side by side: `BigIntNumber`
  *                              reads as a JS number, `BigInt` as a bigint, and `UnboundedInt`
@@ -141,17 +148,20 @@ import { ormClientGetUserBugTriage } from './orm-client/get-user-bug-triage';
 import { ormClientGetUserInsights } from './orm-client/get-user-insights';
 import { ormClientGetUserKindBreakdown } from './orm-client/get-user-kind-breakdown';
 import { ormClientGetUserPosts } from './orm-client/get-user-posts';
+import { ormClientGetUserProfile } from './orm-client/get-user-profile';
 import { ormClientGetUserTaskBoard } from './orm-client/get-user-task-board';
 import { ormClientGetUsers } from './orm-client/get-users';
 import { ormClientGetUsersBackwardCursor } from './orm-client/get-users-backward-cursor';
 import { ormClientGetUsersByIdCursor } from './orm-client/get-users-by-id-cursor';
 import { ormClientGetUsersCached } from './orm-client/get-users-cached';
 import { ormClientSearchPostsByEmbedding } from './orm-client/search-posts-by-embedding';
+import { ormClientSearchPostsByTitle } from './orm-client/search-posts-by-title';
 import { ormClientUpsertUser } from './orm-client/upsert-user';
 import { db } from './prisma/db';
 import { crossAuthorSimilarity } from './queries/cross-author-similarity';
 import { deleteWithoutWhere } from './queries/delete-without-where';
 import { enumDefaultDemo } from './queries/enum-default-demo';
+import { fullTextSearch } from './queries/full-text-search';
 import { getAllPostsUnbounded } from './queries/get-all-posts-unbounded';
 import { getPostsByPriority, getPostsByPriorityMember } from './queries/get-posts-by-priority';
 import { getUserByEmailPrepared } from './queries/get-user-by-email-prepared';
@@ -266,6 +276,15 @@ async function main() {
       const posts = await ormClientGetUserPosts(userIdStr, limit, runtime);
 
       console.log(JSON.stringify(posts, null, 2));
+    } else if (cmd === 'orm-user-profile') {
+      const [userId] = args;
+      if (!userId) {
+        console.error('Usage: pnpm start -- orm-user-profile <id>');
+        process.exit(1);
+      }
+      const profile = await ormClientGetUserProfile(userId, runtime);
+
+      console.log(JSON.stringify(profile, null, 2));
     } else if (cmd === 'repo-dashboard') {
       const [emailDomain, postTitleTerm, limitStr, postsPerUserStr] = args;
       if (!emailDomain || !postTitleTerm) {
@@ -495,7 +514,7 @@ async function main() {
           !Array.isArray(searchEmbedding) ||
           !searchEmbedding.every((v) => typeof v === 'number')
         ) {
-          throw new Error('embedding must be an array of numbers');
+          throw new TypeError('embedding must be an array of numbers');
         }
       } catch (error) {
         console.error(
@@ -513,6 +532,16 @@ async function main() {
         limit,
         runtime,
       );
+
+      console.log(JSON.stringify(posts, null, 2));
+    } else if (cmd === 'repo-search-posts-text') {
+      const [query, limitStr] = args;
+      if (!query) {
+        console.error('Usage: pnpm start -- repo-search-posts-text <query> [limit]');
+        process.exit(1);
+      }
+      const limit = limitStr ? Number.parseInt(limitStr, 10) : 10;
+      const posts = await ormClientSearchPostsByTitle(query, limit, runtime);
 
       console.log(JSON.stringify(posts, null, 2));
     } else if (cmd === 'users-paginate') {
@@ -543,7 +572,7 @@ async function main() {
       try {
         queryVector = JSON.parse(queryVectorStr) as number[];
         if (!Array.isArray(queryVector) || !queryVector.every((v) => typeof v === 'number')) {
-          throw new Error('queryVector must be an array of numbers');
+          throw new TypeError('queryVector must be an array of numbers');
         }
       } catch (error) {
         console.error(
@@ -589,6 +618,16 @@ async function main() {
       const results = await rawQueryPromoteAndList(titleTerm);
 
       console.log(toJson(results));
+    } else if (cmd === 'full-text-search') {
+      const [query, limitStr] = args;
+      if (!query) {
+        console.error('Usage: pnpm start -- full-text-search <query> [limit]');
+        process.exit(1);
+      }
+      const limit = limitStr ? Number.parseInt(limitStr, 10) : 10;
+      const results = await fullTextSearch(query, limit, runtime);
+
+      console.log(JSON.stringify(results, null, 2));
     } else if (cmd === 'cross-author-similarity') {
       const [limitStr] = args;
       const limit = limitStr ? Number.parseInt(limitStr, 10) : 10;
@@ -789,8 +828,9 @@ async function main() {
     } else {
       console.log(
         'Usage: pnpm start -- [users [limit] | user <userId> | posts <userId> | ' +
+          'repo-search-posts-text <query> [limit] | full-text-search <query> [limit] | ' +
           'repo-users [limit] | repo-admins [limit] | ' +
-          'repo-user <email> | repo-posts <userId> [limit] | ' +
+          'repo-user <email> | repo-posts <userId> [limit] | orm-user-profile <id> | ' +
           'repo-dashboard <emailDomain> <postTitleTerm> [limit] [postsPerUser] | ' +
           'repo-post-feed <postTitleTerm> [limit] | repo-users-cursor [cursor] [limit] | ' +
           'repo-tasks [limit] | repo-bugs [limit] | repo-features [limit] | ' +

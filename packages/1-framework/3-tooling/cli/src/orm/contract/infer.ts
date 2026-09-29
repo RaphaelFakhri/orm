@@ -1,4 +1,5 @@
 import { existsSync } from 'node:fs';
+import { ormConfigSection } from '@internal/config-loader';
 import { printPsl as printPslFromAst } from '@internal/psl-printer';
 import { ifDefined } from '@internal/utils/defined';
 import type { Block, Presentations } from '@prisma/cli-engine';
@@ -16,7 +17,6 @@ import {
 } from '../../utils/cli-errors';
 import { closeQuietly, maskConnectionUrl, sanitizeErrorMessage } from '../../utils/command-helpers';
 import { publishTextArtifact } from '../../utils/publish-text-artifact';
-import { ormConfigSection } from '../config-section';
 import { defineOrmCommand } from '../define-command';
 import { dbFlag } from '../flags';
 import { normalizeError } from '../normalize-error';
@@ -153,6 +153,8 @@ export function createContractInferCommand({
         }
         pslContent = printPsl(pslContractAst, {
           pslBlockDescriptors: client.getPslBlockDescriptors(),
+          description:
+            'Contract inferred from the live database schema. Edit as needed, then run `prisma contract emit`.',
         });
       } catch (error) {
         if (CliStructuredError.is(error)) {

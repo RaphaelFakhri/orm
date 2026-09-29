@@ -1,14 +1,14 @@
 import { readFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import arktypeJson from '@prisma-next/extension-arktype-json/runtime';
-import pgvector from '@prisma-next/extension-pgvector/runtime';
-import postgres from '@prisma-next/postgres/runtime';
-import { ColumnRef, ProjectionItem, SelectAst } from '@prisma-next/sql-relational-core/ast';
-import { planFromAst } from '@prisma-next/sql-relational-core/plan';
-import type { Runtime } from '@prisma-next/sql-runtime';
-import type { Varchar } from '@prisma-next/target-postgres/codec-types';
-import { timeouts, withDevDatabase } from '@prisma-next/test-utils';
+import arktypeJson from '@prisma/orm-extension-arktype-json/runtime';
+import pgvector from '@prisma/orm-extension-pgvector/runtime';
+import type { Runtime } from '@prisma/orm-postgres/family-runtime';
+import { ColumnRef, ProjectionItem, SelectAst } from '@prisma/orm-postgres/relational-core/ast';
+import { planFromAst } from '@prisma/orm-postgres/relational-core/plan';
+import postgres from '@prisma/orm-postgres/runtime';
+import type { Varchar } from '@prisma/orm-postgres/target/codec-types';
+import { timeouts, withDevDatabase } from '@repo/test-utils';
 import { describe, expect, it } from 'vitest';
 import type { Contract } from './fixtures/generated/contract.d';
 import { runDbInit } from './utils';
@@ -185,7 +185,7 @@ describe('transaction ORM integration', { timeout: timeouts.spinUpPpgDev }, () =
         const temp = await tx.tempTable().as(source);
 
         const rows = await tx
-          .execute(
+          .query(
             planFromAst(
               SelectAst.from(temp.buildAst()).withProjection([
                 ProjectionItem.of('id', ColumnRef.of(temp.name, 'id')),
@@ -198,7 +198,7 @@ describe('transaction ORM integration', { timeout: timeouts.spinUpPpgDev }, () =
           .toArray();
 
         const joinedRows = await tx
-          .execute(
+          .query(
             tx.sql.public.user
               .innerJoin(temp, (f, fns) => fns.eq(f['user']!['id'], f[temp.name]!['id']))
               .select('created_at')
@@ -224,7 +224,7 @@ describe('transaction ORM integration', { timeout: timeouts.spinUpPpgDev }, () =
         const temp = await tx.tempTable().as(source);
 
         const rows = await tx
-          .execute(
+          .query(
             planFromAst(
               SelectAst.from(temp.buildAst()).withProjection([
                 ProjectionItem.of('id', ColumnRef.of(temp.name, 'id')),
@@ -237,7 +237,7 @@ describe('transaction ORM integration', { timeout: timeouts.spinUpPpgDev }, () =
           .toArray();
 
         const joinedRows = await tx
-          .execute(
+          .query(
             tx.sql.public.user
               .innerJoin(temp, (f, fns) => fns.eq(f['user']!['id'], f[temp.name]!['id']))
               .select('created_at')

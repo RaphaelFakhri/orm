@@ -1,4 +1,3 @@
-import { MONGO_INT32_CODEC_ID, MONGO_STRING_CODEC_ID } from '@internal/adapter-mongo/codec-ids';
 import {
   mongoFamilyEntityTypes,
   mongoFamilyPslBlockDescriptors,
@@ -11,6 +10,7 @@ import {
 } from '@internal/mongo-contract-psl';
 import { buildSymbolTable } from '@internal/psl-parser';
 import { parse } from '@internal/psl-parser/syntax';
+import { MONGO_INT32_CODEC_ID, MONGO_STRING_CODEC_ID } from '@internal/target-mongo/codec-ids';
 import { timeouts } from '@repo/test-utils';
 import { describe, expect, it } from 'vitest';
 
@@ -24,7 +24,7 @@ const authoringContributions = {
 const mongoScalarTypeDescriptors: ReadonlyMap<string, string> = new Map([
   ['ObjectId', 'mongo/objectId@1'],
   ['String', 'mongo/string@1'],
-  ['Int', 'mongo/int32@1'],
+  ['Int32', 'mongo/int32@1'],
 ]);
 
 const mongoTargetTypes: Record<string, readonly string[]> = {
@@ -55,21 +55,25 @@ const mongoCodecLookup: CodecLookup = {
 
 function interpret(
   schema: string,
-  overrides?: Partial<Omit<InterpretPslDocumentToMongoContractInput, 'symbolTable' | 'sourceFile'>>,
+  overrides?: Partial<
+    Omit<InterpretPslDocumentToMongoContractInput, 'document' | 'symbolTable' | 'sources'>
+  >,
 ) {
   const contributions = overrides?.['authoringContributions'] ?? authoringContributions;
-  const descriptors = contributions?.pslBlockDescriptors;
-  const { document, sourceFile } = parse(schema);
-  const { table: symbolTable } = buildSymbolTable({
-    document,
-    sourceFile,
-    pslBlockDescriptors: descriptors ?? {},
+  const { document, sources } = parse(schema, 'mongo-enum-schema.prisma');
+  const { symbolTable } = buildSymbolTable({
+    documents: [document],
+    sources,
   });
   return interpretPslDocumentToMongoContract({
+    documents: [document],
     symbolTable,
-    sourceFile,
-    sourceId: 'test.prisma',
+    sources,
     scalarTypeCodecIds: mongoScalarTypeDescriptors,
+    controlMutationDefaults: {
+      dataTypeEntries: {},
+      defaultFunctionRegistry: new Map(),
+    },
     codecLookup: mongoCodecLookup,
     authoringContributions: contributions,
     enumInferenceCodecs: { text: MONGO_STRING_CODEC_ID, int: MONGO_INT32_CODEC_ID },
@@ -79,7 +83,9 @@ function interpret(
 
 function interpretOk(
   schema: string,
-  overrides?: Partial<Omit<InterpretPslDocumentToMongoContractInput, 'symbolTable' | 'sourceFile'>>,
+  overrides?: Partial<
+    Omit<InterpretPslDocumentToMongoContractInput, 'document' | 'symbolTable' | 'sources'>
+  >,
 ) {
   const result = interpret(schema, overrides);
   expect(result.ok).toBe(true);

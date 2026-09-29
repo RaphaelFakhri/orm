@@ -1,24 +1,43 @@
-import type { ScopeField, Subquery } from '@prisma-next/sql-builder/types';
-import type { SqlStorage } from '@prisma-next/sql-contract/types';
+import type { Contract } from '@internal/contract/types';
+import { coreHash, profileHash } from '@internal/contract/types';
+import type { ScopeField, Subquery } from '@internal/sql-builder/types';
+import { SqlStorage } from '@internal/sql-contract/types';
 import {
   ProjectionItem,
-  RawSqlExpr,
+  RawExpr,
+  RawQueryAst,
   SelectAst,
   TableSource,
-} from '@prisma-next/sql-relational-core/ast';
-import { planFromAst } from '@prisma-next/sql-relational-core/plan';
-import { createContract } from '@prisma-next/test-utils';
-import { blindCast } from '@prisma-next/utils/casts';
+} from '@internal/sql-relational-core/ast';
+import { planFromAst } from '@internal/sql-relational-core/plan';
+import { sqliteCreateNamespace } from '@internal/target-sqlite/control';
+import { blindCast } from '@internal/utils/casts';
+import { applicationDomainOf } from '@repo/test-utils';
 import { describe, expect, it } from 'vitest';
 
 // No third-party mocks needed: node:sqlite (built-in) drives the real driver.
 
 import sqlite from '../src/runtime/sqlite';
 
-const contract = createContract<SqlStorage>({ target: 'sqlite' });
+const contract: Contract<SqlStorage> = {
+  target: 'sqlite',
+  targetFamily: 'sql',
+  profileHash: profileHash('sqlite-transaction-test'),
+  domain: applicationDomainOf({ models: {} }),
+  roots: {},
+  storage: new SqlStorage({
+    storageHash: coreHash('sqlite-transaction-test'),
+    namespaces: {
+      __unbound__: sqliteCreateNamespace({ id: '__unbound__', entries: { table: {} } }),
+    },
+  }),
+  extensions: {},
+  capabilities: {},
+  meta: {},
+};
 
 function rawExecPlan(sql: string) {
-  const ast = RawSqlExpr.of([sql], []);
+  const ast = RawQueryAst.affectedCount([sql]);
   return Object.freeze({
     sql,
     params: [] as unknown[],
@@ -76,7 +95,13 @@ describe('sqlite transaction()', () => {
     >({
       buildAst: () =>
         SelectAst.from(TableSource.named('sqlite_master')).withProjection([
-          ProjectionItem.of('id', db.raw`1`.returns('sqlite/integer@1').buildAst()),
+          ProjectionItem.of(
+            'id',
+            new RawExpr({
+              parts: ['1'],
+              returns: { codecId: 'sqlite/integer@1', nullable: false },
+            }),
+          ),
         ]),
       getRowFields: () => ({ id: { codecId: 'sqlite/integer@1', nullable: false } }),
     });
@@ -103,8 +128,20 @@ describe('sqlite transaction()', () => {
     >({
       buildAst: () =>
         SelectAst.from(TableSource.named('sqlite_master')).withProjection([
-          ProjectionItem.of('id', db.raw`1`.returns('sqlite/integer@1').buildAst()),
-          ProjectionItem.of('email', db.raw`'x@example.com'`.returns('sqlite/text@1').buildAst()),
+          ProjectionItem.of(
+            'id',
+            new RawExpr({
+              parts: ['1'],
+              returns: { codecId: 'sqlite/integer@1', nullable: false },
+            }),
+          ),
+          ProjectionItem.of(
+            'email',
+            new RawExpr({
+              parts: ["'x@example.com'"],
+              returns: { codecId: 'sqlite/text@1', nullable: false },
+            }),
+          ),
         ]),
       getRowFields: () => ({
         id: { codecId: 'sqlite/integer@1', nullable: false },
@@ -133,6 +170,39 @@ describe('sqlite transaction()', () => {
 
     expect(db.runtime()).toBeDefined();
     await db.close();
+  });
+
+  it('rejects escaped queries and delayed prepared rows after callback completion', async () => {
+    const db = sqlite({ contract, path: ':memory:' });
+    try {
+      const plan = planFromAst<{ id: number }>(
+        RawQueryAst.rows(['select 1 as id'], {
+          id: { codecId: 'sqlite/integer@1', nullable: false },
+        }),
+        db.contract,
+      );
+      const prepared = await db.prepare({}, () => plan);
+      const escaped = await db.transaction(async (tx) => {
+        expect(await tx.query(plan)).toEqual([{ id: 1 }]);
+        expect(await prepared.query(tx, {})).toEqual([{ id: 1 }]);
+        return {
+          tx,
+          rows: tx.query(plan),
+          preparedRows: prepared.query(tx, {}),
+        };
+      });
+
+      expect(() => escaped.tx.query(plan)).toThrow(/transaction has ended/);
+      expect(() => prepared.query(escaped.tx, {})).toThrow(/transaction has ended/);
+      await expect(escaped.rows.toArray()).rejects.toMatchObject({
+        code: 'RUNTIME.TRANSACTION_CLOSED',
+      });
+      await expect(escaped.preparedRows.toArray()).rejects.toMatchObject({
+        code: 'RUNTIME.TRANSACTION_CLOSED',
+      });
+    } finally {
+      await db.close();
+    }
   });
 
   it('transaction() rejects with "SQLite client is closed" after close()', async () => {
@@ -175,7 +245,7 @@ describe('sqlite transaction()', () => {
       ]);
 
       const result = await tx
-        .execute(rawExecPlan(`SELECT COUNT(*) AS cnt FROM "${handle.name}"`))
+        .query(rawExecPlan(`SELECT COUNT(*) AS cnt FROM "${handle.name}"`))
         .toArray();
       expect(result).toHaveLength(1);
       const row = result[0] as { cnt: unknown };
@@ -206,7 +276,7 @@ describe('sqlite transaction()', () => {
       await handle.append([["it's fine"], ["O'Brien"]]);
 
       const result = await tx
-        .execute(rawExecPlan(`SELECT COUNT(*) AS cnt FROM "${handle.name}"`))
+        .query(rawExecPlan(`SELECT COUNT(*) AS cnt FROM "${handle.name}"`))
         .toArray();
       expect(Number((result[0] as { cnt: unknown }).cnt)).toBe(2);
       await handle.drop();
@@ -232,7 +302,7 @@ describe('sqlite transaction()', () => {
       ]);
 
       const result = await tx
-        .execute(rawExecPlan(`SELECT COUNT(*) AS cnt FROM "${handle.name}"`))
+        .query(rawExecPlan(`SELECT COUNT(*) AS cnt FROM "${handle.name}"`))
         .toArray();
       expect(Number((result[0] as { cnt: unknown }).cnt)).toBe(3);
     });
@@ -252,7 +322,13 @@ describe('sqlite transaction()', () => {
       const seedSubquery = blindCast<Subquery<{ id: ScopeField }>, 'test fixture'>({
         buildAst: () =>
           SelectAst.from(TableSource.named(seed.name)).withProjection([
-            ProjectionItem.of('id', db.raw`id`.returns('sqlite/integer@1').buildAst()),
+            ProjectionItem.of(
+              'id',
+              new RawExpr({
+                parts: ['id'],
+                returns: { codecId: 'sqlite/integer@1', nullable: false },
+              }),
+            ),
           ]),
         getRowFields: () => ({ id: { codecId: 'sqlite/integer@1', nullable: false } }),
       });
@@ -261,7 +337,7 @@ describe('sqlite transaction()', () => {
       await handle.append(seedSubquery);
 
       const result = await tx
-        .execute(rawExecPlan(`SELECT COUNT(*) AS cnt FROM "${handle.name}"`))
+        .query(rawExecPlan(`SELECT COUNT(*) AS cnt FROM "${handle.name}"`))
         .toArray();
       expect(Number((result[0] as { cnt: unknown }).cnt)).toBe(2);
     });
@@ -280,7 +356,7 @@ describe('sqlite transaction()', () => {
       await handle.append([]);
 
       const result = await tx
-        .execute(rawExecPlan(`SELECT COUNT(*) AS cnt FROM "${handle.name}"`))
+        .query(rawExecPlan(`SELECT COUNT(*) AS cnt FROM "${handle.name}"`))
         .toArray();
       expect(Number((result[0] as { cnt: unknown }).cnt)).toBe(1);
     });
@@ -326,7 +402,13 @@ describe('sqlite connection()', () => {
     >({
       buildAst: () =>
         SelectAst.from(TableSource.named('sqlite_master')).withProjection([
-          ProjectionItem.of('id', db.raw`1`.returns('sqlite/integer@1').buildAst()),
+          ProjectionItem.of(
+            'id',
+            new RawExpr({
+              parts: ['1'],
+              returns: { codecId: 'sqlite/integer@1', nullable: false },
+            }),
+          ),
         ]),
       getRowFields: () => ({ id: { codecId: 'sqlite/integer@1', nullable: false } }),
     });
@@ -339,7 +421,7 @@ describe('sqlite connection()', () => {
       expect(temp.fields['id']?.codecId).toBe('sqlite/integer@1');
 
       // Table is accessible on this connection (query executes without error)
-      const rows = await conn.execute(rawExecPlan(`SELECT * FROM ${temp.name}`)).toArray();
+      const rows = await conn.query(rawExecPlan(`SELECT * FROM ${temp.name}`)).toArray();
       expect(Array.isArray(rows)).toBe(true);
     });
 
@@ -357,7 +439,13 @@ describe('sqlite connection()', () => {
     >({
       buildAst: () =>
         SelectAst.from(TableSource.named('sqlite_master')).withProjection([
-          ProjectionItem.of('id', db.raw`1`.returns('sqlite/integer@1').buildAst()),
+          ProjectionItem.of(
+            'id',
+            new RawExpr({
+              parts: ['1'],
+              returns: { codecId: 'sqlite/integer@1', nullable: false },
+            }),
+          ),
         ]),
       getRowFields: () => ({ id: { codecId: 'sqlite/integer@1', nullable: false } }),
     });
@@ -373,7 +461,7 @@ describe('sqlite connection()', () => {
     // After release, temp table must not be visible on a fresh connection
     await db.connection(async (conn) => {
       const result = await conn
-        .execute(
+        .query(
           rawExecPlan(
             `SELECT name FROM sqlite_master WHERE type='table' AND name='${droppedName}'`,
           ),

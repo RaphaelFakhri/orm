@@ -1,19 +1,23 @@
-import { rmSync, writeFileSync } from 'node:fs';
+import { existsSync, rmSync, writeFileSync } from 'node:fs';
+import { readFile } from 'node:fs/promises';
+import { contractSnapshotDir } from '@internal/migration-tools/contract-snapshot-store';
 import { notOk, ok } from '@internal/utils/result';
 import type { EngineEvent, StreamEvent } from '@prisma/cli-engine';
-import { createTestCli } from '@prisma/cli-engine/testing';
 import { join } from 'pathe';
 import stripAnsi from 'strip-ansi';
 import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ControlClient } from '../../src/control-api/types';
 import { BIN_GROUPS, createBinCommands } from '../../src/orm/cli';
-import { createTestProjectDir } from '../utils/test-project-dir';
+import { createOrmTestCli } from '../helpers/orm-test-cli';
+import { createTestProjectDir, writeProjectManifest } from '../utils/test-project-dir';
 
 const mocks = {
   connect: vi.fn(),
   dbInit: vi.fn(),
+  renderContractDts: vi.fn(),
   close: vi.fn(),
 };
+const RENDERED_CONTRACT_DTS = '// rendered\nexport type Contract = { rendered: true };\n';
 
 /** The command tree mounted over a control-client double instead of the real client. */
 const commands = createBinCommands(
@@ -21,6 +25,7 @@ const commands = createBinCommands(
     ({
       connect: mocks.connect,
       dbInit: mocks.dbInit,
+      renderContractDts: mocks.renderContractDts,
       close: mocks.close,
     }) as unknown as ControlClient,
 );
@@ -42,6 +47,7 @@ const projectDirs: string[] = [];
 beforeEach(() => {
   projectDir = createTestProjectDir('orm-db-init');
   projectDirs.push(projectDir);
+  writeProjectManifest(projectDir);
   writeFileSync(
     join(projectDir, 'contract.json'),
     JSON.stringify({ storage: { storageHash: MARKER_HASH } }),
@@ -50,6 +56,7 @@ beforeEach(() => {
   mocks.connect.mockReset().mockResolvedValue(undefined);
   mocks.close.mockReset().mockResolvedValue(undefined);
   mocks.dbInit.mockReset().mockResolvedValue(ok(applySuccess()));
+  mocks.renderContractDts.mockReset().mockResolvedValue(ok({ contractDts: RENDERED_CONTRACT_DTS }));
 });
 
 function ormConfig(overrides: Record<string, unknown> = {}): Record<string, unknown> {
@@ -121,7 +128,7 @@ function planSuccess(): Record<string, unknown> {
 }
 
 function harness(config: Record<string, unknown>) {
-  return createTestCli({ commands, groups: BIN_GROUPS, config: { orm: config } });
+  return createOrmTestCli({ commands, groups: BIN_GROUPS, orm: config });
 }
 
 function envelopeOf(json: readonly StreamEvent[]): unknown {
@@ -446,6 +453,56 @@ describe('db init', () => {
 
       expect(run.exitCode).toBe(0);
       expect(envelopeOf(run.json)).toMatchObject({ ok: true });
+    });
+  });
+
+  describe('ref advancement', () => {
+    it('renders the snapshot types from the contract before touching the database', async () => {
+      const run = await harness(ormConfig()).run(['db', 'init', '--json'], { cwd: projectDir });
+
+      expect(run.exitCode).toBe(0);
+      expect(mocks.renderContractDts).toHaveBeenCalledWith({
+        contract: { storage: { storageHash: MARKER_HASH } },
+        resolveImportSpecifier: expect.any(Function),
+      });
+      expect(mocks.renderContractDts.mock.invocationCallOrder[0]).toBeLessThan(
+        mocks.connect.mock.invocationCallOrder[0]!,
+      );
+      const storeDir = contractSnapshotDir(join(projectDir, 'migrations'), MARKER_HASH);
+      expect(await readFile(join(storeDir, 'contract.d.ts'), 'utf-8')).toBe(RENDERED_CONTRACT_DTS);
+    });
+
+    it('refuses before connecting when the contract types cannot be rendered', async () => {
+      mocks.renderContractDts.mockResolvedValue(
+        notOk({
+          code: 'RENDER_FAILED',
+          summary: 'Failed to render contract types',
+          why: 'relation author must declare nullability',
+        }),
+      );
+
+      const run = await harness(ormConfig()).run(['db', 'init', '--json'], { cwd: projectDir });
+
+      expect(run.exitCode).toBe(2);
+      expect(envelopeOf(run.json)).toMatchObject({
+        ok: false,
+        error: { code: 'CONTRACT.TYPES_RENDER_FAILED' },
+      });
+      expect(JSON.stringify(run.json.at(-1))).toContain('relation author must declare nullability');
+      expect(mocks.connect).not.toHaveBeenCalled();
+      expect(mocks.dbInit).not.toHaveBeenCalled();
+      expect(existsSync(join(projectDir, 'migrations'))).toBe(false);
+    });
+
+    it('does not render when --db leaves the ref alone', async () => {
+      const run = await harness(ormConfig()).run(
+        [...['db', 'init', '--json'], '--db', 'postgres://user:secret@localhost:5432/other'],
+        { cwd: projectDir },
+      );
+
+      expect(run.exitCode).toBe(0);
+      expect(mocks.renderContractDts).not.toHaveBeenCalled();
+      expect(run.presented?.data).toMatchObject({ advancedRef: null });
     });
   });
 });

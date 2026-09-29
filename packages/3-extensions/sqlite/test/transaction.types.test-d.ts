@@ -1,6 +1,6 @@
-import type { Contract } from '@prisma-next/contract/types';
-import type { SqlStorage } from '@prisma-next/sql-contract/types';
-import { INTERNAL_TO_TEMP_TABLE_QUERY_SOURCE } from '@prisma-next/sql-orm-client';
+import type { Contract } from '@internal/contract/types';
+import type { SqlStorage } from '@internal/sql-contract/types';
+import { INTERNAL_TO_TEMP_TABLE_QUERY_SOURCE } from '@internal/sql-orm-client';
 import { expectTypeOf, test } from 'vitest';
 import type {
   SqliteClient,

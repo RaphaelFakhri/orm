@@ -1,21 +1,33 @@
-import type { JsonValue } from '@internal/contract/types';
 import {
   type AuthoringEntityContext,
   type AuthoringEntityTypeDescriptor,
   type AuthoringEntityTypeNamespace,
   type AuthoringPslBlockDescriptorNamespace,
-  type PslExtensionBlock,
+  type ParsedPslExtensionBlock,
   resolveEnumCodecId,
 } from '@internal/framework-components/authoring';
+import type { InferBlock, PslBlockSpecDescriptor } from '@internal/psl-parser';
+import { blockAttribute, jsonValue, mapBlock, str } from '@internal/psl-parser';
 import { type EnumTypeHandle, enumType } from '@internal/sql-contract-ts/contract-builder';
-import { blindCast } from '@internal/utils/casts';
+
+export function sqlFamilyEnumSpec() {
+  return mapBlock({
+    value: {
+      type: jsonValue(),
+      documentation: 'The stored member value; a bare member stores its own name.',
+    },
+    allowBare: true,
+  });
+}
+
+type EnumBlockValues = InferBlock<ReturnType<typeof sqlFamilyEnumSpec>>;
 
 export const sqlFamilyEnumEntityDescriptor = {
   kind: 'entity' as const,
   discriminator: 'enum',
   output: {
     factory: (
-      block: PslExtensionBlock,
+      block: ParsedPslExtensionBlock<EnumBlockValues>,
       ctx: AuthoringEntityContext,
     ): EnumTypeHandle | undefined => {
       const sourceId = ctx.sourceId ?? 'unknown';
@@ -53,9 +65,10 @@ export const sqlFamilyEnumEntityDescriptor = {
       const members: { name: string; value: unknown }[] = [];
       let memberError = false;
 
-      for (const [memberName, paramValue] of Object.entries(block.parameters)) {
+      for (const [memberName, memberValue] of Object.entries(block.values)) {
+        const span = block.parameterSpans[memberName] ?? block.span;
         let value: unknown;
-        if (paramValue.kind === 'bare') {
+        if (memberValue === undefined) {
           try {
             value = codec.decodeJson(memberName);
           } catch {
@@ -63,42 +76,25 @@ export const sqlFamilyEnumEntityDescriptor = {
               code: 'PSL_ENUM_BARE_MEMBER_NON_STRING_CODEC',
               message: `enum "${block.name}" member "${memberName}" has no value and codec "${codecId}" does not accept a bare name as input`,
               sourceId,
-              span: paramValue.span,
+              span,
             });
             memberError = true;
             continue;
           }
-        } else if (paramValue.kind === 'value') {
-          let jsonValue: unknown;
+        } else {
           try {
-            jsonValue = JSON.parse(paramValue.raw);
-          } catch {
-            diagnostics?.push({
-              code: 'PSL_EXTENSION_INVALID_VALUE',
-              message: `enum "${block.name}" member "${memberName}" value "${paramValue.raw}" is not valid JSON`,
-              sourceId,
-              span: paramValue.span,
-            });
-            memberError = true;
-            continue;
-          }
-          try {
-            value = codec.decodeJson(
-              blindCast<JsonValue, 'JSON.parse returns a JsonValue-compatible value'>(jsonValue),
-            );
+            value = codec.decodeJson(memberValue);
           } catch (err) {
             const reason = err instanceof Error ? err.message : String(err);
             diagnostics?.push({
               code: 'PSL_EXTENSION_INVALID_VALUE',
               message: `enum "${block.name}" member "${memberName}" was rejected by codec "${codecId}": ${reason}`,
               sourceId,
-              span: paramValue.span,
+              span,
             });
             memberError = true;
             continue;
           }
-        } else {
-          continue;
         }
 
         const valueKey = String(value);
@@ -107,7 +103,7 @@ export const sqlFamilyEnumEntityDescriptor = {
             code: 'PSL_ENUM_DUPLICATE_MEMBER_VALUE',
             message: `enum "${block.name}": duplicate member value "${valueKey}"`,
             sourceId,
-            span: paramValue.span,
+            span,
           });
           memberError = true;
           continue;
@@ -141,13 +137,26 @@ export const sqlFamilyEntityTypes: AuthoringEntityTypeNamespace = {
   enum: sqlFamilyEnumEntityDescriptor,
 };
 
+const enumTypeBlockAttribute = blockAttribute('type', {
+  documentation: 'Selects the storage codec for this enum.',
+  positional: [
+    {
+      key: 'codecId',
+      type: str(),
+      documentation: 'The fully qualified codec identifier used to store enum values.',
+    },
+  ],
+});
+
 export const sqlFamilyPslBlockDescriptors = {
   enum: {
     kind: 'pslBlock',
     keyword: 'enum',
+    documentation:
+      'Defines an enum with named values and an inferred or explicitly selected storage codec.',
     discriminator: 'enum',
     name: { required: true },
-    parameters: {},
-    variadicParameters: true,
-  },
+    spec: sqlFamilyEnumSpec,
+    attributes: { type: () => enumTypeBlockAttribute },
+  } satisfies PslBlockSpecDescriptor,
 } as const satisfies AuthoringPslBlockDescriptorNamespace;

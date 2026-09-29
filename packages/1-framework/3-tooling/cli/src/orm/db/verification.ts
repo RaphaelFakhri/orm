@@ -22,12 +22,17 @@ import {
   errorUnexpected,
 } from '../../utils/cli-errors';
 import { sanitizeErrorMessage } from '../../utils/command-helpers';
+import { chooseAction, runCommandAction } from '../../utils/next-actions';
 import { contractPathFor, displayPath } from '../migration/paths';
 import { normalizeError } from '../normalize-error';
 
-/** The contract both verification commands read, and where it was read from. */
+/**
+ * The contract both verification commands read, and where it was read from.
+ * `json` is the parsed file as read, for commands that also store it.
+ */
 export interface EmittedContract {
   readonly contract: Contract;
+  readonly json: Record<string, unknown>;
   readonly path: string;
   readonly displayPath: string;
 }
@@ -42,7 +47,7 @@ export async function readEmittedContract(inputs: {
   readonly cwd: string;
   readonly commandName: string;
 }): Promise<Result<EmittedContract, CliStructuredError>> {
-  const path = contractPathFor(inputs.config, inputs.cwd);
+  const path = contractPathFor(inputs.config);
   if (path === undefined) {
     return notOk(
       normalizeError(
@@ -76,8 +81,10 @@ export async function readEmittedContract(inputs: {
 
   const familyInstance = inputs.config.family.create(createControlStack(inputs.config));
   try {
+    const json = castAs<Record<string, unknown>>(JSON.parse(content));
     return ok({
-      contract: familyInstance.deserializeContract(castAs<unknown>(JSON.parse(content))),
+      contract: familyInstance.deserializeContract(json),
+      json,
       path,
       displayPath: relativePath,
     });
@@ -281,4 +288,24 @@ export function schemaVerdictDiagnostic(inputs: {
       ...(dotted || code === undefined ? {} : { code }),
     },
   };
+}
+
+export function schemaDriftNextActions(inputs: {
+  readonly verb: 'sign' | 'verify';
+  readonly contractRef: string | undefined;
+}): readonly NextAction[] {
+  const { verb, contractRef } = inputs;
+  const retryAfterEmit =
+    contractRef === undefined
+      ? `${verb} again`
+      : `${verb} the emitted contract instead of "${contractRef}"`;
+  return [
+    runCommandAction(
+      `Change the database to match the contract, then ${verb} again`,
+      contractRef === undefined ? '{bin} db update' : `{bin} db update --to "${contractRef}"`,
+    ),
+    chooseAction(
+      `Or change the contract source to describe the database as it is, re-run contract emit, then ${retryAfterEmit}`,
+    ),
+  ];
 }
