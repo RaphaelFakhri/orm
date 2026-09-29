@@ -36,6 +36,8 @@ import {
 import { vector } from '@internal/extension-pgvector/column-types';
 import pgvector from '@internal/extension-pgvector/pack';
 import { geometry, geometryColumn } from '@internal/extension-postgis/column-types';
+// Lets the declaration of `contract` name postgis's geometry value type (TS2742).
+import type {} from '@internal/extension-postgis/geojson';
 import postgis from '@internal/extension-postgis/pack';
 import {
   autoincrement,
@@ -88,8 +90,18 @@ const shortText = {
   nativeType: 'character varying',
   typeParams: { length: 255 },
 } as const;
-const code = { kind: 'codec-instance', codecId: 'sql/char@1', nativeType: 'character' } as const;
-const id = { kind: 'codec-instance', codecId: 'pg/uuid@1', nativeType: 'uuid' } as const;
+const code = {
+  kind: 'codec-instance',
+  codecId: 'sql/char@1',
+  nativeType: 'character',
+  typeParams: {},
+} as const;
+const id = {
+  kind: 'codec-instance',
+  codecId: 'pg/uuid@1',
+  nativeType: 'uuid',
+  typeParams: {},
+} as const;
 const money = {
   kind: 'codec-instance',
   codecId: 'pg/numeric@1',
