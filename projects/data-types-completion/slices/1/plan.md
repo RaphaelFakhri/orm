@@ -1,0 +1,20 @@
+# Slice 1 plan: each SQL data type declares its facts (TML-3386)
+
+Contract: [`../../design.md`](../../design.md) sections 1 to 6. Project plan: [`../../plan.md`](../../plan.md). Branch `tml-3386-data-types-declare-names`, based on `data-types-completion` (the planning branch, PR #30518); `main` is merged in, never rebased. One implementer (Fable) and one reviewer (Opus), resumed across every dispatch. Review artifact: `wip/reviews/slice-1/code-review.md` (gitignored).
+
+Every dispatch: tests first and red before the change; commands through `mise exec --`; commits staged explicitly and signed off with `git commit -s --trailer "Signed-off-by: Will Madden <madden@prisma.io>"`; no AI attribution lines anywhere; the branch tip typechecks and the touched packages' tests pass at the end of the dispatch.
+
+| # | Dispatch | Outcome (true when it lands) | Builds on | Gate |
+| --- | --- | --- | --- | --- |
+| a | Foundation | Framework `DataType.params`; `packages/2-sql/1-core/contract/src/sql-data-type.ts` with every function of design 2.2 to 2.3 and `resolveReportedSqlType` (design 11.2), exported from `@internal/sql-contract/data-type` with a shared plane in `architecture.config.json`; `CONTRACT.TYPE_PARAMS_INVALID` with its error reference entry; unit tests on synthetic declarations; the golden planner test of design 6 recorded at the base commit and passing | design | package tests; root typecheck; `pnpm lint:deps`; `pnpm check:error-reference`; the golden test |
+| b | Postgres, pgvector and postgis declare | Every Postgres, pgvector and postgis data type declared exactly as design 2.6, with `params` and `normalize`; per-pack declaration tests; every codec's `paramsSchema` references its data type's (design 2.4); Postgres data types and scalar constructors registered by the target, not the adapter; `pg/char`, `pg/varchar`, `pg/bit`, `pg/varbit` and temporal bounds per design 2.4 | a | package tests for postgres target and adapter, pgvector, postgis; root typecheck; `pnpm fixtures:check` (no change) |
+| c | SQLite and Mongo declare | SQLite declarations as design 2.6 including `sqlite/character` and `sqlite/character-varying`, with `sql/char@1` and `sql/varchar@1` naming them; SQLite registration moved to the target; `mongoDataType` with `bsonTypes` for all twelve Mongo types | a | SQLite and Mongo package tests; root typecheck; `pnpm fixtures:check` (no change) |
+| d | Writers and templates | Design section 4: every `nativeType` writer uses `sqlBaseName`; `buildSqlContractFromDefinition` requires `codecLookup` and `dataTypeLookup`; `ColumnTypeDescriptor.nativeType` optional and ignored; templates lose `nativeType`; `inferred` flags; `postgis.Geometry` `srid` optional; argument bounds come from the data type (design 2.4 item 2, with the nanoid exception); assembly checks of design 5 | b, c | `pnpm test:packages`; root typecheck; `pnpm fixtures:check` (no change) |
+| e | Readers switch, copies deleted | Design section 3 items 3 to 7: `ContractToSchemaIROptions`; planners, SERIAL, identity values, `renderDefaultLiteral`, `SAFE_WIDENINGS`, runtime casts and their policy set with the runtime `DataTypeLookup`; `typeRef` writing fix; enum blocks and `PSL_ENUM_TYPE_NEEDS_PARAMETERS`; Mongo enum factory and `deriveJsonSchema`; Prisma 7 binding; every deletion in item 3; the slice-1 grep check empty | d | `pnpm test:packages`; `pnpm test:integration`; `pnpm test:e2e`; golden planner test; `pnpm fixtures:check` (no change) |
+| f | Docs and full checks | ADR 171 superseded note; codec authoring guide "Declaring a data type"; `inventory/change-list.md` docs part (c) for slice-1 files; every check in the project plan's list | e | every check in `plan.md` "Checks every slice runs" |
+
+After dispatch f: `/drive-code-review` without the walkthrough, fix its findings, run it again after substantial fixes, then open the pull request.
+
+## Open items
+
+- TML-3253 has not merged as of 2026-09-30, so design 3.7 does not apply to this slice; TML-3253 uses `resolveReportedSqlType` when it lands.
