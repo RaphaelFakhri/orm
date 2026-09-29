@@ -4,6 +4,33 @@ Private planning notes. Local branch only. Input for stream 4 of [plan.md](plan.
 
 Gathered 2026-09-28 by two read-only agents. I have not verified each line myself. Where the two sources disagreed, the code wins and the disagreement is noted.
 
+## What the public docs already say
+
+Source: the page "Coming from Prisma ORM 7" in `prisma/web` (`apps/docs/content/docs/orm/coming-from-prisma-orm-7.mdx`), read 2026-09-29. It states what is available today. Only `$extends` carries a statement about the future.
+
+| Feature | Position in the public docs |
+| --- | --- |
+| `$extends` | Will not be added. Middleware replaces it. |
+| Soft delete, validation rules, lifecycle hooks, read replicas | Not available, with a workaround for each. Not planned (confirmed by Will's notes). |
+| `contains`, `startsWith`, `endsWith` | Treated as available: use `like` and write the `%` yourself |
+| Case-insensitive mode | Treated as available on PostgreSQL: use `ilike` |
+| `$transaction([...])` | Treated as available: use `db.transaction(async (tx) => ...)` |
+| `$use` middleware | Treated as available: `middleware: [...]` on the client |
+| `Prisma.sql` helpers, TypedSQL | Not available. Use `db.raw.sql`. |
+| `findUnique` | No separate unique lookup. Use `.first()`. |
+| `increment`, `decrement` | Not available. Use raw SQL. |
+| `findFirstOrThrow`, `findUniqueOrThrow` | Not available on the query. `.all().firstOrThrow()` reads every row. |
+| JSON filters | Not available. Use raw SQL. |
+| List filters | Not available. Use raw SQL. |
+| Nested writes beyond `create`, `connect`, `disconnect` | Not available |
+| Transaction options and nested transactions | Not available |
+| `omit`, `relationLoadStrategy`, `Prisma.skip`, automatic batching | Not available |
+| `P2002`-style error codes | Not available. Use `error.code` and `error.sqlState`. |
+
+Not mentioned on the page: that cursor pagination starts after the cursor row, the fluent relation API, comparing two columns in `where`, splitting large `IN` lists.
+
+The page also lists commands with no Prisma 8 equivalent: `migrate reset`, `db seed`, `studio`, `validate`.
+
 ## Sources and how complete they are
 
 1. **The ported Prisma 7 tests** under `test/integration/test/ports/`, with the records of failing and non-portable tests.

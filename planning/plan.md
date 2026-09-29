@@ -8,6 +8,12 @@ This file records what Will decided in the planning discussion of 2026-09-28. Th
 
 Ship Prisma 8 GA at the end of October 2026. November is the fallback.
 
+The public docs already state these commitments (page "Release status" in `prisma/web`, read 2026-09-29):
+
+- General availability is expected in October 2026.
+- Prisma ORM 7 gets bug fixes and security updates for 18 months from the day of GA.
+- `npm install prisma` installs Prisma 8 today, so existing Prisma 7 users already meet it.
+
 ## Team
 
 Will Madden and Serhii. Agents write all the code. Will takes the contract, migrations, targets and the upgrade path. Serhii takes language tools and the query side.
@@ -35,6 +41,14 @@ Existing Prisma 7 users must be able to upgrade. They reacted badly to the relea
 2. Upgrade path: Prisma 7 schema gaps, baseline command, upgrade guide.
 3. Editor and tools: VS Code extension, multi-file PSL, emulator controls.
 4. Query features. The stream exists whether or not each feature in it is required for GA. Which features are required is not decided.
+
+## Tasks to decide or fix before GA
+
+| Task | Why |
+| --- | --- |
+| Verify cursor pagination and fix its behavior for 8.x | Prisma 8 starts after the cursor row. Prisma 7 includes it. 13 ported tests fail on it. Nobody has confirmed the difference is deliberate, and the docs do not mention it. After GA it cannot change. |
+| Correct the query reference in the agent skill (`skills/prisma-8/references/queries-postgres.md`) | Urgent, same kind of fault as TML-3340. It sends users to `db.sql` for set operations and window functions, and neither exists. `prisma init` copies the skill into every new project. |
+| Correct the other documents that contradict the code | Listed in [query-feature-gaps.md](query-feature-gaps.md). |
 
 ## Feature status at GA
 
