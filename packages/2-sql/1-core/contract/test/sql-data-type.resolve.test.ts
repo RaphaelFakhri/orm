@@ -1,4 +1,5 @@
 import { dataType } from '@internal/framework-components/codec';
+import { type } from 'arktype';
 import { describe, expect, it } from 'vitest';
 import { type ReportedSqlType, resolveReportedSqlType, sqlDataType } from '../src/sql-data-type';
 import { allTypes } from './sql-data-type-fixtures';
@@ -63,15 +64,17 @@ describe('resolveReportedSqlType', () => {
       dataType: 't/numeric',
       typeParams: { precision: 10, scale: 2 },
     });
-    expect(resolveReportedSqlType(reported('character varying (255)'), allTypes)).toBeUndefined();
   });
 
-  it('leaves quoted text as written', () => {
-    const quoted = sqlDataType('t/quoted', { texts: [{ text: '"char"', catalog: true }] });
-    const types = [...allTypes, quoted];
-    expect(resolveReportedSqlType(reported('"char"'), types)?.dataType).toBe('t/quoted');
-    expect(resolveReportedSqlType(reported('"Char"'), types)).toBeUndefined();
-    expect(resolveReportedSqlType(reported('"char"  '), types)?.dataType).toBe('t/quoted');
+  it('keeps a space before an opening bracket or a comma', () => {
+    expect(resolveReportedSqlType(reported('numeric (10,2)'), allTypes)).toBeUndefined();
+    expect(resolveReportedSqlType(reported('numeric(10 ,2)'), allTypes)).toBeUndefined();
+  });
+
+  it('leaves quoted text as written, so a quoted name matches no declared text', () => {
+    expect(resolveReportedSqlType(reported('char'), allTypes)?.dataType).toBe('t/char');
+    expect(resolveReportedSqlType(reported('"char"'), allTypes)).toBeUndefined();
+    expect(resolveReportedSqlType(reported('"CHAR"'), allTypes)).toBeUndefined();
   });
 
   it('does not claim a text that is only written', () => {
@@ -88,6 +91,25 @@ describe('resolveReportedSqlType', () => {
     });
     const integerKind = reported('integer', { kind: 'domain', schema: 'public', name: 'int' });
     expect(resolveReportedSqlType(integerKind, allTypes)).toBeUndefined();
+  });
+
+  it('returns nothing when the parameters a kind claim reads fail the schema', () => {
+    const unnamed = reported('', { kind: 'enum', schema: 'public', name: '' });
+    expect(resolveReportedSqlType(unnamed, allTypes)).toBeUndefined();
+  });
+
+  it('returns the normal form of the parameters a kind claim reads', () => {
+    const range = sqlDataType<{ readonly precision?: number }>('t/range', {
+      params: type({ 'precision?': 'number.integer >= 0' }),
+      claimsKind: 'range',
+      fromReported: () => ({}),
+      normalize: (params) =>
+        params.precision === undefined ? { ...params, precision: 6 } : params,
+    });
+    expect(resolveReportedSqlType(reported('tsrange', { kind: 'range' }), [range])).toEqual({
+      dataType: 't/range',
+      typeParams: { precision: 6 },
+    });
   });
 
   it('returns nothing for a text no type claims', () => {

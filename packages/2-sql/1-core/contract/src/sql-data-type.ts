@@ -71,7 +71,7 @@ export interface ResolvedSqlType {
 }
 
 const PLACEHOLDER = /\{([A-Za-z][A-Za-z0-9]*)\}/g;
-const LITERAL_CHARACTERS = /^[a-z0-9_ (),."]*$/;
+const LITERAL_CHARACTERS = /^[a-z0-9_ (),.]*$/;
 const REGEXP_SPECIAL = /[.*+?^${}()|[\]\\]/g;
 
 type SchemaProp = { readonly kind: string; readonly key: PropertyKey };
@@ -129,7 +129,7 @@ function checkText(id: DataTypeId, text: SqlTypeText, paramKeys: readonly string
   }
   if (!LITERAL_CHARACTERS.test(literal)) {
     refuse(
-      'must be lower case and contain only letters, digits, spaces, brackets, commas, dots, underscores, double quotes and placeholders',
+      'must be lower case and contain only letters, digits, spaces, brackets, commas, dots, underscores and placeholders',
     );
   }
   for (const name of placeholdersOf(text.text)) {
@@ -137,10 +137,13 @@ function checkText(id: DataTypeId, text: SqlTypeText, paramKeys: readonly string
       refuse(`names the parameter {${name}}, which the type does not declare`);
     }
   }
-  if (text.display !== undefined && text.display.toLowerCase() !== text.text.toLowerCase()) {
-    refuse(
-      `has the display ${JSON.stringify(text.display)}, which differs from it beyond letter case`,
-    );
+  if (text.display === undefined) return;
+  const display = JSON.stringify(text.display);
+  if (text.display.toLowerCase() !== text.text.toLowerCase()) {
+    refuse(`has the display ${display}, which differs from it beyond letter case`);
+  }
+  if (placeholdersOf(text.display).join(',') !== placeholdersOf(text.text).join(',')) {
+    refuse(`has the display ${display}, which writes a placeholder differently`);
   }
 }
 
@@ -292,14 +295,7 @@ export function sqlBaseName<Params extends SqlTypeParams>(
   type: SqlDataType<Params>,
   params: SqlTypeParams,
 ): string {
-  if (type.sql.render !== undefined) {
-    return type.sql.render(
-      blindCast<
-        Params,
-        'the base name is not validated; callers pass the parameters dataTypeParams kept for this type'
-      >(params),
-    );
-  }
+  if (type.sql.render !== undefined) return type.sql.render(validatedParams(type, params));
   const written = type.sql.texts.filter((text) => text.written === true);
   const fewest = written.reduce<SqlTypeText | undefined>(
     (best, text) =>
@@ -351,27 +347,14 @@ function prepareReportedText(text: string): string {
   let quoted = false;
   let spacePending = false;
   for (const character of text.trim()) {
-    if (character === '"') {
-      if (spacePending) prepared += ' ';
-      spacePending = false;
-      quoted = !quoted;
-      prepared += character;
-      continue;
-    }
-    if (quoted) {
-      prepared += character;
-      continue;
-    }
-    if (/\s/.test(character)) {
+    if (!quoted && /\s/.test(character)) {
       spacePending = true;
       continue;
     }
-    if (spacePending) {
-      const afterOpening = prepared.endsWith('(') || prepared.endsWith(',');
-      if (!afterOpening && character !== ')') prepared += ' ';
-      spacePending = false;
-    }
-    prepared += character.toLowerCase();
+    if (spacePending && !/[(,]$/.test(prepared) && character !== ')') prepared += ' ';
+    spacePending = false;
+    if (character === '"') quoted = !quoted;
+    prepared += quoted ? character : character.toLowerCase();
   }
   return prepared;
 }
@@ -392,7 +375,7 @@ export function resolveReportedSqlType(
   if (reported.kind !== undefined) {
     const claimant = sqlTypes.find((type) => type.sql.claimsKind === reported.kind);
     if (claimant === undefined) return undefined;
-    return { dataType: claimant.id, typeParams: claimant.sql.fromReported?.(reported) ?? {} };
+    return resolvedWith(claimant, claimant.sql.fromReported?.(reported) ?? {});
   }
   const text = prepareReportedText(reported.text);
   for (const type of sqlTypes) {
@@ -406,11 +389,13 @@ export function resolveReportedSqlType(
           Number.parseInt(match[index + 1] ?? '', 10),
         ]),
       );
-      if (type.params !== undefined && type.params(params) instanceof arktype.errors) {
-        return undefined;
-      }
-      return { dataType: type.id, typeParams: type.sql.normalize(params) };
+      return resolvedWith(type, params);
     }
   }
   return undefined;
+}
+
+function resolvedWith(type: SqlDataType, params: SqlTypeParams): ResolvedSqlType | undefined {
+  if (type.params !== undefined && type.params(params) instanceof arktype.errors) return undefined;
+  return { dataType: type.id, typeParams: type.sql.normalize(params) };
 }

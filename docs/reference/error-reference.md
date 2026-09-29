@@ -577,7 +577,7 @@ The contract's target does not match the target configured in `prisma.config.ts`
 
 ### CONTRACT.TYPE_PARAMS_INVALID
 
-A column's type parameters do not fit its data type: a parameter fails the data type's schema (for example a `numeric` precision of 0), or no written text of the data type takes that set of parameters (for example a `scale` with no `precision`). Raised by `renderSqlTypeName` and `renderSqlCatalogText` in `@internal/sql-contract/data-type` when a type name is rendered. Payload: `dataType`, `parameters`.
+A column's type parameters do not fit its data type: a parameter fails the data type's schema (for example a `numeric` precision of 0 or an enum with no `typeName`), no written text of the data type takes that set of parameters (for example a `scale` with no `precision`), or no catalog text takes the parameters in their normal form. Raised by `renderSqlTypeName`, `renderSqlCatalogText`, and `sqlBaseName` for a type that renders its own name, in `@internal/sql-contract/data-type`, when a type name is rendered. Payload: `dataType`, `parameters`.
 
 ### CONTRACT.TYPE_UNKNOWN
 

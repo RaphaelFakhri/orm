@@ -50,6 +50,7 @@ describe('sqlDataType', () => {
       ['a trailing space', 'int4 '],
       ['a tab', 'double\tprecision'],
       ['a character outside the literal set', 'int4[]'],
+      ['a double quote', '"char"'],
       ['an unclosed placeholder', 'numeric({precision'],
       ['an empty placeholder', 'numeric({})'],
       ['an empty text', ''],
@@ -141,6 +142,21 @@ describe('sqlDataType', () => {
           texts: [{ text: 'geometry', written: true, display: 'Geometry ' }],
         }),
       ).toThrow(InternalError);
+    });
+
+    it('refuses a display that writes a placeholder differently', () => {
+      expect(() =>
+        sqlDataType('t/bad', {
+          params: type({ 'srid?': 'number' }),
+          texts: [
+            {
+              text: 'geometry(geometry,{srid})',
+              written: true,
+              display: 'geometry(Geometry,{SRID})',
+            },
+          ],
+        }),
+      ).toThrow(/t\/bad.*SRID/);
     });
 
     it('allows a display that differs in case only', () => {

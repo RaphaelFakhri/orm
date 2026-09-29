@@ -6,6 +6,7 @@ import {
   renderSqlCatalogText,
   renderSqlTypeName,
   sqlBaseName,
+  sqlDataType,
 } from '../src/sql-data-type';
 import {
   char,
@@ -67,8 +68,15 @@ describe('sqlBaseName', () => {
   });
 
   it('uses the display of the text it picks', () => {
-    const displayed = dataTypeWithDisplay();
+    const displayed = sqlDataType('t/displayed', {
+      texts: [{ text: 'geometry', written: true, display: 'Geometry' }],
+    });
     expect(sqlBaseName(displayed, {})).toBe('Geometry');
+  });
+
+  it('refuses parameters the schema refuses for a type that renders', () => {
+    expect(() => sqlBaseName(enumType, {})).toThrow(invalidParams);
+    expect(() => sqlBaseName(enumType, {})).toThrow(/t\/enum.*typeName/);
   });
 
   it('refuses a type that is never written', () => {
@@ -119,7 +127,7 @@ describe('renderSqlTypeName', () => {
     );
   });
 
-  it('refuses a written parameter on a type that is never written', () => {
+  it('refuses to write a type that is never written', () => {
     expect(() => renderSqlTypeName(textArray, {})).toThrow(invalidParams);
   });
 });
@@ -157,13 +165,3 @@ describe('renderSqlCatalogText', () => {
     expect(() => renderSqlCatalogText(enumType, { typeName: 'status' })).toThrow(InternalError);
   });
 });
-
-function dataTypeWithDisplay() {
-  return {
-    ...geometry,
-    sql: {
-      ...geometry.sql,
-      texts: [{ text: 'geometry', written: true as const, display: 'Geometry' }],
-    },
-  };
-}
