@@ -53,6 +53,14 @@ describe('assembleDataTypes', () => {
     expect([lookup.has(int2.id), lookup.has(text.id)]).toEqual([true, true]);
   });
 
+  it('lists the types in assembly order: contributor by contributor, each in its own order', () => {
+    const { lookup } = assembleDataTypes([
+      contributor('demo', [int8, int2]),
+      contributor('other', [text]),
+    ]);
+    expect(lookup.all()).toEqual([int8, int2, text]);
+  });
+
   it('holds nothing when no contributor registers a type', () => {
     expect(assembleDataTypes([{ id: 'demo' }]).declared).toEqual([]);
   });

@@ -39,6 +39,7 @@ function withBrokenTextType(lookup: DataTypeLookup): DataTypeLookup {
   return {
     get: (id) => (id === BROKEN_TEXT ? brokenText : lookup.get(id)),
     has: (id) => id === BROKEN_TEXT || lookup.has(id),
+    all: () => [...lookup.all(), brokenText],
   };
 }
 
