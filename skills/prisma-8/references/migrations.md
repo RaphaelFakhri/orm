@@ -562,10 +562,10 @@ The CLI collects anonymous usage data by default. To opt out, set `PRISMA_DISABL
 - [ ] Chose the right path: `db update` (local dev) vs `migration plan` + `db migrate` (anything shared).
 - [ ] For `migration plan`: confirmed the output's `from:` line names the intended origin — not `(baseline)` over an existing graph (`references/migration-model.md`).
 - [ ] For `migration plan`: ran `migration show <dir>` to review before `db migrate`.
-- [ ] Filled every `placeholder(...)` in `migration.ts` (if any) with SQL query builder queries over the end contract, and passed the client's `contract` to `this.dataTransform`.
+- [ ] Filled every `placeholder(...)` in `migration.ts` (if any). On Postgres: SQL query builder queries over the end contract, and the client's `contract` passed to `this.dataTransform`. On SQLite and Mongo: the forms in *What each target checks*.
 - [ ] `check` closures are rowset queries, not scalar aggregates.
 - [ ] Every DML statement is in a `dataTransform`, with a `check` on Postgres and Mongo; on Postgres its queries come from the SQL query builder, not `db.raw.sql` or `fns.raw`.
-- [ ] Every `rawSql` step you wrote is DDL that no operation factory expresses, with a precheck and a postcheck that test the live schema.
+- [ ] Every `rawSql` step you wrote is DDL that no operation factory expresses (or whose factory cannot carry the class the migration needs), with a precheck and a postcheck that test the live schema.
 - [ ] Self-emitted (`node migrations/app/<dir>/migration.ts`) after editing the TS.
 - [ ] Ran `db migrate` (or `db update`) and saw it complete.
 - [ ] Used `db verify` only when diagnosing drift — not as a routine post-apply step.
