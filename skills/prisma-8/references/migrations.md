@@ -46,7 +46,7 @@ Once the contract changes, you choose how the change reaches the database. This 
 - **`migrationHash`.** Content-addressed identity of a migration package. `MIGRATION.HASH_MISMATCH` fires when the stored hash in `migration.json` disagrees with the hash recomputed from the on-disk files (almost always: someone edited `migration.ts` without self-emitting).
 - **Marker.** Records "this database is at contract hash X for space Y". **Postgres:** a row in `prisma_contract.marker`. **Mongo:** a document in the `_prisma_migrations` collection (keyed by space). Each successful migration advances the marker once schema verification passes for that space. `db sign` writes the marker from the current contract hash, but only after a schema-verification pass succeeds (it will not sign a database whose live schema disagrees with the contract).
 - **Apply atomicity.** **Postgres:** one `db migrate` run is one transaction — the runner issues a single `BEGIN`, applies every pending migration for every contract space, then one `COMMIT`; any failure issues `ROLLBACK` for the whole run, so the marker stays where it was before the command. **Mongo:** DDL ops (`createCollection`, `createIndex`, `collMod`, `setValidation`, …) are not wrapped in a multi-document transaction; the runner applies ops, verifies the live schema against the destination contract, and advances the marker only on verify-pass (resumable across spaces — see the MongoDB family doc). Ordinary DDL + `dataTransform` flows stay consistent; partial state from failed mid-migration runs is diagnosed with `db verify` / `db schema`, not assumed away.
-- **Operation classes.** Every operation declares an `operationClass`: `additive`, `widening`, `data`, or `destructive`. The CLI surfaces these in the plan preview and in JSON output. There is no `long-running` class and the framework does not emit `CREATE INDEX CONCURRENTLY` — operations stay transactional.
+- **Operation classes.** Every operation declares an `operationClass`: `additive`, `widening`, `data`, or `destructive`. The framework defines them this way: `additive` adds structures without changing existing ones; `widening` relaxes a constraint or widens a type; `destructive` removes or alters existing structures; `data` transforms data, such as a backfill or a type conversion. A `dataTransform` always has class `data`. The CLI surfaces these in the plan preview and in JSON output. There is no `long-running` class and the framework does not emit `CREATE INDEX CONCURRENTLY` — operations stay transactional.
 
 ## `migration.ts` is framework-rendered, not hand-authored
 
@@ -209,7 +209,7 @@ Fill in any data transforms (see *Fill a placeholder*), self-emit if you edited 
 pnpm prisma db migrate --db $DATABASE_URL
 ```
 
-`db migrate` runs without prompting — destructive-op confirmation lives on `db update`, not here. Review destructive ops in the plan output or in `migration show` *before* applying.
+`db migrate` runs without prompting — destructive-op confirmation lives on `db update`, not here. Review `destructive` and `data` operations in the plan output or in `migration show` *before* applying.
 
 ## Workflow — Fill a placeholder
 
@@ -346,22 +346,35 @@ MigrationCLI.run(import.meta.url, M);
 
 Self-emit the same way: `node migrations/app/<dir>/migration.ts`.
 
-## Data changes are typed transforms, never raw SQL
+## Data changes go in a data transform
 
-Every step that reads or writes rows is a data transform: on Postgres a `this.dataTransform(contract, name, { check, run })` whose queries are built with the typed builder against that contract, on Mongo a `dataTransform(name, { check, run })`. `rawSql(...)` is only for DDL that no operation builder expresses, such as a column rename. Never give a `rawSql` step the operation class `data`, and never use one to read or write rows.
+**The rule.** A statement that inserts, updates or deletes rows, or selects rows to decide what to write, is DML. DML goes in a data transform (`dataTransform`), never in a `rawSql` step. `rawSql` is for DDL that no operation factory expresses, such as a column rename. DDL includes statements that convert stored values as part of a schema change, such as `ALTER COLUMN … TYPE … USING` and SQLite's table recreation: use the operation factory when one exists (`this.alterColumnType`, `this.recreateTable`) and `rawSql` only when none does. A `rawSql` step you write carries a precheck and a postcheck that test the live schema (for a column rename: before, the old column exists and the new one does not; after, the reverse), and the class the framework defines for what it does (see *Operation classes* under *Key Concepts*).
 
-The reason is the migration graph (`references/migration-model.md`). Each migration is an edge from one contract hash to another. It runs against every database whose marker is at its start hash, however that database got there, so it must be correct for all of them. `this.dataTransform` checks each query plan against the contract it was given when you self-emit, and refuses a plan built against any other contract (`MIGRATION.DATA_TRANSFORM_CONTRACT_MISMATCH`). A `rawSql` step is checked against nothing, so its SQL silently assumes the one history its author had in mind.
+**Why.** Migrations form a graph (`references/migration-model.md`). A migration is an edge, and `db migrate` runs it on every database whose marker is at its `from` hash, however that database got there. Those databases share a schema but not their rows: on one the work is already done, on another it was never needed. A data transform stays correct on all of them because of two things:
 
-### When the typed builder cannot express the transform
+- **`check` is the guard.** The runner skips the transform when `check` finds no rows (the work is done or was never needed), runs `run` otherwise, and fails the migration if `check` still finds rows afterwards. `check` is optional in the type, but a transform without it runs `run` on every database and can never refuse, so always write it.
+- **On Postgres, the queries are checked against a contract.** Self-emit checks each query plan against the contract passed to `this.dataTransform` (normally `endContract`) and refuses a mismatch with `MIGRATION.DATA_TRANSFORM_CONTRACT_MISMATCH`.
 
-Stop. Tell the user which part of the transform the builder cannot express, and report the gap through `references/feedback.md`. Do not write it as `rawSql`, and do not move it into a script that runs outside the migration. Two gaps are open today:
+A `rawSql` step that runs DML has neither: no contract checks its SQL, and its checks are whatever its author wrote. It assumes the one history its author had in mind.
+
+**What each target checks.**
+
+- **Postgres.** `this.dataTransform(endContract, name, { check, run })` takes query plans built with the SQL query builder (`db.sql`; in `migration.ts`, the `sql` that `postgres<End>({ contractJson: endContract })` returns). Only builder queries count. A query from the client's raw lane (`db.raw.sql`) or one containing `fns.raw` passes the contract check, because the check compares only the plan's storage hash, but nothing checks its SQL against the contract. Treat it as raw SQL.
+- **SQLite.** `dataTransform({ id, label, table, description, run })`, imported on the rendered `@internal/sqlite/migration` line, takes `run: () => string`, a SQL string. It has no `check`, and nothing checks the SQL against a contract. It is still the place for a data change on SQLite. Write `run` so that it changes nothing on a database where the work is done, for example `UPDATE … WHERE "col" IS NULL`.
+- **Mongo.** `dataTransform(name, { check, run })` takes Mongo commands, such as the raw command classes in the example above. Nothing checks them against a contract. `check` works as on Postgres.
+
+### When the SQL query builder cannot express the transform (Postgres)
+
+Stop, and tell the user which part of the transform the builder cannot express. If the gap is one of these open issues, name the issue instead of filing a new one; the user can follow or comment on it there:
 
 - An insert whose rows come from a select ([prisma/orm#30488](https://github.com/prisma/orm/issues/30488)).
 - An update that sets a column from a subquery or a joined table ([prisma/orm#30489](https://github.com/prisma/orm/issues/30489)).
 
+For any other gap, offer to report it through `references/feedback.md`. Then let the user decide how to proceed. Never choose on your own to write the change as raw SQL (`rawSql`, `db.raw.sql` or `fns.raw`) or as a script that runs outside the migration. If the user knowingly chooses another route, record the choice and the reason where the next person will see it: a comment beside the step in `migration.ts`, and the pull request description.
+
 ### How a transform refuses bad data
 
-Write `check` to find the rows the transform must fix. If `run` leaves any of them behind, for example rows whose values have no valid mapping, the postcheck fails and the migration stops. `db migrate` reports `MIGRATION.RUNNER_FAILED` with `meta.runnerErrorCode: 'MIGRATION.POSTCHECK_FAILED'` and `meta.operationId` naming the transform. On Postgres the whole run rolls back; on Mongo the marker does not advance. Do not add a raw step that raises an error. If the user wants the offending rows named, run a read-only query that selects them before migrating.
+Write `check` to find the rows the transform must fix. If `run` leaves any of them behind, for example rows whose values have no valid mapping, the postcheck fails and the migration stops. `db migrate` reports `MIGRATION.RUNNER_FAILED` with `meta.runnerErrorCode: 'MIGRATION.POSTCHECK_FAILED'` and `meta.operationId` naming the transform. On Postgres the whole run rolls back. On Mongo nothing is undone: the documents `run` already changed stay changed, and operations that ran earlier stay applied; only the marker does not advance. So on Mongo, write `run` so it is safe to run again, for example by filtering on the documents that still need the change. A SQLite transform has no `check`, so it cannot refuse this way. Do not add a raw step that raises an error. If the user wants the offending rows named, run a read-only query that selects them before migrating.
 
 ## Workflow — Author a migration by hand
 
@@ -382,7 +395,7 @@ On Postgres the operations are **methods on the `Migration` base class**, each t
 - Enums: `createNativeEnumType`, `addNativeEnumValue`, `dropNativeEnumType`.
 - Row-level security: `enableRowLevelSecurity`, `disableRowLevelSecurity`, `createRlsPolicy`, `renameRlsPolicy`, `dropRlsPolicy`.
 - Dependencies: `createSchema`, `installExtension`.
-- Free helpers on the import line: `col`, `primaryKey`, `unique`, `foreignKey`, `checkExpression`, `lit`, `fn` (column and constraint descriptors), `createExtension`, and `rawSql({ id, label, operationClass, target, precheck, execute, postcheck, ... })`, only for DDL that no operation builder expresses (a column rename). Never use `rawSql` to read or write rows, and never give it the class `data`; see *Data changes are typed transforms, never raw SQL*.
+- Free helpers on the import line: `col`, `primaryKey`, `unique`, `foreignKey`, `checkExpression`, `lit`, `fn` (column and constraint descriptors), `createExtension`, and `rawSql({ id, label, operationClass, target, precheck, execute, postcheck, ... })` for DDL that no operation factory expresses (a column rename), with a precheck and a postcheck that test the live schema. Never use `rawSql` for DML; see *Data changes go in a data transform*.
 - Data transforms: `this.dataTransform(endContract, name, { check, run })`.
 
 **Mongo** factories (from `@prisma/orm-mongo/target/migration`):
@@ -511,10 +524,11 @@ Interactively, consent is typing the database name back (the prompt names it). I
 6. **Aggregate `check` closure in Postgres `this.dataTransform`.** Returning `count(*)` or `bool_and(...)` breaks the precheck/postcheck contract — both sides resolve to constants. Use a rowset shape: `select('id').where(<violation>).limit(1)`.
 7. **Two contract references in one migration.** Building a query plan against a different contract than the one passed to `this.dataTransform(endContract, ...)` raises `MIGRATION.DATA_TRANSFORM_CONTRACT_MISMATCH`. Always import `endContract` once at module scope and use the same reference.
 11. **Calling Postgres operations as free functions.** `addColumn('public', 'user', {...})` does not exist as an import; the operations are `this.addColumn({ schema, table, column })` and friends on the `Migration` base class, with `col(...)` building the column. Only `col`, `rawSql`, `placeholder`, `Migration`, and `MigrationCLI` are imported.
-8. **Renaming and expecting the planner to detect it (Postgres).** Prisma 8 has no in-contract rename hint today; the planner emits a destructive drop+add. Hand-edit `migration.ts` to rewrite the destructive op as a `rawSql({ ... })` that issues `ALTER TABLE ... RENAME COLUMN ...` (or use the two-migration keep / backfill / drop pattern), then self-emit. See `references/contract.md` § *Edit a field — rename*.
+8. **Renaming and expecting the planner to detect it (Postgres).** Prisma 8 has no in-contract rename hint today; the planner emits a destructive drop+add. Hand-edit `migration.ts` to rewrite the destructive op as a `rawSql({ ... })` that issues `ALTER TABLE ... RENAME COLUMN ...`, with a precheck and a postcheck on the live schema (or use the two-migration keep / backfill / drop pattern), then self-emit. See `references/contract.md` § *Edit a field — rename*.
 9. **Planning with no `db` ref and no `--from` in a project that already has migrations.** The origin falls through to the empty database, which would make the plan a full-create migration; `migration plan` refuses with `MIGRATION.PLAN_ORIGIN_UNKNOWN` rather than writing it. Pick the exit that matches your intent — the error lists them, and `references/migration-model.md` § *The trap* explains which to choose.
 10. **Hand-authoring `migration.ts` from a blank file, or rewriting the rendered import line.** Migration files are framework-rendered — let `prisma migration plan` (or `migration new`) render the package, then edit only the holes the framework leaves for you. On Postgres leave the rendered `@internal/postgres/migration` (or `@internal/sqlite/migration`) import path alone; on Mongo leave `@prisma/orm-mongo/target/migration` as rendered. Add symbols to the existing import line rather than introducing new import paths.
-12. **A data change written as `rawSql`.** A `rawSql` step that inserts, updates or deletes rows, or carries `operationClass: 'data'`, is checked against no contract and assumes one history of the database. Write it as a `dataTransform` built with the typed builder. If the builder cannot express it, stop and report the gap (see *When the typed builder cannot express the transform*).
+12. **DML outside a data transform.** A `rawSql` step that inserts, updates or deletes rows, or a Postgres transform whose query comes from `db.raw.sql` or contains `fns.raw`. Write it in a `dataTransform` with a `check`; on Postgres, build its queries with the SQL query builder. *Data changes go in a data transform* explains why. If the builder cannot express it, stop (see *When the SQL query builder cannot express the transform*).
+13. **A data transform without `check`.** It runs `run` on every database, including those where the work is already done, and can never refuse bad data. Always write `check`.
 
 ## What Prisma 8 doesn't do yet
 
@@ -522,7 +536,8 @@ Interactively, consent is typing the database name back (the prompt names it). I
 - **Seeds-as-first-class.** Prisma 8 doesn't ship a `prisma db seed` equivalent. Workaround: write a TypeScript script that imports your `db` instance and runs your setup queries; invoke it from `package.json`'s scripts. If you need first-class seeding, file a feature request via the `references/feedback.md` skill.
 - **Migration squashing.** Prisma 8 doesn't squash older migrations into a baseline. They accumulate; for very large histories, manual baseline-and-truncate is the path. If you need built-in squashing, file a feature request via the `references/feedback.md` skill.
 - **In-contract rename hints.** The planner cannot detect that a field rename is a rename rather than a drop+add. Workaround: hand-edit `migration.ts` to issue a `RENAME COLUMN` via `rawSql(...)`, or use a keep / backfill / drop pattern across two migrations. If you need a contract-level rename hint, file a feature request via the `references/feedback.md` skill.
-- **Some data transforms.** The typed builder cannot yet insert rows from a select or set a column from a subquery or a joined table. There is no workaround inside a migration: stop, tell the user, and report it via the `references/feedback.md` skill (see *When the typed builder cannot express the transform*).
+- **Some data transforms (Postgres).** The SQL query builder cannot yet insert rows from a select ([#30488](https://github.com/prisma/orm/issues/30488)) or set a column from a subquery or a joined table ([#30489](https://github.com/prisma/orm/issues/30489)). There is no workaround inside a migration: stop and let the user decide (see *When the SQL query builder cannot express the transform*).
+- **Contract checks for SQLite and Mongo data transforms.** SQLite's `dataTransform` takes a SQL string and Mongo's takes commands; nothing checks either against a contract. Workaround: write `run` so it is safe to run again, and review it by hand. If you need a checked form, file a feature request via the `references/feedback.md` skill.
 
 ## Graph and history commands
 
@@ -549,7 +564,8 @@ The CLI collects anonymous usage data by default. To opt out, set `PRISMA_DISABL
 - [ ] For `migration plan`: ran `migration show <dir>` to review before `db migrate`.
 - [ ] Filled every `placeholder(...)` in `migration.ts` (if any), built against `endContract`.
 - [ ] `check` closures are rowset queries, not scalar aggregates.
-- [ ] Every step that reads or writes rows is a `dataTransform` built with the typed builder; no `rawSql` step touches rows or has class `data`.
+- [ ] Every DML statement is in a `dataTransform` that has a `check`; on Postgres its queries come from the SQL query builder, not `db.raw.sql` or `fns.raw`.
+- [ ] Every `rawSql` step you wrote is DDL that no operation factory expresses, with a precheck and a postcheck that test the live schema.
 - [ ] Self-emitted (`node migrations/app/<dir>/migration.ts`) after editing the TS.
 - [ ] Ran `db migrate` (or `db update`) and saw it complete.
 - [ ] Used `db verify` only when diagnosing drift — not as a routine post-apply step.

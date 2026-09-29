@@ -33,12 +33,7 @@ Consequences worth internalising:
 
 ### What a migration may contain
 
-Because a migration is an edge, it runs against every database whose marker is at its `from` hash, however that database got there: created by `db init`, adopted with `db sign`, restored from a backup, or brought along a different path through the graph. So every operation in it must be correct for any database at that hash:
-
-- Schema changes use the operation builders, whose prechecks and postchecks test the live schema instead of assuming it.
-- Data changes are data transforms built with the typed builder against the migration's contract.
-
-A raw SQL step that reads or writes rows is checked against nothing and assumes one history, so it does not belong in a migration. `references/migrations.md` § *Data changes are typed transforms, never raw SQL* has the rule, and what to do when the builder cannot express a transform.
+Because a migration is an edge, `db migrate` runs it on every database whose marker is at its `from` hash, however that database got there: created by `db init`, adopted with `db sign`, restored from a backup, or brought along a different path through the graph. Those databases share a schema but not their rows. So every operation must be correct on any of them. A schema change tests the live schema before and after it runs: the operation factories do this for you, and a `rawSql` DDL step you write must carry its own precheck and postcheck. A data change is a data transform; on Postgres and Mongo its `check` decides on each database whether there is work to do. `references/migrations.md` § *Data changes go in a data transform* gives the rule, the reason, and what each target checks.
 
 ### Refs — version-controlled pointers
 
