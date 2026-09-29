@@ -17,7 +17,7 @@ GA is the last chance to make breaking changes, so this stream decides the date.
 | 3 | Early MySQL attempt, to find shared code that assumes PostgreSQL | Must | Not started | |
 | 4 | SQL expression literals | Must | Designed. 6 tickets ready. | prisma/orm#30381 |
 | 5 | PSL mixins, then remove type aliases and field presets (TML-3055) | Must | No spec | Spec |
-| 6 | Cursor pagination: confirm the behavior and fix it for 8.x | Must | Not started | |
+| 6 | Remove `@noCheck` and `.noCheck()`, and the `noCheck` field in the contract | Must | Not started. Used by the Prisma 7 source on every list column. | A decision on what replaces its two uses |
 
 ## Stream 2: Upgrade path from Prisma 7
 
@@ -66,7 +66,8 @@ Test: the getting-started eval passes, in few steps and with no workarounds.
 | 3 | Docs gaps found by the eval: 11 items, 5 high | Must | Listed in [eval-friction-2026-09-28.md](eval-friction-2026-09-28.md) | |
 | 4 | ORM scenario for the eval: decide the project, then build it | Must | Not decided | Will's decision |
 | 5 | Docs restructure (prisma/web#8243) | Aim | Draft | |
-| 6 | Update the records that contradict the code | Aim | Listed in [query-feature-gaps.md](query-feature-gaps.md) | |
+| 6 | Document that cursor pagination starts after the cursor row, in the upgrade guide and "Coming from Prisma ORM 7" | Aim | Not tracked | |
+| 7 | Update the records that contradict the code | Aim | Listed in [query-feature-gaps.md](query-feature-gaps.md) | |
 
 ## Databases
 

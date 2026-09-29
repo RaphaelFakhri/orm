@@ -46,7 +46,8 @@ Existing Prisma 7 users must be able to upgrade. They reacted badly to the relea
 
 | Task | Why |
 | --- | --- |
-| Verify cursor pagination and fix its behavior for 8.x | Prisma 8 starts after the cursor row. Prisma 7 includes it. 13 ported tests fail on it. Nobody has confirmed the difference is deliberate, and the docs do not mention it. After GA it cannot change. |
+| Document cursor pagination | Settled 2026-09-29: Prisma 8 starts after the cursor row on purpose, confirmed by the team. Prisma 7 includes the cursor row. The docs do not mention the difference yet. The 13 ported tests that fail on it are expected to fail. |
+| Remove `@noCheck`, `.noCheck()` and the `noCheck` field in the contract | Will, 2026-09-29: it was a workaround and must go. It is breaking, so it happens before GA. Facts (read on `main`): ADR 244 defines it. It has two kinds. `elementNotNull` waives the check that list elements are not null, and the Prisma 7 source sets it on every list column. `membership` waives the check that a value belongs to its enum. Open: what replaces each use. prisma/orm#30051 (nullable scalar-list elements) is open and may cover the first. |
 | Correct the query reference in the agent skill (`skills/prisma-8/references/queries-postgres.md`) | Urgent, same kind of fault as TML-3340. It sends users to `db.sql` for set operations and window functions, and neither exists. `prisma init` copies the skill into every new project. |
 | Correct the other documents that contradict the code | Listed in [query-feature-gaps.md](query-feature-gaps.md). |
 | Decide what project the ORM scenario of the eval builds, then build the scenario | It is the GA test for the new user. It runs without a deploy, against every database. |
