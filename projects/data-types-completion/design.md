@@ -149,7 +149,18 @@ Every text below is complete: no other text is declared. `W` marks written, `C` 
 
 **Mongo**: `packages/2-mongo-family/1-foundation/mongo-contract/src/mongo-data-type.ts` defines `mongoDataType(id, { bsonTypes, params?, casts? })` and `isMongoDataType`. `bsonTypes` is a list that may be empty. The values are today's `targetTypes` of each type's codec (inventory `data-types.md` section 5): twelve types, `mongo/json` with eight names, `mongo/bson` with none.
 
-### 2.7 Resolving a reported type (function only)
+### 2.7 Rules fixed while building dispatch a
+
+1. **Listing data types.** `DataTypeLookup` gains `all(): readonly DataType[]`, in assembly order. `resolveReportedSqlType` takes that list; the collision check of 5.2 and every later caller use it.
+2. **Literal characters.** The literal parts of a `text` may contain lower-case letters, digits, spaces, `_`, `.`, `,`, `(` and `)`. Placeholder names are exact `params` keys and may contain upper-case letters.
+3. **Text preparation** (11.2 step 2) applies outside double quotes only; quoted text is kept exactly as reported. Spaces directly after `(` or `,` and directly before `)` are removed, including when the next character is a double quote. A space before `,` is kept.
+4. **`display`** must equal `text` compared without regard to letter case, and every placeholder in `display` must be written exactly as in `text`.
+5. **Programming errors** in a declaration or a call are `InternalError`: a declaration that breaks a rule of 2.2; `sqlBaseName` on a type with no written text and no `render` (`pg/text-array`); `renderSqlCatalogText` on a type with `claimsKind`. `texts: []` beside `claimsKind` is refused like any `texts` there.
+6. **Kind claims** are validated and normalised like text claims: `resolveReportedSqlType` validates `fromReported`'s result against `params` (a failure is `undefined`) and returns `normalize` of it. `sqlBaseName` validates the parameters it passes to `render`, throwing `CONTRACT.TYPE_PARAMS_INVALID`.
+7. **Parameters are validated where a column uses a type.** A `storage.types` entry that no column references is not validated against its data type's `params`. pgvector's contract space keeps its bare `vector` entry with `typeParams: {}` (`packages/3-extensions/pgvector/src/contract.ts`), which exists so the extension's space is not empty.
+8. **Tests use registered codecs.** A planner or verify test that builds a column from a codec id no stack registers (for example `pg/tsvector@1` in `packages/3-extensions/pgvector/test/migrations/planner.behavior.test.ts`) registers a test-only data type and codec in its test stack. A test that builds a `text[]` column from `pg/text-array@1` uses `pg/text@1` with `many: true`.
+
+### 2.8 Resolving a reported type (function only)
 
 `resolveReportedSqlType` is defined in slice 1 (section 11.2) with unit tests, so that TML-3253's lookup can use it (section 3.7). Slice 3 wires it into introspection, verify and infer.
 
