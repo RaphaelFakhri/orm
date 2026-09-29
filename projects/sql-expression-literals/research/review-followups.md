@@ -1,6 +1,6 @@
 # Research: facts for the accepted review findings
 
-This file collects the facts the design needs to settle findings F02, F04, F06, F10, F11, F13, F14 and A10 from `reviews/code-review.md` and `reviews/system-design-review.md`. It proposes nothing.
+This file collects the facts the design needs to settle findings F02, F04, F06, F10, F11, F13, F14 and A10 from `design-review-principal-engineer.md` and `design-review-architect.md`. It proposes nothing.
 
 Base: branch `tml-3282-sql-expression-literals` at `47d727b70d`, the head of PR #30381. `origin/main` (`fc35fcaddc`, #30390) is an ancestor of this head. Line numbers are from this head. Nothing was built or tested. The only commands run besides reads were `biome lint` on standard input, prettier and the TypeScript compiler in memory, and `node` one-liners.
 
