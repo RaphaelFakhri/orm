@@ -1,6 +1,6 @@
 # Query features: what Prisma 7 has and Prisma 8 lacks
 
-Private planning notes. Local branch only. Input for stream 4 of [plan.md](plan.md). Nothing here is decided.
+Planning notes on the branch `planning/prisma-8-ga`. Input for stream 4 of [plan.md](plan.md). Nothing here is decided.
 
 Gathered 2026-09-28 by two read-only agents. I have not verified each line myself. Where the two sources disagreed, the code wins and the disagreement is noted.
 

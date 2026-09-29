@@ -1,6 +1,6 @@
 # Planning notes: start here
 
-Private notes for planning Prisma 8 GA with Will Madden. They live only on the local branch `worktree/prisma-orm-planning-51fed0` of the `prisma/orm` checkout. Never push this branch or open a pull request from it.
+Notes for planning Prisma 8 GA with Will Madden, shared with the team. They live on the branch `planning/prisma-8-ga` in `prisma/orm` (local name `worktree/prisma-orm-planning-51fed0`). Push new commits to that branch. Never open a pull request from it and never merge it into `main`.
 
 If you are an agent picking up this discussion, read this file, then [plan.md](plan.md). Read the other files only when the discussion needs them.
 

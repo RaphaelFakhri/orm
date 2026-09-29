@@ -1,6 +1,6 @@
 # Open projects: Prisma ORM, Composer, Prisma CLI
 
-Private planning notes. This file lives only on the local branch `worktree/prisma-orm-planning-51fed0`. Do not push it.
+Planning notes on the branch `planning/prisma-8-ga`. Not for merging into `main`.
 
 Snapshot taken 2026-09-28 from Will's notes, Linear, and the open pull requests of the `wmadden-electric` bot.
 

@@ -1,6 +1,6 @@
 # Plan: Prisma 8 GA
 
-Private planning notes. Local branch only. Do not push.
+Planning notes on the branch `planning/prisma-8-ga`. Not for merging into `main`.
 
 This file records what Will decided in the planning discussion of 2026-09-28. The inventory behind it is in [open-projects.md](open-projects.md) and [eval-friction-2026-09-28.md](eval-friction-2026-09-28.md).
 
