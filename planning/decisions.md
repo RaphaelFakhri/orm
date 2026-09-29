@@ -1,0 +1,195 @@
+# Decisions behind the plan
+
+Planning notes on the branch `planning/prisma-8-ga`. Not for merging into `main`.
+
+This file records every decision Will made in the planning discussion of 2026-09-28 and 2026-09-29, with reasons. The priority order of the work is in [plan.md](plan.md). The inventory behind it is in [open-projects.md](open-projects.md) and [eval-friction-2026-09-28.md](eval-friction-2026-09-28.md).
+
+## Goal
+
+Ship Prisma 8 GA at the end of October 2026. November is the fallback. If October is missed, Will announces the new date when that happens.
+
+The public docs already state these commitments (page "Release status" in `prisma/web`, read 2026-09-29):
+
+- General availability is expected in October 2026.
+- Prisma ORM 7 gets bug fixes and security updates for 18 months from the day of GA.
+- `npm install prisma` installs Prisma 8 today, so existing Prisma 7 users already meet it.
+
+## Team
+
+Will Madden and Serhii. Agents write all the code. Will takes the contract, migrations, targets and the upgrade path. Serhii takes language tools and the query side.
+
+## Who it is for
+
+The target user is new to Prisma, in a new project, building with AI.
+
+Existing Prisma 7 users must be able to upgrade. They reacted badly to the release candidate because the upgrade path was missing. Prisma 8 does not copy the Prisma 7 query API. Users run the Prisma 7 client beside the Prisma 8 client.
+
+## Rules for ordering work
+
+1. Breaking changes come as early as possible. GA is the last chance to make them.
+2. Changes that database targets build on come before new targets.
+3. Additive features can follow GA.
+
+## Tests for GA
+
+1. **Upgrade:** Prisma 8 can describe every database feature Prisma 7 could describe, so an existing database can be signed. Which gaps to leave is Will's judgment.
+2. **New user:** the getting-started eval passes. Starting a project takes few steps and needs no workarounds. The eval needs an ORM scenario without a deploy, run against every database. The project it builds is not decided.
+
+## Streams
+
+1. Foundations and breaking changes: the critical path below.
+2. Upgrade path: Prisma 7 schema gaps, baseline command, upgrade guide.
+3. Editor and tools: VS Code extension, multi-file PSL, emulator controls.
+4. Query features. The stream exists whether or not each feature in it is required for GA. Which features are required is not decided.
+
+## Tasks to decide or fix before GA
+
+| Task | Why |
+| --- | --- |
+| Verify cursor pagination and fix its behavior for 8.x | Prisma 8 starts after the cursor row. Prisma 7 includes it. 13 ported tests fail on it. Nobody has confirmed the difference is deliberate, and the docs do not mention it. After GA it cannot change. |
+| Correct the query reference in the agent skill (`skills/prisma-8/references/queries-postgres.md`) | Urgent, same kind of fault as TML-3340. It sends users to `db.sql` for set operations and window functions, and neither exists. `prisma init` copies the skill into every new project. |
+| Correct the other documents that contradict the code | Listed in [query-feature-gaps.md](query-feature-gaps.md). |
+| Decide what project the ORM scenario of the eval builds, then build the scenario | It is the GA test for the new user. It runs without a deploy, against every database. |
+| Design how a query leaves fields out, the Prisma 8 replacement for `omit` | Design work. If it is not built by GA, a clear plan must exist. |
+| Large `IN` lists: raise a clear error before the query is sent | Prisma 8 does not split them, and will not. On PostgreSQL an oversized query drops the connection today. Lowest priority on this list. |
+
+## After the plan is finished
+
+Fix `contract infer` printing `Unsupported(...)`. (The `pg/opaque` codec was removed from the spec's deferred list in prisma/orm#30449.)
+
+Update every record that contradicts the code. Known so far: the non-portable and failing test records under `test/integration/test/ports/`, and the documents listed in [query-feature-gaps.md](query-feature-gaps.md). Four stale records found so far: nulls ordering, full-text search, raw SQL, comparing two columns.
+
+## Principles
+
+1. Prisma 8 does not build implicit behavior that the user did not ask for. Automatic batching of lookups is the example.
+2. Every design accounts for all four databases, even when only PostgreSQL ships the feature at GA. Take this as given. Do not ask Will to confirm it.
+3. Everything in a contract can be verified against the database. Nothing in a contract is opaque or untyped.
+4. The Prisma 7 contract source describes a database. It does not commit Prisma 8 to reproducing Prisma 7 query behavior.
+
+## Upgrade path: what Prisma 8 must describe
+
+| Prisma 7 feature | Decision |
+| --- | --- |
+| Views | After GA. They are a preview feature in Prisma 7. |
+| Native types with no codec: `citext`, `bit`, `varbit`, `xml`, `oid` | Add codecs (TML-3270). |
+| `money` | Can get a codec. Low priority: the PostgreSQL `money` type is considered bad practice. |
+| `Unsupported("...")` columns, or any opaque or untyped column | Never. A column the contract cannot describe cannot be verified. TML-3271 is canceled. A column type Prisma 8 cannot describe needs a codec. |
+| `relationMode = "prisma"` | Never. Prisma 8 will not imitate foreign keys in the client. The upgrade guide tells those users to add foreign keys. |
+| Referential actions on MongoDB | After GA. |
+
+When `contract infer` or the Prisma 7 source meets a column type with no codec, it fails and names the column and the missing codec. It does not leave the column out. Today `contract infer` prints `Unsupported(...)` instead, which must change.
+
+Stopping point for the open upgrade issues: every urgent and high issue is closed before GA. Medium and low issues may remain. The issues are in two Linear projects: "Prisma 7 contract source: gaps and defects" and "Contract print and Prisma 7 source follow-ups".
+
+## Query features: required for GA
+
+Transaction options: isolation levels, timeouts, and transactions inside transactions. None exists today. The runtime docs mark them as deferred. The databases differ here (SQLite has no isolation levels, MongoDB has its own transaction model), so the design lets each database state what it supports.
+
+## Query features: build when there is time
+
+`increment`, `decrement`, and `firstOrThrow` on the query.
+
+## Query features: high priority
+
+Nested writes on relations: `update`, `delete`, `upsert`, `set` and `connectOrCreate`. Only `create`, `connect` and `disconnect` exist on SQL today. Traversing relations is one of the main reasons to use an ORM. Earlier work deferred this to TML-2781. They are additive, so they can ship just after GA if they are not ready.
+
+## Query features: decided
+
+| Feature | Decision |
+| --- | --- |
+| `$extends` | Never. Middleware replaces it. |
+| Fluent relation API (`findUnique().posts()`) | Never. It belongs to the Prisma 7 query style. |
+| `P2002`-style error codes | Never. Prisma 8 error codes are better. |
+| `Prisma.skip` | Never. It only made sense for Prisma 7's object-style queries. |
+| `omit` | Never under that name. Prisma 8 gets its own way to leave fields out. Not designed yet. |
+| Soft delete, validation rules, lifecycle hooks, read replicas | Not planned. |
+| MongoDB referential actions | Not for GA. |
+| Comparing two columns in `where` | Already exists. The record that says otherwise is out of date. |
+| Automatic batching of single-row lookups | Never. See the principle above. |
+| Relation load strategy | Never. Prisma 7 had it because it first joined in memory and added database joins later. Prisma 8 always lets the database join. |
+
+## Query features: not decided
+
+- JSON filters and list filters. Proposed for after GA unless simple.
+
+## Feature status at GA
+
+Row-level security, expression indexes, partial indexes and `@@control` are fully supported at GA, not preview.
+
+## Input not yet decided
+
+From another conversation, 2026-09-28:
+
+- Build `increment`, `decrement` and `firstOrThrow`. None is in the ORM client today.
+- JSON filters and list filters: after GA, unless they are simple to build with field operators. prisma/orm#29834 (list operations) has been open since 2026-07-28 with merge conflicts.
+- Not planned: soft delete, validations, lifecycle callbacks, read replicas.
+- MongoDB referential actions are not for GA (TML-3339). Document deleting children first.
+
+## Databases
+
+All four at GA: PostgreSQL, SQLite, MySQL/MariaDB, MongoDB. No MySQL target exists in the repo today.
+
+PostgreSQL must be ready at GA. The other databases can finish after the GA launch, as long as they are visibly on the way. Until each is ready it is labelled release candidate or early access.
+
+## Required before GA, in order
+
+| Order | Work | State on 2026-09-28 |
+| --- | --- | --- |
+| 1 | Finish ADR 254, Linear project "Data types own column types" | Design in progress on branch `data-types-completion`. 3 of 16 questions settled. No spec yet. 4 of 9 parts of the ADR are built. |
+| 2 | One CLI and one config file | See below. |
+| 3 | Early MySQL attempt | Not started. Purpose: find shared code that assumes PostgreSQL. |
+| 4 | SQL expression literals. Required, because row-level security, expression indexes and partial indexes are fully supported at GA and their syntax must be final. | 6 tickets in backlog. Blocked, see below. |
+| 5 | PSL mixins (TML-3055). They replace type aliases and field presets, which are then removed. | Backlog. No spec and no plan. Large. |
+| In parallel | Upgrade path: Prisma 7 schema gaps, baseline command, upgrade guide rewrite | Will is working on it now. |
+| In parallel | Docs items from the eval | 11 items, 5 high. Owned by the team. |
+| In parallel | Multi-file PSL | 2 of 3 parts merged. Language server part open in prisma/orm#30456. |
+| In parallel, Serhii | VS Code extension | Critical. Serhii is working on it. No Linear project found. Must have at GA: the formatter works without the `prisma` CLI installed, go-to-definition into PSL, multi-file PSL support, integration with the `prisma` emulator controls. |
+| Not ordered yet | Emulator controls in the `prisma` CLI: start, stop, list, reset. Several emulators of each type can run, so status is a list. | Not tracked. The VS Code extension depends on it. The eval found that stopping `prisma dev` leaves the emulator processes running and that no stop or cleanup command exists. |
+| Not ordered yet | "Contract print and Prisma 7 source follow-ups" | Linear project created 2026-09-28. 18 issues, all backlog, 3 high (TML-3322, 3323, 3326). |
+
+## One CLI and one config file
+
+This is part of the strategy, not a single ticket.
+
+- `prisma` is the only CLI anyone is told to use.
+- `prisma.config.ts` is the only config file. Composer's configuration moves out of `prisma-composer.config.ts`. Today the `composer` section holds only a path to that file.
+- The standalone `prisma-composer` CLI is removed.
+
+Tracked so far: TML-3340 (docs and the shipped skill name `prisma-composer`). Not yet tracked: the config merge, removing the standalone CLI, adding `destroy` to `prisma`.
+
+## Blockers
+
+| Blocker | What it blocks | State |
+| --- | --- | --- |
+| Pull request prisma/orm#30381, "Generic block values bind the shared typed expression grammar" | The whole "SQL expression literals" project, starting with TML-3296 and TML-3288. Also question 9 of the data types design. | Open since 2026-09-22. Review required. Merge conflicts with `main`. Serhii hopes to merge it on 2026-09-28. |
+| ADR 254 remaining work | MySQL/MariaDB and any other new target | See order 1. |
+| Platform faults (crash loops, 502 responses, Management API errors) | The eval passing on the deploy scenario | Will handles these as platform lead. They are not ORM priorities unless they delay GA. |
+
+## After GA
+
+- `@hint(was: oldName)`. High user value, additive.
+- Migration runner service. Optional.
+- Query linting.
+- Querying across contract spaces. Optional, but a competitive advantage.
+- Performance work.
+- The BetterAuth flow.
+
+## Lower priority, handled by Will in parallel
+
+- Asks.
+- The getting-started eval harness.
+
+## This week
+
+- Publish the manifesto on 2026-09-28 or 2026-09-29. Pull request prisma/prisma-orm-messaging#17.
+
+## Already done
+
+- Package consolidation. Internal packages are no longer published.
+- `@db.*` attributes are removed.
+
+## Open questions
+
+1. Which of the 18 follow-up issues are required for GA? The stopping point (urgent and high closed) answers this unless Will says otherwise.
+
+Settled: mixins shaping starts soon and builds on ADR 254; ADR numbering is fixed.
