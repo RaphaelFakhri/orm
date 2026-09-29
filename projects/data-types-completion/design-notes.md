@@ -316,3 +316,13 @@ Sources: [`inventory/type-constructors.md`](inventory/type-constructors.md), [`i
 13. **`db sign` signs every contract space.** Today it signs the app space only, so a database that uses pgvector or postgis would keep an old marker for that space and `migrate` would fail. `db sign` verifies and signs each extension space too.
 14. **`migrate` names `db sign`.** The refusal "Database marker is not reachable in the on-disk migration graph" lists `db sign` among its fixes, as `migration status` already does.
 15. **In-repository snapshots that do not recompute** (46, in `examples/prisma-8-demo/fixtures/` and `apps/telemetry-backend/`) are regenerated from their sources, not rewritten by the script.
+
+## Decisions from the design review (orchestrator, 2026-09-30)
+
+Source: [`reviews/design-verification.md`](reviews/design-verification.md), 54 findings, all verified against the code. Every blocker and gap is applied in `design.md`; the three that change the plan's shape:
+
+1. **Slice order.** The contract-format slice (TML-3388) comes before the verify slice (TML-3387). If verify moved to exact comparison first, every SQLite column would report drift until SQLite's data types were corrected. The new order also gives TML-3253 more time. `resolveReportedSqlType` is written in slice 1 as a plain function, so TML-3253's lookup can use it whenever TML-3253 lands.
+2. **The upgrade script rehashes contracts whose stored hash does not recompute**, instead of refusing them. The repository's own `apps/telemetry-backend` has two such snapshots in its migration history, written under older rules; any project of that age has the same, and refusing them would leave those users no upgrade path. This replaces upgrade decision 12 above.
+3. **The SQL data type module lives in `packages/2-sql/1-core/contract`**, not the family, because the contract builder and the schema readers sit below the family and may not import from it.
+
+Also changed from earlier notes: the SQL text collision check runs in the SQL family's assembly, not the framework's; a codec's parameter schema references its data type's instead of losing its keys; runtime casts render the base name without parameters; `srid` must be 1 or more; `db sign` signs every space that verifies and reports the rest; the framework requires at most one `inferred` mark per data type, and infer fails on a data type with none.

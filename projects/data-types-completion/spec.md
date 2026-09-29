@@ -1,6 +1,6 @@
 # Project spec: data types own column types
 
-**Linear:** project [Data types own column types](https://linear.app/prisma-company/project/data-types-own-column-types-2e1b16116e13); planning ticket TML-3385; slices TML-3386, TML-3387, TML-3388, TML-3389. **Design:** [`design.md`](design.md). **Plan:** [`plan.md`](plan.md). **Evidence:** [`research.md`](research.md) and [`inventory/`](inventory/). **Decision record:** [`design-notes.md`](design-notes.md).
+**Linear:** project [Data types own column types](https://linear.app/prisma-company/project/data-types-own-column-types-2e1b16116e13); planning ticket TML-3385; slices in order TML-3386, TML-3388, TML-3387, TML-3389. **Design:** [`design.md`](design.md). **Plan:** [`plan.md`](plan.md). **Evidence:** [`research.md`](research.md) and [`inventory/`](inventory/). **Decision record:** [`design-notes.md`](design-notes.md).
 
 ## Purpose
 
@@ -48,14 +48,14 @@ embedding pgvector.Vector(1536)
 
 - **Builds on** ADR 254 as shipped in #30350, ADR 129 (tagged literals), ADR 231 (attribute specifications), ADR 208 (codec instances from parameters).
 - **Replaces** ADR 171's `expandNativeType` hooks.
-- **Depends on** TML-3253 being merged before slice 2 starts, and TML-3367 (the `dataTypeValue` argument building block, from the SQL expression literals project) before slice 4 starts.
+- **Depends on** TML-3253 being merged before slice 3 (TML-3387) starts, and TML-3367 (the `dataTypeValue` argument building block, from the SQL expression literals project) before slice 4 starts.
 - **Is depended on by** TML-3055, whose type constructors need data types to own names and parameters.
 - **Closes** TML-3283 with the answer "no: values are the codec's job".
 
 ## Cross-cutting requirements
 
 1. **One source per fact.** After the project no production code holds a table of database type names, and no type name is written in two places. The grep checks in each slice enforce this.
-2. **Migration SQL does not change** for any existing column. A data type's written name is the name contracts store today.
+2. **Migration SQL does not change** for any existing column. A data type's written name is the name contracts store today. The one exception is a fix: a `typeRef` column whose type has no parameters is no longer written as a quoted name (design 3.6).
 3. **Exact comparison.** `db verify` compares a data type id and normalised parameters by equality. Other names are used only while reading a database.
 4. **Extensible by declaration.** An extension's data type is recognised by introspection, verify and infer with no change outside the extension. No production code names a type it does not own.
 5. **No SQL words in the framework layer.** Names, texts and rendering live in the SQL family's data type; the framework `DataType` gains only the parameter schema. `pnpm lint:framework-vocabulary` must not rise.
@@ -67,13 +67,14 @@ embedding pgvector.Vector(1536)
 
 ## Transitional-shape constraints
 
-- After slice 1 and slice 2, `contract.json` is unchanged: the column still stores `nativeType`, written from the data type. `pnpm fixtures:check` shows no contract change in those slices.
-- The contract format, the SQLite data type correction and every hash change land together in slice 3, so users upgrade once.
-- Slice 4 changes no contract.
+- After slice 1, `contract.json` is unchanged: the column still stores `nativeType`, written from the data type. `pnpm fixtures:check` shows no contract change.
+- The contract format, the SQLite data type correction, `db sign` over every space and every hash change land together in slice 2, so users upgrade once.
+- In slice 2 `db verify` still compares type text; exact comparison of data type ids arrives in slice 3, after SQLite's data types are the ones the database stores.
+- Slices 3 and 4 change no contract.
 
 ## Contract impact
 
-`StorageColumn` and `StorageTypeInstance`: `nativeType` removed, `dataType` added (slice 3). `extensions.<pack>.types.storage[].nativeType` removed. SQLite literal defaults of JSON, datetime and integer columns change stored form. Every SQL storage hash, migration hash, snapshot directory name and ref changes. Mongo contracts do not change.
+`StorageColumn` and `StorageTypeInstance`: `nativeType` removed, `dataType` added (slice 2). `extensions.<pack>.types.storage[].nativeType` removed. SQLite literal defaults of JSON, datetime and integer columns change stored form. Every SQL storage hash, migration hash, snapshot directory name and ref changes. Mongo contracts do not change.
 
 ## Adapter impact
 
@@ -81,12 +82,12 @@ Postgres and SQLite targets gain the data type declarations and type constructor
 
 ## ADR pointers
 
-ADR 254 is amended in slice 3: status Accepted; the SQLite paragraph rewritten; the column shape; the declaration shape; claiming by kind; parameter normal forms; `Unsupported` removed. ADR 171 is marked superseded by ADR 254 in slice 1.
+ADR 171 is marked superseded by ADR 254 in slice 1. ADR 254 is amended in slice 2 (status Accepted; the declaration; the SQLite paragraph; the stored column; assembly) and slice 3 (claiming by kind; parameter normal forms; printing and the failure on unclaimed types).
 
 ## Project definition of done
 
-- TML-3386, TML-3387, TML-3388 and TML-3389 merged.
+- TML-3386, TML-3388, TML-3387 and TML-3389 merged.
 - The four grep checks in `plan.md` return only their allowed lines on `main`.
-- A project created with the last release before slice 3, with pgvector and an applied migration, upgrades by running the script and `db sign`, after which `db verify`, `migrate` and `migration status` succeed. Recorded as a manual QA run.
+- Manual QA, recorded: a project created with the last release before slice 2, with pgvector and an applied migration, upgrades by running the script and `db sign`, after which `db verify`, `migrate` and `migration status` succeed; the same on a database with PostGIS; the Prisma 7 side-by-side flow (`prisma7 migrate dev`, then `db sign`) after slice 3.
 - ADR 254 status is Accepted and its text matches the code.
 - Final retro recorded; every decision in `design-notes.md` mapped to a durable home in the close-out pull request.
