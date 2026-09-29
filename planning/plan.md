@@ -72,6 +72,8 @@ Update every record that contradicts the code. Known so far: the non-portable an
 | `relationMode = "prisma"` | Not decided. |
 | Referential actions on MongoDB | After GA. |
 
+Stopping point for the open upgrade issues: every urgent and high issue is closed before GA. Medium and low issues may remain. The issues are in two Linear projects: "Prisma 7 contract source: gaps and defects" and "Contract print and Prisma 7 source follow-ups".
+
 ## Query features: required for GA
 
 Transaction options: isolation levels, timeouts, and transactions inside transactions. None exists today. The runtime docs mark them as deferred. The databases differ here (SQLite has no isolation levels, MongoDB has its own transaction model), so the design lets each database state what it supports.

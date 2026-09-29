@@ -39,8 +39,7 @@ Linear and the ported test records drift from the code. Before relying on a stat
 Will has not answered these yet. Ask them when the discussion resumes, a few at a time.
 
 1. Nested writes on relations: Will agreed they can technically ship after GA. Confirm whether the team still aims to have them at GA.
-5. Which of the 40 open upgrade issues are required for GA? Two Linear projects hold them. Will prefers to leave this until the big picture is settled.
-6. What is the stopping point for the Prisma 7 schema gaps?
+5. `Unsupported("...")` columns and `relationMode = "prisma"`: does Prisma 8 support them at all? Will leans strongly towards no for both.
 7. What project does the ORM scenario of the eval build?
 8. Two documents claim the number ADR 256, and two ADR files carry the number 255.
 9. Sixteen Linear issues are marked In Progress with no evidence either way. They are listed in the conversation of 2026-09-28 and in [open-projects.md](open-projects.md), section 2.3.
