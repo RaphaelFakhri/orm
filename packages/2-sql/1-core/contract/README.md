@@ -177,6 +177,7 @@ const c = contract({
 - `./validators`: Arktype validators for structural validation
 - `./factories`: Factory functions for constructing contract IR
 - `./pack-types`: Shared extension/pack typing helpers
+- `./data-type`: SQL data type declarations (`sqlDataType`) and the functions that write a type name, print its catalog text, and recognise a reported type from those declarations (`renderSqlTypeName`, `renderSqlCatalogText`, `sqlBaseName`, `dataTypeParams`, `resolveReportedSqlType`)
 
 ## Architecture
 

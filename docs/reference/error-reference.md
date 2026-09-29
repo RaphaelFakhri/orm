@@ -575,6 +575,10 @@ A foreign key or index references a table name that disagrees with the table the
 
 The contract's target does not match the target configured in `prisma.config.ts` (e.g. a Postgres contract with a SQLite config). `db verify` reports it as an `error` diagnostic on a completed run that exits `4`. Payload: `expected`, `actual`.
 
+### CONTRACT.TYPE_PARAMS_INVALID
+
+A column's type parameters do not fit its data type: a parameter fails the data type's schema (for example a `numeric` precision of 0), or no written text of the data type takes that set of parameters (for example a `scale` with no `precision`). Raised by `renderSqlTypeName` and `renderSqlCatalogText` in `@internal/sql-contract/data-type` when a type name is rendered. Payload: `dataType`, `parameters`.
+
 ### CONTRACT.TYPE_UNKNOWN
 
 A field references a storage type that cannot be resolved: a storage type instance not in `definition.types`, an unknown storage type name, or a field that never resolves to a storage descriptor. Raised during SQL contract lowering. Payload: `modelName`, `fieldName`, `typeRef`.

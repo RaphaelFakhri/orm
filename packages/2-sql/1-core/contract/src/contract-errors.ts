@@ -7,6 +7,7 @@ type ContractSubcode =
   | 'ARGUMENT_INVALID'
   | 'PACK_CONTRIBUTION_INVALID'
   | 'TABLE_AMBIGUOUS'
+  | 'TYPE_PARAMS_INVALID'
   | 'VALIDATION_FAILED';
 
 export function contractError(
