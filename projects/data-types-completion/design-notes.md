@@ -219,6 +219,24 @@ Will asked for these to be decided without him. Each closes the question named i
 11. **Mongo (Q11).** Mongo changes only where the framework changes force it: the eleven Mongo data types take their BSON type names when `targetTypes` is deleted, the collection validator reads the name from the data type, and Mongo constructors drop their unused `nativeType`. No Mongo casts, written values or validator format changes.
 12. **Other written values (Q10).** Enum member values and `@@base` discriminator values are read through the same rule as a default: the written value has a data type, and the receiving column's type must be that type or cast from it. Policy `permissive` is not changed.
 
-## Still open, for Will
+## Settled with Will, 2026-09-29
 
-Q4 (verify compares by data type), Q8 (what `contract infer` prints for `vector` and `geometry`), Q9 (function arguments and the SQL expression literals project), Q16 (order against TML-3253). Neither TML-3253 nor any SQL expression literals ticket has started as of 2026-09-29; #30381 merged on 2026-09-28.
+### Order against TML-3253 (Q16)
+
+TML-3253 is fixed as soon as possible, on its own, and does not wait for this project. This project starts from whatever `main` holds then and replaces TML-3253's lookup from a database type name to a codec when it deletes codec `targetTypes`.
+
+### Function arguments (Q9)
+
+The SQL expression literals project is planned in parallel and builds the argument building block that applies the cast rule (TML-3296, then TML-3288). This project's function-argument slice depends on it and reuses it. It is this project's last slice.
+
+### Verify compares identifiers exactly (Q4)
+
+The contract is unambiguous: a column requires one data type, named by its id, with its parameters. Verify compares the contract's data type id and parameters with the database's by exact equality. Nothing is treated as "close enough".
+
+A database reports one type under several texts (`format_type` prints `integer` for `int4` and `timestamp(3) with time zone` for `timestamptz(3)`). Resolving that text to a data type id and parameters is introspection's job, done once when the database is read, through the data type's name and other names. Other names are never consulted when comparing. A reported type that no data type claims has no id, and it is a mismatch against any contract column.
+
+Consequence for SQLite: `sql/char@1` columns were created as `CHARACTER(n)`. The SQLite target declares a data type named `character` for that codec, so rendering does not change and the comparison stays exact.
+
+### `contract infer` and unknown types (Q8)
+
+`contract infer` prints the type constructor for every column whose type a data type in the stack claims, including extension types (`pgvector.Vector(1536)`, `postgis.Geometry(4326)`). Where several constructors name one data type, the data type marks the one infer prints, and the marks reproduce today's output. `Unsupported(...)` is removed: it is not a Prisma 8 type. A column whose type no data type claims makes `contract infer` fail, naming the table, the column and the reported type.
