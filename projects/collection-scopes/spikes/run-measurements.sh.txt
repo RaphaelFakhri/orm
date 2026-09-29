@@ -1,0 +1,19 @@
+#!/bin/zsh
+# usage: zsh run-measurements.sh.txt <label-prefix> <options...>   (run from the repo root)
+# Example: zsh run-measurements.sh.txt s3 A B C D E
+# Copies the .txt helpers to wip/spike as runnable .mjs files, generates the probes, builds, and measures.
+export PATH=/Users/wmadden/.local/share/mise/installs/node/24.13.0/bin:$PATH
+S=projects/collection-scopes/spikes
+PREFIX=$1; shift
+mkdir -p wip/spike
+cp $S/gen-probes.mjs.txt wip/spike/gen-probes.mjs
+cp $S/demo-contract-fulltext-index.mjs.txt wip/spike/patch-demo.mjs
+node wip/spike/gen-probes.mjs wip/spike/probes
+P=wip/spike/probes
+pnpm build > wip/spike/build-$PREFIX.log 2>&1 || { echo BUILD FAILED; exit 1; }
+zsh $S/measure-helper.sh.txt $PREFIX-unused $P/pkg-0.test-d.ts $P/demo-0.test-d.ts wip/spike/patch-demo.mjs
+for o in "$@"; do
+  for n in 1 10; do
+    SKIP_BASE=1 zsh $S/measure-helper.sh.txt $PREFIX-$o-$n $P/pkg-$o-$n.test-d.ts $P/demo-$o-$n.test-d.ts wip/spike/patch-demo.mjs
+  done
+done

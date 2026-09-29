@@ -1,0 +1,43 @@
+import { Collection } from '../src/collection';
+import {
+  fullTextQuery,
+  fullTextSearch,
+  fulltextScopeObjects,
+  fulltextSearchScopes,
+  searchFullText,
+} from '../src/fulltext-search';
+import { type SearchContract, searchSetup } from './fulltext-search-fixture';
+
+const { db } = searchSetup();
+const Post = db.public.Post;
+const q = fullTextQuery('hello');
+
+class PostCollection extends Collection<SearchContract, 'Post'> {
+  a() {
+    return fulltextSearchScopes(this).|;
+  }
+  c() {
+    return searchFullText(this, '|', q);
+  }
+  d() {
+    return fullTextSearch('|', q)(this);
+  }
+}
+
+export const a = fulltextSearchScopes(Post).|;
+export const b = fulltextScopeObjects(Post).|;
+export const b2 = fulltextScopeObjects(Post).post_title_search.|;
+export const c = searchFullText(Post, '|', q);
+export const c2 = searchFullText(Post, 'post_title_body_search', q, { only: '|' });
+export const d = fullTextSearch('|', q)(Post);
+export const inc = db.public.User.include('posts', (posts) => searchFullText(posts, '|', q));
+export { PostCollection };
+export const e = Post.pipe(fullTextSearch('|', q));
+export const e2 = Post.where({ userId: 1 }).pipe(fullTextSearch('post_title_body_search', q, { only: '|' }));
+export const e3 = db.public.User.include('posts', (posts) => posts.pipe(fullTextSearch('|', q)));
+class PostCollection2 extends Collection<SearchContract, 'Post'> {
+  e() {
+    return this.pipe(fullTextSearch('|', q));
+  }
+}
+export { PostCollection2 };

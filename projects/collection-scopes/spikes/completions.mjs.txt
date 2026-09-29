@@ -1,0 +1,55 @@
+// usage: node completions.mjs <project-dir> <virtual-file-name> <source-with-|-markers-file>
+// Each line of the source file that contains `|` is a completion site; the marker is removed.
+import { readFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
+import { join } from 'node:path';
+
+const [projectDir, virtualName, sourcePath] = process.argv.slice(2);
+const require = createRequire(join(projectDir, 'package.json'));
+const ts = require('typescript');
+
+const configPath = join(projectDir, 'tsconfig.json');
+const config = ts.getParsedCommandLineOfConfigFile(configPath, {}, { ...ts.sys, onUnRecoverableConfigFileDiagnostic: () => {} });
+const virtualPath = join(projectDir, 'test', virtualName);
+const raw = readFileSync(sourcePath, 'utf8');
+const markers = [];
+let text = '';
+for (let i = 0; i < raw.length; i++) {
+  if (raw[i] === '|') {
+    markers.push(text.length);
+  } else {
+    text += raw[i];
+  }
+}
+const files = [...config.fileNames.filter((f) => !f.includes('/test/')), virtualPath];
+const host = {
+  getScriptFileNames: () => files,
+  getScriptVersion: () => '1',
+  getScriptSnapshot: (f) => {
+    if (f === virtualPath) return ts.ScriptSnapshot.fromString(text);
+    if (!ts.sys.fileExists(f)) return undefined;
+    return ts.ScriptSnapshot.fromString(ts.sys.readFile(f));
+  },
+  getCurrentDirectory: () => projectDir,
+  getCompilationSettings: () => config.options,
+  getDefaultLibFileName: (o) => ts.getDefaultLibFilePath(o),
+  fileExists: (f) => f === virtualPath || ts.sys.fileExists(f),
+  readFile: (f) => (f === virtualPath ? text : ts.sys.readFile(f)),
+  readDirectory: ts.sys.readDirectory,
+  directoryExists: ts.sys.directoryExists,
+  getDirectories: ts.sys.getDirectories,
+};
+const service = ts.createLanguageService(host, ts.createDocumentRegistry());
+for (const position of markers) {
+  const lineStart = text.lastIndexOf('\n', position - 1) + 1;
+  const lineEnd = text.indexOf('\n', position);
+  const line = text.slice(lineStart, lineEnd).trim();
+  const result = service.getCompletionsAtPosition(virtualPath, position, {
+    includeCompletionsWithInsertText: true,
+  });
+  const names = (result?.entries ?? [])
+    .filter((e) => e.kind === 'string' || e.kind === 'property' || e.kind === 'method')
+    .map((e) => JSON.stringify(e.name) + ":" + e.kind)
+    .slice(0, 12);
+  console.log(`${line}\n  -> ${names.length ? names.join(', ') : '(none)'}`);
+}

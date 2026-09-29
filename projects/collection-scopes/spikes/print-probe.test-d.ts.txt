@@ -1,0 +1,51 @@
+import { Collection } from '../src/collection';
+import {
+  type FullTextQuery,
+  fullTextQuery,
+  fullTextSearch,
+  fulltextScopeObjects,
+  fulltextSearchScopes,
+  searchFullText,
+} from '../src/fulltext-search';
+import { type SearchContract, searchSetup } from './fulltext-search-fixture';
+
+class PostCollection extends Collection<SearchContract, 'Post'> {
+  wrongC(q: FullTextQuery) {
+    return searchFullText(this, 'posts_user_id_idx', q);
+  }
+  wrongD(q: FullTextQuery) {
+    return fullTextSearch('posts_user_id_idx', q)(this);
+  }
+  wrongA(q: FullTextQuery) {
+    return fulltextSearchScopes(this).posts_user_id_idx(q);
+  }
+}
+
+const { db } = searchSetup();
+const q = fullTextQuery('hello');
+const Post = db.public.Post;
+
+export const p1: number = fulltextSearchScopes(Post);
+export const p2: number = fulltextSearchScopes(Post).post_title_body_search;
+export const p3: number = fulltextSearchScopes(Post).post_title_body_search(q);
+export const p4: number = fulltextScopeObjects(Post);
+export const p5: number = fulltextScopeObjects(Post).post_title_body_search.fulltext;
+export const p6: number = searchFullText;
+export const p7: number = searchFullText(Post, 'post_title_body_search', q);
+export const p8: number = fullTextSearch('post_title_body_search', q);
+export const p9: number = fullTextSearch('post_title_body_search', q)(Post);
+export const p10: number = fulltextSearchScopes(db.public.User);
+fullTextSearch('posts_user_id_idx', q)(Post);
+fullTextSearch('post_title_search', q, { only: 'body' })(Post);
+searchFullText(Post, 'posts_user_id_idx', q);
+searchFullText(Post, 'post_title_search', q, { only: 'body' });
+fulltextSearchScopes(Post).post_title_search(q, { only: 'body' });
+fulltextSearchScopes(Post).posts_user_id_idx(q);
+export const p11: number = new PostCollection(null as never, 'Post', null as never).wrongA(q);
+export const p12: number = Post.pipe(fullTextSearch('post_title_body_search', q));
+export const p13: number = Post.pipe(fullTextSearch('post_title_body_search', q)).limit(1);
+export const p14: number = Post.pipe;
+Post.pipe(fullTextSearch('posts_user_id_idx', q));
+Post.pipe(fullTextSearch('post_title_search', q, { only: 'body' }));
+db.public.User.pipe(fullTextSearch('post_title_search', q));
+export const p15: number = fulltextSearchScopes(Post).post_title_body_search(q).limit(1);

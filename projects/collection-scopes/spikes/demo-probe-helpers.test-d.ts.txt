@@ -1,0 +1,68 @@
+import {
+  Collection,
+  type FullTextQuery,
+  fullTextQuery,
+  fullTextSearch,
+  fulltextScopeObjects,
+  fulltextSearchScopes,
+  searchFullText,
+} from '@prisma/orm-postgres/orm-client';
+import { expectTypeOf, test } from 'vitest';
+import type { Contract } from '../src/prisma/contract.d';
+import { db } from '../src/prisma/db';
+
+class PostCollection extends Collection<Contract, 'Post'> {
+  a(q: FullTextQuery) {
+    return fulltextSearchScopes(this).post_title_search(q);
+  }
+  b(q: FullTextQuery) {
+    return fulltextScopeObjects(this).post_title_search.fulltext(q);
+  }
+  c(q: FullTextQuery) {
+    return searchFullText(this, 'post_title_search', q);
+  }
+  d(q: FullTextQuery) {
+    return fullTextSearch('post_title_search', q)(this);
+  }
+  e(q: FullTextQuery) {
+    return this.pipe(fullTextSearch('post_title_search', q, { only: 'title' }));
+  }
+  wrong(q: FullTextQuery) {
+    // @ts-expect-error not a full-text index
+    searchFullText(this, 'post_userId_idx', q);
+    // @ts-expect-error not a full-text index
+    this.pipe(fullTextSearch('post_userId_idx', q));
+    return this;
+  }
+}
+
+const q = fullTextQuery('hello');
+const Post = db.orm.public.Post;
+type Post = typeof Post;
+
+test('the helpers work on the real contract through the built packages', () => {
+  expectTypeOf(Post).not.toBeAny();
+  expectTypeOf(fulltextSearchScopes(Post).post_title_search(q)).toEqualTypeOf<Post>();
+  expectTypeOf(fulltextScopeObjects(Post).post_title_search.language).toEqualTypeOf<'english'>();
+  expectTypeOf(searchFullText(Post, 'post_title_search', q, { only: 'title' })).toEqualTypeOf<Post>();
+  expectTypeOf(fullTextSearch('post_title_search', q)(Post)).toEqualTypeOf<Post>();
+  const chained = Post.where({ userId: 'u1' }).select('id', 'title');
+  expectTypeOf(chained.pipe(fullTextSearch('post_title_search', q))).toEqualTypeOf<typeof chained>();
+  const rows = Post.pipe(fullTextSearch('post_title_search', q)).select('id', 'title').limit(3).all();
+  expectTypeOf(rows).not.toBeAny();
+  db.orm.public.User.include('posts', (posts) => {
+    const searched = searchFullText(posts, 'post_title_search', q);
+    expectTypeOf(searched).toEqualTypeOf<typeof posts>();
+    return searched.limit(3);
+  });
+  const instance = null as unknown as PostCollection;
+  expectTypeOf(instance.a(q)).toEqualTypeOf<PostCollection>();
+  expectTypeOf(instance.e(q)).toEqualTypeOf<PostCollection>();
+  expectTypeOf<keyof ReturnType<typeof fulltextSearchScopes<typeof db.orm.public.User, Contract, 'User', 'public'>>>().toBeNever();
+  // @ts-expect-error not a full-text index
+  fulltextSearchScopes(Post).post_userId_idx(q);
+  // @ts-expect-error the model has no full-text index
+  searchFullText(db.orm.public.User, 'post_title_search', q);
+  // @ts-expect-error unknown field
+  Post.pipe(fullTextSearch('post_title_search', q, { only: 'body' }));
+});
