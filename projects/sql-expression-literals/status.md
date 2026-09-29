@@ -6,13 +6,15 @@ Read this first when you resume the project. It records where the work stands an
 
 - Planning is finished. No slice has merged.
 - PR #30349 (the binder) merged on 2026-09-25 and PR #30381 (block specs) on 2026-09-28. Nothing outside the project blocks it.
-- Slice 2a (TML-3296) is in progress on branch `tml-3296-sql-expression-data-type`, which also carries these project files.
+- Slice 2a (TML-3296) is implemented on branch `tml-3296-sql-expression-data-type`, which also carries these project files. It is not pushed and has no pull request yet. The implementer's report is in the dispatch conversation; the verification logs are under the gitignored `wip/v/`.
+- Slice 2a changed nothing in `examples/` or `packages/3-extensions/`, so `check:upgrade-coverage` required no declaration; the two fragments under `upgrade-instructions/pending/sql-is-a-data-type/` are the ones design section 20 names.
+- The three publish-shell tarball tests (`all-shells-tarball`, `module-identity`, `cross-shell-tarball`) fail on this machine because `pnpm install` in the scratch project refuses `@vercel/detect-agent@1.2.5` as a "high-risk trust downgrade". That is the registry, not this branch. Check them in CI.
 
 ## Slice order and tickets
 
 | Order | Plan slice | Ticket | State |
 | --- | --- | --- | --- |
-| 1 | 2a: `sql` is the data type `sql/expression` | TML-3296 | In progress |
+| 1 | 2a: `sql` is the data type `sql/expression` | TML-3296 | Implemented; PR not opened |
 | 2 | 2t: an argument declares the data type it receives | TML-3367 | Waiting for 2a |
 | 3 | 2b: the six places take `sql` literals | TML-3288 | Waiting for 2t |
 | 4 | 3: the TypeScript builder takes `sql` values | TML-3289 | Waiting for 2b |
@@ -73,4 +75,4 @@ Will has not agreed to these. Do not act on them without asking.
 
 - 2026-09-24: decisions made with Will; first design; architect and principal-engineer reviews (in [research/](research/)); design rewritten.
 - 2026-09-25: design verification found 23 issues ([research/design-verification.md](research/design-verification.md)); 21 applied. Project put on hold until PR #30349 and PR #30381 merged.
-- 2026-09-29: both merged. Section 9.1 rewritten to one path, which closed the last two findings. Slice 2t split out of slice 2b as TML-3367. Slice 2a started.
+- 2026-09-29: both merged. Section 9.1 rewritten to one path, which closed the last two findings. Slice 2t split out of slice 2b as TML-3367. Slice 2a started and implemented; design file and line references corrected against `main`.
