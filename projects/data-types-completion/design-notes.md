@@ -255,3 +255,14 @@ An extension's data types are recognised by introspection with no change outside
 - With the extension in the stack, a `vector(1536)` column resolves to `pgvector/vector` with `{length: 1536}`, verifies by exact equality, and infers as `pgvector.Vector(1536)`.
 - Without the extension in the stack, the same column's type is claimed by no data type: verify reports a mismatch and `contract infer` fails naming the column.
 - The proof is a test that declares a data type in a test-only extension and introspects, verifies and infers a column of it, with no production code naming that type.
+
+### Agreement with the SQL expression literals project (2026-09-29)
+
+Their order: TML-3296 (the `sql/expression` data type; removes the lowering-entry kind), then a new ticket for the argument building block `dataTypeValue` (number to follow), then TML-3288 (the six SQL positions). All six of our requirements match their design (`projects/sql-expression-literals/design.md` sections 4 to 7, in their worktree). This project's function-argument slice starts only after the building-block ticket merges.
+
+Two constraints they set, which our design must obey:
+
+1. **`dataTypeValue` is never a direct arm of `oneOf`.** It works as a parameter inside a function call signature, and their slice tests that. So `uuid`'s version parameter, today `optional(oneOf(num(4), num(7)))`, becomes one `dataTypeValue` parameter with a further check that the value is 4 or 7. `nanoid`'s size becomes one `dataTypeValue` parameter with a further check of 2 to 255. `cuid`'s version likewise with the value 2.
+2. **The named data type must be registered in the stack, or `dataTypeValue` throws an internal error.** A spec shared by targets never hard-codes one target's id. Each target's function registry passes its own id (`pg/int4` on Postgres, `sqlite/integer` on SQLite) into the shared signature builder the SQL family exports. This also removes the duplicated signature definitions in the two adapters.
+
+One problem stays ours: `@default`'s value is a `oneOf`, and a failing arm's message is replaced by "Expected one of: …". When the written call names a registered function, that function's own diagnostics must be reported instead. The function-argument slice specifies this.
