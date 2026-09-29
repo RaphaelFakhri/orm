@@ -158,6 +158,7 @@ Every text below is complete: no other text is declared. `W` marks written, `C` 
 5. **Programming errors** in a declaration or a call are `InternalError`: a declaration that breaks a rule of 2.2; `sqlBaseName` on a type with no written text and no `render` (`pg/text-array`); `renderSqlCatalogText` on a type with `claimsKind`. `texts: []` beside `claimsKind` is refused like any `texts` there.
 6. **Kind claims** are validated and normalised like text claims: `resolveReportedSqlType` validates `fromReported`'s result against `params` (a failure is `undefined`) and returns `normalize` of it. `sqlBaseName` validates the parameters it passes to `render`, throwing `CONTRACT.TYPE_PARAMS_INVALID`.
 7. **Parameters are validated where a column uses a type.** A `storage.types` entry that no column references is not validated against its data type's `params`. pgvector's contract space keeps its bare `vector` entry with `typeParams: {}` (`packages/3-extensions/pgvector/src/contract.ts`), which exists so the extension's space is not empty.
+9. **SQLite registers `sql/char@1` and `sql/varchar@1`.** The SQLite adapter filters them out of its registered codecs today (`packages/3-targets/6-adapters/sqlite/src/core/descriptor-meta.ts`), so the stack cannot find them although `examples/prisma-8-demo-sqlite` uses `sql/char@1`. Dispatch c registers both, naming `sqlite/character` and `sqlite/character-varying`.
 8. **Tests use registered codecs.** A planner or verify test that builds a column from a codec id no stack registers (for example `pg/tsvector@1` in `packages/3-extensions/pgvector/test/migrations/planner.behavior.test.ts`) registers a test-only data type and codec in its test stack. A test that builds a `text[]` column from `pg/text-array@1` uses `pg/text@1` with `many: true`.
 
 ### 2.8 Resolving a reported type (function only)
@@ -183,7 +184,7 @@ Every text below is complete: no other text is declared. `W` marks written, `C` 
 
 ## 4. Writing the contract in slice 1
 
-The contract still stores `nativeType` in slice 1. Every writer of a column's or a `storage.types` entry's `nativeType` writes `sqlBaseName` of the codec's data type with the column's `dataTypeParams`: `buildStorageColumn`, the `type.*` helpers' results, `types {}` aliases, raw `storage.types`, and constructor and preset resolution. For `pg/enum` that is the qualified `typeName`, as today. The value-object column keeps `jsonb`.
+The contract still stores `nativeType` in slice 1. Every writer of a column's or a `storage.types` entry's `nativeType` writes `sqlBaseName` of the codec's data type with the column's `dataTypeParams`: `buildStorageColumn`, the `type.*` helpers' results, `types {}` aliases, raw `storage.types`, and constructor and preset resolution. For a type with `claimsKind` (`pg/enum`) the stored name is `typeParams.typeName` unquoted, as today, not `sqlBaseName`, whose `render` quotes it. The value-object column keeps `jsonb`.
 
 `buildSqlContractFromDefinition` requires `codecLookup` and a new `dataTypeLookup` argument from slice 1. `ColumnTypeDescriptor.nativeType` becomes optional and is ignored.
 
