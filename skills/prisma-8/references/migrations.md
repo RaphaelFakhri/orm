@@ -527,8 +527,8 @@ Interactively, consent is typing the database name back (the prompt names it). I
 8. **Renaming and expecting the planner to detect it (Postgres).** Prisma 8 has no in-contract rename hint today; the planner emits a destructive drop+add. Hand-edit `migration.ts` to rewrite the destructive op as a `rawSql({ ... })` that issues `ALTER TABLE ... RENAME COLUMN ...`, with a precheck and a postcheck on the live schema (or use the two-migration keep / backfill / drop pattern), then self-emit. See `references/contract.md` § *Edit a field — rename*.
 9. **Planning with no `db` ref and no `--from` in a project that already has migrations.** The origin falls through to the empty database, which would make the plan a full-create migration; `migration plan` refuses with `MIGRATION.PLAN_ORIGIN_UNKNOWN` rather than writing it. Pick the exit that matches your intent — the error lists them, and `references/migration-model.md` § *The trap* explains which to choose.
 10. **Hand-authoring `migration.ts` from a blank file, or rewriting the rendered import line.** Migration files are framework-rendered — let `prisma migration plan` (or `migration new`) render the package, then edit only the holes the framework leaves for you. On Postgres leave the rendered `@internal/postgres/migration` (or `@internal/sqlite/migration`) import path alone; on Mongo leave `@prisma/orm-mongo/target/migration` as rendered. Add symbols to the existing import line rather than introducing new import paths.
-12. **DML outside a data transform.** A `rawSql` step that inserts, updates or deletes rows, or a Postgres transform whose query comes from `db.raw.sql` or contains `fns.raw`. Write it in a `dataTransform` with a `check`; on Postgres, build its queries with the SQL query builder. *Data changes go in a data transform* explains why. If the builder cannot express it, stop (see *When the SQL query builder cannot express the transform*).
-13. **A data transform without `check`.** It runs `run` on every database, including those where the work is already done, and can never refuse bad data. Always write `check`.
+12. **DML outside a data transform.** A `rawSql` step that inserts, updates or deletes rows, or a Postgres transform whose query comes from `db.raw.sql` or contains `fns.raw`. Write it in a `dataTransform` (with a `check` on Postgres and Mongo); on Postgres, build its queries with the SQL query builder. *Data changes go in a data transform* explains why. If the builder cannot express it, stop (see *When the SQL query builder cannot express the transform*).
+13. **A data transform without `check` (Postgres, Mongo).** It runs `run` on every database, including those where the work is already done, and can never refuse bad data. Always write `check`.
 
 ## What Prisma 8 doesn't do yet
 
@@ -564,7 +564,7 @@ The CLI collects anonymous usage data by default. To opt out, set `PRISMA_DISABL
 - [ ] For `migration plan`: ran `migration show <dir>` to review before `db migrate`.
 - [ ] Filled every `placeholder(...)` in `migration.ts` (if any), built against `endContract`.
 - [ ] `check` closures are rowset queries, not scalar aggregates.
-- [ ] Every DML statement is in a `dataTransform` that has a `check`; on Postgres its queries come from the SQL query builder, not `db.raw.sql` or `fns.raw`.
+- [ ] Every DML statement is in a `dataTransform`, with a `check` on Postgres and Mongo; on Postgres its queries come from the SQL query builder, not `db.raw.sql` or `fns.raw`.
 - [ ] Every `rawSql` step you wrote is DDL that no operation factory expresses, with a precheck and a postcheck that test the live schema.
 - [ ] Self-emitted (`node migrations/app/<dir>/migration.ts`) after editing the TS.
 - [ ] Ran `db migrate` (or `db update`) and saw it complete.
