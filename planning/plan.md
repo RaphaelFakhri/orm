@@ -56,13 +56,18 @@ Existing Prisma 7 users must be able to upgrade. They reacted badly to the relea
 
 Update every record that contradicts the code. Known so far: the non-portable and failing test records under `test/integration/test/ports/`, and the documents listed in [query-feature-gaps.md](query-feature-gaps.md). Four stale records found so far: nulls ordering, full-text search, raw SQL, comparing two columns.
 
-## Principle
+## Principles
 
-Prisma 8 does not build implicit behavior that the user did not ask for. Automatic batching of lookups is the example.
+1. Prisma 8 does not build implicit behavior that the user did not ask for. Automatic batching of lookups is the example.
+2. Every design accounts for all four databases, even when only PostgreSQL ships the feature at GA. Take this as given. Do not ask Will to confirm it.
 
 ## Query features: required for GA
 
-Transaction options: isolation levels, timeouts, and transactions inside transactions. None exists today. The runtime docs mark them as deferred.
+Transaction options: isolation levels, timeouts, and transactions inside transactions. None exists today. The runtime docs mark them as deferred. The databases differ here (SQLite has no isolation levels, MongoDB has its own transaction model), so the design lets each database state what it supports.
+
+## Query features: build when there is time
+
+`increment`, `decrement`, and `firstOrThrow` on the query.
 
 ## Query features: high priority
 
@@ -85,7 +90,6 @@ Nested writes on relations: `update`, `delete`, `upsert`, `set` and `connectOrCr
 
 ## Query features: not decided
 
-- `increment`, `decrement`, `firstOrThrow` on the query. Proposed for building.
 - JSON filters and list filters. Proposed for after GA unless simple.
 
 ## Feature status at GA

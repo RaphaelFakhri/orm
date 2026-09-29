@@ -39,7 +39,6 @@ Linear and the ported test records drift from the code. Before relying on a stat
 Will has not answered these yet. Ask them when the discussion resumes, a few at a time.
 
 1. Nested writes on relations: Will agreed they can technically ship after GA. Confirm whether the team still aims to have them at GA.
-4. Are `increment`, `decrement` and `firstOrThrow` required for GA?
 5. Which of the 40 open upgrade issues are required for GA? Two Linear projects hold them. Will prefers to leave this until the big picture is settled.
 6. What is the stopping point for the Prisma 7 schema gaps?
 7. What project does the ORM scenario of the eval build?
