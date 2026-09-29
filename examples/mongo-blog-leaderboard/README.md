@@ -1,6 +1,6 @@
 # Mongo Blog Leaderboard
 
-A focused MongoDB example for Prisma Next that demonstrates the **typed aggregation pipeline DSL** end-to-end against a discriminated post collection.
+A focused MongoDB example for Prisma 8 that demonstrates the **typed aggregation pipeline DSL** end-to-end against a discriminated post collection.
 
 The headline query ranks authors by post count, attaches the most recent post date, and embeds the author document via `$lookup` — all behind a single typed builder chain that terminates in `.build()` and runs through the canonical `mongo()` runtime facade.
 
@@ -89,7 +89,7 @@ export function createClient({ url, dbName }: { url: string; dbName?: string }) 
 }
 ```
 
-> **The emitted `contract.d.ts` imports only from `@prisma/orm-mongo`**, including the codec generics it takes from `@prisma/orm-mongo/adapter/codec-types`. That matters under pnpm's strict hoisting: a generated file that named a package the application does not depend on directly would not resolve, and TypeScript would report `TS2307: Cannot find module`. The emitter picks its import root by reading this example's `package.json`, so the names it writes are always ones the example installed.
+> **The emitted `contract.d.ts` imports only from `@prisma/orm-mongo`**, including the codec generics it takes from `@prisma/orm-mongo/target/codec-types`. That matters under pnpm's strict hoisting: a generated file that named a package the application does not depend on directly would not resolve, and TypeScript would report `TS2307: Cannot find module`. The emitter picks its import root by reading this example's `package.json`, so the names it writes are always ones the example installed.
 
 The returned `MongoClient` exposes:
 

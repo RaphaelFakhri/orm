@@ -1,5 +1,5 @@
 import type { Codec } from '@internal/framework-components/codec';
-import { CodecDescriptorImpl, voidParamsSchema } from '@internal/framework-components/codec';
+import { CodecDescriptorImpl, dataTypeId } from '@internal/framework-components/codec';
 import { UNBOUND_NAMESPACE_ID } from '@internal/framework-components/ir';
 import { SqlStorage, type StorageTableInput } from '@internal/sql-contract/types';
 import type { ContractCodecRegistry } from '@internal/sql-relational-core/ast';
@@ -8,15 +8,15 @@ import {
   type AnySqliteCodecDescriptor,
   sqliteCodec,
 } from '@internal/target-sqlite/codec-descriptor';
+import {
+  createSqliteBuiltinCodecLookup,
+  createSqliteCodecRegistryWithBuiltins,
+} from '@internal/target-sqlite/codecs';
 import { jsonText, sqliteTable, text } from '@internal/target-sqlite/contract-free';
 import { sqliteCreateNamespace } from '@internal/target-sqlite/control';
 import { SqliteCreateTable } from '@internal/target-sqlite/ddl';
 import { createContract } from '@repo/test-utils';
 import { describe, expect, it } from 'vitest';
-import {
-  createSqliteBuiltinCodecLookup,
-  createSqliteCodecRegistryWithBuiltins,
-} from '../src/core/codec-lookup';
 import { SqliteControlAdapter } from '../src/core/control-adapter';
 import { encodeControlQueryParams } from '../src/core/control-codecs';
 import type { SqliteContract } from '../src/core/types';
@@ -40,9 +40,10 @@ const transformingCodec = {
 const transformingDescriptor: AnySqliteCodecDescriptor = {
   descriptorKind: 'sqlite-codec',
   codecId: 'test/transform@1',
+  dataType: dataTypeId('test/transform'),
   traits: [],
   targetTypes: ['TEXT'],
-  paramsSchema: voidParamsSchema,
+  paramsSchema: undefined,
   isParameterized: false,
   factory: () => () => transformingCodec,
   projectJson: (expression) => expression,
@@ -275,10 +276,11 @@ describe('SqliteControlAdapter.lowerToExecuteRequest — query branch encoding',
 const EXT_CODEC_ID = 'test/ext-transform@1';
 
 class ExtTransformDescriptor extends CodecDescriptorImpl<void> {
+  override readonly dataType = dataTypeId('demo/fixture');
   override readonly codecId = EXT_CODEC_ID;
   override readonly traits = [] as const;
   override readonly targetTypes = ['TEXT'] as const;
-  override readonly paramsSchema = voidParamsSchema;
+  override readonly paramsSchema = undefined;
   override factory(): (ctx: object) => Codec {
     return () =>
       ({
@@ -292,6 +294,7 @@ class ExtTransformDescriptor extends CodecDescriptorImpl<void> {
 }
 
 const extTransformDescriptor = sqliteCodec(new ExtTransformDescriptor(), {
+  dataType: dataTypeId('demo/fixture'),
   jsonProjection: (expression) => expression,
 });
 

@@ -1,11 +1,11 @@
 {
   "name": "@internal/config",
   "private": true,
-  "version": "8.0.0-rc.7",
+  "version": "8.0.0-rc.13",
   "license": "Apache-2.0",
   "type": "module",
   "sideEffects": false,
-  "description": "Prisma Next config authoring types and validation",
+  "description": "Prisma 8 config authoring types and validation",
   "scripts": {
     "build": "tsdown",
     "test": "vitest run --passWithNoTests",
@@ -16,15 +16,16 @@
     "clean": "rm -rf dist dist-tsc dist-tsc-prod coverage .tmp-output"
   },
   "dependencies": {
-    "@internal/contract": "workspace:8.0.0-rc.7",
-    "@internal/framework-components": "workspace:8.0.0-rc.7",
-    "@internal/utils": "workspace:8.0.0-rc.7",
+    "@internal/contract": "workspace:8.0.0-rc.13",
+    "@internal/framework-components": "workspace:8.0.0-rc.13",
+    "@internal/utils": "workspace:8.0.0-rc.13",
     "arktype": "^2.2.2",
-    "pathe": "^2.0.3"
+    "pathe": "^2.0.3",
+    "tinyglobby": "catalog:"
   },
   "devDependencies": {
-    "@repo/tsconfig": "workspace:8.0.0-rc.7",
-    "@repo/tsdown": "workspace:8.0.0-rc.7",
+    "@repo/tsconfig": "workspace:8.0.0-rc.13",
+    "@repo/tsdown": "workspace:8.0.0-rc.13",
     "tsdown": "catalog:",
     "typescript": "catalog:",
     "vitest": "catalog:"
@@ -43,7 +44,6 @@
   ],
   "exports": {
     "./config-types": "./dist/config-types.mjs",
-    "./config-validation": "./dist/config-validation.mjs",
     "./package.json": "./package.json"
   },
   "engines": {
@@ -51,7 +51,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/prisma/prisma.git",
+    "url": "https://github.com/prisma/orm.git",
     "directory": "packages/1-framework/1-core/config"
   }
 }

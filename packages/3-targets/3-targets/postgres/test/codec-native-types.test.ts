@@ -28,6 +28,7 @@ const DDL_TYPES: Readonly<Record<string, string>> = {
   'pg/date-string@1': 'date',
   'pg/timestamp-string@1': 'timestamp without time zone',
   'pg/timestamptz-string@1': 'timestamp with time zone',
+  'pg/timestamptz-date@1': 'timestamp with time zone',
   'pg/time-string@1': 'time',
   'pg/timetz@1': 'timetz',
   'pg/bool@1': 'boolean',
@@ -40,6 +41,7 @@ const DDL_TYPES: Readonly<Record<string, string>> = {
   'pg/json@1': 'json',
   'pg/jsonb@1': 'jsonb',
   'pg/text-array@1': 'text[]',
+  'pg/tsquery@1': 'tsquery',
 };
 
 const NEEDS_PARAMS = new Set(['pg/enum@1']);

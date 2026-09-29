@@ -1,5 +1,5 @@
 /**
- * Programmatic Control API for Prisma Next.
+ * Programmatic Control API for Prisma ORM.
  *
  * This module exports the control client factory and types for programmatic
  * access to control-plane operations without using the CLI.
@@ -70,6 +70,10 @@ export {
   refuseUnknownInvariants,
 } from '../control-api/operations/invariants';
 export {
+  type ContractSourceFailure,
+  loadContractSource,
+} from '../control-api/operations/load-contract-source';
+export {
   type ExecuteMigrateShowPlanOptions,
   executeMigrateShowPlan,
   type MigrateShowMigration,
@@ -119,12 +123,19 @@ export {
   type ContractIR,
   computeRefAdvancementName,
   executeRefAdvancement,
+  NO_REF_ADVANCEMENT,
+  preflightRefAdvancement,
   type RefAdvancementFields,
-  readContractIR,
-  resolveRefAdvancementFields,
 } from '../control-api/operations/ref-advancement';
 export { resolveContractRef, resolveMigrationRef } from '../control-api/operations/ref-resolution';
 export { readMigrationRefs } from '../control-api/operations/refs';
+export type {
+  RenderContractDtsFailure,
+  RenderContractDtsFailureCode,
+  RenderContractDtsOptions,
+  RenderContractDtsResult,
+  RenderContractDtsSuccess,
+} from '../control-api/render-contract-dts';
 // CLI-specific types
 export type {
   ContractEmitOptions,

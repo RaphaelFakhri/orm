@@ -30,19 +30,19 @@
       "public": {
         "enum": {
           "Priority": {
-            "codecId": "pg/text@1",
+            "codecId": "pg/int4@1",
             "members": [
               {
                 "name": "Low",
-                "value": "low"
+                "value": 0
               },
               {
                 "name": "High",
-                "value": "high"
+                "value": 1
               },
               {
                 "name": "Urgent",
-                "value": "urgent"
+                "value": 2
               }
             ]
           },
@@ -147,6 +147,13 @@
                   "kind": "scalar"
                 }
               },
+              "expiresAt": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/timestamptz-temporal@1",
+                  "kind": "scalar"
+                }
+              },
               "id": {
                 "nullable": false,
                 "type": {
@@ -164,7 +171,7 @@
               "priority": {
                 "nullable": false,
                 "type": {
-                  "codecId": "pg/text@1",
+                  "codecId": "pg/int4@1",
                   "kind": "scalar"
                 },
                 "valueSet": {
@@ -234,6 +241,7 @@
               },
               "user": {
                 "cardinality": "N:1",
+                "nullable": false,
                 "on": {
                   "localFields": [
                     "userId"
@@ -255,6 +263,9 @@
                 },
                 "embedding": {
                   "column": "embedding"
+                },
+                "expiresAt": {
+                  "column": "expiresAt"
                 },
                 "id": {
                   "column": "id"
@@ -302,6 +313,7 @@
             "relations": {
               "post": {
                 "cardinality": "N:1",
+                "nullable": false,
                 "on": {
                   "localFields": [
                     "postId"
@@ -317,6 +329,7 @@
               },
               "tag": {
                 "cardinality": "N:1",
+                "nullable": false,
                 "on": {
                   "localFields": [
                     "tagId"
@@ -462,6 +475,7 @@
             "relations": {
               "user": {
                 "cardinality": "N:1",
+                "nullable": false,
                 "on": {
                   "localFields": [
                     "userId"
@@ -756,8 +770,8 @@
             "post": {
               "checks": [
                 {
-                  "expression": "\"priority\" IN ('low', 'high', 'urgent')",
-                  "name": "post_priority_check_09b41aa0",
+                  "expression": "\"priority\" IN (0, 1, 2)",
+                  "name": "post_priority_check_b236ace9",
                   "prefix": "post_priority_check"
                 }
               ],
@@ -777,6 +791,15 @@
                   "nullable": true,
                   "typeRef": "Embedding1536"
                 },
+                "expiresAt": {
+                  "codecId": "pg/timestamptz-temporal@1",
+                  "default": {
+                    "expression": "(now() + '7 days'::interval)",
+                    "kind": "function"
+                  },
+                  "nativeType": "timestamptz",
+                  "nullable": false
+                },
                 "id": {
                   "codecId": "pg/uuid@1",
                   "nativeType": "uuid",
@@ -788,12 +811,12 @@
                   "nullable": true
                 },
                 "priority": {
-                  "codecId": "pg/text@1",
+                  "codecId": "pg/int4@1",
                   "default": {
                     "kind": "literal",
-                    "value": "low"
+                    "value": 0
                   },
-                  "nativeType": "text",
+                  "nativeType": "int4",
                   "nullable": false,
                   "valueSet": {
                     "entityKind": "valueSet",
@@ -842,6 +865,13 @@
                 }
               ],
               "indexes": [
+                {
+                  "expression": "to_tsvector('english', \"title\")",
+                  "name": "post_title_search_724b05e5",
+                  "prefix": "post_title_search",
+                  "type": "gin",
+                  "unique": false
+                },
                 {
                   "columns": [
                     "userId"
@@ -1104,9 +1134,9 @@
             "Priority": {
               "kind": "valueSet",
               "values": [
-                "low",
-                "high",
-                "urgent"
+                0,
+                1,
+                2
               ]
             },
             "user_type": {
@@ -1122,7 +1152,7 @@
         "kind": "postgres-schema"
       }
     },
-    "storageHash": "2268a4dd377c4a238d1c8d5fada0056356d753619b26472c10cb1d258d7cea77",
+    "storageHash": "06b2dc7bf45a1c5bf00ae3a80653b88fc0146101673e2a029b2c7db290833284",
     "types": {
       "Embedding1536": {
         "codecId": "pg/vector@1",
@@ -1135,7 +1165,7 @@
     }
   },
   "execution": {
-    "executionHash": "e592be8e097b3e2b4958da0b3ed54265d1bfa0523295fa03e03af2364cccbd08",
+    "executionHash": "eb9bffd4c01945792e83de10d571b20df42f5bf40405ec8c642c6592f7dc4655",
     "mutations": {
       "defaults": [
         {
@@ -1144,9 +1174,9 @@
             "kind": "generator"
           },
           "ref": {
-            "column": "id",
-            "namespace": "public",
-            "table": "post"
+            "entry": "post",
+            "field": "id",
+            "namespace": "public"
           }
         },
         {
@@ -1155,9 +1185,9 @@
             "kind": "generator"
           },
           "ref": {
-            "column": "id",
-            "namespace": "public",
-            "table": "tag"
+            "entry": "tag",
+            "field": "id",
+            "namespace": "public"
           }
         },
         {
@@ -1166,9 +1196,9 @@
             "kind": "generator"
           },
           "ref": {
-            "column": "id",
-            "namespace": "public",
-            "table": "task"
+            "entry": "task",
+            "field": "id",
+            "namespace": "public"
           }
         },
         {
@@ -1177,9 +1207,9 @@
             "kind": "generator"
           },
           "ref": {
-            "column": "id",
-            "namespace": "public",
-            "table": "user"
+            "entry": "user",
+            "field": "id",
+            "namespace": "public"
           }
         }
       ]
@@ -1199,6 +1229,8 @@
       "checkConstraint": true,
       "defaultInInsert": true,
       "enums": true,
+      "insertOnConflictSkip": true,
+      "insertOnConflictWithoutTarget": true,
       "lateral": true,
       "returning": true,
       "scalarList": true

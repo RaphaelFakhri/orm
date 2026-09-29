@@ -1,10 +1,11 @@
 {
-  "name": "@prisma-next/middleware-cache",
-  "version": "0.14.0",
+  "name": "@internal/middleware-cache",
+  "private": true,
+  "version": "8.0.0-rc.13",
   "license": "Apache-2.0",
   "type": "module",
   "sideEffects": false,
-  "description": "Family-agnostic caching middleware for Prisma Next runtimes",
+  "description": "Family-agnostic caching middleware for Prisma 8 runtimes",
   "scripts": {
     "build": "tsdown",
     "test": "vitest run",
@@ -16,13 +17,13 @@
     "clean": "rm -rf dist dist-tsc dist-tsc-prod coverage .tmp-output"
   },
   "dependencies": {
-    "@prisma-next/framework-components": "workspace:0.14.0",
-    "@prisma-next/utils": "workspace:0.14.0"
+    "@internal/framework-components": "workspace:8.0.0-rc.13",
+    "@internal/utils": "workspace:8.0.0-rc.13"
   },
   "devDependencies": {
-    "@prisma-next/contract": "workspace:0.14.0",
-    "@prisma-next/tsconfig": "workspace:0.14.0",
-    "@prisma-next/tsdown": "workspace:0.14.0",
+    "@internal/contract": "workspace:8.0.0-rc.13",
+    "@repo/tsconfig": "workspace:8.0.0-rc.13",
+    "@repo/tsdown": "workspace:8.0.0-rc.13",
     "tsdown": "catalog:",
     "typescript": "catalog:",
     "vitest": "catalog:"
@@ -49,7 +50,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/prisma/prisma-next.git",
+    "url": "https://github.com/prisma/orm.git",
     "directory": "packages/3-extensions/middleware-cache"
   }
 }

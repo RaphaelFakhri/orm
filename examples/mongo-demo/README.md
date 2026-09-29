@@ -1,6 +1,6 @@
 # Mongo Demo
 
-End-to-end example of Prisma Next with MongoDB, demonstrating the full **authoring → emit → runtime** pipeline using the contract-first approach.
+End-to-end example of Prisma 8 with MongoDB, demonstrating the full **authoring → emit → runtime** pipeline using the contract-first approach.
 
 ## What it shows
 
@@ -108,6 +108,8 @@ The Mongo query builder doesn't yet expose a chainable `.annotate(...)` surface 
 2. Creates a `MongoAdapter` and `MongoDriver`
 3. Creates a `MongoRuntime` for query execution
 4. Creates an ORM surface via `mongoOrm()` with typed collection accessors (`orm.users`, `orm.posts`)
+
+If you build the ORM yourself with `mongoOrm()` rather than through `mongo()`, pass the execution context as `mutationDefaults`: `mongoOrm({ contract, executor, mutationDefaults: context })`. It fills generated fields such as `temporal.createdAt()`, and `mongoOrm()` refuses a contract that has them when the option is missing (`ORM.MUTATION_DEFAULTS_MISSING`).
 
 ## Key files
 

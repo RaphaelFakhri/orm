@@ -1,6 +1,6 @@
 # @prisma-next/middleware-cache
 
-A family-agnostic, opt-in caching middleware for Prisma Next runtimes.
+A family-agnostic, opt-in caching middleware for Prisma 8 runtimes.
 
 Built on the `intercept` hook on `RuntimeMiddleware` (added in TML-2143 M1): on a cache hit, the middleware short-circuits execution and returns the cached rows; the driver is never invoked. On a cache miss, the middleware buffers rows from the driver and commits them to the store on successful completion.
 
@@ -19,13 +19,6 @@ The package depends only on `@prisma-next/framework-components/runtime` — no S
 - Support central invalidation strategy selection via `cacheStrategy.mode` (`targeted`, `broad`, `versioned`).
 - Expose standalone invalidation through `middleware.uncache(...)` and helper `uncache(middleware, actions)`.
 - Ship a default in-memory LRU-with-TTL `CacheStore` and expose the `CacheStore` interface for pluggable backends (Redis, Memcached, etc.).
-
-## Dependencies
-
-- `@prisma-next/framework-components/runtime` - the only production dependency. Provides `RuntimeMiddleware`, `RuntimeMiddlewareContext` (with `contentHash` and `scope`), `defineAnnotation`, `AfterExecuteResult`, and the orchestrator integration via `runWithMiddleware`.
-
-The package does **not** depend on `@prisma-next/sql-runtime`, `@prisma-next/mongo-runtime`, or any target adapter. It does not import `node:crypto` — hashing the canonical execution identity is the family runtime's responsibility (via `@prisma-next/utils/hash-identity` in the SQL and Mongo runtimes today).
-
 
 ## Quick start
 

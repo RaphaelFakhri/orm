@@ -1,3 +1,12 @@
+export type {
+  RelationNamesOf,
+  Scalars,
+  Shape,
+  ShapeSpec,
+} from '@internal/framework-components/runtime';
+export { RelationKeys } from '@internal/framework-components/runtime';
+export type { MongoEnumValueSetSource } from '../build-mongo-storage';
+export { buildMongoStorage, encodeMongoValueSets } from '../build-mongo-storage';
 export {
   createMongoContractSchema,
   createMongoNamespaceEnvelopeSchema,
@@ -90,4 +99,6 @@ export type {
   PolymorphicIndexScope,
 } from '../polymorphic-index-scope';
 export { applyPolymorphicScopeToMongoIndex } from '../polymorphic-index-scope';
+export type { MongoToOneRelationFields } from '../relation-fields';
+export { resolveMongoToOneRelationFields } from '../relation-fields';
 export { validateMongoStorage } from '../validate-storage';
