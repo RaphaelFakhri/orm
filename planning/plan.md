@@ -55,7 +55,7 @@ Existing Prisma 7 users must be able to upgrade. They reacted badly to the relea
 
 ## After the plan is finished
 
-Remove the `pg/opaque` codec from the deferred list in `projects/prisma7-contract-source/spec.md`, and fix `contract infer` printing `Unsupported(...)`.
+Fix `contract infer` printing `Unsupported(...)`. (The `pg/opaque` codec was removed from the spec's deferred list in prisma/orm#30449.)
 
 Update every record that contradicts the code. Known so far: the non-portable and failing test records under `test/integration/test/ports/`, and the documents listed in [query-feature-gaps.md](query-feature-gaps.md). Four stale records found so far: nulls ordering, full-text search, raw SQL, comparing two columns.
 
@@ -190,7 +190,6 @@ Tracked so far: TML-3340 (docs and the shipped skill name `prisma-composer`). No
 
 ## Open questions
 
-1. When does shaping of PSL mixins start? It has no spec and is the largest item on the critical path.
-3. Which of the 18 follow-up issues are required for GA?
-4. What is the stopping point for the Prisma 7 schema gaps?
-5. Two documents claim the number ADR 256: the one planned in TML-3288 and the one proposed in prisma/orm#30428.
+1. Which of the 18 follow-up issues are required for GA? The stopping point (urgent and high closed) answers this unless Will says otherwise.
+
+Settled: mixins shaping starts soon and builds on ADR 254; ADR numbering is fixed.
