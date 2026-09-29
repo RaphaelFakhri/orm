@@ -1,7 +1,7 @@
 # Collection scopes and weighted full-text search
 
 **Linear project:** none yet.
-**Design record:** [ADR 257 — Collection scopes declared on the model](../../docs/architecture%20docs/adrs/ADR%20257%20-%20Collection%20scopes%20declared%20on%20the%20model.md) (Proposed).
+**Design record:** [ADR 257 — Packages offer collection scopes for their kinds of index](../../docs/architecture%20docs/adrs/ADR%20257%20-%20Packages%20offer%20collection%20scopes%20for%20their%20kinds%20of%20index.md) (Proposed).
 
 ## Purpose
 
@@ -121,7 +121,7 @@ None.
 
 ## References
 
-- [ADR 257 — Collection scopes declared on the model](../../docs/architecture%20docs/adrs/ADR%20257%20-%20Collection%20scopes%20declared%20on%20the%20model.md)
+- [ADR 257 — Packages offer collection scopes for their kinds of index](../../docs/architecture%20docs/adrs/ADR%20257%20-%20Packages%20offer%20collection%20scopes%20for%20their%20kinds%20of%20index.md)
 - [ADR 175 — Shared ORM Collection interface](../../docs/architecture%20docs/adrs/ADR%20175%20-%20Shared%20ORM%20Collection%20interface.md): collections and custom collection classes.
 - [ADR 180 — Dot-path field accessor](../../docs/architecture%20docs/adrs/ADR%20180%20-%20Dot-path%20field%20accessor.md): separate namespaces for user-chosen and framework-chosen names.
 - [ADR 174 — Aggregate roots and relation strategies](../../docs/architecture%20docs/adrs/ADR%20174%20-%20Aggregate%20roots%20and%20relation%20strategies.md): what a root is, and why a search is not one.
