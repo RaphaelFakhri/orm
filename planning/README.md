@@ -38,9 +38,7 @@ Linear and the ported test records drift from the code. Before relying on a stat
 
 Will has not answered these yet. Ask them when the discussion resumes, a few at a time.
 
-1. Are nested writes on relations required for GA, or high priority just after?
-2. Does the principle "no implicit behavior" mean: no pressure to add a relation load strategy option, and a clear error for large `IN` lists instead of splitting them?
-3. Transaction isolation levels, timeouts and nested transactions: build, never, or leave open?
+1. Nested writes on relations: Will agreed they can technically ship after GA. Confirm whether the team still aims to have them at GA.
 4. Are `increment`, `decrement` and `firstOrThrow` required for GA?
 5. Which of the 40 open upgrade issues are required for GA? Two Linear projects hold them. Will prefers to leave this until the big picture is settled.
 6. What is the stopping point for the Prisma 7 schema gaps?

@@ -50,7 +50,7 @@ Existing Prisma 7 users must be able to upgrade. They reacted badly to the relea
 | Correct the query reference in the agent skill (`skills/prisma-8/references/queries-postgres.md`) | Urgent, same kind of fault as TML-3340. It sends users to `db.sql` for set operations and window functions, and neither exists. `prisma init` copies the skill into every new project. |
 | Correct the other documents that contradict the code | Listed in [query-feature-gaps.md](query-feature-gaps.md). |
 | Design how a query leaves fields out, the Prisma 8 replacement for `omit` | Design work. If it is not built by GA, a clear plan must exist. |
-| Large `IN` lists | Prisma 8 does not split them. On PostgreSQL an oversized query drops the connection. Lowest priority on this list. |
+| Large `IN` lists: raise a clear error before the query is sent | Prisma 8 does not split them, and will not. On PostgreSQL an oversized query drops the connection today. Lowest priority on this list. |
 
 ## After the plan is finished
 
@@ -60,9 +60,13 @@ Update every record that contradicts the code. Known so far: the non-portable an
 
 Prisma 8 does not build implicit behavior that the user did not ask for. Automatic batching of lookups is the example.
 
+## Query features: required for GA
+
+Transaction options: isolation levels, timeouts, and transactions inside transactions. None exists today. The runtime docs mark them as deferred.
+
 ## Query features: high priority
 
-Nested writes on relations: `update`, `delete`, `upsert`, `set` and `connectOrCreate`. Only `create`, `connect` and `disconnect` exist on SQL today. Traversing relations is one of the main reasons to use an ORM. Earlier work deferred this to TML-2781.
+Nested writes on relations: `update`, `delete`, `upsert`, `set` and `connectOrCreate`. Only `create`, `connect` and `disconnect` exist on SQL today. Traversing relations is one of the main reasons to use an ORM. Earlier work deferred this to TML-2781. They are additive, so they can ship just after GA if they are not ready.
 
 ## Query features: decided
 
@@ -77,13 +81,12 @@ Nested writes on relations: `update`, `delete`, `upsert`, `set` and `connectOrCr
 | MongoDB referential actions | Not for GA. |
 | Comparing two columns in `where` | Already exists. The record that says otherwise is out of date. |
 | Automatic batching of single-row lookups | Never. See the principle above. |
+| Relation load strategy | Never. Prisma 7 had it because it first joined in memory and added database joins later. Prisma 8 always lets the database join. |
 
 ## Query features: not decided
 
 - `increment`, `decrement`, `firstOrThrow` on the query. Proposed for building.
 - JSON filters and list filters. Proposed for after GA unless simple.
-- Transaction isolation levels, timeouts, nested transactions.
-- Relation load strategy.
 
 ## Feature status at GA
 
