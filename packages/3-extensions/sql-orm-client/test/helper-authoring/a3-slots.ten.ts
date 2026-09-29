@@ -1,0 +1,29 @@
+import type { ExecutionContext } from '@internal/sql-relational-core/query-lane-context';
+import { orm } from '../../src/orm';
+import type { RuntimeQueryable } from '../../src/types';
+import { fulltextSearchScopes as h } from './a3-slots';
+import { fakeTsQuery, type HelperContract } from './fixture';
+
+declare const runtime: RuntimeQueryable;
+declare const context: ExecutionContext<HelperContract>;
+const db = orm({ runtime, context });
+const q = fakeTsQuery('x');
+
+h(db.public.Post).post_title_body_search(q);
+h(db.public.Post).post_title_search(q, { only: 'title' });
+h(db.public.Post.where((p) => p.views.gt(1))).post_title_body_search(q, {
+  only: 'body',
+});
+h(db.public.Post.select('id')).post_title_search(q);
+h(db.public.Post.orderBy((p) => p.id.desc()))
+  .post_title_body_search(q)
+  .limit(3);
+db.public.User.include('posts', (posts) => h(posts).post_title_search(q));
+db.public.User.include('posts', (posts) =>
+  h(posts).post_title_body_search(q, { only: 'subtitle' }).select('id'),
+);
+h(h(db.public.Post).post_title_search(q)).post_title_body_search(q);
+h(db.public.Post.where((p) => p.id.eq(1)).select('id', 'title'))
+  .post_title_search(q)
+  .all();
+h(db.public.Post.limit(5)).post_title_body_search(q, { only: 'title' }).first();

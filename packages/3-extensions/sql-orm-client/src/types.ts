@@ -2098,3 +2098,16 @@ export type CollectionModelName<TContract extends Contract<SqlStorage>> = {
   [Ns in keyof TContract['domain']['namespaces']]: keyof TContract['domain']['namespaces'][Ns]['models'] &
     string;
 }[keyof TContract['domain']['namespaces']];
+
+export type ModelTableIndexes<
+  TContract extends Contract<SqlStorage>,
+  ModelName extends string,
+  NsId extends string = never,
+> =
+  NamespaceTableDef<
+    TContract,
+    ModelTableName<TContract, ModelName, NsId> & string,
+    ResolvedNsId<TContract, ModelName, NsId>
+  > extends { readonly indexes: infer Indexes extends readonly unknown[] }
+    ? Indexes
+    : readonly [];
