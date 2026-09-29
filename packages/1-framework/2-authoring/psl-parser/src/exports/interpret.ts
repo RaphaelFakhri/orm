@@ -1,4 +1,5 @@
 export { mapPslHelperArgs } from '../authoring-arguments';
+export { enumMemberAttributeDiagnostics } from '../enum-member-attributes';
 export {
   instantiatePslFieldPreset,
   reportUncomposedNamespace,
@@ -13,3 +14,4 @@ export {
   fkRelationPairKey,
   requiredOneToOneBackrelationDiagnostic,
 } from '../relation-backrelations';
+export { claimedBlockKeywords, unsupportedBlockDiagnostic } from '../unclaimed-blocks';

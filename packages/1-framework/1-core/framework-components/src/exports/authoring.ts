@@ -1,3 +1,8 @@
+export type {
+  AuthoringTypeConstructorCall,
+  AuthoringTypeConstructorOutput,
+} from '../shared/authoring-type-constructor-call';
+export { findAuthoringTypeConstructorCall } from '../shared/authoring-type-constructor-call';
 export {
   checkUncomposedNamespace,
   getAuthoringFieldPreset,
@@ -65,18 +70,10 @@ export {
 } from '../shared/framework-authoring';
 export type { AuthoringOption } from '../shared/option-descriptor';
 export type {
-  PslBlockParam,
-  PslBlockParamList,
-  PslBlockParamOption,
-  PslBlockParamRef,
-  PslBlockParamValue,
+  ParsedPslExtensionBlock,
   PslExtensionBlock,
-  PslExtensionBlockParamList,
-  PslExtensionBlockParamOption,
-  PslExtensionBlockParamRef,
-  PslExtensionBlockParamScalarValue,
-  PslExtensionBlockParamValue,
   PslExtensionBlockParsedAttribute,
+  PslExtensionBlockPrintEntry,
 } from '../shared/psl-extension-block';
 export type { PresetStorageTemplate } from '../shared/temporal-presets';
 export {
