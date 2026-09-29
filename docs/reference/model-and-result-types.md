@@ -94,6 +94,8 @@ const projectsWithTasks = db.orm.public.Project.include('tasks');
 type ProjectWithTasks = ResultType<typeof projectsWithTasks>; // Shape<Models.public_Project, { '+': 'tasks' }>
 ```
 
+For SQL ORM clients, `.variant(...)` takes an unmodified variant root. It can come from another ORM client when the existing contract hash tuple matches (`storage.storageHash`, `profileHash`, and optional `execution.executionHash` presence/value), but the receiver's runtime and transaction execute the query.
+
 ## The row a default fetch returns
 
 `Scalars<M>` is the model without its relations. It is what `db.orm.public.User.first()`, `db.orm.public.User.all()`, and every other terminal on a plain collection return. `Scalars` distributes over unions, so `Scalars<Models.public_AnyTask>` is the union of the variants' scalar rows.

@@ -8,10 +8,10 @@ export async function ormClientGetTasks(limit: number, runtime: Runtime) {
 
 export async function ormClientGetBugs(limit: number, runtime: Runtime) {
   const db = createOrmClient(runtime);
-  return db.Task.bugs(db.Bug).limit(limit).all();
+  return db.Task.bugs().limit(limit).all();
 }
 
 export async function ormClientGetFeatures(limit: number, runtime: Runtime) {
   const db = createOrmClient(runtime);
-  return db.Task.features(db.Feature).limit(limit).all();
+  return db.Task.features().limit(limit).all();
 }

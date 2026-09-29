@@ -12,9 +12,38 @@ const serializer = new PostgresContractSerializer();
 
 function createPolyDb() {
   const contract = serializer.deserializeContract(polyContractJson) as PolyContract;
+  return createPolyDbFromContract(contract);
+}
+
+function createPolyDbFromContract(contract: PolyContract) {
   const context = buildTestContextFromContract(contract);
   const runtime = createMockRuntime();
-  return { db: orm({ runtime, context }), runtime, context };
+  return { db: orm({ runtime, context }), runtime, context, contract };
+}
+
+function deserializePolyContract(): PolyContract {
+  return serializer.deserializeContract(polyContractJson) as PolyContract;
+}
+
+function withStorageHash(contract: PolyContract, storageHash: string): PolyContract {
+  return {
+    ...contract,
+    storage: {
+      ...contract.storage,
+      storageHash: storageHash as PolyContract['storage']['storageHash'],
+    },
+  };
+}
+
+function withProfileHash(contract: PolyContract, profileHash: string): PolyContract {
+  return { ...contract, profileHash: profileHash as PolyContract['profileHash'] };
+}
+
+function withExecutionHash(contract: PolyContract, executionHash: string): PolyContract {
+  return {
+    ...contract,
+    execution: { executionHash, mutations: { defaults: [] } },
+  } as unknown as PolyContract;
 }
 
 function expectInvalidVariant(call: () => unknown) {
@@ -41,11 +70,73 @@ describe('Collection.variant() root arguments', () => {
     expectInvalidVariant(() => db.public.Task.variant('Bug' as never));
   });
 
-  it('rejects another orm owner with identical context and runtime', () => {
+  it('accepts another orm owner with identical context and runtime hashes', () => {
     const { db, runtime, context } = createPolyDb();
     const other = orm({ runtime, context });
 
-    expectInvalidVariant(() => db.public.Task.variant(other.public.Bug));
+    const narrowed = db.public.Task.variant(other.public.Bug);
+
+    expect(narrowed.state.variantName).toBe('Bug');
+  });
+
+  it('accepts a separately hydrated equivalent contract root', () => {
+    const receiver = createPolyDbFromContract(deserializePolyContract());
+    const argument = createPolyDbFromContract(deserializePolyContract());
+
+    const narrowed = receiver.db.public.Task.variant(argument.db.public.Bug);
+
+    expect(narrowed.state.variantName).toBe('Bug');
+  });
+
+  it('rejects isolated hash tuple mismatches', () => {
+    const contract = deserializePolyContract();
+    const receiver = createPolyDbFromContract(contract);
+
+    const storageMismatch = createPolyDbFromContract(
+      withStorageHash(contract, 'different-storage'),
+    );
+    const profileMismatch = createPolyDbFromContract(
+      withProfileHash(contract, 'different-profile'),
+    );
+    const executionPresenceMismatch = createPolyDbFromContract(
+      withExecutionHash(contract, 'different-execution'),
+    );
+
+    expectInvalidVariant(() => receiver.db.public.Task.variant(storageMismatch.db.public.Bug));
+    expectInvalidVariant(() => receiver.db.public.Task.variant(profileMismatch.db.public.Bug));
+    expectInvalidVariant(() =>
+      receiver.db.public.Task.variant(executionPresenceMismatch.db.public.Bug),
+    );
+  });
+
+  it('rejects execution hash mismatches and absence mismatches in either direction', () => {
+    const contract = deserializePolyContract();
+    const withExecution = withExecutionHash(contract, 'execution-a');
+    const receiver = createPolyDbFromContract(withExecution);
+    const samePresenceDifferentHash = createPolyDbFromContract(
+      withExecutionHash(contract, 'execution-b'),
+    );
+    const missingExecution = createPolyDbFromContract(contract);
+
+    expectInvalidVariant(() =>
+      receiver.db.public.Task.variant(samePresenceDifferentHash.db.public.Bug),
+    );
+    expectInvalidVariant(() => receiver.db.public.Task.variant(missingExecution.db.public.Bug));
+  });
+
+  it('executes with the receiver runtime when the argument root comes from another orm', async () => {
+    const receiver = createPolyDbFromContract(deserializePolyContract());
+    const argument = createPolyDbFromContract(deserializePolyContract());
+    receiver.runtime.setNextResults([
+      [{ id: 1, title: 'Crash', type: 'bug', severity: 'critical' }],
+    ]);
+    argument.runtime.setNextResults([[{ id: 2, title: 'Wrong', type: 'bug', severity: 'low' }]]);
+
+    const rows = await receiver.db.public.Task.variant(argument.db.public.Bug).all().toArray();
+
+    expect(rows).toEqual([{ id: 1, title: 'Crash', type: 'bug', severity: 'critical' }]);
+    expect(receiver.runtime.executions).toHaveLength(1);
+    expect(argument.runtime.executions).toEqual([]);
   });
 
   it('rejects forged and detached arguments', () => {

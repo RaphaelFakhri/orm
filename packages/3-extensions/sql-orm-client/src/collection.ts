@@ -256,10 +256,17 @@ interface MtiCreateContext {
   pkColumns: readonly string[];
 }
 
+interface ContractHashTuple {
+  readonly storageHash: unknown;
+  readonly profileHash: unknown;
+  readonly hasExecutionHash: boolean;
+  readonly executionHash: unknown;
+}
+
 interface RegisteredRoot {
-  readonly owner: CollectionRootOwner;
   readonly namespaceId: string;
   readonly modelName: string;
+  readonly hashes: ContractHashTuple;
 }
 
 interface RootRegistrationCandidate {
@@ -269,17 +276,32 @@ interface RootRegistrationCandidate {
 
 const registeredRoots = new WeakMap<RootRegistrationCandidate, RegisteredRoot>();
 
-export function registerModelRoot(
-  collection: RootRegistrationCandidate,
-  owner: CollectionRootOwner,
-): void {
+function contractHashTuple(contract: Contract<SqlStorage>): ContractHashTuple {
+  return {
+    storageHash: contract.storage.storageHash,
+    profileHash: contract.profileHash,
+    hasExecutionHash: contract.execution !== undefined && 'executionHash' in contract.execution,
+    executionHash: contract.execution?.executionHash,
+  };
+}
+
+function contractHashTuplesEqual(left: ContractHashTuple, right: ContractHashTuple): boolean {
+  return (
+    left.storageHash === right.storageHash &&
+    left.profileHash === right.profileHash &&
+    left.hasExecutionHash === right.hasExecutionHash &&
+    left.executionHash === right.executionHash
+  );
+}
+
+export function registerModelRoot(collection: RootRegistrationCandidate): void {
   if (!(collection instanceof CollectionImpl)) {
     return;
   }
   registeredRoots.set(collection, {
-    owner,
     namespaceId: collection.namespaceId,
     modelName: collection.modelName,
+    hashes: collection.rootCompatibilityHashes,
   });
 }
 
@@ -309,6 +331,7 @@ class CollectionImpl<
   /** @internal */
   readonly includeRefinementMode: boolean;
   readonly rootOwner: CollectionRootOwner | undefined;
+  readonly rootCompatibilityHashes: ContractHashTuple;
 
   constructor(
     ctx: CollectionContext<TContract>,
@@ -325,6 +348,7 @@ class CollectionImpl<
     this.registry = options.registry ?? new Map<string, CollectionConstructor<TContract>>();
     this.includeRefinementMode = options.includeRefinementMode ?? false;
     this.rootOwner = options.rootOwner;
+    this.rootCompatibilityHashes = contractHashTuple(this.contract);
     this.#installAggregateReducers();
   }
 
@@ -521,10 +545,16 @@ class CollectionImpl<
         'variant root argument is an object after runtime validation'
       >(variantRoot),
     );
-    if (!registeredRoot || registeredRoot.owner !== this.rootOwner) {
+    if (!registeredRoot) {
+      throw ormError('ORM.ARGUMENT_INVALID', 'variant() requires an unmodified model root', {
+        meta: { method: 'variant', argument: 'variant' },
+      });
+    }
+
+    if (!contractHashTuplesEqual(this.rootCompatibilityHashes, registeredRoot.hashes)) {
       throw ormError(
         'ORM.ARGUMENT_INVALID',
-        'variant() requires a model root from the same orm() invocation',
+        'variant() requires a model root with compatible contract hashes',
         {
           meta: { method: 'variant', argument: 'variant' },
         },
@@ -2937,6 +2967,7 @@ const collectionInstanceMemberNames = [
   'registry',
   'includeRefinementMode',
   'rootOwner',
+  'rootCompatibilityHashes',
 ] as const;
 
 /**

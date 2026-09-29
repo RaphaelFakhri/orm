@@ -15,6 +15,21 @@ type DemoRow<ModelName extends keyof DemoOrm> = DemoOrm[ModelName] extends {
 type BugRoot = DemoOrm['Bug'];
 type FeatureRoot = DemoOrm['Feature'];
 
+export interface TaskVariantRoots {
+  readonly Bug: BugRoot;
+  readonly Feature: FeatureRoot;
+}
+
+type TaskBaseCollection = Collection<Contract, 'Task', DemoRow<'Task'>, PublicRootState>;
+
+export interface TaskCollectionSurface extends TaskBaseCollection {
+  bugs(): ReturnType<TaskBaseCollection['variant']>;
+  features(): ReturnType<TaskBaseCollection['variant']>;
+  forUser(userId: string): ReturnType<TaskBaseCollection['where']>;
+}
+
+export type TaskCollectionConstructor = new (...args: never[]) => TaskCollectionSurface;
+
 export class UserCollection extends Collection<Contract, 'User', DemoRow<'User'>, PublicRootState> {
   admins() {
     return this.where({ kind: 'admin' });
@@ -57,16 +72,23 @@ export class TagCollection extends Collection<Contract, 'Tag', DemoRow<'Tag'>, P
   }
 }
 
-export class TaskCollection extends Collection<Contract, 'Task', DemoRow<'Task'>, PublicRootState> {
-  bugs(bug: BugRoot) {
-    return this.variant(bug);
-  }
+export function createTaskCollection(getRoots: () => TaskVariantRoots): TaskCollectionConstructor {
+  return class TaskCollection extends Collection<
+    Contract,
+    'Task',
+    DemoRow<'Task'>,
+    PublicRootState
+  > {
+    bugs() {
+      return this.variant(getRoots().Bug);
+    }
 
-  features(feature: FeatureRoot) {
-    return this.variant(feature);
-  }
+    features() {
+      return this.variant(getRoots().Feature);
+    }
 
-  forUser(userId: string) {
-    return this.where({ userId });
-  }
+    forUser(userId: string) {
+      return this.where({ userId });
+    }
+  };
 }

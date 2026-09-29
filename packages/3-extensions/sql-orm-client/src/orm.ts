@@ -158,7 +158,7 @@ export function orm<
       rootOwner,
       ...(tableName !== undefined ? { tableName } : {}),
     });
-    registerModelRoot(collection, rootOwner);
+    registerModelRoot(collection);
     return collection;
   }
 

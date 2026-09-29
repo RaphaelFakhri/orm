@@ -108,6 +108,7 @@ The demo includes ORM client examples under `src/orm-client/`:
 - `ormClientGetUserTaskBoard(limit, runtime)` — **polymorphic-target include**: `User.include('tasks')` where `Task` is a discriminated base; each included row is decoded into its variant shape (`Bug` → `severity`/`stepsToRepro`, `Feature` → `priority`/`targetRelease`) in a single read
 - `ormClientGetUserBugTriage(severity, limit, runtime)` — `.variant(db.Bug)`-narrowed include filtered by the Bug-only `severity` column
 - `ormClientGetFeatureRoadmap(targetRelease, limit, runtime)` — `.variant(db.Feature)`-narrowed include filtered by the Feature-only `targetRelease` column (a multi-table-inheritance variant column reached through the variant join)
+- `ormClientGetBugs(limit, runtime)` / `ormClientGetFeatures(limit, runtime)` — custom zero-argument task helpers (`Task.bugs()` / `Task.features()`) that capture the per-client Bug and Feature roots during ORM client initialization
 - `ormClientGetPostTags(postId, runtime)` — **many-to-many include**: `Post.include('tags', …)` traversing the `post_tag` junction transparently
 - `ormClientGetTagPosts(tagId, runtime)` — the same junction walked from the other side (`Tag.include('posts', …)`)
 - `ormClientGetPostsByTagFilter(mode, label, runtime)` — `some`/`none`/`every` relation filter predicates on the N:M `tags` relation (EXISTS through the junction)
@@ -202,7 +203,9 @@ pnpm start -- repo-task-board 10
 `.variant(...)` narrows the include to a single variant so the refinement's
 `where` can filter on that variant's own columns — even when, as with
 `Feature`, those columns live in a separate table reached through the variant
-join:
+join. The custom task helpers close over the per-client variant roots, so CLI
+call sites use `Task.bugs()` and `Task.features()` without passing sibling
+roots on every call:
 
 ```bash
 # Only critical bugs, per user.

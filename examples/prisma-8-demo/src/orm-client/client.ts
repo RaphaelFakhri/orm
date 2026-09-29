@@ -4,7 +4,14 @@ import type { ExecutionContext } from '@prisma/orm-postgres/relational-core/quer
 import { blindCast } from '@prisma/orm-postgres/utils/casts';
 import type { Contract } from '../prisma/contract.d';
 import { db } from '../prisma/db';
-import { PostCollection, TagCollection, TaskCollection, UserCollection } from './collections';
+import {
+  createTaskCollection,
+  PostCollection,
+  TagCollection,
+  type TaskCollectionConstructor,
+  type TaskVariantRoots,
+  UserCollection,
+} from './collections';
 
 const context = blindCast<
   ExecutionContext<Contract>,
@@ -15,13 +22,15 @@ type DemoCollections = {
   User: typeof UserCollection;
   Post: typeof PostCollection;
   Tag: typeof TagCollection;
-  Task: typeof TaskCollection;
+  Task: TaskCollectionConstructor;
 };
 
 type DemoOrmClient = ReturnType<typeof orm<Contract, DemoCollections>>['public'];
 
 export function createOrmClient(runtime: Runtime): DemoOrmClient {
-  return orm({
+  let roots: TaskVariantRoots;
+  const TaskCollection = createTaskCollection((): TaskVariantRoots => roots);
+  const client = orm({
     runtime,
     context,
     collections: {
@@ -31,4 +40,6 @@ export function createOrmClient(runtime: Runtime): DemoOrmClient {
       Task: TaskCollection,
     },
   }).public;
+  roots = { Bug: client.Bug, Feature: client.Feature };
+  return client;
 }

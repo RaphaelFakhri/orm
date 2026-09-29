@@ -60,6 +60,16 @@ const posts = await db.Post
   .all();
 ```
 
+## Polymorphic variant roots
+
+SQL ORM polymorphic selection uses model roots, not strings:
+
+```ts
+const bugs = await db.public.Task.variant(db.public.Bug).all();
+```
+
+The argument must be an unmodified root created by `orm(...)`. Roots from another ORM client are accepted when the existing contract hash tuple matches: `storage.storageHash`, `profileHash`, and the optional `execution.executionHash` presence/value. Execution stays on the receiver collection's runtime or transaction; the argument only identifies the declared model. Forged objects, detached `new Collection(...)` values, builder results such as `db.public.Bug.where({})`, incompatible contract hashes, undeclared variants, and non-polymorphic receivers are rejected with `ORM.ARGUMENT_INVALID`.
+
 ## Skipping rows that collide with a unique constraint
 
 `createAll` and `createAndCount` take an options object in second position that asks the database to skip rows colliding with a unique constraint instead of failing the whole statement.
