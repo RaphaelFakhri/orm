@@ -266,3 +266,33 @@ Two constraints they set, which our design must obey:
 2. **The named data type must be registered in the stack, or `dataTypeValue` throws an internal error.** A spec shared by targets never hard-codes one target's id. Each target's function registry passes its own id (`pg/int4` on Postgres, `sqlite/integer` on SQLite) into the shared signature builder the SQL family exports. This also removes the duplicated signature definitions in the two adapters.
 
 One problem stays ours: `@default`'s value is a `oneOf`, and a failing arm's message is replaced by "Expected one of: …". When the written call names a registered function, that function's own diagnostics must be reported instead. The function-argument slice specifies this.
+
+## Decisions from the data type inventory (orchestrator, 2026-09-30)
+
+Source: [`inventory/data-types.md`](inventory/data-types.md), which tested a real Postgres and SQLite. The building block from the SQL expression literals project is ticket TML-3367.
+
+1. **Corrections to earlier notes.** SQLite `sql/char@1` columns were created as `CHARACTER`, with no length. Mongo has twelve data types, not eleven. The Mongo validator reads the whole `targetTypes` list, not only its first entry.
+2. **Parameters have a declared normal form.** A SQL data type declares how its parameters are normalised, and both sides are normalised before the exact comparison. `pg/numeric`: a precision with no scale equals scale 0, because the database reports `numeric(10)` as `numeric(10,0)`. `pg/char` and `pg/bit`: no length equals length 1, because the database reports `character` as `character(1)`. No stored contract changes.
+3. **One bound per parameter, the database's.** `numeric` precision 1 to 1000; `numeric` scale 0 to 1000 and only with a precision; `char` and `varchar` length 1 to 10485760; `bit` and `varbit` length 1 to 83886080; temporal and interval precision 0 to 6; `vector` length required, 1 to 16000; `geometry` srid optional, integer 0 or more.
+4. **SQLite gets two new data types.** `sqlite/character` for `sql/char@1` and `sqlite/character-varying` for `sql/varchar@1`, each casting from `sqlite/text` unchanged. Their `length` parameter is accepted and not written into DDL, as today, so existing columns keep matching.
+5. **A data type may claim a kind of type instead of a text.** Introspection gives the resolver the reported text and the kind of the type (for Postgres, `pg_type.typtype`). `pg/enum` claims the kind "enum" and builds `typeName` as the bare name for a type in `public` and `schema.name` otherwise, the same rule the contract builder uses. The resolver has no enum branch. Introspection reads the type's schema and name from the catalog, not from `format_type`, so the result does not depend on `search_path`.
+6. **Known limit, recorded.** A column in the unbound namespace whose enum type lives outside `public` is a mismatch, because its contract does not say which schema is meant.
+7. **A data type's name is optional.** `pg/text-array` declares no name and claims no text, so `text[]` always reads as a list of `pg/text`. `pg/tsquery` declares its name and has no type constructor, so a user column of that type makes `contract infer` fail like an unclaimed type.
+8. **Unclaimed Postgres types.** `money`, `xml`, `cidr`, `macaddr`, `tsvector`, ranges, geometric built-ins, domains, composite types, interval with fields, `halfvec`, `sparsevec`, `geography` and the rest listed in the inventory section F.2 are claimed by no data type. The quoted text `"char"` is read with its quotes and does not resolve to `pg/char`.
+9. **Mongo.** A Mongo data type declares a list of BSON type names, which may be empty. `mongo/json` lists eight, `mongo/bson` none. The validator keeps its three cases.
+10. **`SERIAL`.** The planner chooses `SERIAL`, `BIGSERIAL` or `SMALLSERIAL` by data type id (`pg/int4`, `pg/int8`, `pg/int2`), not by name.
+11. **A stale codec id.** `apps/telemetry-backend/migrations/snapshots/41700ef5…/contract.json` names `pg/timestamptz@1`, which no longer exists. The upgrade script carries a table of retired codec ids and their data types for such snapshots.
+
+### SQLite's data types are the ones the database has (Will, 2026-09-30)
+
+A data type is what the database stores. SQLite stores `TEXT`, `INTEGER`, `REAL` and `BLOB`, so the SQLite target declares `sqlite/text`, `sqlite/integer`, `sqlite/real` and `sqlite/blob`, plus `sqlite/character` and `sqlite/character-varying` for columns declared with those names. `sqlite/json`, `sqlite/datetime` and `sqlite/bigint` are deleted as data types; `sqlite/json@1` and `sqlite/datetime@1` become codecs of `sqlite/text`, and `sqlite/bigint@1` and `sqlite/bigintnumber@1` become codecs of `sqlite/integer`. Verify compares data type ids exactly, with no special rule for SQLite.
+
+The shipped code and ADR 254 contradict this: ADR 254 says a target "declares the types it distinguishes rather than one per storage class". That paragraph is a defect in the ADR and is rewritten. There is no "stored as" concept.
+
+Consequences:
+
+- **One stored form per data type.** `sqlite/text` stores a string; a JSON default on SQLite is stored as JSON text and a datetime default as its text. `sqlite/integer` stores digit text for every integer, so 64-bit values keep their precision.
+- **The codec refuses what it cannot read.** A `Json` column given `@default("hello")` is refused by the codec, because `hello` is not JSON, not by a missing cast.
+- **A `String` column accepts a `json` literal on SQLite**, because the value is text.
+- **The `json` tag and the number classifier on SQLite** yield `sqlite/text` and `sqlite/integer` or `sqlite/real`.
+- SQLite contracts that hold such defaults change stored form. Their hashes change in this project in any case.
