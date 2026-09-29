@@ -1,6 +1,8 @@
 import type { ProjectionItem } from '@internal/sql-relational-core/ast';
+import { blindCast } from '@internal/utils/casts';
 import { describe, expect, it } from 'vitest';
-import { Collection } from '../src/collection';
+import type { Collection } from '../src/collection';
+import { orm } from '../src/orm';
 import {
   buildMixedPolyContract,
   createMockRuntime,
@@ -14,7 +16,7 @@ interface RuntimeRows {
 }
 
 interface RuntimeCollection {
-  variant(name: string): RuntimeCollection;
+  variant(root: RuntimeCollection): RuntimeCollection;
   select(...fields: string[]): RuntimeCollection;
   include(
     relationName: string,
@@ -25,18 +27,44 @@ interface RuntimeCollection {
 
 function createVariantTaskCollection(): {
   readonly tasks: RuntimeCollection;
+  readonly featureRoot: RuntimeCollection;
+  readonly bugRoot: RuntimeCollection;
   readonly runtime: MockRuntime;
 } {
   const contract = buildMixedPolyContract();
   const context = { ...getTestContext(), contract };
   const runtime = createMockRuntime();
-  const collection = new Collection({ runtime, context }, 'Task', { namespaceId: 'public' });
-  return { tasks: collection as unknown as RuntimeCollection, runtime };
+  const db = blindCast<
+    {
+      public: {
+        Task: Collection<ReturnType<typeof buildMixedPolyContract>, 'Task'>;
+        Feature: Collection<ReturnType<typeof buildMixedPolyContract>, 'Feature'>;
+        Bug: Collection<ReturnType<typeof buildMixedPolyContract>, 'Bug'>;
+      };
+    },
+    'patched mixed polymorphism test contract adds Task variants outside the static fixture type'
+  >(orm({ runtime, context }));
+  return {
+    tasks: blindCast<RuntimeCollection, 'runtime collection surface for fixture-generated root'>(
+      db.public.Task,
+    ),
+    featureRoot: blindCast<
+      RuntimeCollection,
+      'runtime collection surface for fixture-generated root'
+    >(db.public.Feature),
+    bugRoot: blindCast<RuntimeCollection, 'runtime collection surface for fixture-generated root'>(
+      db.public.Bug,
+    ),
+    runtime,
+  };
 }
 
-function selectedTaskWithAssignee(tasks: RuntimeCollection, variantName: string): RuntimeRows {
+function selectedTaskWithAssignee(
+  tasks: RuntimeCollection,
+  variantRoot: RuntimeCollection,
+): RuntimeRows {
   return tasks
-    .variant(variantName)
+    .variant(variantRoot)
     .select('id', 'title', 'type')
     .include('assignee', (assignee) => assignee.select('id', 'name'))
     .all();
@@ -53,7 +81,7 @@ function projectionAliases(runtime: MockRuntime): string[] {
 
 describe('variant-owned include dispatch', () => {
   it('maps an explicitly selected MTI result without leaking internal relation columns', async () => {
-    const { tasks, runtime } = createVariantTaskCollection();
+    const { tasks, featureRoot, runtime } = createVariantTaskCollection();
     runtime.setNextResults([
       [
         {
@@ -65,7 +93,7 @@ describe('variant-owned include dispatch', () => {
       ],
     ]);
 
-    const rows = await selectedTaskWithAssignee(tasks, 'Feature').toArray();
+    const rows = await selectedTaskWithAssignee(tasks, featureRoot).toArray();
 
     expect(rows).toEqual([
       {
@@ -79,7 +107,7 @@ describe('variant-owned include dispatch', () => {
   });
 
   it('maps the whole STI result without projecting an unselected variant join key', async () => {
-    const { tasks, runtime } = createVariantTaskCollection();
+    const { tasks, bugRoot, runtime } = createVariantTaskCollection();
     runtime.setNextResults([
       [
         {
@@ -91,7 +119,7 @@ describe('variant-owned include dispatch', () => {
       ],
     ]);
 
-    const rows = await selectedTaskWithAssignee(tasks, 'Bug').toArray();
+    const rows = await selectedTaskWithAssignee(tasks, bugRoot).toArray();
 
     expect(rows).toEqual([
       {

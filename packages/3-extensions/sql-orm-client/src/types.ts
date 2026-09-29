@@ -488,8 +488,8 @@ export type ModelAccessor<
 /**
  * The predicate accessor for a collection narrowed to a variant. When a real
  * variant is selected its (possibly MTI) fields and relations are merged onto
- * the base accessor so `t.variant('Feature').where(x => x.priority…)` and
- * `t.variant('Feature').where(x => x.assignee.some(…))` type-check; with no
+ * the base accessor so `t.variant(featureRoot).where(x => x.priority…)` and
+ * `t.variant(featureRoot).where(x => x.assignee.some(…))` type-check; with no
  * variant the accessor is the plain base `ModelAccessor` and is unchanged.
  */
 export type VariantAwareModelAccessor<

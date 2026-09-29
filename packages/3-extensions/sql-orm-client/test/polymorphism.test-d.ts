@@ -4,6 +4,7 @@ import type { SqlStorage } from '@internal/sql-contract/types';
 import type { ExecutionContext } from '@internal/sql-relational-core/query-lane-context';
 import { expectTypeOf, test } from 'vitest';
 import type { Collection } from '../src/collection';
+import type { ModelRootIdentity } from '../src/collection-internal-types';
 import { createModelAccessor } from '../src/model-accessor';
 import type {
   CreateInput,
@@ -454,6 +455,8 @@ type RowOfCollection<TCollection> = TCollection extends { all(): infer R }
   : never;
 
 declare const projects: Collection<PolyContract, 'Project'>;
+declare const bugRoot: ModelRootIdentity<never, 'Bug'>;
+declare const featureRoot: ModelRootIdentity<never, 'Feature'>;
 
 test('include of a polymorphic-target relation types the value as the variant union', () => {
   type Included = RowOfCollection<ReturnType<typeof projects.include<'tasks'>>>['tasks'];
@@ -478,7 +481,7 @@ test('include without refinement narrows each variant exclusively by discriminat
 });
 
 test('r.variant("Bug") on an include refinement narrows the value to the Bug variant', () => {
-  const refined = projects.include('tasks', (tasks) => tasks.variant('Bug'));
+  const refined = projects.include('tasks', (tasks) => tasks.variant(bugRoot));
   type Included = RowOfCollection<typeof refined>['tasks'];
   type Element = Included[number];
   expectTypeOf<Element['type']>().toEqualTypeOf<'bug'>();
@@ -487,7 +490,7 @@ test('r.variant("Bug") on an include refinement narrows the value to the Bug var
 });
 
 test('r.variant("Feature") on an include refinement narrows the value to the Feature variant', () => {
-  const refined = projects.include('tasks', (tasks) => tasks.variant('Feature'));
+  const refined = projects.include('tasks', (tasks) => tasks.variant(featureRoot));
   type Included = RowOfCollection<typeof refined>['tasks'];
   type Element = Included[number];
   expectTypeOf<Element['type']>().toEqualTypeOf<'feature'>();
@@ -502,7 +505,7 @@ test('r.variant("Feature") on an include refinement narrows the value to the Fea
 
 test('where after variant("Feature") exposes the MTI variant field on the predicate model', () => {
   projects.include('tasks', (tasks) =>
-    tasks.variant('Feature').where((task) => {
+    tasks.variant(featureRoot).where((task) => {
       expectTypeOf(task).toHaveProperty('priority');
       expectTypeOf(task).toHaveProperty('title');
       return task.priority.gte(3);
@@ -512,7 +515,7 @@ test('where after variant("Feature") exposes the MTI variant field on the predic
 
 test('where after variant("Bug") exposes the Bug variant field and rejects the other variant field', () => {
   projects.include('tasks', (tasks) =>
-    tasks.variant('Bug').where((task) => {
+    tasks.variant(bugRoot).where((task) => {
       expectTypeOf(task).toHaveProperty('severity');
       // @ts-expect-error priority belongs to the Feature variant, not Bug
       task.priority;
@@ -539,7 +542,7 @@ test('where without a variant exposes only base fields on the predicate model', 
 
 test('where after variant("Feature") exposes the MTI variant relation and keeps a base relation', () => {
   projects.include('tasks', (tasks) =>
-    tasks.variant('Feature').where((task) => {
+    tasks.variant(featureRoot).where((task) => {
       expectTypeOf(task).toHaveProperty('assignee');
       expectTypeOf(task).toHaveProperty('subtasks');
       return task.assignee.some();
@@ -549,7 +552,7 @@ test('where after variant("Feature") exposes the MTI variant relation and keeps 
 
 test('where after variant("Bug") exposes the STI variant relation', () => {
   projects.include('tasks', (tasks) =>
-    tasks.variant('Bug').where((task) => {
+    tasks.variant(bugRoot).where((task) => {
       expectTypeOf(task).toHaveProperty('assignee');
       return task.assignee.some();
     }),
@@ -579,7 +582,7 @@ test('prepared terminals retain variant unions, narrowing and nested projections
   expectTypeOf(all.consume).returns.toEqualTypeOf<
     AsyncIterableResult<InferRootRow<PolyContract, 'Task'>>
   >();
-  const selected = tasks.variant('Bug');
+  const selected = tasks.variant(bugRoot);
   const first = selected.prepared.first((task) => {
     expectTypeOf(task.severity).not.toBeNever();
     // @ts-expect-error priority belongs to the other variant
@@ -593,7 +596,7 @@ test('prepared terminals retain variant unions, narrowing and nested projections
   expectTypeOf<Selected['type']>().toEqualTypeOf<'bug'>();
   expectTypeOf<Selected>().toHaveProperty('severity');
   expectTypeOf<Selected>().not.toHaveProperty('priority');
-  const nested = projects.select('name').include('tasks', (tasks) => tasks.variant('Feature'));
+  const nested = projects.select('name').include('tasks', (tasks) => tasks.variant(featureRoot));
   const nestedAll = nested.prepared.all();
   expectTypeOf(nestedAll.consume).returns.toEqualTypeOf<
     AsyncIterableResult<RowOfCollection<typeof nested>>
@@ -604,7 +607,7 @@ test('prepared terminals retain variant unions, narrowing and nested projections
 });
 
 test('first after variant("Feature") exposes the MTI variant field on the predicate model', () => {
-  tasks.variant('Feature').first((task) => {
+  tasks.variant(featureRoot).first((task) => {
     expectTypeOf(task).toHaveProperty('priority');
     expectTypeOf(task).toHaveProperty('title');
     return task.priority.gte(3);
@@ -612,7 +615,7 @@ test('first after variant("Feature") exposes the MTI variant field on the predic
 });
 
 test('first after variant("Bug") exposes the Bug variant field and rejects the other variant field', () => {
-  tasks.variant('Bug').first((task) => {
+  tasks.variant(bugRoot).first((task) => {
     expectTypeOf(task).toHaveProperty('severity');
     // @ts-expect-error priority belongs to the Feature variant, not Bug
     task.priority;
@@ -635,7 +638,7 @@ test('first without a variant exposes only base fields on the predicate model', 
 // ---------------------------------------------------------------------------
 
 test('orderBy after variant("Feature") exposes the MTI variant field on the selector model', () => {
-  tasks.variant('Feature').orderBy((task) => {
+  tasks.variant(featureRoot).orderBy((task) => {
     expectTypeOf(task).toHaveProperty('priority');
     expectTypeOf(task).toHaveProperty('title');
     return task.priority.asc();
@@ -643,7 +646,7 @@ test('orderBy after variant("Feature") exposes the MTI variant field on the sele
 });
 
 test('orderBy after variant("Bug") exposes the Bug variant field and rejects the other variant field', () => {
-  tasks.variant('Bug').orderBy((task) => {
+  tasks.variant(bugRoot).orderBy((task) => {
     expectTypeOf(task).toHaveProperty('severity');
     // @ts-expect-error priority belongs to the Feature variant, not Bug
     task.priority;
@@ -662,7 +665,7 @@ test('orderBy without a variant exposes only base fields on the selector model',
 
 test('orderBy after variant("Feature") on an include refinement exposes the MTI variant field', () => {
   projects.include('tasks', (tasks) =>
-    tasks.variant('Feature').orderBy((task) => {
+    tasks.variant(featureRoot).orderBy((task) => {
       expectTypeOf(task).toHaveProperty('priority');
       return task.priority.desc();
     }),
@@ -690,19 +693,19 @@ test('createModelAccessor without a selected variant returns the base accessor',
 // ---------------------------------------------------------------------------
 
 test('include after variant("Feature") uses the MTI variant relation owner', () => {
-  const included = tasks.variant('Feature').include('assignee');
+  const included = tasks.variant(featureRoot).include('assignee');
   type Assignee = RowOfCollection<typeof included>['assignee'];
   expectTypeOf<Assignee>().toEqualTypeOf<DefaultModelRow<PolyContract, 'Assignee'> | null>();
 });
 
 test('include after variant("Bug") uses the STI variant relation owner', () => {
-  const included = tasks.variant('Bug').include('assignee');
+  const included = tasks.variant(bugRoot).include('assignee');
   type Assignee = RowOfCollection<typeof included>['assignee'];
   expectTypeOf<Assignee>().toEqualTypeOf<DefaultModelRow<PolyContract, 'Assignee'> | null>();
 });
 
 test('include after variant("Feature") keeps an unshadowed base relation', () => {
-  const included = tasks.variant('Feature').include('subtasks');
+  const included = tasks.variant(featureRoot).include('subtasks');
   type Subtasks = RowOfCollection<typeof included>['subtasks'];
   expectTypeOf<Subtasks>().toExtend<readonly unknown[]>();
   expectTypeOf<Subtasks[number]['type']>().toEqualTypeOf<'bug' | 'feature'>();
@@ -713,17 +716,19 @@ test('include without narrowing rejects a variant-declared relation', () => {
   tasks.include('assignee');
 });
 
-declare const taskVariantName: 'Bug' | 'Feature';
+declare const taskVariantRoot:
+  | ModelRootIdentity<never, 'Bug'>
+  | ModelRootIdentity<never, 'Feature'>;
 
 test('include after union-valued narrowing keeps an unshadowed base relation', () => {
-  const included = tasks.variant(taskVariantName).include('subtasks');
+  const included = tasks.variant(taskVariantRoot).include('subtasks');
   type Subtasks = RowOfCollection<typeof included>['subtasks'];
   expectTypeOf<Subtasks>().toExtend<readonly unknown[]>();
 });
 
 test('include after union-valued narrowing rejects variant-owned relations', () => {
   // @ts-expect-error union-valued variant state exposes no variant-owned includes
-  tasks.variant(taskVariantName).include('assignee');
+  tasks.variant(taskVariantRoot).include('assignee');
 });
 
 type CollisionModels = Omit<PolyModels, 'Task' | 'Bug' | 'Feature'> & {
@@ -782,9 +787,14 @@ type CollisionContract = Omit<PolyContract, 'domain'> & {
 };
 
 declare const collisionTasks: Collection<CollisionContract, 'Task'>;
+declare const collisionBugRoot: ModelRootIdentity<never, 'Bug'>;
+declare const collisionFeatureRoot: ModelRootIdentity<never, 'Feature'>;
+declare const collisionVariantRoot:
+  | ModelRootIdentity<never, 'Bug'>
+  | ModelRootIdentity<never, 'Feature'>;
 
 test('singleton variant include chooses its shadowing target and cardinality', () => {
-  const included = collisionTasks.variant('Feature').include('owner');
+  const included = collisionTasks.variant(collisionFeatureRoot).include('owner');
   type Owner = RowOfCollection<typeof included>['owner'];
   expectTypeOf<Owner>().not.toExtend<readonly unknown[]>();
   expectTypeOf<NonNullable<Owner>>().toHaveProperty('title');
@@ -792,19 +802,19 @@ test('singleton variant include chooses its shadowing target and cardinality', (
 
 test('union-valued narrowing rejects a base relation shadowed by one possible variant', () => {
   // @ts-expect-error Feature shadows owner, so the base owner relation is not common-safe
-  collisionTasks.variant(taskVariantName).include('owner');
+  collisionTasks.variant(collisionVariantRoot).include('owner');
 });
 
 test('non-navigable variant declaration shadows a same-named base relation', () => {
   // @ts-expect-error Bug declares blocked as non-navigable and must not fall back to Task.blocked
-  collisionTasks.variant('Bug').include('blocked');
+  collisionTasks.variant(collisionBugRoot).include('blocked');
 });
 
 test('singleton variant keeps a base relation not declared by that variant', () => {
-  collisionTasks.variant('Feature').include('blocked');
+  collisionTasks.variant(collisionFeatureRoot).include('blocked');
 });
 
 test('union-valued narrowing rejects a base relation shadowed by a non-navigable member', () => {
   // @ts-expect-error Bug shadows blocked, so it is unsafe for Bug | Feature state
-  collisionTasks.variant(taskVariantName).include('blocked');
+  collisionTasks.variant(collisionVariantRoot).include('blocked');
 });

@@ -1,5 +1,6 @@
 import type { Contract } from '@internal/contract/types';
 import type { SqlStorage } from '@internal/sql-contract/types';
+import { blindCast } from '@internal/utils/casts';
 import type {
   MutationCreateInput,
   RelationMutation,
@@ -20,31 +21,43 @@ export function createRelationMutator<
         | readonly MutationCreateInput<TContract, ModelName>[],
     ) {
       const rows = Array.isArray(data) ? [...data] : [data];
-      return {
+      return blindCast<
+        RelationMutationCreate<TContract, ModelName>,
+        'relation create descriptor rows are normalized to the target model input shape'
+      >({
         kind: 'create',
         data: rows,
-      } as RelationMutationCreate<TContract, ModelName>;
+      });
     },
     connect(criteria: Record<string, unknown> | readonly Record<string, unknown>[]) {
       const values = Array.isArray(criteria) ? [...criteria] : [criteria];
-      return {
+      return blindCast<
+        RelationMutationConnect<TContract, ModelName>,
+        'relation connect descriptor criteria are normalized to records at runtime'
+      >({
         kind: 'connect',
         criteria: values,
-      } as RelationMutationConnect<TContract, ModelName>;
+      });
     },
     disconnect(criteria?: readonly Record<string, unknown>[]) {
       if (!criteria) {
-        return {
+        return blindCast<
+          RelationMutationDisconnect<TContract, ModelName>,
+          'relation disconnect descriptor may omit criteria for all related rows'
+        >({
           kind: 'disconnect',
-        } as RelationMutationDisconnect<TContract, ModelName>;
+        });
       }
 
-      return {
+      return blindCast<
+        RelationMutationDisconnect<TContract, ModelName>,
+        'relation disconnect descriptor criteria are copied to runtime records'
+      >({
         kind: 'disconnect',
         criteria: [...criteria],
-      } as RelationMutationDisconnect<TContract, ModelName>;
+      });
     },
-  } as RelationMutator<TContract, ModelName>;
+  };
 }
 
 export function isRelationMutationDescriptor(
@@ -54,7 +67,10 @@ export function isRelationMutationDescriptor(
     return false;
   }
 
-  const candidate = value as { kind?: unknown };
+  const candidate = blindCast<
+    { kind?: unknown },
+    'relation mutation descriptor guard only reads optional kind after object validation'
+  >(value);
   if (
     candidate.kind !== 'create' &&
     candidate.kind !== 'connect' &&

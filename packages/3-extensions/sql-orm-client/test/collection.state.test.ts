@@ -81,7 +81,7 @@ describe('Collection', () => {
       ]);
     });
 
-    it('where() accepts shorthand filters, handles null and undefined, and treats {} as identity', () => {
+    it('where() accepts shorthand filters, handles null and undefined, and clones {} without filters', () => {
       const { collection } = createCollection();
 
       const filtered = collection.where({
@@ -100,7 +100,9 @@ describe('Collection', () => {
         ),
       ]);
 
-      expect(collection.where({})).toBe(collection);
+      const emptyFiltered = collection.where({});
+      expect(emptyFiltered).not.toBe(collection);
+      expect(emptyFiltered.state.filters).toEqual(collection.state.filters);
     });
 
     it('select() replaces the prior selection set', () => {

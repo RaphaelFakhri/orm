@@ -54,11 +54,14 @@ import {
 import type {
   CollectionConstructor,
   CollectionInit,
+  CollectionRootOwner,
   IncludedRelationsForRow,
   IncludeRefinementCollection,
   IncludeRefinementResult,
   IncludeRefinementValue,
   IsToManyRelation,
+  ModelRootIdentity,
+  ModelRootModel,
   RowSelection,
   // biome-ignore lint/correctness/noUnusedImports: used in `declare` property
   RowType,
@@ -139,6 +142,7 @@ import {
   type VariantAwareModelAccessor,
   type VariantModelRow,
   type VariantNames,
+  type WithNsId,
 } from './types';
 import { normalizeWhereArg } from './where-interop';
 
@@ -220,6 +224,33 @@ interface MtiCreateContext {
   pkColumn: string;
 }
 
+interface RegisteredRoot {
+  readonly owner: CollectionRootOwner;
+  readonly namespaceId: string;
+  readonly modelName: string;
+}
+
+interface RootRegistrationCandidate {
+  readonly namespaceId: string;
+  readonly modelName: string;
+}
+
+const registeredRoots = new WeakMap<RootRegistrationCandidate, RegisteredRoot>();
+
+export function registerModelRoot(
+  collection: RootRegistrationCandidate,
+  owner: CollectionRootOwner,
+): void {
+  if (!(collection instanceof CollectionImpl)) {
+    return;
+  }
+  registeredRoots.set(collection, {
+    owner,
+    namespaceId: collection.namespaceId,
+    modelName: collection.modelName,
+  });
+}
+
 class CollectionImpl<
   TContract extends Contract<SqlStorage>,
   ModelName extends string,
@@ -245,6 +276,7 @@ class CollectionImpl<
   readonly registry: ReadonlyMap<string, CollectionConstructor<TContract>>;
   /** @internal */
   readonly includeRefinementMode: boolean;
+  readonly rootOwner: CollectionRootOwner | undefined;
 
   constructor(
     ctx: CollectionContext<TContract>,
@@ -260,6 +292,7 @@ class CollectionImpl<
     this.state = options.state ?? emptyState();
     this.registry = options.registry ?? new Map<string, CollectionConstructor<TContract>>();
     this.includeRefinementMode = options.includeRefinementMode ?? false;
+    this.rootOwner = options.rootOwner;
     this.#installAggregateReducers();
   }
 
@@ -385,10 +418,7 @@ class CollectionImpl<
     });
 
     if (!filter) {
-      return blindCast<
-        Collection<TContract, ModelName, Row, WithWhereState<State>>,
-        'where() records its static state even when normalization produces no filter'
-      >(this);
+      return this.#clone<WithWhereState<State>>({});
     }
 
     return this.#clone<WithWhereState<State>>({
@@ -404,23 +434,30 @@ class CollectionImpl<
    *
    * ```typescript
    * // Read only admin users (STI):
-   * const admins = await db.orm.User.variant('Admin').all();
+   * const admins = await db.orm.User.variant(db.orm.Admin).all();
    *
    * // Iterate the rows:
-   * for await (const admin of db.orm.User.variant('Admin').all()) {
+   * for await (const admin of db.orm.User.variant(db.orm.Admin).all()) {
    *   console.log(admin.role);
    * }
    *
    * // Insert under a variant — discriminator is injected automatically:
-   * await db.orm.User.variant('Admin').create({ name: 'Ada', role: 'super' });
+   * await db.orm.User.variant(db.orm.Admin).create({ name: 'Ada', role: 'super' });
    * ```
    */
-  variant<V extends VariantNames<TContract, ModelName>>(
-    variantName: V,
+  variant<
+    VariantRoot extends ModelRootIdentity<
+      State['nsId'],
+      VariantNames<TContract, ModelName, State['nsId']>
+    >,
+    V extends VariantNames<TContract, ModelName, State['nsId']> = ModelRootModel<VariantRoot> &
+      VariantNames<TContract, ModelName, State['nsId']>,
+  >(
+    variantRoot: VariantRoot,
   ): Collection<
     TContract,
     ModelName,
-    VariantModelRow<TContract, ModelName, V>,
+    VariantModelRow<TContract, ModelName, V, State['nsId']>,
     WithVariantState<WithWhereState<State>, V>
   > {
     type ReturnState = WithVariantState<WithWhereState<State>, V>;
@@ -429,18 +466,62 @@ class CollectionImpl<
     const variants = model?.variants;
 
     if (!discriminator || !variants) {
-      return blindCast<
-        Collection<TContract, ModelName, VariantModelRow<TContract, ModelName, V>, ReturnState>,
-        'variant() preserves its declared static narrowing when runtime polymorphism metadata is absent'
-      >(this);
+      throw ormError('ORM.ARGUMENT_INVALID', 'variant() requires a polymorphic receiver', {
+        meta: { method: 'variant', model: this.modelName, namespace: this.namespaceId },
+      });
     }
 
+    if (this.rootOwner === undefined) {
+      throw ormError('ORM.ARGUMENT_INVALID', 'variant() requires a receiver from an orm() root', {
+        meta: { method: 'variant', model: this.modelName, namespace: this.namespaceId },
+      });
+    }
+
+    if (typeof variantRoot !== 'object' || variantRoot === null) {
+      throw ormError('ORM.ARGUMENT_INVALID', 'variant() requires an unmodified model root', {
+        meta: { method: 'variant', argument: 'variant' },
+      });
+    }
+
+    const registeredRoot = registeredRoots.get(
+      blindCast<
+        RootRegistrationCandidate,
+        'variant root argument is an object after runtime validation'
+      >(variantRoot),
+    );
+    if (!registeredRoot || registeredRoot.owner !== this.rootOwner) {
+      throw ormError(
+        'ORM.ARGUMENT_INVALID',
+        'variant() requires a model root from the same orm() invocation',
+        {
+          meta: { method: 'variant', argument: 'variant' },
+        },
+      );
+    }
+
+    if (registeredRoot.namespaceId !== this.namespaceId) {
+      throw ormError(
+        'ORM.ARGUMENT_INVALID',
+        'variant() requires a variant root from the receiver namespace',
+        {
+          meta: {
+            method: 'variant',
+            receiverNamespace: this.namespaceId,
+            argumentNamespace: registeredRoot.namespaceId,
+          },
+        },
+      );
+    }
+
+    const variantName = blindCast<
+      V,
+      'registered model root identity has already been validated against the receiver polymorphic variants'
+    >(registeredRoot.modelName);
     const variantEntry = variants[variantName];
     if (!variantEntry) {
-      return blindCast<
-        Collection<TContract, ModelName, VariantModelRow<TContract, ModelName, V>, ReturnState>,
-        'variant() preserves its declared static narrowing when runtime metadata lacks the selected variant'
-      >(this);
+      throw ormError('ORM.ARGUMENT_INVALID', 'variant() requires a declared variant root', {
+        meta: { method: 'variant', argument: 'variant', variant: registeredRoot.modelName },
+      });
     }
 
     const columnName = resolveFieldToColumn(
@@ -466,10 +547,12 @@ class CollectionImpl<
         )
       : this.state.filters;
 
-    return this.#cloneWithRow<VariantModelRow<TContract, ModelName, V>, ReturnState>({
-      filters: [...filtersWithoutPreviousVariant, filter],
-      variantName,
-    });
+    return this.#cloneWithRow<VariantModelRow<TContract, ModelName, V, State['nsId']>, ReturnState>(
+      {
+        filters: [...filtersWithoutPreviousVariant, filter],
+        variantName,
+      },
+    );
   }
 
   /**
@@ -568,12 +651,13 @@ class CollectionImpl<
     RefinedResult extends IncludeRefinementResult<
       TContract,
       RelatedName,
-      IsToMany
+      IsToMany,
+      WithNsId<DefaultCollectionTypeState, TargetNs>
     > = IncludeRefinementCollection<
       TContract,
       RelatedName,
       SimplifyDeep<InferRootRow<TContract, RelatedName, TargetNs>>,
-      CollectionTypeState,
+      WithNsId<DefaultCollectionTypeState, TargetNs>,
       IsToMany
     >,
   >(
@@ -583,7 +667,7 @@ class CollectionImpl<
         TContract,
         RelatedName,
         SimplifyDeep<InferRootRow<TContract, RelatedName, TargetNs>>,
-        DefaultCollectionTypeState,
+        WithNsId<DefaultCollectionTypeState, TargetNs>,
         IsToMany
       >,
     ) => RefinedResult,
@@ -631,12 +715,13 @@ class CollectionImpl<
     RefinedResult extends IncludeRefinementResult<
       TContract,
       RelatedName,
-      IsToMany
+      IsToMany,
+      WithNsId<DefaultCollectionTypeState, TargetNs>
     > = IncludeRefinementCollection<
       TContract,
       RelatedName,
       SimplifyDeep<InferRootRow<TContract, RelatedName, TargetNs>>,
-      CollectionTypeState,
+      WithNsId<DefaultCollectionTypeState, TargetNs>,
       IsToMany
     >,
   >(
@@ -646,7 +731,7 @@ class CollectionImpl<
         TContract,
         RelatedName,
         SimplifyDeep<InferRootRow<TContract, RelatedName, TargetNs>>,
-        DefaultCollectionTypeState,
+        WithNsId<DefaultCollectionTypeState, TargetNs>,
         IsToMany
       >,
     ) => RefinedResult,
@@ -683,7 +768,7 @@ class CollectionImpl<
       const nestedCollection = this.#createCollection<
         RelatedName,
         SimplifyDeep<InferRootRow<TContract, RelatedName, TargetNs>>,
-        DefaultCollectionTypeState
+        WithNsId<DefaultCollectionTypeState, TargetNs>
       >(
         blindCast<RelatedName, 'resolved include target matches the type-level relation owner'>(
           relation.relatedModelName,
@@ -2589,6 +2674,7 @@ class CollectionImpl<
         state: this.state,
         registry: this.registry,
         includeRefinementMode: this.includeRefinementMode,
+        rootOwner: this.rootOwner,
       }),
     );
   }
@@ -2619,6 +2705,7 @@ class CollectionImpl<
         state,
         registry: this.registry,
         includeRefinementMode: this.includeRefinementMode,
+        rootOwner: this.rootOwner,
       }),
     );
   }
@@ -2647,6 +2734,7 @@ class CollectionImpl<
         state: options.state,
         registry: options.registry ?? this.registry,
         includeRefinementMode: options.includeRefinementMode ?? this.includeRefinementMode,
+        rootOwner: options.rootOwner ?? this.rootOwner,
       }),
     );
   }
@@ -2731,6 +2819,7 @@ const collectionInstanceMemberNames = [
   'state',
   'registry',
   'includeRefinementMode',
+  'rootOwner',
 ] as const;
 
 /**

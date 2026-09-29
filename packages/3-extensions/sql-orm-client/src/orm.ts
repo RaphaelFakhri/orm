@@ -6,7 +6,13 @@ import type {
 } from '@internal/sql-relational-core/query-lane-context';
 import { blindCast } from '@internal/utils/casts';
 import { aggregateOperationNames } from './aggregate-operations';
-import { type Collection, CollectionBase, reservedCollectionMemberNames } from './collection';
+import {
+  type Collection,
+  CollectionBase,
+  registerModelRoot,
+  reservedCollectionMemberNames,
+} from './collection';
+import type { CollectionRootOwner, ModelRootIdentity } from './collection-internal-types';
 import { ormError } from './orm-errors';
 import { domainModelNamesInNamespace, domainModelTableInNamespace } from './storage-resolution';
 import type {
@@ -56,8 +62,9 @@ type ModelCollection<
       ModelName,
       InferRootRow<TContract, ModelName, NsId>,
       WithNsId<DefaultCollectionTypeState, NsId>
-    >
-  : CustomCollectionForKey<Collections, ModelName>;
+    > &
+      ModelRootIdentity<NsId, ModelName>
+  : CustomCollectionForKey<Collections, ModelName> & ModelRootIdentity<NsId, ModelName>;
 
 type NamespaceModelNames<
   TContract extends Contract<SqlStorage>,
@@ -127,6 +134,7 @@ export function orm<
   const contract = context.contract;
   const ctx: CollectionContext<TContract> = { runtime, context };
   const collectionRegistry = createCollectionRegistry(contract, collections);
+  const rootOwner: CollectionRootOwner = { id: Symbol() };
 
   type AnyCollection = Collection<TContract, string, unknown, CollectionTypeState>;
 
@@ -144,11 +152,14 @@ export function orm<
       ) => AnyCollection,
       'a registered collection class is a Collection subclass constructor'
     >(CollectionClass);
-    return new CollectionCtor(ctx, modelName, {
+    const collection = new CollectionCtor(ctx, modelName, {
       registry: collectionRegistry,
       namespaceId,
+      rootOwner,
       ...(tableName !== undefined ? { tableName } : {}),
     });
+    registerModelRoot(collection, rootOwner);
+    return collection;
   }
 
   const namespaceFacets = new Map<string, object>();
@@ -163,7 +174,7 @@ export function orm<
     const facet = new Proxy(
       {},
       {
-        get(_facetTarget, modelProp: string | symbol): unknown {
+        get(_facetTarget, modelProp: string | symbol): AnyCollection | undefined {
           if (typeof modelProp !== 'string') {
             return undefined;
           }
@@ -188,19 +199,25 @@ export function orm<
     return facet;
   }
 
-  return new Proxy({} as OrmClient<TContract, Collections>, {
-    get(_target, prop: string | symbol): unknown {
-      if (typeof prop !== 'string') {
-        return undefined;
-      }
+  return new Proxy(
+    blindCast<
+      OrmClient<TContract, Collections>,
+      'orm client proxy lazily materializes namespace facets while preserving the static client map type'
+    >({}),
+    {
+      get(_target, prop: string | symbol): object | undefined {
+        if (typeof prop !== 'string') {
+          return undefined;
+        }
 
-      if (!Object.hasOwn(contract.domain.namespaces, prop)) {
-        return undefined;
-      }
+        if (!Object.hasOwn(contract.domain.namespaces, prop)) {
+          return undefined;
+        }
 
-      return namespaceFacet(prop);
+        return namespaceFacet(prop);
+      },
     },
-  });
+  );
 }
 
 function createCollectionRegistry<
@@ -241,7 +258,10 @@ function isCollectionClass(value: unknown): value is AnyCollectionClass {
   if (typeof value !== 'function') {
     return false;
   }
-  const candidate = value as { prototype?: unknown };
+  const candidate = blindCast<
+    { prototype?: unknown },
+    'collection class guard only reads prototype after function validation'
+  >(value);
   if (!candidate.prototype || typeof candidate.prototype !== 'object') {
     return false;
   }

@@ -5,8 +5,10 @@ import {
 } from '@internal/framework-components/runtime';
 import type { Preparable } from '@internal/sql-relational-core/plan';
 import type { PreparedStatement } from '@internal/sql-runtime';
+import { blindCast } from '@internal/utils/casts';
 import { describe, expect, expectTypeOf, it, vi } from 'vitest';
-import { Collection } from '../src/collection';
+import type { Collection } from '../src/collection';
+import { orm } from '../src/orm';
 import { createPreparedRowQuery } from '../src/prepared-row-query';
 import { createCollectionFor } from './collection-fixtures';
 import { buildStiPolyContract, createMockRuntime, getTestContext, isSelectAst } from './helpers';
@@ -98,9 +100,21 @@ describe('prepared collection', () => {
 
   it('maps selected variant fields through the same prepared row consumer', async () => {
     const runtime = createMockRuntime();
-    const context = { ...getTestContext(), contract: buildStiPolyContract() };
-    const collection = new Collection({ runtime, context }, 'User', { namespaceId: 'public' });
-    const selected = collection.variant('Admin' as never).select('name', 'role' as never);
+    const contract = buildStiPolyContract();
+    const context = { ...getTestContext(), contract };
+    const db = blindCast<
+      {
+        public: {
+          User: Collection<ReturnType<typeof buildStiPolyContract>, 'User'>;
+          Admin: Collection<ReturnType<typeof buildStiPolyContract>, 'Admin'>;
+        };
+      },
+      'patched STI polymorphism test contract adds User variants outside the static fixture type'
+    >(orm({ runtime, context }));
+    const selected = db.public.User.variant(db.public.Admin as never).select(
+      'name',
+      'role' as never,
+    );
     const prepared = prepareRows(selected.prepared.all(), () => [
       { name: 'Admin', kind: 'admin', role: 'owner', plan: null },
     ]);

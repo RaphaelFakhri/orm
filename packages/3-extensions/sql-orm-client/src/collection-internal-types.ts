@@ -22,7 +22,27 @@ export interface CollectionInit<TContract extends Contract<SqlStorage>> {
   readonly state?: import('./types').CollectionState | undefined;
   readonly registry?: ReadonlyMap<string, CollectionConstructor<TContract>> | undefined;
   readonly includeRefinementMode?: boolean | undefined;
+  readonly rootOwner?: CollectionRootOwner | undefined;
 }
+
+export interface CollectionRootOwner {
+  readonly id: symbol;
+}
+
+export const ModelRootIdentitySymbol: unique symbol = Symbol();
+
+export type ModelRootIdentity<NsId extends string, ModelName extends string> = {
+  readonly [ModelRootIdentitySymbol]: {
+    readonly nsId: NsId;
+    readonly modelName: ModelName;
+  };
+};
+
+export type ModelRootNamespace<Root> =
+  Root extends ModelRootIdentity<infer NsId, string> ? NsId : never;
+
+export type ModelRootModel<Root> =
+  Root extends ModelRootIdentity<string, infer ModelName> ? ModelName : never;
 
 export type CollectionConstructor<TContract extends Contract<SqlStorage>> = new (
   ctx: CollectionContext<TContract>,
@@ -103,8 +123,9 @@ export type IncludeRefinementResult<
   TContract extends Contract<SqlStorage>,
   RelatedName extends string,
   IsToMany extends boolean,
+  State extends CollectionTypeState = CollectionTypeState,
 > =
-  | IncludeRefinementCollection<TContract, RelatedName, unknown, CollectionTypeState, IsToMany>
+  | IncludeRefinementCollection<TContract, RelatedName, unknown, State, IsToMany>
   | (IsToMany extends true
       ? IncludeScalar<unknown> | IncludeCombine<Record<string, unknown>>
       : never);
