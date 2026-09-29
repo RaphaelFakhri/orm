@@ -1,10 +1,10 @@
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import type {
-  AuthoringDataTypeEntry,
   AuthoringEntityTypeNamespace,
   AuthoringPslBlockDescriptorNamespace,
   AuthoringTypeNamespace,
+  DataTypeAuthoringEntry,
 } from '@internal/framework-components/authoring';
 import {
   assembleAuthoringContributions,
@@ -242,11 +242,11 @@ interface ActualPostgresDefaultsModule {
 }
 
 interface ActualPostgresDataTypesModule {
-  createPostgresDataTypeEntries(): Readonly<Record<string, AuthoringDataTypeEntry>>;
+  postgresDataTypeEntries(): Readonly<Record<string, DataTypeAuthoringEntry>>;
 }
 
 interface ActualSqliteDataTypesModule {
-  createSqliteDataTypeEntries(): Readonly<Record<string, AuthoringDataTypeEntry>>;
+  sqliteDataTypeEntries(): Readonly<Record<string, DataTypeAuthoringEntry>>;
 }
 
 interface ActualMongoAttributeModule {
@@ -358,7 +358,7 @@ function completeWithActualStack(
   options: {
     readonly clientSupportsSnippets?: boolean;
     readonly controlMutationDefaults?: typeof controlMutationDefaults;
-    readonly dataTypes?: Readonly<Record<string, AuthoringDataTypeEntry>>;
+    readonly dataTypes?: Readonly<Record<string, DataTypeAuthoringEntry>>;
   } = {},
 ) {
   const contributions = actualAuthoringContributions(stack);
@@ -1350,14 +1350,14 @@ describe('providePslCompletionItems', () => {
     const stack = await actualSqlStack();
     const [postgres, sqlite] = await Promise.all([
       importFromPackageRoot<ActualPostgresDataTypesModule>(
-        '../../../3-targets/6-adapters/postgres/src/core/data-type-authoring.ts',
+        '../../../3-targets/3-targets/postgres/src/exports/data-types.ts',
       ),
       importFromPackageRoot<ActualSqliteDataTypesModule>(
-        '../../../3-targets/6-adapters/sqlite/src/core/data-type-authoring.ts',
+        '../../../3-targets/3-targets/sqlite/src/exports/data-types.ts',
       ),
     ]);
     const complete = (
-      dataTypes: Readonly<Record<string, AuthoringDataTypeEntry>>,
+      dataTypes: Readonly<Record<string, DataTypeAuthoringEntry>>,
       clientSupportsSnippets: boolean,
     ) =>
       completeWithActualStack('model Post { value String @default(|) }', stack, {
@@ -1370,9 +1370,9 @@ describe('providePslCompletionItems', () => {
         newText: item.textEdit?.newText,
         insertTextFormat: item.insertTextFormat,
       }));
-    const postgresEntries = postgres.createPostgresDataTypeEntries();
+    const postgresEntries = postgres.postgresDataTypeEntries();
     const documentationOf = (
-      entries: Readonly<Record<string, AuthoringDataTypeEntry>>,
+      entries: Readonly<Record<string, DataTypeAuthoringEntry>>,
       tag: string,
     ) =>
       Object.values(entries).find(
@@ -1385,7 +1385,7 @@ describe('providePslCompletionItems', () => {
       insertTextFormat: undefined,
     });
     const tag = (
-      entries: Readonly<Record<string, AuthoringDataTypeEntry>>,
+      entries: Readonly<Record<string, DataTypeAuthoringEntry>>,
       label: string,
       snippet: boolean,
     ) => ({
@@ -1400,22 +1400,19 @@ describe('providePslCompletionItems', () => {
       value('false'),
       tag(postgresEntries, 'json', true),
       tag(postgresEntries, 'sql', true),
-      tag(postgresEntries, 'pg.sql', true),
     ]);
-    const sqliteEntries = sqlite.createSqliteDataTypeEntries();
+    const sqliteEntries = sqlite.sqliteDataTypeEntries();
     expect(complete(sqliteEntries, true)).toEqual([
       value('true'),
       value('false'),
       tag(sqliteEntries, 'json', true),
       tag(sqliteEntries, 'sql', true),
-      tag(sqliteEntries, 'sqlite.sql', true),
     ]);
     expect(complete(postgresEntries, false)).toEqual([
       value('true'),
       value('false'),
       tag(postgresEntries, 'json', false),
       tag(postgresEntries, 'sql', false),
-      tag(postgresEntries, 'pg.sql', false),
     ]);
 
     // Each tag carries the text of the tag it names, not every registered tag's text.

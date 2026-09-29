@@ -3,14 +3,18 @@
  *
  * One declaration serves both directions: the adapter contributes these to the assembled stack, so
  * the interpreter reads a written default through them, and `contract infer` prints a stored value
- * back through the same ones. The `sql` and `pg.sql` tags lower their own bodies and name no data
- * type, so they sit beside these in the adapter, where the family's lowering entry is reachable.
+ * back through the same ones. `sql` is the tag of `sql/expression`, which the SQL family defines and
+ * this target registers.
  *
  * ADR 254.
  */
 
 import type { JsonValue } from '@internal/contract/types';
-import type { AuthoringDataTypeEntry } from '@internal/framework-components/authoring';
+import type { DataTypeAuthoringEntry } from '@internal/framework-components/authoring';
+import {
+  SQL_EXPRESSION_DATA_TYPE_ID,
+  sqlExpressionAuthoringEntry,
+} from '@internal/sql-contract/sql-expression';
 import {
   createNumberClassifier,
   numeralText,
@@ -50,7 +54,7 @@ function printNumber(value: JsonValue): string {
   return typeof value === 'number' ? numeralText(value) : String(value);
 }
 
-export function postgresDataTypeEntries(): Readonly<Record<string, AuthoringDataTypeEntry>> {
+export function postgresDataTypeEntries(): Readonly<Record<string, DataTypeAuthoringEntry>> {
   return {
     [pgText.id]: {
       written: { kind: 'plain', syntax: 'string', parse: (text) => text },
@@ -77,5 +81,6 @@ export function postgresDataTypeEntries(): Readonly<Record<string, AuthoringData
       print: printJsonBody,
       documentation: 'Reads the body as a JSON document and stores it as the default value.',
     },
+    [SQL_EXPRESSION_DATA_TYPE_ID]: sqlExpressionAuthoringEntry,
   };
 }

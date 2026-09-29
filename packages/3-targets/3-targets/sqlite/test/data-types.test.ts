@@ -1,3 +1,4 @@
+import { SQL_EXPRESSION_DATA_TYPE_ID } from '@internal/sql-contract/sql-expression';
 import { describe, expect, it } from 'vitest';
 import {
   sqliteBigint,
@@ -16,6 +17,7 @@ const sourcesOf = (type: { readonly casts: Readonly<Record<string, unknown>> }) 
 describe('the data types this target registers', () => {
   it('registers the types it distinguishes, not one per storage class', () => {
     expect(sqliteDataTypes.map((type) => type.id).sort()).toEqual([
+      'sql/expression',
       'sqlite/bigint',
       'sqlite/blob',
       'sqlite/datetime',
@@ -36,6 +38,16 @@ describe('the data types this target registers', () => {
     ['sqlite/real', sqliteReal, ['sqlite/bigint', 'sqlite/integer']],
   ])('%s casts from exactly the types the design names', (_id, type, sources) => {
     expect(sourcesOf(type)).toEqual(sources);
+  });
+
+  it('declares no type that takes a sql/expression value through a cast or a list cast', () => {
+    expect(
+      sqliteDataTypes.filter(
+        (type) =>
+          'sql/expression' in type.casts ||
+          type.listCast?.of.includes(SQL_EXPRESSION_DATA_TYPE_ID) === true,
+      ),
+    ).toEqual([]);
   });
 });
 

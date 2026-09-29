@@ -1,3 +1,4 @@
+import { SQL_EXPRESSION_DATA_TYPE_ID } from '@internal/sql-contract/sql-expression';
 import { describe, expect, it } from 'vitest';
 import {
   pgBit,
@@ -61,6 +62,7 @@ describe('the data types this target registers', () => {
       'pg/uuid',
       'pg/varbit',
       'pg/varchar',
+      'sql/expression',
     ]);
   });
 
@@ -97,6 +99,16 @@ describe('the data types this target registers', () => {
 
   it('declares no list cast, because no type of this target holds several elements', () => {
     expect(postgresDataTypes.filter((type) => type.listCast !== undefined)).toEqual([]);
+  });
+
+  it('declares no type that takes a sql/expression value through a cast or a list cast', () => {
+    expect(
+      postgresDataTypes.filter(
+        (type) =>
+          'sql/expression' in type.casts ||
+          type.listCast?.of.includes(SQL_EXPRESSION_DATA_TYPE_ID) === true,
+      ),
+    ).toEqual([]);
   });
 });
 
