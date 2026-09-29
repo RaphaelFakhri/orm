@@ -201,3 +201,24 @@ Loading a SQL contract whose columns or `storage.types` entries carry `nativeTyp
 **Why:** after the field is dropped, the contract's stored hash no longer matches its content, and accepting it would bypass the snapshot hash check from #30086.
 
 **Consequence:** the test `test/integration/test/contract-format/supabase-before-dbgenerated-removal.test.ts` changes from "the old contract loads" to "the old contract is refused, naming an entry that carries `nativeType`".
+
+## Engineering decisions (made by the orchestrator, 2026-09-29)
+
+Will asked for these to be decided without him. Each closes the question named in brackets.
+
+1. **Where the facts are declared (Q2).** The SQL family exports a helper, `sqlDataType(id, spec)`. Targets and extensions call it to declare their own types; the family declares none. The framework `DataType` gains one field, the parameter schema. The database name, the other names and the rendering are SQL facts held by the family's SQL data type, because the framework layer may not contain SQL words.
+2. **Which name is the name (Q3).** A data type's name is the name contracts store today (`int4`, `character varying`, `timestamptz`), so migration SQL does not change. Every other name a database may report is listed as another name (`integer`, `varchar`, `timestamp with time zone`). The Postgres codec hook `nativeType(params)` is deleted; runtime parameter casts use the data type's rendered name, so `$1::integer` becomes `$1::int4`.
+3. **The column stores the data type id.** A column and a `storage.types` entry replace `nativeType` with `dataType`, for example `{"codecId":"pg/int8number@1","dataType":"pg/int8"}`. Code that has no stack, such as the contract validator's junction-column check, compares `dataType` and parameters. The rendered name is derived, never stored. Loading a contract checks that each column's codec represents its `dataType`. An enum column's data type is `pg/enum`; the enum's own name stays in `typeParams.typeName`.
+4. **One parameter object (Q5).** A column keeps one `typeParams` object. The data type's parameter schema owns the keys the database type has and renders only those. A codec may declare further keys of its own, as `arktype/json@1` does.
+5. **What a type constructor names (Q6).** A constructor names a codec and maps its arguments onto parameters. The data type follows from the codec. The template's `nativeType` is deleted. Assembly refuses a constructor whose codec is not registered. Arguments are validated by the data type's parameter schema, so the per-constructor minimum and maximum are deleted.
+6. **Who registers (Q7).** The pack that holds the codecs registers the data types and the type constructors: the Postgres and SQLite targets, not their adapters. TypeScript column helpers keep their public import paths.
+7. **One source per fact (Q12).** Deleted: codec `targetTypes`, the Postgres codec `nativeType(params)` hook, the `expandNativeType` hooks, pack metadata `types.storage[].nativeType`, `normalizeNativeType`, `typeMetadataRegistry`, the `storageTypes` annotations, and the hand tables in `postgres-type-map.ts`, `infer-default-codec.ts`, `normalizeFormattedType` and `FORMAT_TYPE_DISPLAY`.
+8. **Aliases and presets (Q13).** `types {}` aliases and field presets keep working and lower through the new template. Retiring them is TML-3055's decision.
+9. **Values in migration SQL (Q14).** Not a data type's job; answered by Will in the TML-3253 discussion. TML-3283 closes with that answer.
+10. **Which codec reads a reported default (Q15).** When verifying, the contract column's own codec. When inferring, the codec of the constructor `contract infer` prints for that data type.
+11. **Mongo (Q11).** Mongo changes only where the framework changes force it: the eleven Mongo data types take their BSON type names when `targetTypes` is deleted, the collection validator reads the name from the data type, and Mongo constructors drop their unused `nativeType`. No Mongo casts, written values or validator format changes.
+12. **Other written values (Q10).** Enum member values and `@@base` discriminator values are read through the same rule as a default: the written value has a data type, and the receiving column's type must be that type or cast from it. Policy `permissive` is not changed.
+
+## Still open, for Will
+
+Q4 (verify compares by data type), Q8 (what `contract infer` prints for `vector` and `geometry`), Q9 (function arguments and the SQL expression literals project), Q16 (order against TML-3253). Neither TML-3253 nor any SQL expression literals ticket has started as of 2026-09-29; #30381 merged on 2026-09-28.
