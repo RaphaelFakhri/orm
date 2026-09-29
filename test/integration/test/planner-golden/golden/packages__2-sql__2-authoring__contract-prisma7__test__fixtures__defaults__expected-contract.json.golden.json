@@ -1,0 +1,71 @@
+{
+  "contract": "packages/2-sql/2-authoring/contract-prisma7/test/fixtures/defaults/expected-contract.json",
+  "target": "postgres",
+  "extensions": [],
+  "planned": {
+    "kind": "success",
+    "operations": [
+      {
+        "id": "createNativeEnumType.user_role",
+        "label": "Create enum type \"user_role\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "type",
+            "name": "user_role"
+          }
+        },
+        "precheck": [],
+        "execute": [
+          {
+            "description": "create enum type \"user_role\"",
+            "sql": "CREATE TYPE \"public\".\"user_role\" AS ENUM ('user', 'ADMIN')",
+            "params": []
+          }
+        ],
+        "postcheck": []
+      },
+      {
+        "id": "table.Defaults",
+        "label": "Create table \"Defaults\"",
+        "summary": "Creates table \"Defaults\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "table",
+            "name": "Defaults"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure table \"Defaults\" does not exist",
+            "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+            "params": [
+              "\"public\".\"Defaults\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "create table \"Defaults\"",
+            "sql": "CREATE TABLE \"public\".\"Defaults\" (\n  \"id\" SERIAL NOT NULL,\n  \"bigSequence\" BIGSERIAL NOT NULL,\n  \"createdAt\" timestamp(3) DEFAULT (now()) NOT NULL,\n  \"createdAtTz\" timestamptz(6) DEFAULT (now()) NOT NULL,\n  \"generated\" uuid DEFAULT (gen_random_uuid()) NOT NULL,\n  \"stringLiteral\" text DEFAULT 'hello' NOT NULL,\n  \"intLiteral\" int4 DEFAULT 42 NOT NULL,\n  \"bigIntLiteral\" int8 DEFAULT '9007199254740993'::int8 NOT NULL,\n  \"floatLiteral\" float8 DEFAULT 1.5 NOT NULL,\n  \"decimalLiteral\" numeric(65,30) DEFAULT '12.34'::numeric(65,30) NOT NULL,\n  \"booleanLiteral\" bool DEFAULT true NOT NULL,\n  \"dateTimeLiteral\" timestamp(3) DEFAULT ('2024-01-01 00:00:00') NOT NULL,\n  \"jsonLiteral\" jsonb DEFAULT '{\"a\":1}'::jsonb NOT NULL,\n  \"bytesLiteral\" bytea DEFAULT ('\\x68656c6c6f') NOT NULL,\n  \"stringList\" text[] DEFAULT ARRAY['a', 'b']::text[],\n  \"intList\" int4[] DEFAULT ARRAY[1, 2]::int4[],\n  \"enumMember\" \"user_role\" DEFAULT 'user'::\"user_role\" NOT NULL,\n  \"enumList\" \"user_role\"[] DEFAULT ARRAY['ADMIN']::\"user_role\"[],\n  PRIMARY KEY (\"id\")\n)",
+            "params": []
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify table \"Defaults\" exists",
+            "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+            "params": [
+              "\"public\".\"Defaults\""
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -1,7 +1,8 @@
 {
   "contract": "test/integration/test/authoring/parity/default-pack-slugid/expected.contract.json",
   "target": "postgres",
-  "extensions": [
+  "extensions": [],
+  "extensionsNotLoaded": [
     "slugid-defaults"
   ],
   "planned": {

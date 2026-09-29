@@ -1,0 +1,49 @@
+{
+  "contract": "packages/2-sql/2-authoring/contract-prisma7/test/fixtures/datetime-defaults/expected-contract.json",
+  "target": "postgres",
+  "extensions": [],
+  "planned": {
+    "kind": "success",
+    "operations": [
+      {
+        "id": "table.Scalars",
+        "label": "Create table \"Scalars\"",
+        "summary": "Creates table \"Scalars\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "table",
+            "name": "Scalars"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure table \"Scalars\" does not exist",
+            "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+            "params": [
+              "\"public\".\"Scalars\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "create table \"Scalars\"",
+            "sql": "CREATE TABLE \"public\".\"Scalars\" (\n  \"id\" int4 NOT NULL,\n  \"tsZ\" timestamp(3) DEFAULT ('2024-01-02 03:04:05') NOT NULL,\n  \"tsMs\" timestamp(3) DEFAULT ('2024-01-02 03:04:05.123') NOT NULL,\n  \"tsPlus\" timestamp(3) DEFAULT ('2024-01-02 03:04:05') NOT NULL,\n  \"tsMinus\" timestamp(3) DEFAULT ('2024-01-02 23:04:05') NOT NULL,\n  \"tsMicro\" timestamp(6) DEFAULT ('2024-01-02 03:04:05.123456') NOT NULL,\n  \"tzZ\" timestamptz(6) DEFAULT ('2024-01-02 03:04:05+00') NOT NULL,\n  \"tzPlus\" timestamptz(6) DEFAULT ('2024-01-02 01:04:05+00') NOT NULL,\n  \"dZ\" date DEFAULT ('2024-01-02') NOT NULL,\n  \"dMidnight\" date DEFAULT ('2024-01-02') NOT NULL,\n  \"dMinus\" date DEFAULT ('2024-01-02') NOT NULL,\n  \"tZ\" time(6) DEFAULT ('12:34:56') NOT NULL,\n  \"tMs\" time(6) DEFAULT ('12:34:56.789') NOT NULL,\n  \"tPlus\" time(6) DEFAULT ('03:04:05') NOT NULL,\n  \"ttzZ\" timetz(6) DEFAULT ('12:34:56+00') NOT NULL,\n  \"ttzPlus\" timetz(6) DEFAULT ('03:04:05+02') NOT NULL,\n  \"bytes\" bytea DEFAULT ('\\x68656c6c6f') NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+            "params": []
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify table \"Scalars\" exists",
+            "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+            "params": [
+              "\"public\".\"Scalars\""
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

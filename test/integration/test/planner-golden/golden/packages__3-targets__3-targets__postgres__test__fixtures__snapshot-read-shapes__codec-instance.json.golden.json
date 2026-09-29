@@ -1,0 +1,10 @@
+{
+  "contract": "packages/3-targets/3-targets/postgres/test/fixtures/snapshot-read-shapes/codec-instance.json",
+  "target": "postgres",
+  "extensions": [],
+  "planned": {
+    "kind": "plannerError",
+    "code": "CONTRACT.PACK_CONTRIBUTION_INVALID",
+    "message": "Column declares typeParams for nativeType \"vector\" but no expandNativeType hook is registered for codecId \"pg/vector@1\". Ensure the extension providing this codec is included in extensions."
+  }
+}

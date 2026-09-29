@@ -1,0 +1,205 @@
+{
+  "contract": "packages/2-sql/2-authoring/contract-prisma7/test/fixtures/keys/expected-contract.json",
+  "target": "postgres",
+  "extensions": [],
+  "planned": {
+    "kind": "success",
+    "operations": [
+      {
+        "id": "table.Composite",
+        "label": "Create table \"Composite\"",
+        "summary": "Creates table \"Composite\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "table",
+            "name": "Composite"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure table \"Composite\" does not exist",
+            "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+            "params": [
+              "\"public\".\"Composite\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "create table \"Composite\"",
+            "sql": "CREATE TABLE \"public\".\"Composite\" (\n  \"a\" int4 NOT NULL,\n  \"b_col\" text NOT NULL,\n  PRIMARY KEY (\"a\", \"b_col\")\n)",
+            "params": []
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify table \"Composite\" exists",
+            "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+            "params": [
+              "\"public\".\"Composite\""
+            ]
+          }
+        ]
+      },
+      {
+        "id": "table.Single",
+        "label": "Create table \"Single\"",
+        "summary": "Creates table \"Single\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "table",
+            "name": "Single"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure table \"Single\" does not exist",
+            "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+            "params": [
+              "\"public\".\"Single\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "create table \"Single\"",
+            "sql": "CREATE TABLE \"public\".\"Single\" (\n  \"pk\" text NOT NULL,\n  \"code\" int4 NOT NULL,\n  \"x\" int4 NOT NULL,\n  \"y\" int4 NOT NULL,\n  PRIMARY KEY (\"pk\")\n)",
+            "params": []
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify table \"Single\" exists",
+            "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+            "params": [
+              "\"public\".\"Single\""
+            ]
+          }
+        ]
+      },
+      {
+        "id": "index.Composite.Composite_b_col_a_key",
+        "label": "Create index \"Composite_b_col_a_key\" on \"Composite\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "index",
+            "name": "Composite_b_col_a_key",
+            "table": "Composite"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure index \"Composite_b_col_a_key\" does not exist",
+            "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+            "params": [
+              "\"public\".\"Composite_b_col_a_key\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "create index \"Composite_b_col_a_key\"",
+            "sql": "CREATE UNIQUE INDEX \"Composite_b_col_a_key\" ON \"public\".\"Composite\" (\"b_col\", \"a\")",
+            "params": []
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify index \"Composite_b_col_a_key\" exists",
+            "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+            "params": [
+              "\"public\".\"Composite_b_col_a_key\""
+            ]
+          }
+        ]
+      },
+      {
+        "id": "index.Single.Single_x_y_key",
+        "label": "Create index \"Single_x_y_key\" on \"Single\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "index",
+            "name": "Single_x_y_key",
+            "table": "Single"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure index \"Single_x_y_key\" does not exist",
+            "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+            "params": [
+              "\"public\".\"Single_x_y_key\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "create index \"Single_x_y_key\"",
+            "sql": "CREATE UNIQUE INDEX \"Single_x_y_key\" ON \"public\".\"Single\" (\"x\", \"y\")",
+            "params": []
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify index \"Single_x_y_key\" exists",
+            "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+            "params": [
+              "\"public\".\"Single_x_y_key\""
+            ]
+          }
+        ]
+      },
+      {
+        "id": "index.Single.Single_code_key",
+        "label": "Create index \"Single_code_key\" on \"Single\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "index",
+            "name": "Single_code_key",
+            "table": "Single"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure index \"Single_code_key\" does not exist",
+            "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+            "params": [
+              "\"public\".\"Single_code_key\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "create index \"Single_code_key\"",
+            "sql": "CREATE UNIQUE INDEX \"Single_code_key\" ON \"public\".\"Single\" (\"code\")",
+            "params": []
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify index \"Single_code_key\" exists",
+            "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+            "params": [
+              "\"public\".\"Single_code_key\""
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

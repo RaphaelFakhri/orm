@@ -1,0 +1,524 @@
+{
+  "contract": "packages/2-sql/2-authoring/contract-prisma7/test/fixtures/relation-name-in-two-schemas/expected-contract.json",
+  "target": "postgres",
+  "extensions": [],
+  "planned": {
+    "kind": "success",
+    "operations": [
+      {
+        "id": "schema.one",
+        "label": "Create schema \"one\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres"
+        },
+        "precheck": [],
+        "execute": [
+          {
+            "description": "Create schema \"one\"",
+            "sql": "CREATE SCHEMA IF NOT EXISTS \"one\"",
+            "params": []
+          }
+        ],
+        "postcheck": []
+      },
+      {
+        "id": "schema.two",
+        "label": "Create schema \"two\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres"
+        },
+        "precheck": [],
+        "execute": [
+          {
+            "description": "Create schema \"two\"",
+            "sql": "CREATE SCHEMA IF NOT EXISTS \"two\"",
+            "params": []
+          }
+        ],
+        "postcheck": []
+      },
+      {
+        "id": "table.A",
+        "label": "Create table \"A\"",
+        "summary": "Creates table \"A\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "one",
+            "objectType": "table",
+            "name": "A"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure table \"A\" does not exist",
+            "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+            "params": [
+              "\"one\".\"A\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "create table \"A\"",
+            "sql": "CREATE TABLE \"one\".\"A\" (\n  \"id\" int4 NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+            "params": []
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify table \"A\" exists",
+            "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+            "params": [
+              "\"one\".\"A\""
+            ]
+          }
+        ]
+      },
+      {
+        "id": "table.B",
+        "label": "Create table \"B\"",
+        "summary": "Creates table \"B\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "one",
+            "objectType": "table",
+            "name": "B"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure table \"B\" does not exist",
+            "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+            "params": [
+              "\"one\".\"B\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "create table \"B\"",
+            "sql": "CREATE TABLE \"one\".\"B\" (\n  \"id\" int4 NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+            "params": []
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify table \"B\" exists",
+            "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+            "params": [
+              "\"one\".\"B\""
+            ]
+          }
+        ]
+      },
+      {
+        "id": "table._X",
+        "label": "Create table \"_X\"",
+        "summary": "Creates table \"_X\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "one",
+            "objectType": "table",
+            "name": "_X"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure table \"_X\" does not exist",
+            "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+            "params": [
+              "\"one\".\"_X\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "create table \"_X\"",
+            "sql": "CREATE TABLE \"one\".\"_X\" (\n  \"A\" int4 NOT NULL,\n  \"B\" int4 NOT NULL,\n  PRIMARY KEY (\"A\", \"B\")\n)",
+            "params": []
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify table \"_X\" exists",
+            "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+            "params": [
+              "\"one\".\"_X\""
+            ]
+          }
+        ]
+      },
+      {
+        "id": "table.C",
+        "label": "Create table \"C\"",
+        "summary": "Creates table \"C\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "two",
+            "objectType": "table",
+            "name": "C"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure table \"C\" does not exist",
+            "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+            "params": [
+              "\"two\".\"C\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "create table \"C\"",
+            "sql": "CREATE TABLE \"two\".\"C\" (\n  \"id\" int4 NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+            "params": []
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify table \"C\" exists",
+            "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+            "params": [
+              "\"two\".\"C\""
+            ]
+          }
+        ]
+      },
+      {
+        "id": "table.D",
+        "label": "Create table \"D\"",
+        "summary": "Creates table \"D\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "two",
+            "objectType": "table",
+            "name": "D"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure table \"D\" does not exist",
+            "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+            "params": [
+              "\"two\".\"D\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "create table \"D\"",
+            "sql": "CREATE TABLE \"two\".\"D\" (\n  \"id\" int4 NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+            "params": []
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify table \"D\" exists",
+            "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+            "params": [
+              "\"two\".\"D\""
+            ]
+          }
+        ]
+      },
+      {
+        "id": "table._X",
+        "label": "Create table \"_X\"",
+        "summary": "Creates table \"_X\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "two",
+            "objectType": "table",
+            "name": "_X"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure table \"_X\" does not exist",
+            "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+            "params": [
+              "\"two\".\"_X\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "create table \"_X\"",
+            "sql": "CREATE TABLE \"two\".\"_X\" (\n  \"A\" int4 NOT NULL,\n  \"B\" int4 NOT NULL,\n  PRIMARY KEY (\"A\", \"B\")\n)",
+            "params": []
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify table \"_X\" exists",
+            "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+            "params": [
+              "\"two\".\"_X\""
+            ]
+          }
+        ]
+      },
+      {
+        "id": "index._X._X_B_index",
+        "label": "Create index \"_X_B_index\" on \"_X\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "one",
+            "objectType": "index",
+            "name": "_X_B_index",
+            "table": "_X"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure index \"_X_B_index\" does not exist",
+            "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+            "params": [
+              "\"one\".\"_X_B_index\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "create index \"_X_B_index\"",
+            "sql": "CREATE INDEX \"_X_B_index\" ON \"one\".\"_X\" (\"B\")",
+            "params": []
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify index \"_X_B_index\" exists",
+            "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+            "params": [
+              "\"one\".\"_X_B_index\""
+            ]
+          }
+        ]
+      },
+      {
+        "id": "index._X._X_B_index",
+        "label": "Create index \"_X_B_index\" on \"_X\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "two",
+            "objectType": "index",
+            "name": "_X_B_index",
+            "table": "_X"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure index \"_X_B_index\" does not exist",
+            "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+            "params": [
+              "\"two\".\"_X_B_index\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "create index \"_X_B_index\"",
+            "sql": "CREATE INDEX \"_X_B_index\" ON \"two\".\"_X\" (\"B\")",
+            "params": []
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify index \"_X_B_index\" exists",
+            "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+            "params": [
+              "\"two\".\"_X_B_index\""
+            ]
+          }
+        ]
+      },
+      {
+        "id": "foreignKey._X._X_A_fkey",
+        "label": "Add foreign key \"_X_A_fkey\" on \"_X\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "one",
+            "objectType": "foreignKey",
+            "name": "_X_A_fkey",
+            "table": "_X"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure FK \"_X_A_fkey\" does not exist",
+            "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+            "params": [
+              "_X_A_fkey",
+              "one",
+              "\"one\".\"_X\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "add FK \"_X_A_fkey\"",
+            "sql": "ALTER TABLE \"one\".\"_X\"\nADD CONSTRAINT \"_X_A_fkey\"\nFOREIGN KEY (\"A\")\nREFERENCES \"one\".\"A\" (\"id\")\nON DELETE CASCADE\nON UPDATE CASCADE"
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify FK \"_X_A_fkey\" exists",
+            "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+            "params": [
+              "_X_A_fkey",
+              "one",
+              "\"one\".\"_X\""
+            ]
+          }
+        ]
+      },
+      {
+        "id": "foreignKey._X._X_B_fkey",
+        "label": "Add foreign key \"_X_B_fkey\" on \"_X\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "one",
+            "objectType": "foreignKey",
+            "name": "_X_B_fkey",
+            "table": "_X"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure FK \"_X_B_fkey\" does not exist",
+            "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+            "params": [
+              "_X_B_fkey",
+              "one",
+              "\"one\".\"_X\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "add FK \"_X_B_fkey\"",
+            "sql": "ALTER TABLE \"one\".\"_X\"\nADD CONSTRAINT \"_X_B_fkey\"\nFOREIGN KEY (\"B\")\nREFERENCES \"one\".\"B\" (\"id\")\nON DELETE CASCADE\nON UPDATE CASCADE"
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify FK \"_X_B_fkey\" exists",
+            "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+            "params": [
+              "_X_B_fkey",
+              "one",
+              "\"one\".\"_X\""
+            ]
+          }
+        ]
+      },
+      {
+        "id": "foreignKey._X._X_A_fkey",
+        "label": "Add foreign key \"_X_A_fkey\" on \"_X\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "two",
+            "objectType": "foreignKey",
+            "name": "_X_A_fkey",
+            "table": "_X"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure FK \"_X_A_fkey\" does not exist",
+            "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+            "params": [
+              "_X_A_fkey",
+              "two",
+              "\"two\".\"_X\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "add FK \"_X_A_fkey\"",
+            "sql": "ALTER TABLE \"two\".\"_X\"\nADD CONSTRAINT \"_X_A_fkey\"\nFOREIGN KEY (\"A\")\nREFERENCES \"two\".\"C\" (\"id\")\nON DELETE CASCADE\nON UPDATE CASCADE"
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify FK \"_X_A_fkey\" exists",
+            "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+            "params": [
+              "_X_A_fkey",
+              "two",
+              "\"two\".\"_X\""
+            ]
+          }
+        ]
+      },
+      {
+        "id": "foreignKey._X._X_B_fkey",
+        "label": "Add foreign key \"_X_B_fkey\" on \"_X\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "two",
+            "objectType": "foreignKey",
+            "name": "_X_B_fkey",
+            "table": "_X"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure FK \"_X_B_fkey\" does not exist",
+            "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+            "params": [
+              "_X_B_fkey",
+              "two",
+              "\"two\".\"_X\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "add FK \"_X_B_fkey\"",
+            "sql": "ALTER TABLE \"two\".\"_X\"\nADD CONSTRAINT \"_X_B_fkey\"\nFOREIGN KEY (\"B\")\nREFERENCES \"two\".\"D\" (\"id\")\nON DELETE CASCADE\nON UPDATE CASCADE"
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify FK \"_X_B_fkey\" exists",
+            "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+            "params": [
+              "_X_B_fkey",
+              "two",
+              "\"two\".\"_X\""
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

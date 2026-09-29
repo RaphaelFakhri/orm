@@ -1,0 +1,49 @@
+{
+  "contract": "packages/2-sql/2-authoring/contract-prisma7/test/fixtures/number-defaults/expected-contract.json",
+  "target": "postgres",
+  "extensions": [],
+  "planned": {
+    "kind": "success",
+    "operations": [
+      {
+        "id": "table.Decimals",
+        "label": "Create table \"Decimals\"",
+        "summary": "Creates table \"Decimals\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "table",
+            "name": "Decimals"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure table \"Decimals\" does not exist",
+            "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+            "params": [
+              "\"public\".\"Decimals\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "create table \"Decimals\"",
+            "sql": "CREATE TABLE \"public\".\"Decimals\" (\n  \"id\" int4 NOT NULL,\n  \"long\" numeric(65,30) DEFAULT '12345678901234567890.123456789'::numeric(65,30) NOT NULL,\n  \"tiny\" numeric(65,30) DEFAULT '0.000000000000000001'::numeric(65,30) NOT NULL,\n  \"negative\" numeric(65,30) DEFAULT '-1.5'::numeric(65,30) NOT NULL,\n  \"whole\" numeric(65,30) DEFAULT '42'::numeric(65,30) NOT NULL,\n  \"zerosBare\" numeric DEFAULT '1.50'::numeric NOT NULL,\n  \"zerosScaled\" numeric(10,2) DEFAULT '1.50'::numeric(10,2) NOT NULL,\n  \"zerosDefault\" numeric(65,30) DEFAULT '1.50'::numeric(65,30) NOT NULL,\n  \"list\" numeric(65,30)[] DEFAULT ARRAY['1.50', '-2', '0.000000000000000001']::numeric(65,30)[],\n  \"bigLong\" int8 DEFAULT '9007199254740993'::int8 NOT NULL,\n  \"bigList\" int8[] DEFAULT ARRAY['9007199254740993', '-1']::int8[],\n  PRIMARY KEY (\"id\")\n)",
+            "params": []
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify table \"Decimals\" exists",
+            "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+            "params": [
+              "\"public\".\"Decimals\""
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

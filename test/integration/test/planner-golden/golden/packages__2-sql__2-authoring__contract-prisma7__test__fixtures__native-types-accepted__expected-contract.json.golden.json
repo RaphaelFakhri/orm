@@ -1,0 +1,49 @@
+{
+  "contract": "packages/2-sql/2-authoring/contract-prisma7/test/fixtures/native-types-accepted/expected-contract.json",
+  "target": "postgres",
+  "extensions": [],
+  "planned": {
+    "kind": "success",
+    "operations": [
+      {
+        "id": "table.NativeTypes",
+        "label": "Create table \"NativeTypes\"",
+        "summary": "Creates table \"NativeTypes\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "table",
+            "name": "NativeTypes"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure table \"NativeTypes\" does not exist",
+            "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+            "params": [
+              "\"public\".\"NativeTypes\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "create table \"NativeTypes\"",
+            "sql": "CREATE TABLE \"public\".\"NativeTypes\" (\n  \"text\" text NOT NULL,\n  \"varChar\" character varying(255) NOT NULL,\n  \"char\" character(10) NOT NULL,\n  \"uuid\" uuid NOT NULL,\n  \"inet\" inet NOT NULL,\n  \"boolean\" bool NOT NULL,\n  \"integer\" int4 NOT NULL,\n  \"smallInt\" int2 NOT NULL,\n  \"bigInt\" int8 NOT NULL,\n  \"real\" float4 NOT NULL,\n  \"doublePrecision\" float8 NOT NULL,\n  \"decimal\" numeric(10,2) NOT NULL,\n  \"timestamp\" timestamp(6) NOT NULL,\n  \"timestamptz\" timestamptz(6) NOT NULL,\n  \"date\" date NOT NULL,\n  \"time\" time(6) NOT NULL,\n  \"timetz\" timetz(6) NOT NULL,\n  \"json\" json NOT NULL,\n  \"jsonB\" jsonb NOT NULL,\n  \"byteA\" bytea NOT NULL,\n  \"varCharList\" character varying(32)[],\n  \"timestamptzOpt\" timestamptz(3),\n  PRIMARY KEY (\"integer\")\n)",
+            "params": []
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify table \"NativeTypes\" exists",
+            "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+            "params": [
+              "\"public\".\"NativeTypes\""
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -2,8 +2,10 @@
   "contract": "examples/prisma-8-demo/migrations/snapshots/06b2dc7bf45a1c5bf00ae3a80653b88fc0146101673e2a029b2c7db290833284/contract.json",
   "target": "postgres",
   "extensions": [
-    "demo/engagement-stats",
     "pgvector"
+  ],
+  "extensionsNotLoaded": [
+    "demo/engagement-stats"
   ],
   "planned": {
     "kind": "success",

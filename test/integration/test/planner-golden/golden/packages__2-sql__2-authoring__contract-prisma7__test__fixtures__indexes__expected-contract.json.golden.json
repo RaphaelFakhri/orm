@@ -1,0 +1,361 @@
+{
+  "contract": "packages/2-sql/2-authoring/contract-prisma7/test/fixtures/indexes/expected-contract.json",
+  "target": "postgres",
+  "extensions": [],
+  "planned": {
+    "kind": "success",
+    "operations": [
+      {
+        "id": "table.posts",
+        "label": "Create table \"posts\"",
+        "summary": "Creates table \"posts\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "table",
+            "name": "posts"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure table \"posts\" does not exist",
+            "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+            "params": [
+              "\"public\".\"posts\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "create table \"posts\"",
+            "sql": "CREATE TABLE \"public\".\"posts\" (\n  \"id\" int4 NOT NULL,\n  \"slug\" text NOT NULL,\n  \"code\" text NOT NULL,\n  \"title\" text NOT NULL,\n  \"category_name\" text NOT NULL,\n  \"hashed\" text NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+            "params": []
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify table \"posts\" exists",
+            "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+            "params": [
+              "\"public\".\"posts\""
+            ]
+          }
+        ]
+      },
+      {
+        "id": "index.posts.posts_title_category_name_key",
+        "label": "Create index \"posts_title_category_name_key\" on \"posts\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "index",
+            "name": "posts_title_category_name_key",
+            "table": "posts"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure index \"posts_title_category_name_key\" does not exist",
+            "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+            "params": [
+              "\"public\".\"posts_title_category_name_key\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "create index \"posts_title_category_name_key\"",
+            "sql": "CREATE UNIQUE INDEX \"posts_title_category_name_key\" ON \"public\".\"posts\" (\"title\", \"category_name\")",
+            "params": []
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify index \"posts_title_category_name_key\" exists",
+            "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+            "params": [
+              "\"public\".\"posts_title_category_name_key\""
+            ]
+          }
+        ]
+      },
+      {
+        "id": "index.posts.post_slug_title_unique",
+        "label": "Create index \"post_slug_title_unique\" on \"posts\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "index",
+            "name": "post_slug_title_unique",
+            "table": "posts"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure index \"post_slug_title_unique\" does not exist",
+            "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+            "params": [
+              "\"public\".\"post_slug_title_unique\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "create index \"post_slug_title_unique\"",
+            "sql": "CREATE UNIQUE INDEX \"post_slug_title_unique\" ON \"public\".\"posts\" (\"slug\", \"title\")",
+            "params": []
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify index \"post_slug_title_unique\" exists",
+            "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+            "params": [
+              "\"public\".\"post_slug_title_unique\""
+            ]
+          }
+        ]
+      },
+      {
+        "id": "index.posts.posts_slug_key",
+        "label": "Create index \"posts_slug_key\" on \"posts\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "index",
+            "name": "posts_slug_key",
+            "table": "posts"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure index \"posts_slug_key\" does not exist",
+            "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+            "params": [
+              "\"public\".\"posts_slug_key\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "create index \"posts_slug_key\"",
+            "sql": "CREATE UNIQUE INDEX \"posts_slug_key\" ON \"public\".\"posts\" (\"slug\")",
+            "params": []
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify index \"posts_slug_key\" exists",
+            "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+            "params": [
+              "\"public\".\"posts_slug_key\""
+            ]
+          }
+        ]
+      },
+      {
+        "id": "index.posts.post_code_unique",
+        "label": "Create index \"post_code_unique\" on \"posts\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "index",
+            "name": "post_code_unique",
+            "table": "posts"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure index \"post_code_unique\" does not exist",
+            "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+            "params": [
+              "\"public\".\"post_code_unique\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "create index \"post_code_unique\"",
+            "sql": "CREATE UNIQUE INDEX \"post_code_unique\" ON \"public\".\"posts\" (\"code\")",
+            "params": []
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify index \"post_code_unique\" exists",
+            "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+            "params": [
+              "\"public\".\"post_code_unique\""
+            ]
+          }
+        ]
+      },
+      {
+        "id": "index.posts.posts_category_name_idx",
+        "label": "Create index \"posts_category_name_idx\" on \"posts\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "index",
+            "name": "posts_category_name_idx",
+            "table": "posts"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure index \"posts_category_name_idx\" does not exist",
+            "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+            "params": [
+              "\"public\".\"posts_category_name_idx\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "create index \"posts_category_name_idx\"",
+            "sql": "CREATE INDEX \"posts_category_name_idx\" ON \"public\".\"posts\" (\"category_name\")",
+            "params": []
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify index \"posts_category_name_idx\" exists",
+            "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+            "params": [
+              "\"public\".\"posts_category_name_idx\""
+            ]
+          }
+        ]
+      },
+      {
+        "id": "index.posts.post_title_category",
+        "label": "Create index \"post_title_category\" on \"posts\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "index",
+            "name": "post_title_category",
+            "table": "posts"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure index \"post_title_category\" does not exist",
+            "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+            "params": [
+              "\"public\".\"post_title_category\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "create index \"post_title_category\"",
+            "sql": "CREATE INDEX \"post_title_category\" ON \"public\".\"posts\" (\"title\", \"category_name\")",
+            "params": []
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify index \"post_title_category\" exists",
+            "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+            "params": [
+              "\"public\".\"post_title_category\""
+            ]
+          }
+        ]
+      },
+      {
+        "id": "index.posts.posts_hashed_idx",
+        "label": "Create index \"posts_hashed_idx\" on \"posts\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "index",
+            "name": "posts_hashed_idx",
+            "table": "posts"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure index \"posts_hashed_idx\" does not exist",
+            "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+            "params": [
+              "\"public\".\"posts_hashed_idx\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "create index \"posts_hashed_idx\"",
+            "sql": "CREATE INDEX \"posts_hashed_idx\" ON \"public\".\"posts\" USING \"hash\" (\"hashed\")",
+            "params": []
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify index \"posts_hashed_idx\" exists",
+            "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+            "params": [
+              "\"public\".\"posts_hashed_idx\""
+            ]
+          }
+        ]
+      },
+      {
+        "id": "index.posts.posts_title_idx",
+        "label": "Create index \"posts_title_idx\" on \"posts\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "index",
+            "name": "posts_title_idx",
+            "table": "posts"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure index \"posts_title_idx\" does not exist",
+            "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+            "params": [
+              "\"public\".\"posts_title_idx\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "create index \"posts_title_idx\"",
+            "sql": "CREATE INDEX \"posts_title_idx\" ON \"public\".\"posts\" (\"title\")",
+            "params": []
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify index \"posts_title_idx\" exists",
+            "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+            "params": [
+              "\"public\".\"posts_title_idx\""
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

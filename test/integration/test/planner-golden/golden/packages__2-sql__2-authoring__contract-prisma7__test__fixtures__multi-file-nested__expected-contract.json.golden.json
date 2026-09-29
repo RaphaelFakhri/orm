@@ -1,0 +1,130 @@
+{
+  "contract": "packages/2-sql/2-authoring/contract-prisma7/test/fixtures/multi-file-nested/expected-contract.json",
+  "target": "postgres",
+  "extensions": [],
+  "planned": {
+    "kind": "success",
+    "operations": [
+      {
+        "id": "table.Top",
+        "label": "Create table \"Top\"",
+        "summary": "Creates table \"Top\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "table",
+            "name": "Top"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure table \"Top\" does not exist",
+            "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+            "params": [
+              "\"public\".\"Top\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "create table \"Top\"",
+            "sql": "CREATE TABLE \"public\".\"Top\" (\n  \"id\" int4 NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+            "params": []
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify table \"Top\" exists",
+            "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+            "params": [
+              "\"public\".\"Top\""
+            ]
+          }
+        ]
+      },
+      {
+        "id": "table.User",
+        "label": "Create table \"User\"",
+        "summary": "Creates table \"User\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "table",
+            "name": "User"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure table \"User\" does not exist",
+            "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+            "params": [
+              "\"public\".\"User\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "create table \"User\"",
+            "sql": "CREATE TABLE \"public\".\"User\" (\n  \"id\" int4 NOT NULL,\n  \"topId\" int4 NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+            "params": []
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify table \"User\" exists",
+            "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+            "params": [
+              "\"public\".\"User\""
+            ]
+          }
+        ]
+      },
+      {
+        "id": "foreignKey.User.User_topId_fkey",
+        "label": "Add foreign key \"User_topId_fkey\" on \"User\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "foreignKey",
+            "name": "User_topId_fkey",
+            "table": "User"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure FK \"User_topId_fkey\" does not exist",
+            "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+            "params": [
+              "User_topId_fkey",
+              "public",
+              "\"public\".\"User\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "add FK \"User_topId_fkey\"",
+            "sql": "ALTER TABLE \"public\".\"User\"\nADD CONSTRAINT \"User_topId_fkey\"\nFOREIGN KEY (\"topId\")\nREFERENCES \"public\".\"Top\" (\"id\")\nON DELETE RESTRICT\nON UPDATE CASCADE"
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify FK \"User_topId_fkey\" exists",
+            "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+            "params": [
+              "User_topId_fkey",
+              "public",
+              "\"public\".\"User\""
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

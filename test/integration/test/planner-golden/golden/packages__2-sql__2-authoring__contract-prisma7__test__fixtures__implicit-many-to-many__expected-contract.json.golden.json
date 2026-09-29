@@ -1,0 +1,613 @@
+{
+  "contract": "packages/2-sql/2-authoring/contract-prisma7/test/fixtures/implicit-many-to-many/expected-contract.json",
+  "target": "postgres",
+  "extensions": [],
+  "planned": {
+    "kind": "success",
+    "operations": [
+      {
+        "id": "table.Post",
+        "label": "Create table \"Post\"",
+        "summary": "Creates table \"Post\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "table",
+            "name": "Post"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure table \"Post\" does not exist",
+            "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+            "params": [
+              "\"public\".\"Post\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "create table \"Post\"",
+            "sql": "CREATE TABLE \"public\".\"Post\" (\n  \"id\" int4 NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+            "params": []
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify table \"Post\" exists",
+            "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+            "params": [
+              "\"public\".\"Post\""
+            ]
+          }
+        ]
+      },
+      {
+        "id": "table.Tag",
+        "label": "Create table \"Tag\"",
+        "summary": "Creates table \"Tag\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "table",
+            "name": "Tag"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure table \"Tag\" does not exist",
+            "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+            "params": [
+              "\"public\".\"Tag\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "create table \"Tag\"",
+            "sql": "CREATE TABLE \"public\".\"Tag\" (\n  \"id\" int4 NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+            "params": []
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify table \"Tag\" exists",
+            "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+            "params": [
+              "\"public\".\"Tag\""
+            ]
+          }
+        ]
+      },
+      {
+        "id": "table.User",
+        "label": "Create table \"User\"",
+        "summary": "Creates table \"User\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "table",
+            "name": "User"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure table \"User\" does not exist",
+            "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+            "params": [
+              "\"public\".\"User\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "create table \"User\"",
+            "sql": "CREATE TABLE \"public\".\"User\" (\n  \"id\" int4 NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+            "params": []
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify table \"User\" exists",
+            "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+            "params": [
+              "\"public\".\"User\""
+            ]
+          }
+        ]
+      },
+      {
+        "id": "table._Favorites",
+        "label": "Create table \"_Favorites\"",
+        "summary": "Creates table \"_Favorites\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "table",
+            "name": "_Favorites"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure table \"_Favorites\" does not exist",
+            "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+            "params": [
+              "\"public\".\"_Favorites\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "create table \"_Favorites\"",
+            "sql": "CREATE TABLE \"public\".\"_Favorites\" (\n  \"A\" int4 NOT NULL,\n  \"B\" int4 NOT NULL,\n  PRIMARY KEY (\"A\", \"B\")\n)",
+            "params": []
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify table \"_Favorites\" exists",
+            "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+            "params": [
+              "\"public\".\"_Favorites\""
+            ]
+          }
+        ]
+      },
+      {
+        "id": "table._Follows",
+        "label": "Create table \"_Follows\"",
+        "summary": "Creates table \"_Follows\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "table",
+            "name": "_Follows"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure table \"_Follows\" does not exist",
+            "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+            "params": [
+              "\"public\".\"_Follows\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "create table \"_Follows\"",
+            "sql": "CREATE TABLE \"public\".\"_Follows\" (\n  \"A\" int4 NOT NULL,\n  \"B\" int4 NOT NULL,\n  PRIMARY KEY (\"A\", \"B\")\n)",
+            "params": []
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify table \"_Follows\" exists",
+            "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+            "params": [
+              "\"public\".\"_Follows\""
+            ]
+          }
+        ]
+      },
+      {
+        "id": "table._PostToTag",
+        "label": "Create table \"_PostToTag\"",
+        "summary": "Creates table \"_PostToTag\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "table",
+            "name": "_PostToTag"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure table \"_PostToTag\" does not exist",
+            "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+            "params": [
+              "\"public\".\"_PostToTag\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "create table \"_PostToTag\"",
+            "sql": "CREATE TABLE \"public\".\"_PostToTag\" (\n  \"A\" int4 NOT NULL,\n  \"B\" int4 NOT NULL,\n  PRIMARY KEY (\"A\", \"B\")\n)",
+            "params": []
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify table \"_PostToTag\" exists",
+            "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+            "params": [
+              "\"public\".\"_PostToTag\""
+            ]
+          }
+        ]
+      },
+      {
+        "id": "index._Favorites._Favorites_B_index",
+        "label": "Create index \"_Favorites_B_index\" on \"_Favorites\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "index",
+            "name": "_Favorites_B_index",
+            "table": "_Favorites"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure index \"_Favorites_B_index\" does not exist",
+            "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+            "params": [
+              "\"public\".\"_Favorites_B_index\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "create index \"_Favorites_B_index\"",
+            "sql": "CREATE INDEX \"_Favorites_B_index\" ON \"public\".\"_Favorites\" (\"B\")",
+            "params": []
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify index \"_Favorites_B_index\" exists",
+            "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+            "params": [
+              "\"public\".\"_Favorites_B_index\""
+            ]
+          }
+        ]
+      },
+      {
+        "id": "index._Follows._Follows_B_index",
+        "label": "Create index \"_Follows_B_index\" on \"_Follows\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "index",
+            "name": "_Follows_B_index",
+            "table": "_Follows"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure index \"_Follows_B_index\" does not exist",
+            "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+            "params": [
+              "\"public\".\"_Follows_B_index\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "create index \"_Follows_B_index\"",
+            "sql": "CREATE INDEX \"_Follows_B_index\" ON \"public\".\"_Follows\" (\"B\")",
+            "params": []
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify index \"_Follows_B_index\" exists",
+            "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+            "params": [
+              "\"public\".\"_Follows_B_index\""
+            ]
+          }
+        ]
+      },
+      {
+        "id": "index._PostToTag._PostToTag_B_index",
+        "label": "Create index \"_PostToTag_B_index\" on \"_PostToTag\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "index",
+            "name": "_PostToTag_B_index",
+            "table": "_PostToTag"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure index \"_PostToTag_B_index\" does not exist",
+            "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+            "params": [
+              "\"public\".\"_PostToTag_B_index\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "create index \"_PostToTag_B_index\"",
+            "sql": "CREATE INDEX \"_PostToTag_B_index\" ON \"public\".\"_PostToTag\" (\"B\")",
+            "params": []
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify index \"_PostToTag_B_index\" exists",
+            "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+            "params": [
+              "\"public\".\"_PostToTag_B_index\""
+            ]
+          }
+        ]
+      },
+      {
+        "id": "foreignKey._Favorites._Favorites_A_fkey",
+        "label": "Add foreign key \"_Favorites_A_fkey\" on \"_Favorites\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "foreignKey",
+            "name": "_Favorites_A_fkey",
+            "table": "_Favorites"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure FK \"_Favorites_A_fkey\" does not exist",
+            "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+            "params": [
+              "_Favorites_A_fkey",
+              "public",
+              "\"public\".\"_Favorites\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "add FK \"_Favorites_A_fkey\"",
+            "sql": "ALTER TABLE \"public\".\"_Favorites\"\nADD CONSTRAINT \"_Favorites_A_fkey\"\nFOREIGN KEY (\"A\")\nREFERENCES \"public\".\"Post\" (\"id\")\nON DELETE CASCADE\nON UPDATE CASCADE"
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify FK \"_Favorites_A_fkey\" exists",
+            "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+            "params": [
+              "_Favorites_A_fkey",
+              "public",
+              "\"public\".\"_Favorites\""
+            ]
+          }
+        ]
+      },
+      {
+        "id": "foreignKey._Favorites._Favorites_B_fkey",
+        "label": "Add foreign key \"_Favorites_B_fkey\" on \"_Favorites\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "foreignKey",
+            "name": "_Favorites_B_fkey",
+            "table": "_Favorites"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure FK \"_Favorites_B_fkey\" does not exist",
+            "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+            "params": [
+              "_Favorites_B_fkey",
+              "public",
+              "\"public\".\"_Favorites\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "add FK \"_Favorites_B_fkey\"",
+            "sql": "ALTER TABLE \"public\".\"_Favorites\"\nADD CONSTRAINT \"_Favorites_B_fkey\"\nFOREIGN KEY (\"B\")\nREFERENCES \"public\".\"User\" (\"id\")\nON DELETE CASCADE\nON UPDATE CASCADE"
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify FK \"_Favorites_B_fkey\" exists",
+            "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+            "params": [
+              "_Favorites_B_fkey",
+              "public",
+              "\"public\".\"_Favorites\""
+            ]
+          }
+        ]
+      },
+      {
+        "id": "foreignKey._Follows._Follows_A_fkey",
+        "label": "Add foreign key \"_Follows_A_fkey\" on \"_Follows\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "foreignKey",
+            "name": "_Follows_A_fkey",
+            "table": "_Follows"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure FK \"_Follows_A_fkey\" does not exist",
+            "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+            "params": [
+              "_Follows_A_fkey",
+              "public",
+              "\"public\".\"_Follows\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "add FK \"_Follows_A_fkey\"",
+            "sql": "ALTER TABLE \"public\".\"_Follows\"\nADD CONSTRAINT \"_Follows_A_fkey\"\nFOREIGN KEY (\"A\")\nREFERENCES \"public\".\"User\" (\"id\")\nON DELETE CASCADE\nON UPDATE CASCADE"
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify FK \"_Follows_A_fkey\" exists",
+            "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+            "params": [
+              "_Follows_A_fkey",
+              "public",
+              "\"public\".\"_Follows\""
+            ]
+          }
+        ]
+      },
+      {
+        "id": "foreignKey._Follows._Follows_B_fkey",
+        "label": "Add foreign key \"_Follows_B_fkey\" on \"_Follows\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "foreignKey",
+            "name": "_Follows_B_fkey",
+            "table": "_Follows"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure FK \"_Follows_B_fkey\" does not exist",
+            "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+            "params": [
+              "_Follows_B_fkey",
+              "public",
+              "\"public\".\"_Follows\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "add FK \"_Follows_B_fkey\"",
+            "sql": "ALTER TABLE \"public\".\"_Follows\"\nADD CONSTRAINT \"_Follows_B_fkey\"\nFOREIGN KEY (\"B\")\nREFERENCES \"public\".\"User\" (\"id\")\nON DELETE CASCADE\nON UPDATE CASCADE"
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify FK \"_Follows_B_fkey\" exists",
+            "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+            "params": [
+              "_Follows_B_fkey",
+              "public",
+              "\"public\".\"_Follows\""
+            ]
+          }
+        ]
+      },
+      {
+        "id": "foreignKey._PostToTag._PostToTag_A_fkey",
+        "label": "Add foreign key \"_PostToTag_A_fkey\" on \"_PostToTag\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "foreignKey",
+            "name": "_PostToTag_A_fkey",
+            "table": "_PostToTag"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure FK \"_PostToTag_A_fkey\" does not exist",
+            "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+            "params": [
+              "_PostToTag_A_fkey",
+              "public",
+              "\"public\".\"_PostToTag\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "add FK \"_PostToTag_A_fkey\"",
+            "sql": "ALTER TABLE \"public\".\"_PostToTag\"\nADD CONSTRAINT \"_PostToTag_A_fkey\"\nFOREIGN KEY (\"A\")\nREFERENCES \"public\".\"Post\" (\"id\")\nON DELETE CASCADE\nON UPDATE CASCADE"
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify FK \"_PostToTag_A_fkey\" exists",
+            "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+            "params": [
+              "_PostToTag_A_fkey",
+              "public",
+              "\"public\".\"_PostToTag\""
+            ]
+          }
+        ]
+      },
+      {
+        "id": "foreignKey._PostToTag._PostToTag_B_fkey",
+        "label": "Add foreign key \"_PostToTag_B_fkey\" on \"_PostToTag\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "foreignKey",
+            "name": "_PostToTag_B_fkey",
+            "table": "_PostToTag"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure FK \"_PostToTag_B_fkey\" does not exist",
+            "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+            "params": [
+              "_PostToTag_B_fkey",
+              "public",
+              "\"public\".\"_PostToTag\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "add FK \"_PostToTag_B_fkey\"",
+            "sql": "ALTER TABLE \"public\".\"_PostToTag\"\nADD CONSTRAINT \"_PostToTag_B_fkey\"\nFOREIGN KEY (\"B\")\nREFERENCES \"public\".\"Tag\" (\"id\")\nON DELETE CASCADE\nON UPDATE CASCADE"
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify FK \"_PostToTag_B_fkey\" exists",
+            "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+            "params": [
+              "_PostToTag_B_fkey",
+              "public",
+              "\"public\".\"_PostToTag\""
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

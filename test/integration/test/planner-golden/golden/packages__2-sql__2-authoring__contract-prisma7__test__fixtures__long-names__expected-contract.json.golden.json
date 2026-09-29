@@ -1,0 +1,562 @@
+{
+  "contract": "packages/2-sql/2-authoring/contract-prisma7/test/fixtures/long-names/expected-contract.json",
+  "target": "postgres",
+  "extensions": [],
+  "planned": {
+    "kind": "success",
+    "operations": [
+      {
+        "id": "table.AVeryLongModelNameThatKeepsGoingAndGoingForever",
+        "label": "Create table \"AVeryLongModelNameThatKeepsGoingAndGoingForever\"",
+        "summary": "Creates table \"AVeryLongModelNameThatKeepsGoingAndGoingForever\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "table",
+            "name": "AVeryLongModelNameThatKeepsGoingAndGoingForever"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure table \"AVeryLongModelNameThatKeepsGoingAndGoingForever\" does not exist",
+            "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+            "params": [
+              "\"public\".\"AVeryLongModelNameThatKeepsGoingAndGoingForever\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "create table \"AVeryLongModelNameThatKeepsGoingAndGoingForever\"",
+            "sql": "CREATE TABLE \"public\".\"AVeryLongModelNameThatKeepsGoingAndGoingForever\" (\n  \"id\" int4 NOT NULL,\n  \"aVeryLongColumnNameThatAlsoKeepsGoingAndGoing\" text NOT NULL,\n  \"anotherVeryLongColumnNameThatIsAlsoQuiteLengthy\" text NOT NULL,\n  \"short\" text NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+            "params": []
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify table \"AVeryLongModelNameThatKeepsGoingAndGoingForever\" exists",
+            "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+            "params": [
+              "\"public\".\"AVeryLongModelNameThatKeepsGoingAndGoingForever\""
+            ]
+          }
+        ]
+      },
+      {
+        "id": "table.AVeryLongModelNameThatKeepsGoingAndGoingForeverX",
+        "label": "Create table \"AVeryLongModelNameThatKeepsGoingAndGoingForeverX\"",
+        "summary": "Creates table \"AVeryLongModelNameThatKeepsGoingAndGoingForeverX\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "table",
+            "name": "AVeryLongModelNameThatKeepsGoingAndGoingForeverX"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure table \"AVeryLongModelNameThatKeepsGoingAndGoingForeverX\" does not exist",
+            "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+            "params": [
+              "\"public\".\"AVeryLongModelNameThatKeepsGoingAndGoingForeverX\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "create table \"AVeryLongModelNameThatKeepsGoingAndGoingForeverX\"",
+            "sql": "CREATE TABLE \"public\".\"AVeryLongModelNameThatKeepsGoingAndGoingForeverX\" (\n  \"id\" int4 NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+            "params": []
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify table \"AVeryLongModelNameThatKeepsGoingAndGoingForeverX\" exists",
+            "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+            "params": [
+              "\"public\".\"AVeryLongModelNameThatKeepsGoingAndGoingForeverX\""
+            ]
+          }
+        ]
+      },
+      {
+        "id": "table.AnotherVeryLongModelNameThatAlsoKeepsGoingAndGoing",
+        "label": "Create table \"AnotherVeryLongModelNameThatAlsoKeepsGoingAndGoing\"",
+        "summary": "Creates table \"AnotherVeryLongModelNameThatAlsoKeepsGoingAndGoing\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "table",
+            "name": "AnotherVeryLongModelNameThatAlsoKeepsGoingAndGoing"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure table \"AnotherVeryLongModelNameThatAlsoKeepsGoingAndGoing\" does not exist",
+            "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+            "params": [
+              "\"public\".\"AnotherVeryLongModelNameThatAlsoKeepsGoingAndGoing\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "create table \"AnotherVeryLongModelNameThatAlsoKeepsGoingAndGoing\"",
+            "sql": "CREATE TABLE \"public\".\"AnotherVeryLongModelNameThatAlsoKeepsGoingAndGoing\" (\n  \"id\" int4 NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+            "params": []
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify table \"AnotherVeryLongModelNameThatAlsoKeepsGoingAndGoing\" exists",
+            "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+            "params": [
+              "\"public\".\"AnotherVeryLongModelNameThatAlsoKeepsGoingAndGoing\""
+            ]
+          }
+        ]
+      },
+      {
+        "id": "table.Exactly63CharactersLongNameAbcdefghijklmnopqrstuvwxyz0123",
+        "label": "Create table \"Exactly63CharactersLongNameAbcdefghijklmnopqrstuvwxyz0123\"",
+        "summary": "Creates table \"Exactly63CharactersLongNameAbcdefghijklmnopqrstuvwxyz0123\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "table",
+            "name": "Exactly63CharactersLongNameAbcdefghijklmnopqrstuvwxyz0123"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure table \"Exactly63CharactersLongNameAbcdefghijklmnopqrstuvwxyz0123\" does not exist",
+            "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+            "params": [
+              "\"public\".\"Exactly63CharactersLongNameAbcdefghijklmnopqrstuvwxyz0123\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "create table \"Exactly63CharactersLongNameAbcdefghijklmnopqrstuvwxyz0123\"",
+            "sql": "CREATE TABLE \"public\".\"Exactly63CharactersLongNameAbcdefghijklmnopqrstuvwxyz0123\" (\n  \"id\" int4 NOT NULL,\n  \"col\" text NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+            "params": []
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify table \"Exactly63CharactersLongNameAbcdefghijklmnopqrstuvwxyz0123\" exists",
+            "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+            "params": [
+              "\"public\".\"Exactly63CharactersLongNameAbcdefghijklmnopqrstuvwxyz0123\""
+            ]
+          }
+        ]
+      },
+      {
+        "id": "table._AVeryLongModelNameThatKeepsGoingAndGoingForeverXToAnotherVeryL",
+        "label": "Create table \"_AVeryLongModelNameThatKeepsGoingAndGoingForeverXToAnotherVeryL\"",
+        "summary": "Creates table \"_AVeryLongModelNameThatKeepsGoingAndGoingForeverXToAnotherVeryL\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "table",
+            "name": "_AVeryLongModelNameThatKeepsGoingAndGoingForeverXToAnotherVeryL"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure table \"_AVeryLongModelNameThatKeepsGoingAndGoingForeverXToAnotherVeryL\" does not exist",
+            "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+            "params": [
+              "\"public\".\"_AVeryLongModelNameThatKeepsGoingAndGoingForeverXToAnotherVeryL\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "create table \"_AVeryLongModelNameThatKeepsGoingAndGoingForeverXToAnotherVeryL\"",
+            "sql": "CREATE TABLE \"public\".\"_AVeryLongModelNameThatKeepsGoingAndGoingForeverXToAnotherVeryL\" (\n  \"A\" int4 NOT NULL,\n  \"B\" int4 NOT NULL,\n  PRIMARY KEY (\"A\", \"B\")\n)",
+            "params": []
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify table \"_AVeryLongModelNameThatKeepsGoingAndGoingForeverXToAnotherVeryL\" exists",
+            "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+            "params": [
+              "\"public\".\"_AVeryLongModelNameThatKeepsGoingAndGoingForeverXToAnotherVeryL\""
+            ]
+          }
+        ]
+      },
+      {
+        "id": "table.Örebrö_Ünïcödé_ModelNameWithMultiByteCharactersInIt",
+        "label": "Create table \"Örebrö_Ünïcödé_ModelNameWithMultiByteCharactersInIt\"",
+        "summary": "Creates table \"Örebrö_Ünïcödé_ModelNameWithMultiByteCharactersInIt\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "table",
+            "name": "Örebrö_Ünïcödé_ModelNameWithMultiByteCharactersInIt"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure table \"Örebrö_Ünïcödé_ModelNameWithMultiByteCharactersInIt\" does not exist",
+            "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+            "params": [
+              "\"public\".\"Örebrö_Ünïcödé_ModelNameWithMultiByteCharactersInIt\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "create table \"Örebrö_Ünïcödé_ModelNameWithMultiByteCharactersInIt\"",
+            "sql": "CREATE TABLE \"public\".\"Örebrö_Ünïcödé_ModelNameWithMultiByteCharactersInIt\" (\n  \"id\" int4 NOT NULL,\n  \"ünïcödé_cölümn_näme_thät_ïs_älsö_vëry_löng\" text NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+            "params": []
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify table \"Örebrö_Ünïcödé_ModelNameWithMultiByteCharactersInIt\" exists",
+            "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+            "params": [
+              "\"public\".\"Örebrö_Ünïcödé_ModelNameWithMultiByteCharactersInIt\""
+            ]
+          }
+        ]
+      },
+      {
+        "id": "index.AVeryLongModelNameThatKeepsGoingAndGoingForever.AVeryLongModelNameThatKeepsGoingAndGoingForever_short_aVery_key",
+        "label": "Create index \"AVeryLongModelNameThatKeepsGoingAndGoingForever_short_aVery_key\" on \"AVeryLongModelNameThatKeepsGoingAndGoingForever\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "index",
+            "name": "AVeryLongModelNameThatKeepsGoingAndGoingForever_short_aVery_key",
+            "table": "AVeryLongModelNameThatKeepsGoingAndGoingForever"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure index \"AVeryLongModelNameThatKeepsGoingAndGoingForever_short_aVery_key\" does not exist",
+            "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+            "params": [
+              "\"public\".\"AVeryLongModelNameThatKeepsGoingAndGoingForever_short_aVery_key\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "create index \"AVeryLongModelNameThatKeepsGoingAndGoingForever_short_aVery_key\"",
+            "sql": "CREATE UNIQUE INDEX \"AVeryLongModelNameThatKeepsGoingAndGoingForever_short_aVery_key\" ON \"public\".\"AVeryLongModelNameThatKeepsGoingAndGoingForever\" (\"short\", \"aVeryLongColumnNameThatAlsoKeepsGoingAndGoing\")",
+            "params": []
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify index \"AVeryLongModelNameThatKeepsGoingAndGoingForever_short_aVery_key\" exists",
+            "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+            "params": [
+              "\"public\".\"AVeryLongModelNameThatKeepsGoingAndGoingForever_short_aVery_key\""
+            ]
+          }
+        ]
+      },
+      {
+        "id": "index.AVeryLongModelNameThatKeepsGoingAndGoingForever.AVeryLongModelNameThatKeepsGoingAndGoingForever_anotherVery_key",
+        "label": "Create index \"AVeryLongModelNameThatKeepsGoingAndGoingForever_anotherVery_key\" on \"AVeryLongModelNameThatKeepsGoingAndGoingForever\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "index",
+            "name": "AVeryLongModelNameThatKeepsGoingAndGoingForever_anotherVery_key",
+            "table": "AVeryLongModelNameThatKeepsGoingAndGoingForever"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure index \"AVeryLongModelNameThatKeepsGoingAndGoingForever_anotherVery_key\" does not exist",
+            "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+            "params": [
+              "\"public\".\"AVeryLongModelNameThatKeepsGoingAndGoingForever_anotherVery_key\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "create index \"AVeryLongModelNameThatKeepsGoingAndGoingForever_anotherVery_key\"",
+            "sql": "CREATE UNIQUE INDEX \"AVeryLongModelNameThatKeepsGoingAndGoingForever_anotherVery_key\" ON \"public\".\"AVeryLongModelNameThatKeepsGoingAndGoingForever\" (\"anotherVeryLongColumnNameThatIsAlsoQuiteLengthy\")",
+            "params": []
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify index \"AVeryLongModelNameThatKeepsGoingAndGoingForever_anotherVery_key\" exists",
+            "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+            "params": [
+              "\"public\".\"AVeryLongModelNameThatKeepsGoingAndGoingForever_anotherVery_key\""
+            ]
+          }
+        ]
+      },
+      {
+        "id": "index.AVeryLongModelNameThatKeepsGoingAndGoingForever.AVeryLongModelNameThatKeepsGoingAndGoingForever_aVeryLongCo_idx",
+        "label": "Create index \"AVeryLongModelNameThatKeepsGoingAndGoingForever_aVeryLongCo_idx\" on \"AVeryLongModelNameThatKeepsGoingAndGoingForever\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "index",
+            "name": "AVeryLongModelNameThatKeepsGoingAndGoingForever_aVeryLongCo_idx",
+            "table": "AVeryLongModelNameThatKeepsGoingAndGoingForever"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure index \"AVeryLongModelNameThatKeepsGoingAndGoingForever_aVeryLongCo_idx\" does not exist",
+            "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+            "params": [
+              "\"public\".\"AVeryLongModelNameThatKeepsGoingAndGoingForever_aVeryLongCo_idx\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "create index \"AVeryLongModelNameThatKeepsGoingAndGoingForever_aVeryLongCo_idx\"",
+            "sql": "CREATE INDEX \"AVeryLongModelNameThatKeepsGoingAndGoingForever_aVeryLongCo_idx\" ON \"public\".\"AVeryLongModelNameThatKeepsGoingAndGoingForever\" (\"aVeryLongColumnNameThatAlsoKeepsGoingAndGoing\")",
+            "params": []
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify index \"AVeryLongModelNameThatKeepsGoingAndGoingForever_aVeryLongCo_idx\" exists",
+            "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+            "params": [
+              "\"public\".\"AVeryLongModelNameThatKeepsGoingAndGoingForever_aVeryLongCo_idx\""
+            ]
+          }
+        ]
+      },
+      {
+        "id": "index.Exactly63CharactersLongNameAbcdefghijklmnopqrstuvwxyz0123.Exactly63CharactersLongNameAbcdefghijklmnopqrstuvwxyz0123_c_idx",
+        "label": "Create index \"Exactly63CharactersLongNameAbcdefghijklmnopqrstuvwxyz0123_c_idx\" on \"Exactly63CharactersLongNameAbcdefghijklmnopqrstuvwxyz0123\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "index",
+            "name": "Exactly63CharactersLongNameAbcdefghijklmnopqrstuvwxyz0123_c_idx",
+            "table": "Exactly63CharactersLongNameAbcdefghijklmnopqrstuvwxyz0123"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure index \"Exactly63CharactersLongNameAbcdefghijklmnopqrstuvwxyz0123_c_idx\" does not exist",
+            "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+            "params": [
+              "\"public\".\"Exactly63CharactersLongNameAbcdefghijklmnopqrstuvwxyz0123_c_idx\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "create index \"Exactly63CharactersLongNameAbcdefghijklmnopqrstuvwxyz0123_c_idx\"",
+            "sql": "CREATE INDEX \"Exactly63CharactersLongNameAbcdefghijklmnopqrstuvwxyz0123_c_idx\" ON \"public\".\"Exactly63CharactersLongNameAbcdefghijklmnopqrstuvwxyz0123\" (\"col\")",
+            "params": []
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify index \"Exactly63CharactersLongNameAbcdefghijklmnopqrstuvwxyz0123_c_idx\" exists",
+            "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+            "params": [
+              "\"public\".\"Exactly63CharactersLongNameAbcdefghijklmnopqrstuvwxyz0123_c_idx\""
+            ]
+          }
+        ]
+      },
+      {
+        "id": "index._AVeryLongModelNameThatKeepsGoingAndGoingForeverXToAnotherVeryL._AVeryLongModelNameThatKeepsGoingAndGoingForeverXToAnot_B_index",
+        "label": "Create index \"_AVeryLongModelNameThatKeepsGoingAndGoingForeverXToAnot_B_index\" on \"_AVeryLongModelNameThatKeepsGoingAndGoingForeverXToAnotherVeryL\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "index",
+            "name": "_AVeryLongModelNameThatKeepsGoingAndGoingForeverXToAnot_B_index",
+            "table": "_AVeryLongModelNameThatKeepsGoingAndGoingForeverXToAnotherVeryL"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure index \"_AVeryLongModelNameThatKeepsGoingAndGoingForeverXToAnot_B_index\" does not exist",
+            "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+            "params": [
+              "\"public\".\"_AVeryLongModelNameThatKeepsGoingAndGoingForeverXToAnot_B_index\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "create index \"_AVeryLongModelNameThatKeepsGoingAndGoingForeverXToAnot_B_index\"",
+            "sql": "CREATE INDEX \"_AVeryLongModelNameThatKeepsGoingAndGoingForeverXToAnot_B_index\" ON \"public\".\"_AVeryLongModelNameThatKeepsGoingAndGoingForeverXToAnotherVeryL\" (\"B\")",
+            "params": []
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify index \"_AVeryLongModelNameThatKeepsGoingAndGoingForeverXToAnot_B_index\" exists",
+            "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+            "params": [
+              "\"public\".\"_AVeryLongModelNameThatKeepsGoingAndGoingForeverXToAnot_B_index\""
+            ]
+          }
+        ]
+      },
+      {
+        "id": "index.Örebrö_Ünïcödé_ModelNameWithMultiByteCharactersInIt.Örebrö_Ünïcödé_ModelNameWithMultiByteCharactersInIt__idx",
+        "label": "Create index \"Örebrö_Ünïcödé_ModelNameWithMultiByteCharactersInIt__idx\" on \"Örebrö_Ünïcödé_ModelNameWithMultiByteCharactersInIt\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "index",
+            "name": "Örebrö_Ünïcödé_ModelNameWithMultiByteCharactersInIt__idx",
+            "table": "Örebrö_Ünïcödé_ModelNameWithMultiByteCharactersInIt"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure index \"Örebrö_Ünïcödé_ModelNameWithMultiByteCharactersInIt__idx\" does not exist",
+            "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+            "params": [
+              "\"public\".\"Örebrö_Ünïcödé_ModelNameWithMultiByteCharactersInIt__idx\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "create index \"Örebrö_Ünïcödé_ModelNameWithMultiByteCharactersInIt__idx\"",
+            "sql": "CREATE INDEX \"Örebrö_Ünïcödé_ModelNameWithMultiByteCharactersInIt__idx\" ON \"public\".\"Örebrö_Ünïcödé_ModelNameWithMultiByteCharactersInIt\" (\"ünïcödé_cölümn_näme_thät_ïs_älsö_vëry_löng\")",
+            "params": []
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify index \"Örebrö_Ünïcödé_ModelNameWithMultiByteCharactersInIt__idx\" exists",
+            "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+            "params": [
+              "\"public\".\"Örebrö_Ünïcödé_ModelNameWithMultiByteCharactersInIt__idx\""
+            ]
+          }
+        ]
+      },
+      {
+        "id": "foreignKey._AVeryLongModelNameThatKeepsGoingAndGoingForeverXToAnotherVeryL._AVeryLongModelNameThatKeepsGoingAndGoingForeverXToAnotherVeryL_A_fkey",
+        "label": "Add foreign key \"_AVeryLongModelNameThatKeepsGoingAndGoingForeverXToAnotherVeryL_A_fkey\" on \"_AVeryLongModelNameThatKeepsGoingAndGoingForeverXToAnotherVeryL\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "foreignKey",
+            "name": "_AVeryLongModelNameThatKeepsGoingAndGoingForeverXToAnotherVeryL_A_fkey",
+            "table": "_AVeryLongModelNameThatKeepsGoingAndGoingForeverXToAnotherVeryL"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure FK \"_AVeryLongModelNameThatKeepsGoingAndGoingForeverXToAnotherVeryL_A_fkey\" does not exist",
+            "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+            "params": [
+              "_AVeryLongModelNameThatKeepsGoingAndGoingForeverXToAnotherVeryL_A_fkey",
+              "public",
+              "\"public\".\"_AVeryLongModelNameThatKeepsGoingAndGoingForeverXToAnotherVeryL\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "add FK \"_AVeryLongModelNameThatKeepsGoingAndGoingForeverXToAnotherVeryL_A_fkey\"",
+            "sql": "ALTER TABLE \"public\".\"_AVeryLongModelNameThatKeepsGoingAndGoingForeverXToAnotherVeryL\"\nADD CONSTRAINT \"_AVeryLongModelNameThatKeepsGoingAndGoingForeverXToAnotherVeryL_A_fkey\"\nFOREIGN KEY (\"A\")\nREFERENCES \"public\".\"AVeryLongModelNameThatKeepsGoingAndGoingForeverX\" (\"id\")\nON DELETE CASCADE\nON UPDATE CASCADE"
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify FK \"_AVeryLongModelNameThatKeepsGoingAndGoingForeverXToAnotherVeryL_A_fkey\" exists",
+            "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+            "params": [
+              "_AVeryLongModelNameThatKeepsGoingAndGoingForeverXToAnotherVeryL_A_fkey",
+              "public",
+              "\"public\".\"_AVeryLongModelNameThatKeepsGoingAndGoingForeverXToAnotherVeryL\""
+            ]
+          }
+        ]
+      },
+      {
+        "id": "foreignKey._AVeryLongModelNameThatKeepsGoingAndGoingForeverXToAnotherVeryL._AVeryLongModelNameThatKeepsGoingAndGoingForeverXToAnotherVeryL_B_fkey",
+        "label": "Add foreign key \"_AVeryLongModelNameThatKeepsGoingAndGoingForeverXToAnotherVeryL_B_fkey\" on \"_AVeryLongModelNameThatKeepsGoingAndGoingForeverXToAnotherVeryL\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "foreignKey",
+            "name": "_AVeryLongModelNameThatKeepsGoingAndGoingForeverXToAnotherVeryL_B_fkey",
+            "table": "_AVeryLongModelNameThatKeepsGoingAndGoingForeverXToAnotherVeryL"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure FK \"_AVeryLongModelNameThatKeepsGoingAndGoingForeverXToAnotherVeryL_B_fkey\" does not exist",
+            "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+            "params": [
+              "_AVeryLongModelNameThatKeepsGoingAndGoingForeverXToAnotherVeryL_B_fkey",
+              "public",
+              "\"public\".\"_AVeryLongModelNameThatKeepsGoingAndGoingForeverXToAnotherVeryL\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "add FK \"_AVeryLongModelNameThatKeepsGoingAndGoingForeverXToAnotherVeryL_B_fkey\"",
+            "sql": "ALTER TABLE \"public\".\"_AVeryLongModelNameThatKeepsGoingAndGoingForeverXToAnotherVeryL\"\nADD CONSTRAINT \"_AVeryLongModelNameThatKeepsGoingAndGoingForeverXToAnotherVeryL_B_fkey\"\nFOREIGN KEY (\"B\")\nREFERENCES \"public\".\"AnotherVeryLongModelNameThatAlsoKeepsGoingAndGoing\" (\"id\")\nON DELETE CASCADE\nON UPDATE CASCADE"
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify FK \"_AVeryLongModelNameThatKeepsGoingAndGoingForeverXToAnotherVeryL_B_fkey\" exists",
+            "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+            "params": [
+              "_AVeryLongModelNameThatKeepsGoingAndGoingForeverXToAnotherVeryL_B_fkey",
+              "public",
+              "\"public\".\"_AVeryLongModelNameThatKeepsGoingAndGoingForeverXToAnotherVeryL\""
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

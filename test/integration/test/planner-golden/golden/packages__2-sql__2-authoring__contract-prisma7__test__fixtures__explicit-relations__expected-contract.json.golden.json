@@ -1,0 +1,451 @@
+{
+  "contract": "packages/2-sql/2-authoring/contract-prisma7/test/fixtures/explicit-relations/expected-contract.json",
+  "target": "postgres",
+  "extensions": [],
+  "planned": {
+    "kind": "success",
+    "operations": [
+      {
+        "id": "table.Post",
+        "label": "Create table \"Post\"",
+        "summary": "Creates table \"Post\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "table",
+            "name": "Post"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure table \"Post\" does not exist",
+            "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+            "params": [
+              "\"public\".\"Post\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "create table \"Post\"",
+            "sql": "CREATE TABLE \"public\".\"Post\" (\n  \"id\" int4 NOT NULL,\n  \"authorId\" int4 NOT NULL,\n  \"editorId\" int4,\n  PRIMARY KEY (\"id\")\n)",
+            "params": []
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify table \"Post\" exists",
+            "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+            "params": [
+              "\"public\".\"Post\""
+            ]
+          }
+        ]
+      },
+      {
+        "id": "table.Profile",
+        "label": "Create table \"Profile\"",
+        "summary": "Creates table \"Profile\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "table",
+            "name": "Profile"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure table \"Profile\" does not exist",
+            "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+            "params": [
+              "\"public\".\"Profile\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "create table \"Profile\"",
+            "sql": "CREATE TABLE \"public\".\"Profile\" (\n  \"id\" int4 NOT NULL,\n  \"userId\" int4 NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+            "params": []
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify table \"Profile\" exists",
+            "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+            "params": [
+              "\"public\".\"Profile\""
+            ]
+          }
+        ]
+      },
+      {
+        "id": "table.Settings",
+        "label": "Create table \"Settings\"",
+        "summary": "Creates table \"Settings\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "table",
+            "name": "Settings"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure table \"Settings\" does not exist",
+            "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+            "params": [
+              "\"public\".\"Settings\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "create table \"Settings\"",
+            "sql": "CREATE TABLE \"public\".\"Settings\" (\n  \"id\" int4 NOT NULL,\n  \"userId\" int4,\n  PRIMARY KEY (\"id\")\n)",
+            "params": []
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify table \"Settings\" exists",
+            "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+            "params": [
+              "\"public\".\"Settings\""
+            ]
+          }
+        ]
+      },
+      {
+        "id": "table.User",
+        "label": "Create table \"User\"",
+        "summary": "Creates table \"User\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "table",
+            "name": "User"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure table \"User\" does not exist",
+            "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+            "params": [
+              "\"public\".\"User\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "create table \"User\"",
+            "sql": "CREATE TABLE \"public\".\"User\" (\n  \"id\" int4 NOT NULL,\n  \"email\" text NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+            "params": []
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify table \"User\" exists",
+            "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+            "params": [
+              "\"public\".\"User\""
+            ]
+          }
+        ]
+      },
+      {
+        "id": "index.Profile.Profile_userId_key",
+        "label": "Create index \"Profile_userId_key\" on \"Profile\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "index",
+            "name": "Profile_userId_key",
+            "table": "Profile"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure index \"Profile_userId_key\" does not exist",
+            "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+            "params": [
+              "\"public\".\"Profile_userId_key\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "create index \"Profile_userId_key\"",
+            "sql": "CREATE UNIQUE INDEX \"Profile_userId_key\" ON \"public\".\"Profile\" (\"userId\")",
+            "params": []
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify index \"Profile_userId_key\" exists",
+            "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+            "params": [
+              "\"public\".\"Profile_userId_key\""
+            ]
+          }
+        ]
+      },
+      {
+        "id": "index.Settings.Settings_userId_key",
+        "label": "Create index \"Settings_userId_key\" on \"Settings\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "index",
+            "name": "Settings_userId_key",
+            "table": "Settings"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure index \"Settings_userId_key\" does not exist",
+            "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+            "params": [
+              "\"public\".\"Settings_userId_key\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "create index \"Settings_userId_key\"",
+            "sql": "CREATE UNIQUE INDEX \"Settings_userId_key\" ON \"public\".\"Settings\" (\"userId\")",
+            "params": []
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify index \"Settings_userId_key\" exists",
+            "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+            "params": [
+              "\"public\".\"Settings_userId_key\""
+            ]
+          }
+        ]
+      },
+      {
+        "id": "index.User.User_email_key",
+        "label": "Create index \"User_email_key\" on \"User\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "index",
+            "name": "User_email_key",
+            "table": "User"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure index \"User_email_key\" does not exist",
+            "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+            "params": [
+              "\"public\".\"User_email_key\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "create index \"User_email_key\"",
+            "sql": "CREATE UNIQUE INDEX \"User_email_key\" ON \"public\".\"User\" (\"email\")",
+            "params": []
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify index \"User_email_key\" exists",
+            "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+            "params": [
+              "\"public\".\"User_email_key\""
+            ]
+          }
+        ]
+      },
+      {
+        "id": "foreignKey.Post.Post_authorId_fkey",
+        "label": "Add foreign key \"Post_authorId_fkey\" on \"Post\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "foreignKey",
+            "name": "Post_authorId_fkey",
+            "table": "Post"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure FK \"Post_authorId_fkey\" does not exist",
+            "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+            "params": [
+              "Post_authorId_fkey",
+              "public",
+              "\"public\".\"Post\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "add FK \"Post_authorId_fkey\"",
+            "sql": "ALTER TABLE \"public\".\"Post\"\nADD CONSTRAINT \"Post_authorId_fkey\"\nFOREIGN KEY (\"authorId\")\nREFERENCES \"public\".\"User\" (\"id\")\nON DELETE RESTRICT\nON UPDATE CASCADE"
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify FK \"Post_authorId_fkey\" exists",
+            "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+            "params": [
+              "Post_authorId_fkey",
+              "public",
+              "\"public\".\"Post\""
+            ]
+          }
+        ]
+      },
+      {
+        "id": "foreignKey.Post.Post_editorId_fkey",
+        "label": "Add foreign key \"Post_editorId_fkey\" on \"Post\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "foreignKey",
+            "name": "Post_editorId_fkey",
+            "table": "Post"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure FK \"Post_editorId_fkey\" does not exist",
+            "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+            "params": [
+              "Post_editorId_fkey",
+              "public",
+              "\"public\".\"Post\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "add FK \"Post_editorId_fkey\"",
+            "sql": "ALTER TABLE \"public\".\"Post\"\nADD CONSTRAINT \"Post_editorId_fkey\"\nFOREIGN KEY (\"editorId\")\nREFERENCES \"public\".\"User\" (\"id\")\nON DELETE SET NULL\nON UPDATE NO ACTION"
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify FK \"Post_editorId_fkey\" exists",
+            "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+            "params": [
+              "Post_editorId_fkey",
+              "public",
+              "\"public\".\"Post\""
+            ]
+          }
+        ]
+      },
+      {
+        "id": "foreignKey.Profile.Profile_userId_fkey",
+        "label": "Add foreign key \"Profile_userId_fkey\" on \"Profile\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "foreignKey",
+            "name": "Profile_userId_fkey",
+            "table": "Profile"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure FK \"Profile_userId_fkey\" does not exist",
+            "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+            "params": [
+              "Profile_userId_fkey",
+              "public",
+              "\"public\".\"Profile\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "add FK \"Profile_userId_fkey\"",
+            "sql": "ALTER TABLE \"public\".\"Profile\"\nADD CONSTRAINT \"Profile_userId_fkey\"\nFOREIGN KEY (\"userId\")\nREFERENCES \"public\".\"User\" (\"id\")\nON DELETE CASCADE\nON UPDATE CASCADE"
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify FK \"Profile_userId_fkey\" exists",
+            "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+            "params": [
+              "Profile_userId_fkey",
+              "public",
+              "\"public\".\"Profile\""
+            ]
+          }
+        ]
+      },
+      {
+        "id": "foreignKey.Settings.Settings_userId_fkey",
+        "label": "Add foreign key \"Settings_userId_fkey\" on \"Settings\"",
+        "operationClass": "additive",
+        "target": {
+          "id": "postgres",
+          "details": {
+            "schema": "public",
+            "objectType": "foreignKey",
+            "name": "Settings_userId_fkey",
+            "table": "Settings"
+          }
+        },
+        "precheck": [
+          {
+            "description": "ensure FK \"Settings_userId_fkey\" does not exist",
+            "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+            "params": [
+              "Settings_userId_fkey",
+              "public",
+              "\"public\".\"Settings\""
+            ]
+          }
+        ],
+        "execute": [
+          {
+            "description": "add FK \"Settings_userId_fkey\"",
+            "sql": "ALTER TABLE \"public\".\"Settings\"\nADD CONSTRAINT \"Settings_userId_fkey\"\nFOREIGN KEY (\"userId\")\nREFERENCES \"public\".\"User\" (\"id\")\nON DELETE SET NULL\nON UPDATE CASCADE"
+          }
+        ],
+        "postcheck": [
+          {
+            "description": "verify FK \"Settings_userId_fkey\" exists",
+            "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+            "params": [
+              "Settings_userId_fkey",
+              "public",
+              "\"public\".\"Settings\""
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}
