@@ -12,12 +12,12 @@ GA is the last chance to make breaking changes, so this stream decides the date.
 
 | # | Project | GA | State | Waiting on |
 | --- | --- | --- | --- | --- |
-| 1 | Finish ADR 254: data types own column types | Must | Design in progress. 13 of 16 design questions open. | Will's answers |
+| 1 | Finish ADR 254: data types own column types | Must | Design finished 2026-09-29 (spec, design and plan on branch `data-types-completion`). Implementation under way. | |
 | 2 | One CLI and one config file: merge Composer's config into `prisma.config.ts`, remove the `prisma-composer` CLI, add `destroy` to `prisma` | Must | Only the docs fix is tracked (TML-3340) | |
 | 3 | Early MySQL attempt, to find shared code that assumes PostgreSQL | Must | Not started | |
-| 4 | SQL expression literals | Must | Designed. 6 tickets ready. | prisma/orm#30381 |
+| 4 | SQL expression literals | Must | Designed. Unblocked: prisma/orm#30381 merged 2026-09-29. | |
 | 5 | PSL mixins, then remove type aliases and field presets (TML-3055) | Must | No spec | Spec |
-| 6 | Remove `@noCheck` and `.noCheck()`, and the `noCheck` field in the contract | Must | Not started. Used by the Prisma 7 source on every list column. | A decision on what replaces its two uses |
+| 6 | Remove `@noCheck` and `.noCheck()`, and the `noCheck` field in the contract | Must | Not started. Replacements decided, see [decisions.md](decisions.md). | prisma/orm#30051 (nullable list elements) |
 
 ## Stream 2: Upgrade path from Prisma 7
 
