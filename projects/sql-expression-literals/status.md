@@ -15,7 +15,7 @@ Read this first when you resume the project. It records where the work stands an
 - The implementer finished and committed but hit the Fable usage limit before it reported. Its verification logs are under `wip/v/`. Rerun on the tip: the render round-trip, two CLI tests and the relation-mode integration test pass (`wip/v/rerun-*.log`). The packaging and tarball tests fail only because of the registry trust-downgrade problem above.
 - `/drive-code-review` (no walkthrough) writes to `reviews/slice-2a/`, which `.gitignore` excludes, so the files exist only in this worktree.
 - The architect review is done: `reviews/slice-2a/system-design-review.md`, findings A01 to A14. The main one, A01: the family defines `sql/expression` but each adapter registers it; register it from `SqlFamilyDescriptor` (the family descriptor can carry `dataTypes`), or record the alternative in ADR 254.
-- The code review (`reviews/slice-2a/code-review.md`) was still running when the session hit its usage limit. If the file is missing or incomplete, run the code-review pass again.
+- The code review is done: `reviews/slice-2a/code-review.md`, findings F01 to F09; 32 PASS, 4 WEAK, 0 FAIL, 1 NOT VERIFIED (the tarball tests, which only CI can run). The main findings: the upgrade detection pattern for `pg.sql`/`sqlite.sql` misses escaped backticks and spaced dots and matches file names (F01); the upgrade text wrongly says messages did not change (F02); nothing enforces that no data type casts from `sql/expression` (F03); deleting the adapter test removed the only tests of the number classifiers (F04).
 - Next: fix every in-scope finding from both reviews, rerun verification, update this file, then push and open the pull request for TML-3296.
 
 ## Slice order and tickets
