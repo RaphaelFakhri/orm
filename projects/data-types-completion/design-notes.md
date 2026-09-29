@@ -246,3 +246,12 @@ Consequence for SQLite: `sql/char@1` columns were created as `CHARACTER(n)`. The
 One function in the SQL family resolves the type text a database reports to a data type id and parameters. It reads only what the stack's SQL data types declare: each type's name, its other names, and how its name is written with parameters. Every SQL target's introspection calls it; no target carries a table or a resolver of its own. `normalizeFormattedType` in the Postgres adapter and `normalizeSqliteNativeType` in the SQLite target are deleted.
 
 Because parameters can sit inside the reported text (`timestamp(3) with time zone`, `numeric(10,2)`), a SQL data type declares the reading of its texts next to the writing: `render(params)` gives the text, and the declaration also says how each of its texts yields parameters. The family function tries the declared types; exactly one may claim a text, and assembly refuses two data types in one stack that claim the same text.
+
+### Extensions extend introspection by declaring data types (Will, 2026-09-29)
+
+An extension's data types are recognised by introspection with no change outside the extension. The family resolver reads the data types of the whole assembled stack, so a type declared by pgvector or postgis resolves exactly like a target's own. Requirements that follow:
+
+- The resolver, verify and `contract infer` contain no list of type names and no extension-specific branch.
+- With the extension in the stack, a `vector(1536)` column resolves to `pgvector/vector` with `{length: 1536}`, verifies by exact equality, and infers as `pgvector.Vector(1536)`.
+- Without the extension in the stack, the same column's type is claimed by no data type: verify reports a mismatch and `contract infer` fails naming the column.
+- The proof is a test that declares a data type in a test-only extension and introspects, verifies and infers a column of it, with no production code naming that type.
