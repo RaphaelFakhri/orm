@@ -10,6 +10,14 @@ Read this first when you resume the project. It records where the work stands an
 - Slice 2a changed nothing in `examples/` or `packages/3-extensions/`, so `check:upgrade-coverage` required no declaration; the two fragments under `upgrade-instructions/pending/sql-is-a-data-type/` are the ones design section 20 names.
 - The three publish-shell tarball tests (`all-shells-tarball`, `module-identity`, `cross-shell-tarball`) fail on this machine because `pnpm install` in the scratch project refuses `@vercel/detect-agent@1.2.5` as a "high-risk trust downgrade". That is the registry, not this branch. Check them in CI.
 
+## Slice 2a review, 2026-09-30
+
+- The implementer finished and committed but hit the Fable usage limit before it reported. Its verification logs are under `wip/v/`. Rerun on the tip: the render round-trip, two CLI tests and the relation-mode integration test pass (`wip/v/rerun-*.log`). The packaging and tarball tests fail only because of the registry trust-downgrade problem above.
+- `/drive-code-review` (no walkthrough) writes to `reviews/slice-2a/`, which `.gitignore` excludes, so the files exist only in this worktree.
+- The architect review is done: `reviews/slice-2a/system-design-review.md`, findings A01 to A14. The main one, A01: the family defines `sql/expression` but each adapter registers it; register it from `SqlFamilyDescriptor` (the family descriptor can carry `dataTypes`), or record the alternative in ADR 254.
+- The code review (`reviews/slice-2a/code-review.md`) was still running when the session hit its usage limit. If the file is missing or incomplete, run the code-review pass again.
+- Next: fix every in-scope finding from both reviews, rerun verification, update this file, then push and open the pull request for TML-3296.
+
 ## Slice order and tickets
 
 | Order | Plan slice | Ticket | State |
