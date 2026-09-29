@@ -429,6 +429,13 @@ class CollectionImpl<
   }
 
   /**
+   * Call `step` with this collection and return its result.
+   */
+  pipe<Result>(step: (collection: this) => Result): Result {
+    return step(this);
+  }
+
+  /**
    * Narrow a polymorphic model to a specific variant. The returned
    * collection has the variant's row shape and a discriminator filter
    * is automatically applied. Chaining `.variant(...)` again replaces

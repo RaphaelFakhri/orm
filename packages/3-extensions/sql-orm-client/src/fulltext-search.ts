@@ -62,11 +62,6 @@ export type FullTextIndexes<C extends SearchableCollection> = ModelFullTextIndex
 
 export type FullTextIndexName<C extends SearchableCollection> = FullTextIndexes<C>['prefix'];
 
-type FullTextIndexNamed<C extends SearchableCollection, Name> = Extract<
-  FullTextIndexes<C>,
-  { readonly prefix: Name }
->;
-
 export interface FullTextSearchOptions<Index extends FullTextIndexShape> {
   readonly only?: Index['options']['fields'][number][number];
 }
@@ -244,11 +239,17 @@ export type FullTextSearchStep<Name extends string, Only> = <
     FullTextSearchCheck<TContract, ModelName, NsId, Name, Only>,
 ) => C;
 
-export function fullTextSearch<C extends SearchableCollection, Name extends FullTextIndexName<C>>(
+export function fullTextSearch<
+  C extends SearchableCollection,
+  TContract extends Contract<SqlStorage>,
+  ModelName extends string,
+  Name extends ModelFullTextIndexes<TContract, ModelName, NsId>['prefix'],
+  NsId extends string = never,
+>(
   name: Name,
   query: FullTextQuery,
-  options?: FullTextSearchOptions<FullTextIndexNamed<C, Name>>,
-): (collection: C) => C;
+  options?: FullTextSearchOptions<NamedIndex<TContract, ModelName, NsId, Name>>,
+): (collection: C & CollectionCoordinates<TContract, ModelName, NsId>) => C;
 export function fullTextSearch<Name extends string, Only extends string | undefined = undefined>(
   name: Name,
   query: FullTextQuery,
