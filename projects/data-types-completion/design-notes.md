@@ -240,3 +240,9 @@ Consequence for SQLite: `sql/char@1` columns were created as `CHARACTER(n)`. The
 ### `contract infer` and unknown types (Q8)
 
 `contract infer` prints the type constructor for every column whose type a data type in the stack claims, including extension types (`pgvector.Vector(1536)`, `postgis.Geometry(4326)`). Where several constructors name one data type, the data type marks the one infer prints, and the marks reproduce today's output. `Unsupported(...)` is removed: it is not a Prisma 8 type. A column whose type no data type claims makes `contract infer` fail, naming the table, the column and the reported type.
+
+### Resolving a reported type is family code, not target code (Will, 2026-09-29)
+
+One function in the SQL family resolves the type text a database reports to a data type id and parameters. It reads only what the stack's SQL data types declare: each type's name, its other names, and how its name is written with parameters. Every SQL target's introspection calls it; no target carries a table or a resolver of its own. `normalizeFormattedType` in the Postgres adapter and `normalizeSqliteNativeType` in the SQLite target are deleted.
+
+Because parameters can sit inside the reported text (`timestamp(3) with time zone`, `numeric(10,2)`), a SQL data type declares the reading of its texts next to the writing: `render(params)` gives the text, and the declaration also says how each of its texts yields parameters. The family function tries the declared types; exactly one may claim a text, and assembly refuses two data types in one stack that claim the same text.
