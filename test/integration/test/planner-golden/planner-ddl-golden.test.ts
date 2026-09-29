@@ -3,9 +3,15 @@
  * planner's operations with the golden file recorded for it. A change in the
  * DDL either planner writes shows up here as a diff against the golden.
  *
- * A contract in a format today's validator refuses (old migration snapshots)
- * cannot be planned; its golden records the refusal instead, so the set of
- * contracts left out is committed and reviewed like the rest.
+ * A contract is any tracked JSON file whose top level names the SQL family and
+ * the Postgres or SQLite target, whatever the file is called.
+ *
+ * A contract in a format today's validator refuses (old migration snapshots),
+ * or one the planner refuses with a structured error, cannot be planned; its
+ * golden records the refusal instead, so the set of contracts left out is
+ * committed and reviewed like the rest. The same holds for extension packs
+ * that live inside an example and cannot be imported here: the golden lists
+ * them under `extensionsNotLoaded`.
  *
  * Record the goldens again with `UPDATE_PLANNER_GOLDENS=1 pnpm --filter
  * integration-tests test test/planner-golden`.
@@ -30,6 +36,7 @@ import { SqlSchemaIR } from '@internal/sql-schema-ir/types';
 import postgresTargetControl from '@internal/target-postgres/control';
 import { PostgresDatabaseSchemaNode } from '@internal/target-postgres/types';
 import sqliteTargetControl from '@internal/target-sqlite/control';
+import { isStructuredError } from '@internal/utils/structured-error';
 import { join, resolve } from 'pathe';
 import { describe, expect, it } from 'vitest';
 
@@ -47,6 +54,13 @@ const extensionsById: Readonly<Record<string, SqlExtension>> = {
   supabase,
 };
 
+const examplePackIds: ReadonlySet<string> = new Set([
+  'audit',
+  'demo/engagement-stats',
+  'feature-flags',
+  'slugid-defaults',
+]);
+
 interface CommittedContract {
   readonly path: string;
   readonly target: 'postgres' | 'sqlite';
@@ -54,17 +68,22 @@ interface CommittedContract {
   readonly json: unknown;
 }
 
+function parseJson(path: string): unknown {
+  try {
+    return JSON.parse(readFileSync(join(repoRoot, path), 'utf8'));
+  } catch {
+    return undefined;
+  }
+}
+
 function listCommittedSqlContracts(): readonly CommittedContract[] {
-  const files = execFileSync('git', ['ls-files', '**/contract.json', '**/expected.contract.json'], {
-    cwd: repoRoot,
-    encoding: 'utf8',
-  })
+  const files = execFileSync('git', ['ls-files', '*.json'], { cwd: repoRoot, encoding: 'utf8' })
     .split('\n')
     .filter((line) => line !== '')
     .sort();
   const contracts: CommittedContract[] = [];
   for (const path of files) {
-    const json: unknown = JSON.parse(readFileSync(join(repoRoot, path), 'utf8'));
+    const json = parseJson(path);
     if (typeof json !== 'object' || json === null) continue;
     const { target, targetFamily, extensions } = json as {
       target?: unknown;
@@ -106,11 +125,40 @@ function readContract(
   }
 }
 
-async function planFromEmpty(contract: CommittedContract): Promise<unknown> {
-  const extensions = contract.extensionIds.flatMap((id) => {
+function extensionsOf(contract: CommittedContract): {
+  readonly loaded: readonly SqlExtension[];
+  readonly notLoaded: readonly string[];
+} {
+  const loaded: SqlExtension[] = [];
+  const notLoaded: string[] = [];
+  for (const id of contract.extensionIds) {
     const extension = extensionsById[id];
-    return extension === undefined ? [] : [extension];
-  });
+    if (extension !== undefined) {
+      loaded.push(extension);
+    } else if (examplePackIds.has(id)) {
+      notLoaded.push(id);
+    } else {
+      throw new Error(
+        `${contract.path} uses the extension pack "${id}", which this test neither loads nor lists as an example pack.`,
+      );
+    }
+  }
+  return { loaded, notLoaded };
+}
+
+async function plannerErrorOr(plan: () => Promise<unknown>): Promise<unknown> {
+  try {
+    return await plan();
+  } catch (error) {
+    if (!isStructuredError(error)) throw error;
+    return { kind: 'plannerError', code: error.code, message: error.message };
+  }
+}
+
+async function planFromEmpty(
+  contract: CommittedContract,
+  extensions: readonly SqlExtension[],
+): Promise<unknown> {
   if (contract.target === 'postgres') {
     const stack = createControlStack({
       family: sqlFamilyControl,
@@ -124,22 +172,24 @@ async function planFromEmpty(contract: CommittedContract): Promise<unknown> {
     if ('unreadable' in read) return read.unreadable;
     const adapter = postgresAdapterControl.create(stack);
     const planner = postgresTargetControl.migrations.createPlanner(adapter);
-    const result = planner.plan({
-      contract: read.contract,
-      schema: emptyPostgresSchema,
-      policy: INIT_ADDITIVE_POLICY,
-      fromContract: null,
-      frameworkComponents: [
-        postgresTargetControl,
-        postgresAdapterControl,
-        postgresDriverControl,
-        ...extensions,
-      ],
-      spaceId: APP_SPACE_ID,
-      snapshotsImportPath: '../../snapshots',
+    return plannerErrorOr(async () => {
+      const result = planner.plan({
+        contract: read.contract,
+        schema: emptyPostgresSchema,
+        policy: INIT_ADDITIVE_POLICY,
+        fromContract: null,
+        frameworkComponents: [
+          postgresTargetControl,
+          postgresAdapterControl,
+          postgresDriverControl,
+          ...extensions,
+        ],
+        spaceId: APP_SPACE_ID,
+        snapshotsImportPath: '../../snapshots',
+      });
+      if (result.kind !== 'success') return result;
+      return { kind: result.kind, operations: await Promise.all(result.plan.operations) };
     });
-    if (result.kind !== 'success') return result;
-    return { kind: result.kind, operations: await Promise.all(result.plan.operations) };
   }
   const stack = createControlStack({
     family: sqlFamilyControl,
@@ -153,17 +203,19 @@ async function planFromEmpty(contract: CommittedContract): Promise<unknown> {
   if ('unreadable' in read) return read.unreadable;
   const adapter = sqliteAdapterControl.create(stack);
   const planner = sqliteTargetControl.migrations.createPlanner(adapter);
-  const result = planner.plan({
-    contract: read.contract,
-    schema: emptySqliteSchema,
-    policy: INIT_ADDITIVE_POLICY,
-    fromContract: null,
-    frameworkComponents: [sqliteTargetControl, sqliteAdapterControl, sqliteDriverControl],
-    spaceId: APP_SPACE_ID,
-    snapshotsImportPath: '../../snapshots',
+  return plannerErrorOr(async () => {
+    const result = planner.plan({
+      contract: read.contract,
+      schema: emptySqliteSchema,
+      policy: INIT_ADDITIVE_POLICY,
+      fromContract: null,
+      frameworkComponents: [sqliteTargetControl, sqliteAdapterControl, sqliteDriverControl],
+      spaceId: APP_SPACE_ID,
+      snapshotsImportPath: '../../snapshots',
+    });
+    if (result.kind !== 'success') return result;
+    return { kind: result.kind, operations: await Promise.all(result.plan.operations) };
   });
-  if (result.kind !== 'success') return result;
-  return { kind: result.kind, operations: await Promise.all(result.plan.operations) };
 }
 
 const contracts = listCommittedSqlContracts();
@@ -183,12 +235,14 @@ describe('planner DDL goldens', () => {
   it.each(contracts.map((contract) => [contract.path, contract] as const))(
     'plans %s from an empty database as recorded',
     async (_path, contract) => {
-      const planned = await planFromEmpty(contract);
+      const { loaded, notLoaded } = extensionsOf(contract);
+      const planned = await planFromEmpty(contract, loaded);
       const rendered = `${JSON.stringify(
         {
           contract: contract.path,
           target: contract.target,
-          extensions: contract.extensionIds,
+          extensions: contract.extensionIds.filter((id) => !notLoaded.includes(id)),
+          ...(notLoaded.length > 0 ? { extensionsNotLoaded: notLoaded } : {}),
           planned,
         },
         null,
