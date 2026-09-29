@@ -4,10 +4,8 @@ import type { Block, Presentations } from '@prisma/cli-engine';
 import { flag } from '@prisma/cli-engine';
 import { ok } from '@prisma/cli-engine/protocol';
 import { dirname, relative, resolve } from 'pathe';
-import {
-  executeContractEmit as executeContractEmitOperation,
-  formatSourceDiagnostic,
-} from '../../control-api/operations/contract-emit';
+import { executeContractEmit as executeContractEmitOperation } from '../../control-api/operations/contract-emit';
+import { formatSourceDiagnostic } from '../../control-api/operations/load-contract-source';
 import { defineOrmCommand } from '../define-command';
 import { controlProgressReporter } from '../progress';
 

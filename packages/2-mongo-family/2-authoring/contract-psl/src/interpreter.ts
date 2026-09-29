@@ -2,7 +2,7 @@ import type {
   ContractSourceDiagnostic,
   ContractSourceDiagnostics,
 } from '@internal/config/config-types';
-import { computeProfileHash } from '@internal/contract/hashing';
+import { buildExecutionSection, computeProfileHash } from '@internal/contract/hashing';
 import {
   type Contract,
   type ContractEnum,
@@ -21,11 +21,11 @@ import type {
   AuthoringContributions,
   AuthoringEntityContext,
   AuthoringTypeNamespace,
+  ParsedPslExtensionBlock,
 } from '@internal/framework-components/authoring';
 import {
   instantiateAuthoringEntityType,
   isAuthoringEntityTypeDescriptor,
-  isAuthoringPslBlockDescriptor,
   isAuthoringTypeConstructorDescriptor,
 } from '@internal/framework-components/authoring';
 import type { CodecLookup } from '@internal/framework-components/codec';
@@ -33,7 +33,6 @@ import type { ControlDefaultRegistries } from '@internal/framework-components/co
 import { UNBOUND_NAMESPACE_ID } from '@internal/framework-components/ir';
 import {
   applyPolymorphicScopeToMongoIndex,
-  buildMongoExecutionSection,
   buildMongoStorage,
   encodeMongoValueSets,
   type MongoCollectionInput,
@@ -59,13 +58,19 @@ import {
   createPslDiagnosticCollector,
   type DiagnosticSource,
   diagnosticSource,
-  keywordPslSpan,
+  interpretExtensionBlocks,
   mapPslDiagnostics,
   nodePslSpan,
   type PslDiagnostic,
   type PslDiagnosticCollector,
 } from '@internal/psl-parser';
-import { fkRelationPairKey, type InvalidFkPairing } from '@internal/psl-parser/interpret';
+import {
+  claimedBlockKeywords,
+  enumMemberAttributeDiagnostics,
+  fkRelationPairKey,
+  type InvalidFkPairing,
+  unsupportedBlockDiagnostic,
+} from '@internal/psl-parser/interpret';
 import type { DocumentAst, PslSources } from '@internal/psl-parser/syntax';
 import { assertDefined } from '@internal/utils/assertions';
 import { blindCast } from '@internal/utils/casts';
@@ -1098,6 +1103,7 @@ function resolveNonRelationField(
 
 function processEnumDeclarations(input: {
   readonly enumSymbols: readonly BlockSymbol[];
+  readonly parsedBlocks: ReadonlyMap<BlockSymbol, ParsedPslExtensionBlock>;
   readonly sources: PslSources;
   readonly binder: Binder;
   readonly authoringContributions: AuthoringContributions | undefined;
@@ -1119,7 +1125,7 @@ function processEnumDeclarations(input: {
       const source = diagnosticSource(input.sources, enumSymbol.node.syntax);
       input.diagnostics.push({
         code: 'PSL_ENUM_MISSING_FACTORY',
-        message: `enum "${enumSymbol.block.name}" requires an "enum" entityType factory in the active authoring contributions`,
+        message: `enum "${enumSymbol.name}" requires an "enum" entityType factory in the active authoring contributions`,
         ...source.at(enumSymbol.span),
       });
     }
@@ -1128,17 +1134,19 @@ function processEnumDeclarations(input: {
 
   for (const enumSymbol of input.enumSymbols) {
     const sourceFile = input.sources.sourceFileFor(enumSymbol.node.syntax);
-    const decl = enumSymbol.block;
+    const envelope = input.parsedBlocks.get(enumSymbol);
+    input.diagnostics.push(...enumMemberAttributeDiagnostics(enumSymbol, input.sources));
+    if (envelope === undefined) continue;
     const handle = instantiateAuthoringEntityType<EnumTypeHandle | undefined>(
       'enum',
       enumDescriptor,
-      [decl],
+      [envelope],
       { ...input.entityContext, sourceId: sourceFile.filename },
     );
 
     if (handle === undefined || handle === null) continue;
 
-    builtEnums[decl.name] = {
+    builtEnums[envelope.name] = {
       codecId: handle.codecId,
       members: handle.enumMembers.map((m) => ({
         name: m.name,
@@ -1179,6 +1187,13 @@ export function interpretPslDocumentToMongoContract(
   diagnostics.push(
     ...binderDiagnostics.filter((diagnostic) => diagnostic.data?.['reference'] !== 'type'),
   );
+  const { parsedBlocks, diagnostics: blockDiagnostics } = interpretExtensionBlocks({
+    symbolTable,
+    sources,
+    pslBlockDescriptors: input.authoringContributions?.pslBlockDescriptors ?? {},
+    binder,
+  });
+  diagnostics.push(...blockDiagnostics);
   const topLevel = symbolTable.topLevel;
   validateNamespaceBlocksForMongoTarget({
     namespaces: Object.values(topLevel.namespaces),
@@ -1216,27 +1231,20 @@ export function interpretPslDocumentToMongoContract(
     });
   }
 
-  const legitimateBlockKeywords = new Set([
+  const blockKeywords = new Set([
     'enum',
-    ...Object.entries(input.authoringContributions?.pslBlockDescriptors ?? {})
-      .filter(([, descriptor]) => isAuthoringPslBlockDescriptor(descriptor))
-      .map(([keyword]) => keyword),
+    ...claimedBlockKeywords(input.authoringContributions?.pslBlockDescriptors),
   ]);
   for (const block of Object.values(topLevel.blocks)) {
-    if (legitimateBlockKeywords.has(block.keyword)) continue;
-    diagnostics.push({
-      code: 'PSL_UNSUPPORTED_TOP_LEVEL_BLOCK',
-      message: `Unsupported top-level block "${block.keyword}"`,
-      ...diagnosticSource(sources, block.node.syntax).at(
-        keywordPslSpan(block.node.syntax, block.keyword, sources),
-      ),
-    });
+    if (!blockKeywords.has(block.keyword)) {
+      diagnostics.push(unsupportedBlockDiagnostic(block, sources));
+    }
   }
-
   const topLevelEnumSymbols = Object.values(topLevel.blocks).filter((b) => b.keyword === 'enum');
 
   const builtEnums = processEnumDeclarations({
     enumSymbols: topLevelEnumSymbols,
+    parsedBlocks,
     sources,
     binder,
     authoringContributions: input.authoringContributions,
@@ -1523,7 +1531,13 @@ export function interpretPslDocumentToMongoContract(
   const resolvedModels = polyResult.models;
   const resolvedCollections = polyResult.collections;
 
-  const execution = buildMongoExecutionSection(executionDefaults);
+  const target = 'mongo';
+  const targetFamily = 'mongo';
+  const execution = buildExecutionSection({
+    target,
+    targetFamily,
+    defaults: executionDefaults,
+  });
 
   // The storage value set is the source of truth for both the emit typing and the validator's
   // `enum` keyword. Built once, ahead of validator derivation, from each enum's codec-encoded member
@@ -1571,8 +1585,6 @@ export function interpretPslDocumentToMongoContract(
     }
   }
 
-  const target = 'mongo';
-  const targetFamily = 'mongo';
   const collectionInputs: Record<string, MongoCollectionInput> = {};
   for (const [name, coll] of Object.entries(resolvedCollections)) {
     const raw: Record<string, unknown> = {};
@@ -1584,10 +1596,10 @@ export function interpretPslDocumentToMongoContract(
       'arktype-validated JSON shapes satisfy MongoCollectionInput by construction'
     >(raw);
   }
-  const storage = blindCast<
-    Contract['storage'],
-    'MongoStorage is the Mongo family concrete storage class; it structurally satisfies the Contract storage slot.'
-  >(buildMongoStorage({ collections: collectionInputs, valueSets: storageValueSets }));
+  const storage: Contract['storage'] = buildMongoStorage({
+    collections: collectionInputs,
+    valueSets: storageValueSets,
+  });
   const capabilities: Record<string, Record<string, boolean>> = {};
 
   const hasEnums = Object.keys(builtEnums).length > 0;
