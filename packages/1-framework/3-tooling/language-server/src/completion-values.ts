@@ -1,11 +1,7 @@
 import type { ArgType, AttributeSpec } from '@internal/psl-parser';
 import type { SourceFile } from '@internal/psl-parser/syntax';
 import { type CompletionItem, CompletionItemKind, InsertTextFormat } from 'vscode-languageserver';
-import {
-  type ArgumentSignature,
-  directArgType,
-  resolveGrammar,
-} from './attribute-argument-grammar';
+import { type ArgumentSignature, resolveGrammar } from './attribute-argument-grammar';
 import type {
   AttributeArgumentPosition,
   AttributeArgumentSlotPosition,
@@ -66,14 +62,21 @@ function namedKeyItems(
   input: CompletionInput<AttributeNamedKeyPosition>,
   signature: ArgumentSignature,
 ): readonly CompletionItem[] {
-  return Object.keys(signature.named ?? {})
-    .filter((name) => !input.context.existingNamedKeys.includes(name))
-    .map((name) => {
+  return Object.entries(signature.named ?? {})
+    .filter(([name]) => !input.context.existingNamedKeys.includes(name))
+    .map(([name, param]) => {
       const snippet = input.clientSupportsSnippets && !input.context.hasColon;
-      const value = snippet ? '$' + '{1:}' : '';
+      const value = snippet ? `\${1:${name}}` : '';
       const text = input.context.hasColon ? name : `${name}: ${value}`;
       return {
-        ...completionItem(input, name, text, CompletionItemKind.Property, snippet),
+        ...completionItem(
+          input,
+          name,
+          text,
+          CompletionItemKind.Property,
+          snippet,
+          param.documentation,
+        ),
         ...(!input.context.hasColon && input.clientSupportsTriggerSuggestCommand === true
           ? {
               command: {
@@ -88,11 +91,10 @@ function namedKeyItems(
 
 function valueItems(
   input: ValueCompletionInput<AttributeArgumentPosition>,
-  param: ArgType<unknown, never> | undefined,
+  type: ArgType<unknown, never> | undefined,
   syntax: AttributeValuePosition['syntax'],
 ): readonly CompletionItem[] {
-  if (param === undefined) return [];
-  const type = directArgType(param);
+  if (type === undefined) return [];
   if (type.kind === 'oneOf') {
     return type.alternatives.flatMap((alternative) => valueItems(input, alternative, syntax));
   }
@@ -105,7 +107,14 @@ function valueItems(
     const text = snippet ? `${type.name}(${args})` : type.name;
     return [
       {
-        ...completionItem(input, type.name, text, CompletionItemKind.Function, snippet),
+        ...completionItem(
+          input,
+          type.name,
+          text,
+          CompletionItemKind.Function,
+          snippet,
+          type.signature.documentation,
+        ),
         ...(snippet && input.clientSupportsTriggerParameterHintsCommand === true && hasParameters
           ? {
               command: {
@@ -118,15 +127,29 @@ function valueItems(
     ];
   }
   if (syntax === 'functionName') return [];
+  if (type.kind === 'taggedLiteral') {
+    return type.tags.map((tag) => ({
+      ...completionItem(
+        input,
+        tag,
+        input.clientSupportsSnippets ? `${tag}\`$1\`` : tag,
+        CompletionItemKind.Value,
+        input.clientSupportsSnippets,
+      ),
+      detail: type.documentation,
+    }));
+  }
   switch (type.kind) {
     case 'identifier':
-      return scalarItems(input, [type.name]);
+      return type.name === undefined ? [] : scalarItems(input, [type.name], type.documentation);
     case 'str':
       return scalarItems(input, type.value === undefined ? [] : [JSON.stringify(type.value)]);
     case 'num':
       return scalarItems(input, type.value === undefined ? [] : [String(type.value)]);
     case 'bool':
       return scalarItems(input, ['true', 'false']);
+    case 'null':
+      return scalarItems(input, ['null']);
     case 'fieldRef':
     case 'referencedFieldRef':
       return scalarItems(input, input.fieldNames(type.kind));
@@ -143,8 +166,11 @@ function valueItems(
 function scalarItems(
   input: CompletionInput<AttributeArgumentPosition>,
   labels: readonly string[],
+  documentation?: string,
 ): readonly CompletionItem[] {
-  return labels.map((label) => completionItem(input, label, label, CompletionItemKind.Value));
+  return labels.map((label) =>
+    completionItem(input, label, label, CompletionItemKind.Value, false, documentation),
+  );
 }
 
 function completionItem(
@@ -153,11 +179,14 @@ function completionItem(
   newText: string,
   kind: CompletionItemKind,
   snippet = false,
+  documentation?: string,
 ): CompletionItem {
   return {
     label,
     kind,
-    detail: kind === CompletionItemKind.Property ? 'Attribute argument' : 'PSL argument value',
+    detail:
+      documentation ??
+      (kind === CompletionItemKind.Property ? 'Attribute argument' : 'PSL argument value'),
     filterText: label,
     textEdit: {
       range: {

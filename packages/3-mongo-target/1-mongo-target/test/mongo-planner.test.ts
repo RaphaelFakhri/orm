@@ -29,8 +29,8 @@ import {
   MongoSchemaValidator,
 } from '@internal/mongo-schema-ir';
 import { describe, expect, it } from 'vitest';
-import { MongoMigrationPlanner } from '../src/core/mongo-planner';
-import { CollModCall, CreateIndexCall } from '../src/core/op-factory-call';
+import { MongoMigrationPlanner } from '../src/core/migrations/mongo-planner';
+import { CollModCall, CreateIndexCall } from '../src/core/migrations/op-factory-call';
 import type { PlannerProducedMongoMigration } from '../src/exports/control';
 
 const ALL_CLASSES_POLICY: MigrationOperationPolicy = {
@@ -1567,7 +1567,7 @@ describe('MongoMigrationPlanner', () => {
     });
   });
 
-  describe('polymorphic collections (FL-09)', () => {
+  describe('polymorphic collections', () => {
     it('does not createCollection for variant names when contract has only the base collection', () => {
       const contract = makeContract({
         tasks: {

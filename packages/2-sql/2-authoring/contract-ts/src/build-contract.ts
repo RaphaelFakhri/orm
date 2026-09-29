@@ -1,5 +1,5 @@
 import {
-  computeExecutionHash,
+  buildExecutionSection,
   computeProfileHash,
   computeStorageHash,
 } from '@internal/contract/hashing';
@@ -22,12 +22,7 @@ import {
   type StorageHashBase,
   type ValueSetRef,
 } from '@internal/contract/types';
-import {
-  type CapabilityMatrix,
-  type EnumTypeHandle,
-  mergeCapabilityMatrices,
-  resolveToOneRelationNullable,
-} from '@internal/contract-authoring';
+import { type EnumTypeHandle, resolveToOneRelationNullable } from '@internal/contract-authoring';
 import type {
   AuthoringContributions,
   AuthoringEntityTypeDescriptor,
@@ -38,7 +33,13 @@ import {
   flushAuthoringWarnings,
   isAuthoringEntityTypeDescriptor,
 } from '@internal/framework-components/authoring';
-import type { CodecLookup, ColumnTypeDescriptor } from '@internal/framework-components/codec';
+import {
+  type Codec,
+  type CodecLookup,
+  type ColumnTypeDescriptor,
+  materializeCodec,
+} from '@internal/framework-components/codec';
+import { mergeCapabilityMatrices } from '@internal/framework-components/components';
 import { UNBOUND_NAMESPACE_ID } from '@internal/framework-components/ir';
 import { lowerAuthoredCheck } from '@internal/sql-contract/authored-check-naming';
 import { sqlContractCanonicalizationHooks } from '@internal/sql-contract/canonicalization-hooks';
@@ -75,9 +76,11 @@ import {
   computeCheckContentHash,
   derivedCheckPrefixes,
 } from '@internal/sql-schema-ir/naming';
+import { invariant } from '@internal/utils/assertions';
 import { blindCast } from '@internal/utils/casts';
 import { ifDefined } from '@internal/utils/defined';
 import { InternalError } from '@internal/utils/internal-error';
+import { isStructuredError, type StructuredError } from '@internal/utils/structured-error';
 import type {
   AuthoredColumnDefault,
   ContractDefinition,
@@ -93,41 +96,195 @@ type DomainFieldRef =
   | { readonly kind: 'scalar'; readonly many?: boolean }
   | { readonly kind: 'valueObject'; readonly name: string; readonly many?: boolean };
 
-function encodeViaCodec(value: unknown, codecId: string, codecLookup?: CodecLookup): JsonValue {
-  const codec = codecLookup?.get(codecId);
+/**
+ * The codec that encodes one column's default. Built with the column's own `typeParams`, because a
+ * parameterized codec answers for its params when it encodes — `pg/vector@1` checks the length its
+ * column declares — and the lookup's representative instance carries none. Only a column has params;
+ * every other encode site takes the representative instance.
+ */
+function columnCodec(
+  codecId: string,
+  typeParams: Record<string, unknown> | undefined,
+  codecLookup?: CodecLookup,
+): Codec | undefined {
+  const descriptor = codecLookup?.descriptorFor?.(codecId);
+  if (descriptor === undefined) return codecLookup?.get(codecId);
+  return materializeCodec(
+    descriptor,
+    {
+      codecId,
+      ...ifDefined(
+        'typeParams',
+        typeParams === undefined
+          ? undefined
+          : blindCast<JsonValue, 'typeParams are validated by the codec paramsSchema'>(typeParams),
+      ),
+    },
+    { name: codecId },
+  );
+}
+
+function columnTypeParams(
+  descriptor: ColumnTypeDescriptor,
+  storageTypes: Record<string, StorageTypeInstance>,
+): Record<string, unknown> | undefined {
+  if (descriptor.typeParams !== undefined) return descriptor.typeParams;
+  if (descriptor.typeRef === undefined) return undefined;
+  return storageTypes[descriptor.typeRef]?.typeParams;
+}
+
+function encodeViaCodec(value: unknown, codec: Codec | undefined): JsonValue {
   if (codec) {
     return codec.encodeJson(value);
   }
   return blindCast<
     JsonValue,
-    'no codec lookup at build time: literal/enum member value is already JSON-safe'
+    'the build was given no codec for this value, so it is stored as authored; the caller answers for it being JSON'
   >(value);
+}
+
+interface ColumnDefaultSite {
+  readonly modelName: string;
+  readonly fieldName: string;
+  readonly codecId: string;
+}
+
+function defaultRefusal(
+  site: ColumnDefaultSite,
+  cause: unknown,
+  elementPosition?: number,
+): StructuredError {
+  const subject =
+    elementPosition === undefined ? 'default' : `default (element ${elementPosition})`;
+  const reason = cause instanceof Error ? cause.message : String(cause);
+  return contractError(
+    'CONTRACT.DEFAULT_INVALID',
+    `Field "${site.modelName}.${site.fieldName}" has a ${subject} that its codec refuses: ${reason}`,
+    {
+      cause,
+      meta: {
+        modelName: site.modelName,
+        fieldName: site.fieldName,
+        codecId: site.codecId,
+        reason: 'codec-refused-default',
+        ...ifDefined('elementPosition', elementPosition),
+      },
+    },
+  );
+}
+
+function encodeDefaultValue(
+  value: unknown,
+  codec: Codec | undefined,
+  site: ColumnDefaultSite,
+  elementPosition?: number,
+): JsonValue {
+  try {
+    return encodeViaCodec(value, codec);
+  } catch (cause) {
+    if (cause instanceof InternalError) throw cause;
+    throw defaultRefusal(site, cause, elementPosition);
+  }
+}
+
+function codecForDefault(
+  codecLookup: CodecLookup | undefined,
+  resolveCodec: (codecLookup: CodecLookup) => Codec | undefined,
+  site: ColumnDefaultSite,
+): Codec | undefined {
+  if (codecLookup === undefined) return undefined;
+  const codec = buildCodecForDefault(codecLookup, resolveCodec, site);
+  if (codec === undefined) {
+    throw contractError(
+      'CONTRACT.DEFAULT_INVALID',
+      `Field "${site.modelName}.${site.fieldName}" has a default, but no pack in the contract declares its codec "${site.codecId}", so the default cannot be checked. List the pack that owns the codec in \`extensions\`.`,
+      {
+        meta: {
+          modelName: site.modelName,
+          fieldName: site.fieldName,
+          codecId: site.codecId,
+          reason: 'codec-not-found',
+        },
+      },
+    );
+  }
+  return codec;
+}
+
+function buildCodecForDefault(
+  codecLookup: CodecLookup,
+  resolveCodec: (codecLookup: CodecLookup) => Codec | undefined,
+  site: ColumnDefaultSite,
+): Codec | undefined {
+  try {
+    return resolveCodec(codecLookup);
+  } catch (cause) {
+    if (!isStructuredError(cause) || cause.code !== 'RUNTIME.TYPE_PARAMS_INVALID') throw cause;
+    throw contractError(
+      'CONTRACT.ARGUMENT_INVALID',
+      `Field "${site.modelName}.${site.fieldName}" has type parameters that its codec does not accept: ${cause.message}`,
+      {
+        cause,
+        meta: {
+          modelName: site.modelName,
+          fieldName: site.fieldName,
+          codecId: site.codecId,
+          reason: 'type-params-invalid',
+        },
+      },
+    );
+  }
 }
 
 function encodeColumnDefault(
   defaultInput: AuthoredColumnDefault,
-  codecId: string,
-  codecLookup?: CodecLookup,
+  codecLookup: CodecLookup | undefined,
+  resolveCodec: (codecLookup: CodecLookup) => Codec | undefined,
+  site: ColumnDefaultSite,
   many = false,
 ): ColumnDefault {
   if (defaultInput.kind === 'function') {
     return { kind: 'function', expression: defaultInput.expression };
   }
-  if (many) {
-    if (!Array.isArray(defaultInput.value)) {
-      throw new InternalError(
-        `Literal default on a list column must be an array; received ${typeof defaultInput.value}. ` +
-          'A scalar default on a list field must be rejected at the authoring surface.',
-      );
-    }
+  if ('canonical' in defaultInput && defaultInput.canonical === true) {
     return {
       kind: 'literal',
-      value: defaultInput.value.map((element) => encodeViaCodec(element, codecId, codecLookup)),
+      value: blindCast<
+        ColumnDefault extends { kind: 'literal'; value: infer V } ? V : never,
+        'a text contract source stores the canonical form its data type produced'
+      >(defaultInput.value),
+    };
+  }
+  if (many) {
+    if (!Array.isArray(defaultInput.value)) {
+      throw contractError(
+        'CONTRACT.DEFAULT_INVALID',
+        `Field "${site.modelName}.${site.fieldName}" is a list field, so its default is an array; received ${typeof defaultInput.value}. Call .many() before .default().`,
+        {
+          meta: {
+            modelName: site.modelName,
+            fieldName: site.fieldName,
+            codecId: site.codecId,
+            reason: 'list-default-not-array',
+          },
+        },
+      );
+    }
+    const codec = codecForDefault(codecLookup, resolveCodec, site);
+    return {
+      kind: 'literal',
+      value: defaultInput.value.map((element, index) =>
+        encodeDefaultValue(element, codec, site, index + 1),
+      ),
     };
   }
   return {
     kind: 'literal',
-    value: encodeViaCodec(defaultInput.value, codecId, codecLookup),
+    value: encodeDefaultValue(
+      defaultInput.value,
+      codecForDefault(codecLookup, resolveCodec, site),
+      site,
+    ),
   };
 }
 
@@ -155,7 +312,8 @@ function assertStorageSemantics(
     if (
       typeof registration !== 'object' ||
       registration === null ||
-      !Array.isArray((registration as { entries?: unknown }).entries)
+      !('entries' in registration) ||
+      !Array.isArray(registration.entries)
     ) {
       throw contractError(
         'CONTRACT.PACK_CONTRIBUTION_INVALID',
@@ -163,7 +321,10 @@ function assertStorageSemantics(
         { meta: { packId: pack.id, contribution: 'indexTypes', reason: 'invalid-shape' } },
       );
     }
-    for (const entry of (registration as IndexTypeRegistration<IndexTypeMap>).entries) {
+    for (const entry of blindCast<
+      IndexTypeRegistration<IndexTypeMap>,
+      'checked above to be an object with an entries array; each entry is validated when registered'
+    >(registration).entries) {
       indexTypeRegistry.register(entry);
     }
   }
@@ -338,7 +499,9 @@ function checkMemberValues(
   handle: EnumTypeHandle,
   codecLookup: CodecLookup | undefined,
 ): readonly (string | number)[] {
-  const encoded = handle.values.map((value) => encodeViaCodec(value, handle.codecId, codecLookup));
+  const encoded = handle.values.map((value) =>
+    encodeViaCodec(value, codecLookup?.get(handle.codecId)),
+  );
   const values: (string | number)[] = [];
   for (const value of encoded) {
     if (typeof value !== 'string' && !(typeof value === 'number' && Number.isFinite(value))) {
@@ -667,12 +830,18 @@ function targetColumnsForJunction(targetModel: ModelNode, fieldName: string): re
 function buildStorageColumn(
   field: FieldNode | ValueObjectFieldNode,
   storageValueSetRef: ValueSetRef | undefined,
+  modelName: string,
+  storageTypes: Record<string, StorageTypeInstance>,
   codecLookup?: CodecLookup,
 ): StorageColumn {
   if (isValueObjectField(field)) {
     const encodedDefault =
       field.default !== undefined
-        ? encodeColumnDefault(field.default, JSONB_CODEC_ID, codecLookup)
+        ? encodeColumnDefault(field.default, codecLookup, (lookup) => lookup.get(JSONB_CODEC_ID), {
+            modelName,
+            fieldName: field.fieldName,
+            codecId: JSONB_CODEC_ID,
+          })
         : undefined;
 
     return {
@@ -686,7 +855,14 @@ function buildStorageColumn(
   const codecId = field.descriptor.codecId;
   const encodedDefault =
     field.default !== undefined
-      ? encodeColumnDefault(field.default, codecId, codecLookup, field.many === true)
+      ? encodeColumnDefault(
+          field.default,
+          codecLookup,
+          (lookup) =>
+            columnCodec(codecId, columnTypeParams(field.descriptor, storageTypes), lookup),
+          { modelName, fieldName: field.fieldName, codecId },
+          field.many === true,
+        )
       : undefined;
 
   // `storageValueSetRef` (derived from an `enumTypeHandle`) takes precedence
@@ -1080,7 +1256,13 @@ export function buildSqlContractFromDefinition(
           : withoutNoCheck;
       }
 
-      const column = buildStorageColumn(resolvedField, storageValueSetRef, codecLookup);
+      const column = buildStorageColumn(
+        resolvedField,
+        storageValueSetRef,
+        semanticModel.modelName,
+        definition.storageTypes ?? {},
+        codecLookup,
+      );
       columns[field.columnName] = column;
       fieldToColumn[field.fieldName] = field.columnName;
 
@@ -1121,7 +1303,7 @@ export function buildSqlContractFromDefinition(
 
       if (executionDefaultPhases) {
         executionDefaults.push({
-          ref: { namespace: namespaceId, table: tableName, column: field.columnName },
+          ref: { namespace: namespaceId, entry: tableName, field: field.columnName },
           ...ifDefined('onCreate', executionDefaultPhases.onCreate),
           ...ifDefined('onUpdate', executionDefaultPhases.onUpdate),
         });
@@ -1345,6 +1527,10 @@ export function buildSqlContractFromDefinition(
         relation.toNamespaceId,
         'Relation',
       );
+      invariant(
+        relation.toTable !== undefined,
+        `Relation "${semanticModel.modelName}.${relation.fieldName}" is local but carries no target table; only cross-space relations may leave it unset.`,
+      );
       assertTargetTableMatches(semanticModel.modelName, targetModel, relation.toTable, 'Relation');
 
       const targetColumnToField = new Map(
@@ -1444,13 +1630,13 @@ export function buildSqlContractFromDefinition(
   const rawStorageTypes = definition.storageTypes ?? {};
   const documentTypes: Record<string, StorageTypeInstance> = Object.fromEntries(
     Object.entries(rawStorageTypes).map(([name, entry]) => {
-      if ((entry as { kind?: unknown }).kind === 'codec-instance') return [name, entry];
+      if ('kind' in entry && entry.kind === 'codec-instance') return [name, entry];
       return [
         name,
         toStorageTypeInstance({
           codecId: entry.codecId,
           nativeType: entry.nativeType,
-          typeParams: (entry as { typeParams?: Record<string, unknown> }).typeParams ?? {},
+          typeParams: ('typeParams' in entry ? entry.typeParams : undefined) ?? {},
         }),
       ];
     }),
@@ -1485,7 +1671,7 @@ export function buildSqlContractFromDefinition(
       codecId: handle.codecId,
       members: handle.enumMembers.map((m) => ({
         name: m.name,
-        value: encodeViaCodec(m.value, handle.codecId, codecLookup),
+        value: encodeViaCodec(m.value, codecLookup?.get(handle.codecId)),
       })),
     };
 
@@ -1496,7 +1682,7 @@ export function buildSqlContractFromDefinition(
     }
     storageSlot[enumName] = {
       kind: 'valueSet',
-      values: handle.values.map((v) => encodeViaCodec(v, handle.codecId, codecLookup)),
+      values: handle.values.map((v) => encodeViaCodec(v, codecLookup?.get(handle.codecId))),
     };
   }
 
@@ -1543,25 +1729,13 @@ export function buildSqlContractFromDefinition(
     : computeStorageHash({
         target,
         targetFamily,
-        storage: storageWithoutHash as Record<string, unknown>,
+        storage: blindCast<
+          Record<string, unknown>,
+          'the storage envelope is a plain object of namespaces; hashing reads it as a record'
+        >(storageWithoutHash),
         ...sqlContractCanonicalizationHooks,
       });
   const storage = new SqlStorage({ ...storageWithoutHash, storageHash });
-
-  const executionSection =
-    executionDefaults.length > 0
-      ? {
-          mutations: {
-            defaults: executionDefaults.sort((a, b) => {
-              const tableCompare = a.ref.table.localeCompare(b.ref.table);
-              if (tableCompare !== 0) {
-                return tableCompare;
-              }
-              return a.ref.column.localeCompare(b.ref.column);
-            }),
-          },
-        }
-      : undefined;
 
   const extensionNamespaces = definition.extensions
     ? Object.values(definition.extensions).map((pack) => pack.id)
@@ -1576,15 +1750,10 @@ export function buildSqlContractFromDefinition(
     }
   }
 
-  const extensionPackCapabilitySources = definition.extensions
-    ? Object.values(definition.extensions).map(
-        (pack) => pack.capabilities as CapabilityMatrix | undefined,
-      )
-    : [];
-  const capabilities = mergeCapabilityMatrices(
-    definition.target.capabilities as CapabilityMatrix | undefined,
-    ...extensionPackCapabilitySources,
-  );
+  const capabilities = mergeCapabilityMatrices({}, [
+    definition.target,
+    ...Object.values(definition.extensions ?? {}),
+  ]);
   // Internal `profileHash` computation is unchanged from `origin/main`: it
   // continues to fingerprint the author-declared capability subset. With
   // `capabilities` removed from the `defineContract` input that subset is
@@ -1595,12 +1764,11 @@ export function buildSqlContractFromDefinition(
     capabilities: {},
   });
 
-  const executionWithHash = executionSection
-    ? {
-        ...executionSection,
-        executionHash: computeExecutionHash({ target, targetFamily, execution: executionSection }),
-      }
-    : undefined;
+  const executionWithHash = buildExecutionSection({
+    target,
+    targetFamily,
+    defaults: executionDefaults,
+  });
 
   const valueObjects: Record<string, ContractValueObject> | undefined =
     definition.valueObjects && definition.valueObjects.length > 0

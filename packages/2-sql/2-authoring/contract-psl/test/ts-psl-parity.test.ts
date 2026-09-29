@@ -13,6 +13,7 @@ import { type } from 'arktype';
 import { describe, expect, it } from 'vitest';
 import { createTestSqlNamespace } from '../../../1-core/contract/test/test-support';
 import { interpretPslDocumentToSqlContract } from '../src/interpreter';
+import { fixtureDataTypeSupport } from './fixture-data-types';
 import {
   createBuiltinLikeControlMutationDefaults,
   symbolTableInputFromParseArgs,
@@ -148,30 +149,7 @@ const sqliteTimestampTargetPack = {
           nativeType: 'text',
         },
       },
-      temporal: {
-        createdAt: {
-          kind: 'fieldPreset',
-          output: {
-            codecId: 'sqlite/datetime@1',
-            nativeType: 'text',
-            default: {
-              kind: 'function',
-              expression: 'now()',
-            },
-          },
-        },
-        updatedAt: {
-          kind: 'fieldPreset',
-          output: {
-            codecId: 'sqlite/datetime@1',
-            nativeType: 'text',
-            executionDefaults: {
-              onCreate: { kind: 'generator', id: 'timestampNow' },
-              onUpdate: { kind: 'generator', id: 'timestampNow' },
-            },
-          },
-        },
-      },
+      temporal: temporalConvenienceMirrors.sqlite,
     },
   },
 } as const satisfies TargetPackRef<'sql', 'sqlite'>;
@@ -353,7 +331,7 @@ describe('TS and PSL authoring parity', () => {
   const timestampParityPslSchema = `model User {
   id Int @id
   email String
-  createdAt DateTime @default(now())
+  createdAt temporal.createdAt()
   updatedAt temporal.updatedAt()
   @@map("user")
 }`;
@@ -378,6 +356,7 @@ describe('TS and PSL authoring parity', () => {
       controlMutationDefaults: createBuiltinLikeControlMutationDefaults(),
       authoringContributions: target.authoringContributions,
       createNamespace: createTestSqlNamespace,
+      dataTypeLookup: fixtureDataTypeSupport.lookup,
       capabilities: { sql: { scalarList: true } },
     });
 
@@ -417,7 +396,7 @@ describe('TS and PSL authoring parity', () => {
 model Post {
   id Int @id
   authorId Int
-  author User @relation(fields: [authorId], references: [id])
+  author auth.User @relation(fields: [authorId], references: [id])
   @@map("post")
 }
 `,
@@ -432,6 +411,7 @@ model Post {
       controlMutationDefaults: createBuiltinLikeControlMutationDefaults(),
       authoringContributions,
       createNamespace: createTestSqlNamespace,
+      dataTypeLookup: fixtureDataTypeSupport.lookup,
       capabilities: { sql: { scalarList: true } },
     });
 
@@ -508,6 +488,7 @@ model Post {
       authoringContributions,
       createNamespace: createTestSqlNamespace,
       capabilities: { sql: { scalarList: true } },
+      dataTypeLookup: fixtureDataTypeSupport.lookup,
     });
     expect(pslContract.ok).toBe(true);
     if (!pslContract.ok) return;
@@ -575,6 +556,7 @@ model Post {
       authoringContributions,
       createNamespace: createTestSqlNamespace,
       capabilities: { sql: { scalarList: true } },
+      dataTypeLookup: fixtureDataTypeSupport.lookup,
     });
     expect(pslContract.ok).toBe(true);
     if (!pslContract.ok) return;
@@ -648,6 +630,7 @@ model Post {
       authoringContributions,
       createNamespace: createTestSqlNamespace,
       capabilities: { sql: { scalarList: true } },
+      dataTypeLookup: fixtureDataTypeSupport.lookup,
     });
     expect(pslContract.ok).toBe(true);
     if (!pslContract.ok) return;
@@ -699,6 +682,7 @@ model Post {
       authoringContributions,
       createNamespace: createTestSqlNamespace,
       capabilities: { sql: { scalarList: true } },
+      dataTypeLookup: fixtureDataTypeSupport.lookup,
     });
     expect(pslContract.ok).toBe(true);
     if (!pslContract.ok) return;
@@ -756,6 +740,7 @@ model Post {
       authoringContributions,
       createNamespace: createTestSqlNamespace,
       capabilities: { sql: { scalarList: true } },
+      dataTypeLookup: fixtureDataTypeSupport.lookup,
     });
 
     expect(pslContract.ok).toBe(true);
@@ -817,6 +802,7 @@ model Post {
         controlMutationDefaults: createBuiltinLikeControlMutationDefaults(),
         authoringContributions: postgresTimestampAuthoringContributions,
         createNamespace: createTestSqlNamespace,
+        dataTypeLookup: fixtureDataTypeSupport.lookup,
         capabilities: { sql: { scalarList: true } },
       });
       expect(result.ok).toBe(true);

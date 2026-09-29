@@ -44,6 +44,7 @@ Both files are **emitted artefacts**. Edit the source; never the JSON or `.d.ts`
 - **Contract source.** A file the framework reads and lowers to the canonical Contract IR. Two flavours, both first-class:
   - **`contract.prisma` (PSL)** — schema-flavoured DSL. Canonical for typical apps and brownfield Prisma users. Wired by `contract: './<path>/contract.prisma'` — the target config (`ormConfig`, below) detects the `.prisma` extension and routes through the PSL provider. The first line of every `.prisma` file is `// use prisma-8`; `orm init` and `contract infer` write it, and the language server only serves diagnostics, completion, and formatting on files that carry it (it still recognises the header earlier releases wrote and rewrites it on Format).
   - **`contract.ts` (TypeScript builder)** — programmatic authoring with `defineContract({...}, ({ field, model, rel, type }) => ({...}))` from `@internal/postgres/contract-builder` (or `@internal/mongo/contract-builder`). Wired by `contract: './<path>/contract.ts'` — the façade detects the `.ts` extension and routes through the TS provider. Use when you need programmatic composition (per-tenant variants, generated fields) or constructs PSL doesn't yet express (e.g. registering a parameterised extension type — see pgvector's contract).
+  - **An existing Prisma schema, during adoption.** A project that still runs an earlier Prisma can point `contract:` at its current `schema.prisma` instead of writing a Prisma 8 contract: `contract: prisma6Schema('prisma/schema.prisma')` from `@internal/mongo/config` reads a Prisma 6 MongoDB schema, and `prisma7Schema` from `@internal/postgres/config` reads a Prisma 7 Postgres schema. The earlier Prisma keeps owning the database; after each change there, run `contract emit` and `db sign`. A construct Prisma 8 cannot express fails `contract emit` with a `PSL.PRISMA6_MONGO_*` or `PSL.PRISMA7_*` diagnostic. See the façade READMEs for the details.
 - **`prisma.config.ts`.** Wires the contract source, the database connection, the migrations directory, and any installed extensions. The file is an *envelope*: the unified CLI's `definePrismaConfig({...})` from `@prisma/cli-engine` wraps an `orm:` section built by the target's `defineConfig` — conventionally imported as `ormConfig` from `@internal/postgres/config` (or `@internal/mongo/config`). There is no flat form; a bare `defineConfig({ contract, ... })` default export fails with `CONFIG.VERSION_MARKER_MISSING`.
 
   ```typescript
@@ -126,6 +127,16 @@ Then run `pnpm prisma contract emit` (or rely on the Vite plugin — see `refere
 
 `name:` declares a wire-named index (physical name `<name>_<8-hex hash>`, renames plan as `ALTER INDEX … RENAME`); `map:` adopts an exact physical name verbatim (for infer-captured objects — combining it with a SQL body warns, because drift detection byte-compares the authored text against Postgres's reprint). An `expression:` requires `name:` or `map:`. The TS builder mirrors this via `constraints.index([cols.x], {...})` / `constraints.index({ expression, ... })` — see `packages/2-sql/2-authoring/contract-ts/README.md`.
 
+**Full-text search indexes (PostgreSQL).** Do not hand-write the `to_tsvector` expression — Postgres only uses the index when it is the same `to_tsvector` over the same configuration literal and the same column as the query. Declare `@@fullTextIndex`, which renders the same expression `fullTextMatches` / `fullTextRank` / `fullTextHeadline` lower to (see `references/queries-postgres.md`):
+
+```prisma
+@@fullTextIndex([text], name: "message_text_search")
+@@fullTextIndex([summary], language: "german", name: "message_summary_search_de")
+@@fullTextIndex([text], where: "archived_at IS NULL", name: "message_text_search_live")
+```
+
+The TS builder has the same helper: `fullTextIndex(cols.text, { name: 'message_text_search' })`, from `@prisma/orm-postgres/contract-builder`, inside the model's `sql({ indexes: [...] })`. It takes exactly one field, an optional `language` (default `english`, from the same allowlist the operations accept), an optional `where:` for a partial index, and `name:` xor `map:` like any expression index. It is repeatable, so a model may index several columns. Give the index and the operation the same `language` — a mismatch is silent, costing the index and falling back to a sequential scan. The parser that builds the query (`websearchToTsquery` and the others) takes its own `language` for the query side; it does not affect index use. It lowers to a GIN index over `to_tsvector('<language>', "<column>")` — the column name resolved through `@map` — so `@@index(expression: …)` remains only for expressions this attribute does not cover.
+
 PSL alias surface for repeated types lives in a top-level `types {}` block:
 
 ```prisma
@@ -172,6 +183,10 @@ export const contract = defineContract(
 Then `pnpm prisma contract emit`. The `field.<scalar>()` helpers are only available inside the callback overload; outside the callback only `field.column(...)`, `field.generated(...)`, `field.namedType(...)` exist.
 
 For Mongo, swap every `@internal/postgres/*` import for `@internal/mongo/*`. The Mongo builder also exposes `index` and `valueObject`.
+
+Mongo scalar types, as PSL name / TS builder / application type: `String` / `field.string()` / `string`; `Int32` / `field.int32()` / `number`; `Int64` / `field.int64()` / `bigint`; `Double` / `field.double()` / `number`; `Decimal128` / `field.decimal128()` / decimal text as a `string`; `Bool` / `field.bool()` / `boolean`; `Date` / `field.date()` / `Date`; `ObjectId` / `field.objectId()` / `string`; `Binary` / `field.binary()` / `Uint8Array`; `Json` / `field.json()` / `JsonValue`; `Bson` / `field.bson()` / `BsonValue`. `Json` holds a JSON value only, validated as the JSON-representable BSON types; `Bson` holds any BSON value, unconstrained by the validator. The full table, with codec ids and storage types, is [Scalar types](https://github.com/prisma/orm/blob/main/docs/reference/scalar-types.md).
+
+Mongo timestamps the ORM fills: in PSL, type the field `temporal.createdAt()` (set on create), `temporal.updatedAt()` (set on create and on every update with a non-empty payload), or `temporal.timestamp(onCreate: now, onUpdate: now)` with either option; in TS, use `field.temporal.createdAt()` and the rest inside the callback overload. They store a BSON date read back as `Date`, one value per ORM operation, and an explicit value in the write wins. The fields are optional on create. A preset field cannot be optional (`?`), a list, `@id`, or a field of a composite type.
 
 ## Workflow — Add an extension-typed scalar (pgvector)
 

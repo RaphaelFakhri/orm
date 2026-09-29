@@ -30,6 +30,7 @@ import { aggregateOperationNames } from './aggregate-operations';
 import { mapCursorValuesToColumns, mapFieldsToColumns } from './collection-column-mapping';
 import {
   assertDistinctOnCapability,
+  assertInsertConflictSkipCapability,
   assertReturningCapability,
   getColumnToFieldMap,
   getFieldToColumnMap,
@@ -39,9 +40,10 @@ import {
   type PolymorphismVariantInfo,
   resolveFieldToColumn,
   resolveIncludeRelation,
+  resolveInsertConflictColumns,
   resolveModelTableName,
   resolvePolymorphismInfo,
-  resolvePrimaryKeyColumn,
+  resolvePrimaryKeyColumns,
   resolveRowIdentityColumns,
   resolveUpsertConflictColumns,
 } from './collection-contract';
@@ -87,12 +89,13 @@ import {
 } from './include-descriptors';
 import { createModelAccessor } from './model-accessor';
 import {
-  buildPrimaryKeyFilterFromRow,
+  buildRowIdentityFilterFromRow,
   executeNestedCreateMutation,
   executeNestedUpdateMutation,
   hasNestedMutationCallbacks,
   withMutationScope,
 } from './mutation-executor';
+import { assertCursorCompatibleOrder, assertDistinctOnCompatibleOrder } from './order-by-guards';
 import { ormError } from './orm-errors';
 import type { PreparedCollection } from './prepared-collection';
 import {
@@ -106,6 +109,7 @@ import {
   compileUpdateCount,
   compileUpdateReturning,
   compileUpsertReturning,
+  type InsertConflictSkip,
   mergeAnnotations,
 } from './query-plan';
 import { queryPlanRows } from './query-plan-rows';
@@ -151,22 +155,18 @@ function applyCreateDefaults(
   namespaceId: string,
   tableName: string,
   rows: Record<string, unknown>[],
+  defaultValueCache = new Map<string, unknown>(),
 ): void {
-  // Per-operation cache for generators with `stability: 'query'` (e.g.
-  // `timestampNow` for `temporal.updatedAt()`): one generated value
-  // shared across every row in this insert. Per-field generators
-  // (e.g. `cuid`) ignore the cache and vary per row.
-  const defaultValueCache = rows.length > 1 ? new Map<string, unknown>() : undefined;
   for (const row of rows) {
     const applied = ctx.context.applyMutationDefaults({
       op: 'create',
-      table: tableName,
+      entry: tableName,
       namespace: namespaceId,
       values: row,
-      ...(defaultValueCache ? { defaultValueCache } : {}),
+      defaultValueCache,
     });
     for (const def of applied) {
-      row[def.column] = def.value;
+      row[def.field] = def.value;
     }
   }
 }
@@ -179,12 +179,12 @@ function applyUpdateDefaults(
 ): void {
   const applied = ctx.context.applyMutationDefaults({
     op: 'update',
-    table: tableName,
+    entry: tableName,
     namespace: namespaceId,
     values,
   });
   for (const def of applied) {
-    values[def.column] = def.value;
+    values[def.field] = def.value;
   }
 }
 
@@ -210,6 +210,38 @@ function isWhereDirectInput(value: unknown): value is WhereDirectInput {
   );
 }
 
+type WriteConfigure = (meta: MetaBuilder<'write'>) => void;
+
+/**
+ * Ask the database to skip rows that collide with a unique constraint
+ * instead of failing the whole statement.
+ *
+ * `conflictOn` names the scalar fields of the constraint to watch; omit
+ * it to skip on any unique constraint of the table. Requires the
+ * contract capability `insertOnConflictSkip`, and
+ * `insertOnConflictWithoutTarget` as well when `conflictOn` is omitted.
+ */
+export interface CreateConflictOptions<
+  TContract extends Contract<SqlStorage>,
+  ModelName extends string,
+> {
+  readonly onConflict: 'skip';
+  readonly conflictOn?: readonly (keyof DefaultModelRow<TContract, ModelName> & string)[];
+}
+
+function splitCreateArguments<TContract extends Contract<SqlStorage>, ModelName extends string>(
+  optionsOrConfigure: CreateConflictOptions<TContract, ModelName> | WriteConfigure | undefined,
+  configure: WriteConfigure | undefined,
+): {
+  options: CreateConflictOptions<TContract, ModelName> | undefined;
+  configureCallback: WriteConfigure | undefined;
+} {
+  if (typeof optionsOrConfigure === 'function') {
+    return { options: undefined, configureCallback: optionsOrConfigure };
+  }
+  return { options: optionsOrConfigure, configureCallback: configure };
+}
+
 type MtiVariantInfo = Simplify<PolymorphismVariantInfo & { readonly strategy: 'mti' }>;
 
 function isMtiVariantInfo(variant: PolymorphismVariantInfo | undefined): variant is MtiVariantInfo {
@@ -221,7 +253,7 @@ interface MtiCreateContext {
   variant: MtiVariantInfo;
   baseFieldToColumn: Record<string, string>;
   variantFieldToColumn: Record<string, string>;
-  pkColumn: string;
+  pkColumns: readonly string[];
 }
 
 interface RegisteredRoot {
@@ -818,8 +850,8 @@ class CollectionImpl<
       relatedNamespaceId: relation.relatedNamespaceId,
       relatedTableName: relation.relatedTableName,
       localTableName: relation.localTableName,
-      targetColumn: relation.targetColumn,
-      localColumn: relation.localColumn,
+      targetColumns: relation.targetColumns,
+      localColumns: relation.localColumns,
       cardinality: relation.cardinality,
       ...ifDefined('through', relation.through),
       nested: nestedState,
@@ -1077,6 +1109,7 @@ class CollectionImpl<
       ? Partial<Record<keyof DefaultModelRow<TContract, ModelName> & string, unknown>>
       : never,
   ): Collection<TContract, ModelName, Row, State> {
+    assertCursorCompatibleOrder(this.state.orderBy);
     const mappedCursor = mapCursorValuesToColumns(
       this.contract,
       this.namespaceId,
@@ -1152,6 +1185,7 @@ class CollectionImpl<
       : never
   ): Collection<TContract, ModelName, Row, State> {
     assertDistinctOnCapability(this.contract, 'distinctOn');
+    assertDistinctOnCompatibleOrder(this.state.orderBy, fields.length);
     const distinctOnFields = mapFieldsToColumns(
       this.contract,
       this.namespaceId,
@@ -1510,13 +1544,13 @@ class CollectionImpl<
         >(data),
       });
 
-      const pkCriterion = buildPrimaryKeyFilterFromRow(
+      const identityCriterion = buildRowIdentityFilterFromRow(
         this.contract,
         this.namespaceId,
         this.modelName,
         createdRow,
       );
-      const reloaded = await this.#reloadMutationRowByPrimaryKey(pkCriterion);
+      const reloaded = await this.#reloadMutationRowByIdentity(identityCriterion);
       if (!reloaded) {
         throw ormError(
           'ORM.MUTATION_ROW_MISSING',
@@ -1569,11 +1603,19 @@ class CollectionImpl<
    * for await (const row of db.orm.User.createAll(seedUsers)) {
    *   console.log('inserted', row.id);
    * }
+   *
+   * // Let the database skip rows that collide with a unique
+   * // constraint; only the rows it inserted come back:
+   * const inserted = await db.orm.User.createAll(seedUsers, {
+   *   onConflict: 'skip',
+   *   conflictOn: ['email'],
+   * });
    * ```
    *
    * Accepts an optional `configure` callback that receives a
    * `MetaBuilder<'write'>` for attaching typed annotations to the
-   * compiled insert plan.
+   * compiled insert plan. It may be passed in second position when
+   * there are no options.
    */
   createAll(
     data: readonly ResolvedScalarCreateInput<
@@ -1582,11 +1624,15 @@ class CollectionImpl<
       State['variantName'],
       State['nsId']
     >[],
-    configure?: (meta: MetaBuilder<'write'>) => void,
+    optionsOrConfigure?: CreateConflictOptions<TContract, ModelName> | WriteConfigure,
+    configure?: WriteConfigure,
   ): AsyncIterableResult<Row> {
+    const { options, configureCallback } = splitCreateArguments(optionsOrConfigure, configure);
+    const conflictSkip = this.#resolveConflictSkip(options, 'createAll()');
     return this.#createAllWithAnnotations(
       data,
-      this.#collectAnnotationsFromMeta(configure, 'write', 'createAll'),
+      this.#collectAnnotationsFromMeta(configureCallback, 'write', 'createAll'),
+      conflictSkip,
     );
   }
 
@@ -1598,6 +1644,7 @@ class CollectionImpl<
       State['nsId']
     >[],
     annotationsMap: ReadonlyMap<string, AnnotationValue<unknown, OperationKind>> | undefined,
+    conflictSkip?: InsertConflictSkip,
   ): AsyncIterableResult<Row> {
     if (data.length === 0) {
       const generator = async function* (): AsyncGenerator<Row, void, unknown> {};
@@ -1625,6 +1672,7 @@ class CollectionImpl<
         this.tableName,
         mappedRows,
         selectedForInsert,
+        conflictSkip,
       ).map((plan) => mergeAnnotations(plan, annotationsMap));
       return dispatchSplitMutationRows<Row>({
         context: this.ctx.context,
@@ -1649,6 +1697,7 @@ class CollectionImpl<
         this.tableName,
         mappedRows,
         selectedForInsert,
+        conflictSkip,
       ),
       annotationsMap,
     );
@@ -1668,22 +1717,64 @@ class CollectionImpl<
     });
   }
 
-  #assertNotMtiVariant(method: string): void {
-    const mtiCtx = this.#resolveMtiCreateContext();
-    if (mtiCtx) {
+  #resolveConflictSkip(
+    options: CreateConflictOptions<TContract, ModelName> | undefined,
+    method: string,
+  ): InsertConflictSkip | undefined {
+    if (options === undefined) return undefined;
+
+    if (options.onConflict !== 'skip') {
       throw ormError(
-        'ORM.OPERATION_UNSUPPORTED',
-        `${method} is not supported for MTI variant "${this.state.variantName}" on model "${this.modelName}". Use createAll() instead.`,
-        {
-          meta: {
-            method,
-            model: this.modelName,
-            variant: this.state.variantName,
-            reason: 'mti-variant',
-          },
-        },
+        'ORM.ARGUMENT_INVALID',
+        `${method} onConflict must be "skip"; received ${JSON.stringify(options.onConflict)}`,
+        { meta: { method, model: this.modelName } },
       );
     }
+
+    if (method === 'createAll()') {
+      this.#assertConflictSkipNotOnMtiVariant(method);
+    } else {
+      this.#assertNotMtiVariant(method);
+    }
+
+    const conflictOn = options.conflictOn ?? [];
+    assertInsertConflictSkipCapability(this.contract, method, conflictOn.length > 0);
+
+    return {
+      columns: resolveInsertConflictColumns(
+        this.contract,
+        this.namespaceId,
+        this.modelName,
+        conflictOn,
+        method,
+      ),
+    };
+  }
+
+  #assertNotMtiVariant(method: string): void {
+    this.#refuseOnMtiVariant(
+      method,
+      `${method} is not supported for MTI variant "${this.state.variantName}" on model "${this.modelName}". Use createAll() instead.`,
+    );
+  }
+
+  #assertConflictSkipNotOnMtiVariant(method: string): void {
+    this.#refuseOnMtiVariant(
+      method,
+      `The onConflict option is not supported on variant "${this.state.variantName}" of model "${this.modelName}" because the variant is stored in its own table. Call createAll(rows) without the option; a duplicate row then makes the call fail.`,
+    );
+  }
+
+  #refuseOnMtiVariant(method: string, message: string): void {
+    if (!this.#resolveMtiCreateContext()) return;
+    throw ormError('ORM.OPERATION_UNSUPPORTED', message, {
+      meta: {
+        method,
+        model: this.modelName,
+        variant: this.state.variantName,
+        reason: 'mti-variant',
+      },
+    });
   }
 
   #resolveMtiCreateContext(): MtiCreateContext | null {
@@ -1702,14 +1793,14 @@ class CollectionImpl<
       this.namespaceId,
       variant.modelName,
     );
-    const pkColumn = resolvePrimaryKeyColumn(this.contract, this.namespaceId, this.tableName);
+    const pkColumns = resolvePrimaryKeyColumns(this.contract, this.namespaceId, this.tableName);
 
     return {
       polyInfo,
       variant,
       baseFieldToColumn,
       variantFieldToColumn,
-      pkColumn,
+      pkColumns,
     };
   }
 
@@ -1717,7 +1808,7 @@ class CollectionImpl<
     data: readonly Record<string, unknown>[],
     mtiCtx: MtiCreateContext,
   ): AsyncIterableResult<Row> {
-    const { polyInfo, variant, baseFieldToColumn, variantFieldToColumn, pkColumn } = mtiCtx;
+    const { polyInfo, variant, baseFieldToColumn, variantFieldToColumn, pkColumns } = mtiCtx;
     const contract = this.contract;
     const collectionCtx = this.ctx;
     const runtime = collectionCtx.runtime;
@@ -1730,6 +1821,7 @@ class CollectionImpl<
     const mergedFieldToColumn = { ...baseFieldToColumn, ...variantFieldToColumn };
 
     const generator = async function* (): AsyncGenerator<Row, void, unknown> {
+      const defaultValueCache = new Map<string, unknown>();
       for (const row of data) {
         const allMapped: Record<string, unknown> = {};
         for (const [fieldName, value] of Object.entries(row)) {
@@ -1751,7 +1843,7 @@ class CollectionImpl<
         }
 
         const merged = await withMutationScope(runtime, async (scope) => {
-          applyCreateDefaults(collectionCtx, namespaceId, tableName, [baseRow]);
+          applyCreateDefaults(collectionCtx, namespaceId, tableName, [baseRow], defaultValueCache);
           const baseCompiled = compileInsertReturning(
             contract,
             namespaceId,
@@ -1779,9 +1871,16 @@ class CollectionImpl<
             );
           }
 
-          const pkValue = baseCreated[pkColumn];
-          variantRow[pkColumn] = pkValue;
-          applyCreateDefaults(collectionCtx, namespaceId, variant.table, [variantRow]);
+          for (const pkColumn of pkColumns) {
+            variantRow[pkColumn] = baseCreated[pkColumn];
+          }
+          applyCreateDefaults(
+            collectionCtx,
+            namespaceId,
+            variant.table,
+            [variantRow],
+            defaultValueCache,
+          );
           const variantCompiled = compileInsertReturning(
             contract,
             namespaceId,
@@ -1811,7 +1910,7 @@ class CollectionImpl<
 
           const prefixedVariant: Record<string, unknown> = {};
           for (const [col, val] of Object.entries(variantCreated)) {
-            if (col === pkColumn) continue;
+            if (pkColumns.includes(col)) continue;
             prefixedVariant[`${variant.table}__${col}`] = val;
           }
 
@@ -1876,7 +1975,8 @@ class CollectionImpl<
 
   /**
    * Write terminal: insert many rows without materializing the
-   * inserted rows, returning the number of inserted records.
+   * inserted rows, returning the number of rows the database reports
+   * inserting.
    *
    * Prefer `createAll(...)` when you need the returned rows; prefer
    * this when you only need to know how many rows were inserted (the
@@ -1888,6 +1988,12 @@ class CollectionImpl<
    *   { email: 'b@example.com' },
    * ]);
    * // inserted === 2
+   *
+   * // Let the database skip rows that collide with a unique
+   * // constraint; the count is how many it actually inserted:
+   * const added = await db.orm.User.createAndCount(seedUsers, {
+   *   onConflict: 'skip',
+   * });
    * ```
    *
    * Not supported on MTI variants — use `createAll(...)` instead.
@@ -1899,14 +2005,22 @@ class CollectionImpl<
       State['variantName'],
       State['nsId']
     >[],
-    configure?: (meta: MetaBuilder<'write'>) => void,
+    optionsOrConfigure?: CreateConflictOptions<TContract, ModelName> | WriteConfigure,
+    configure?: WriteConfigure,
   ): Promise<number> {
+    const { options, configureCallback } = splitCreateArguments(optionsOrConfigure, configure);
+    const conflictSkip = this.#resolveConflictSkip(options, 'createAndCount()');
+
     if (data.length === 0) {
       return 0;
     }
 
     this.#assertNotMtiVariant('createAndCount()');
-    const annotationsMap = this.#collectAnnotationsFromMeta(configure, 'write', 'createAndCount');
+    const annotationsMap = this.#collectAnnotationsFromMeta(
+      configureCallback,
+      'write',
+      'createAndCount',
+    );
 
     const rows = blindCast<
       readonly Record<string, unknown>[],
@@ -1921,19 +2035,22 @@ class CollectionImpl<
         this.namespaceId,
         this.tableName,
         mappedRows,
+        conflictSkip,
       ).map((plan) => mergeAnnotations(plan, annotationsMap));
+      let affectedRows = 0;
       for (const plan of plans) {
-        await this.ctx.runtime.execute(plan);
+        const stats = await this.ctx.runtime.execute(plan);
+        affectedRows += stats.affectedRows;
       }
-      return data.length;
+      return affectedRows;
     }
 
     const compiled = mergeAnnotations(
-      compileInsertCount(this.contract, this.namespaceId, this.tableName, mappedRows),
+      compileInsertCount(this.contract, this.namespaceId, this.tableName, mappedRows, conflictSkip),
       annotationsMap,
     );
-    await this.ctx.runtime.execute(compiled);
-    return data.length;
+    const stats = await this.ctx.runtime.execute(compiled);
+    return stats.affectedRows;
   }
 
   /**
@@ -2139,13 +2256,13 @@ class CollectionImpl<
         return null;
       }
 
-      const pkCriterion = buildPrimaryKeyFilterFromRow(
+      const identityCriterion = buildRowIdentityFilterFromRow(
         this.contract,
         this.namespaceId,
         this.modelName,
         updatedRow,
       );
-      return this.#reloadMutationRowByPrimaryKey(pkCriterion);
+      return this.#reloadMutationRowByIdentity(identityCriterion);
     }
 
     return withMutationScope(this.ctx.runtime, async (scope) => {
@@ -2596,8 +2713,8 @@ class CollectionImpl<
     );
   }
 
-  async #reloadMutationRowByPrimaryKey(criterion: Record<string, unknown>): Promise<Row | null> {
-    return this.#reloadMutationRowByCriterion(criterion, 'primary key');
+  async #reloadMutationRowByIdentity(criterion: Record<string, unknown>): Promise<Row | null> {
+    return this.#reloadMutationRowByCriterion(criterion, 'row identity');
   }
 
   async #reloadMutationRowByCriterion(

@@ -16,6 +16,7 @@ import {
 import type { Codec } from '../src/shared/codec';
 import type { AnyCodecDescriptor } from '../src/shared/codec-descriptor';
 import type { CodecLookup } from '../src/shared/codec-types';
+import { dataTypeId } from '../src/shared/data-type';
 import type { ComponentDescriptor } from '../src/shared/framework-components';
 import { isRuntimeError } from '../src/shared/runtime-error';
 
@@ -49,7 +50,7 @@ describe('extractCodecTypeImports', () => {
         types: {
           codecTypes: {
             import: {
-              package: '@internal/adapter-mongo/codec-types',
+              package: '@test/mongo/codec-types',
               named: 'CodecTypes',
               alias: 'MongoCodecTypes',
             },
@@ -59,7 +60,7 @@ describe('extractCodecTypeImports', () => {
     ]);
     expect(result).toEqual([
       {
-        package: '@internal/adapter-mongo/codec-types',
+        package: '@test/mongo/codec-types',
         named: 'CodecTypes',
         alias: 'MongoCodecTypes',
       },
@@ -129,6 +130,7 @@ describe('assembleAuthoringContributions', () => {
   it('returns empty namespaces for descriptors without authoring', () => {
     const result = assembleAuthoringContributions([createDescriptor()]);
     expect(result).toEqual({
+      dataTypes: {},
       field: {},
       type: {},
       entityTypes: {},
@@ -603,9 +605,29 @@ describe('assembleAuthoringContributions', () => {
       keyword,
       discriminator,
       name: { required: true },
-      parameters: {},
+      spec: () => ({}),
     };
   }
+
+  it('rejects a pslBlockDescriptors entry whose spec is not callable', () => {
+    expect(() =>
+      assembleAuthoringContributions([
+        createDescriptor({
+          authoring: {
+            entityTypes: {
+              foo: { kind: 'entity', discriminator: 'fake-foo', output: { factory: () => ({}) } },
+            },
+            pslBlockDescriptors: {
+              fooBlock: {
+                ...makeDeclarativePslBlockDescriptor('fake-foo'),
+                spec: 'not-a-factory',
+              } as unknown as never,
+            },
+          },
+        }),
+      ]),
+    ).toThrow(/Malformed authoring pslBlock contribution at "fooBlock"/);
+  });
 
   it('merges pslBlockDescriptors namespaces from multiple descriptors', () => {
     const result = assembleAuthoringContributions([
@@ -1148,6 +1170,7 @@ describe('extractCodecLookup', () => {
 
   const stubDescriptor = (id: string): AnyCodecDescriptor => ({
     codecId: id,
+    dataType: dataTypeId('demo/stub'),
     traits: [],
     targetTypes: [],
     paramsSchema: {
@@ -1378,7 +1401,7 @@ describe('createControlStack', () => {
           types: {
             codecTypes: {
               import: {
-                package: '@internal/adapter-mongo/codec-types',
+                package: '@test/mongo/codec-types',
                 named: 'CodecTypes',
                 alias: 'MongoCodecTypes',
               },
@@ -1403,6 +1426,7 @@ describe('createControlStack', () => {
     expect(state.queryOperationTypeImports).toEqual([]);
     expect(state.extensionIds).toEqual(['fam', 'tgt']);
     expect(state.authoringContributions).toEqual({
+      dataTypes: {},
       field: {},
       type: {},
       entityTypes: {},

@@ -1,4 +1,5 @@
 import type { ColumnDefault, JsonValue } from '@internal/contract/types';
+import { blindCast } from '@internal/utils/casts';
 
 /**
  * Pre-compiled regex patterns for performance.
@@ -44,6 +45,9 @@ const DECIMAL_TEXT_TYPE_PATTERN = /^(?:bigint|int8|numeric|decimal)(?:\(\d+(?:,\
  * Examples: `'{}'::text[]`, `'{1,2}'::integer[]`, `'{}'`
  */
 const ARRAY_LITERAL_PATTERN = /^'(\{.*\})'(?:::.+\[\])?$/;
+
+/** `box` is the one core type whose array elements are delimited by `;`, not `,`. */
+const SEMICOLON_DELIMITED_ELEMENT_TYPE_PATTERN = /^box$/i;
 
 /**
  * Matches the constructor spelling Postgres reports for a default written as
@@ -147,7 +151,8 @@ type ArrayElementToken = { readonly value: string; readonly quoted: boolean };
  * outside double quotes; inside a quoted element a doubled quote (`""`) or a
  * backslash-escaped quote (`\"`) is a literal quote, and a backslash escapes the
  * next character. Returns undefined if the body is malformed (e.g. an unbalanced
- * quote).
+ * quote), nests an array, which puts a brace outside quotes, or escapes a character outside
+ * quotes with a backslash, which Postgres never prints.
  */
 function splitArrayElements(inner: string): readonly ArrayElementToken[] | undefined {
   const tokens: ArrayElementToken[] = [];
@@ -182,6 +187,7 @@ function splitArrayElements(inner: string): readonly ArrayElementToken[] | undef
       quoted = true;
       continue;
     }
+    if (char === '{' || char === '}' || char === '\\') return undefined;
     if (char === ',') {
       tokens.push({ value: current, quoted });
       current = '';
@@ -196,13 +202,39 @@ function splitArrayElements(inner: string): readonly ArrayElementToken[] | undef
   return tokens;
 }
 
+const BOOLEAN_TYPE_PATTERN = /^(?:bool|boolean)$/i;
+const BOOLEAN_TRUE_TOKEN_PATTERN = /^(?:t|true)$/i;
+const BOOLEAN_FALSE_TOKEN_PATTERN = /^(?:f|false)$/i;
+
+/**
+ * Reads an unquoted, non-NULL array element by the column's element type. Only text Postgres itself
+ * would print is read; anything else keeps the raw expression.
+ */
+function unquotedElementValue(token: string, elementType: string): JsonValue | undefined {
+  if (token === '') return undefined;
+  if (BOOLEAN_TYPE_PATTERN.test(elementType)) {
+    if (BOOLEAN_TRUE_TOKEN_PATTERN.test(token)) return true;
+    if (BOOLEAN_FALSE_TOKEN_PATTERN.test(token)) return false;
+    return undefined;
+  }
+  if (NUMBER_TYPE_PATTERN.test(elementType)) {
+    return NUMERIC_PATTERN.test(token) ? numberValue(token, elementType) : undefined;
+  }
+  if (isJsonElementType(elementType)) {
+    if (token === 'true') return true;
+    if (token === 'false') return false;
+    return NUMERIC_PATTERN.test(token) ? textElementValue(token, elementType) : undefined;
+  }
+  return token;
+}
+
 /**
  * Parses a Postgres array literal body (`{...}`) into a JS array of primitives.
  * Returns undefined if the body cannot be reliably parsed.
  *
  * Handles:
  * - `{}` → `[]`
- * - `{elem1,elem2,...}` → `[elem1, elem2, ...]` with numeric and string element coercion
+ * - `{elem1,elem2,...}` → `[elem1, elem2, ...]`, each unquoted element read by the element type
  * - quoted elements that contain commas, doubled/escaped quotes, and the literal
  *   strings `NULL`/`true`/`false` (a quoted token is always a string)
  */
@@ -219,29 +251,21 @@ function parseArrayLiteralBody(
     if (token.quoted) {
       // A quoted token is always a string — `"NULL"`, `"true"`, `"1"` are the
       // literal text, never the keyword/number.
-      result.push(token.value);
+      result.push(textElementValue(token.value, elementType));
       continue;
     }
     const el = token.value.trim();
     if (el.toUpperCase() === 'NULL') {
+      // A `json`/`jsonb` element's quoted `'null'` is the JSON value null, and an unquoted SQL NULL
+      // is the absence of a value. Both would read back as JSON null, so the whole default is left
+      // as its raw expression rather than printed as one the other reads back as.
+      if (isJsonElementType(elementType)) return undefined;
       result.push(null);
       continue;
     }
-    if (el === 'true') {
-      result.push(true);
-      continue;
-    }
-    if (el === 'false') {
-      result.push(false);
-      continue;
-    }
-    if (NUMERIC_PATTERN.test(el)) {
-      const value = numberValue(el, elementType);
-      if (value === undefined) return undefined;
-      result.push(value);
-      continue;
-    }
-    return undefined;
+    const value = unquotedElementValue(el, elementType);
+    if (value === undefined) return undefined;
+    result.push(value);
   }
   return result;
 }
@@ -282,12 +306,29 @@ function splitConstructorElements(body: string): readonly string[] {
  * raw expression.
  */
 function parseConstructorElement(element: string, elementType: string): JsonValue | undefined {
-  if (NULL_PATTERN.test(element)) return null;
+  // See `parseArrayLiteralBody`: an unquoted SQL NULL in a json list is not the JSON value null.
+  if (NULL_PATTERN.test(element)) return isJsonElementType(elementType) ? undefined : null;
   if (TRUE_PATTERN.test(element)) return true;
   if (FALSE_PATTERN.test(element)) return false;
   const token = readLiteralToken(element);
   if (token === undefined) return undefined;
-  return token.kind === 'number' ? numberValue(token.numeral, elementType) : token.text;
+  return token.kind === 'number'
+    ? numberValue(token.numeral, elementType)
+    : textElementValue(token.text, elementType);
+}
+
+function isJsonElementType(elementType: string): boolean {
+  return elementType === 'json' || elementType === 'jsonb';
+}
+
+/** A `json`/`jsonb` element's text is a JSON document, as it is on a scalar column of the same type. */
+function textElementValue(text: string, elementType: string): JsonValue {
+  if (!isJsonElementType(elementType)) return text;
+  try {
+    return blindCast<JsonValue, 'JSON.parse yields a JSON value'>(JSON.parse(text));
+  } catch {
+    return text;
+  }
 }
 
 function parseArrayConstructor(
@@ -334,8 +375,11 @@ export function parsePostgresDefault(
   if (normalizedType?.endsWith('[]')) {
     const elementType = normalizedType.slice(0, -2);
     const arrayMatch = trimmed.match(ARRAY_LITERAL_PATTERN);
-    if (arrayMatch?.[1] !== undefined) {
-      const parsed = parseArrayLiteralBody(arrayMatch[1], elementType);
+    if (
+      arrayMatch?.[1] !== undefined &&
+      !SEMICOLON_DELIMITED_ELEMENT_TYPE_PATTERN.test(elementType)
+    ) {
+      const parsed = parseArrayLiteralBody(arrayMatch[1].replace(/''/g, "'"), elementType);
       if (parsed !== undefined) {
         return { kind: 'literal', value: parsed };
       }
@@ -396,7 +440,7 @@ export function parsePostgresDefault(
 /**
  * Normalizes a contract-declared default through {@link parsePostgresDefault}
  * — the same parser introspection uses — so a function-shaped default the
- * parser recognizes as a literal (e.g. `dbgenerated("'{}'::jsonb")`)
+ * parser recognizes as a literal (e.g. sql`'{}'::jsonb`)
  * resolves to the same `resolvedDefault` shape a live introspected column
  * would produce. Compensates once, at `SchemaIR` construction of the
  * expected (contract-derived) side (`contractToSchemaIR`'s `resolveDefault`

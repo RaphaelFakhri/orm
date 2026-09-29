@@ -10,6 +10,7 @@ import {
 import { describe, expect, it } from 'vitest';
 import { createTestSqlNamespace } from '../../../1-core/contract/test/test-support';
 import { interpretPslDocumentToSqlContract } from '../src/interpreter';
+import { fixtureDataTypeSupport } from './fixture-data-types';
 import {
   createBuiltinLikeControlMutationDefaults,
   postgresEnumInferenceCodecs,
@@ -68,7 +69,6 @@ function interpret(schema: string) {
   const document = symbolTableInputFromParseArgs({
     schema,
     sourceId: 'schema.prisma',
-    pslBlockDescriptors: authoringContributions.pslBlockDescriptors,
   });
   return interpretPslDocumentToSqlContract({
     ...document,
@@ -79,6 +79,7 @@ function interpret(schema: string) {
     authoringContributions,
     codecLookup: testCodecLookup,
     createNamespace: createTestSqlNamespace,
+    dataTypeLookup: fixtureDataTypeSupport.lookup,
     enumInferenceCodecs: postgresEnumInferenceCodecs,
     capabilities: { sql: { scalarList: true } },
   });

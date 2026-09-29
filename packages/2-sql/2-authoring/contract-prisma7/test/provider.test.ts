@@ -1,6 +1,8 @@
 import { mkdirSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import type { CodecLookup } from '@internal/framework-components/codec';
+import { expandContractInputs } from '@internal/config-loader';
+import type { CodecLookup, DataTypeLookup } from '@internal/framework-components/codec';
+import { dataType, dataTypeId } from '@internal/framework-components/codec';
 import { prisma7PostgresBinding } from '@internal/target-postgres/prisma7-binding';
 import { structuredError } from '@internal/utils/structured-error';
 import { join } from 'pathe';
@@ -10,15 +12,34 @@ import { postgresSourceContext } from './support';
 
 const postgres = { binding: prisma7PostgresBinding };
 
-function withTextDefaultsEncodedAsNull(lookup: CodecLookup): CodecLookup {
-  const get = (id: string) => {
-    const codec = lookup.get(id);
-    if (id !== 'pg/text@1' || codec === undefined) return codec;
-    return Object.assign(Object.create(Object.getPrototypeOf(codec)), codec, {
-      encodeJson: () => null,
+/**
+ * A lookup whose text codec encodes every default as JSON null, so the contract the reader builds
+ * fails the checks `contract emit` runs. The column's codec is built from its descriptor, so the
+ * descriptor's factory is what has to hand back the broken codec.
+ */
+/**
+ * A stack whose text columns store a null default: their descriptor names a data type whose cast
+ * from the written text returns null, which gives a contract the emit checks refuse.
+ */
+const BROKEN_TEXT = dataTypeId('demo/broken-text');
+
+function withTextDefaultsCastToNull(lookup: CodecLookup): CodecLookup {
+  const descriptorFor = (id: string) => {
+    const descriptor = lookup.descriptorFor?.(id);
+    if (id !== 'pg/text@1' || descriptor === undefined) return descriptor;
+    return Object.assign(Object.create(Object.getPrototypeOf(descriptor)), descriptor, {
+      dataType: BROKEN_TEXT,
     });
   };
-  return Object.assign(Object.create(Object.getPrototypeOf(lookup)), lookup, { get });
+  return Object.assign(Object.create(Object.getPrototypeOf(lookup)), lookup, { descriptorFor });
+}
+
+function withBrokenTextType(lookup: DataTypeLookup): DataTypeLookup {
+  const brokenText = dataType(BROKEN_TEXT, { casts: { 'pg/text': () => null } });
+  return {
+    get: (id) => (id === BROKEN_TEXT ? brokenText : lookup.get(id)),
+    has: (id) => id === BROKEN_TEXT || lookup.has(id),
+  };
 }
 
 function scratchDir(name: string): string {
@@ -28,9 +49,9 @@ function scratchDir(name: string): string {
 }
 
 describe('prisma7Contract', () => {
-  it('declares the prisma7 format and the input path', () => {
+  it('declares the psl format and the input path', () => {
     expect(prisma7Contract('prisma/schema.prisma', postgres)).toMatchObject({
-      source: { format: 'prisma7', inputs: ['prisma/schema.prisma'] },
+      source: { format: 'psl', inputs: ['prisma/schema.prisma'] },
     });
   });
 
@@ -73,6 +94,34 @@ describe('prisma7Contract', () => {
       'Deep',
       'Nested',
       'Post',
+    ]);
+  });
+
+  it('keeps a directory input intact through the same resolution helper every assembly site uses', async () => {
+    const dir = scratchDir('directory-through-assembly-site');
+    writeFileSync(
+      join(dir, 'datasource.prisma'),
+      'datasource db {\n  provider = "postgresql"\n}\n',
+    );
+    writeFileSync(join(dir, 'a.prisma'), 'model A {\n  id Int\n}\n');
+    writeFileSync(join(dir, 'b.prisma'), 'model B {\n  id Int\n}\n');
+    writeFileSync(join(dir, 'c.prisma'), 'model C {\n  id Int\n}\n');
+
+    // `dir` stands in for the absolute path the orm config schema would have
+    // produced from a relative schema path resolved against the config
+    // directory — expandContractInputs only ever sees already-absolute
+    // patterns in production.
+    const config = prisma7Contract(dir, postgres);
+    const resolvedInputs = await expandContractInputs(config.source.inputs);
+    expect(resolvedInputs).toEqual([dir]);
+
+    const result = await config.source.load(postgresSourceContext(resolvedInputs));
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(Object.keys(result.value.domain.namespaces['public']?.models ?? {}).sort()).toEqual([
+      'A',
+      'B',
+      'C',
     ]);
   });
 
@@ -209,7 +258,8 @@ describe('prisma7Contract', () => {
     const context = postgresSourceContext([schemaFile]);
     const result = await prisma7Contract('prisma/schema.prisma', postgres).source.load({
       ...context,
-      codecLookup: withTextDefaultsEncodedAsNull(context.codecLookup),
+      codecLookup: withTextDefaultsCastToNull(context.codecLookup),
+      dataTypeLookup: withBrokenTextType(context.dataTypeLookup),
     });
     expect(result).toMatchObject({
       ok: false,

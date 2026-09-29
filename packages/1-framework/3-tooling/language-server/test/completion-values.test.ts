@@ -22,6 +22,7 @@ import {
   type RejectingArgType,
   record,
   str,
+  structBlock,
 } from '@internal/psl-parser';
 import { parse, SourceFile } from '@internal/psl-parser/syntax';
 import { describe, expect, it, vi } from 'vitest';
@@ -35,7 +36,7 @@ import {
 } from '../src/completion-values';
 
 const emptyTabStop1 = '$' + '{1:}';
-const emptyTabStop2 = '$' + '{2:}';
+const namedTabStop = (index: number, name: string) => `\${${index}:${name}}`;
 const rejectedParse = vi.fn(() => {
   throw new Error('completion must not parse');
 });
@@ -45,6 +46,8 @@ const rejecting: RejectingArgType<never, AttributeCtx> = {
   message: 'No available values',
   parse: rejectedParse,
 };
+const unchecked = { ...identifier(), parse: rejectedParse };
+const checked = { ...entityRef({ kind: 'model' }), parse: rejectedParse };
 const direction = oneOf(
   identifier('Asc', { documentation: 'An accepted identifier in this test grammar.' }),
   identifier('Desc', { documentation: 'An accepted identifier in this test grammar.' }),
@@ -135,6 +138,8 @@ const signature = {
     all: {
       type: oneOf(
         str(),
+        unchecked,
+        checked,
         identifier('Alpha', { documentation: 'An accepted identifier in this test grammar.' }),
         bool(),
         num(),
@@ -143,13 +148,15 @@ const signature = {
       documentation: 'A scalar value with enumerated completion candidates.',
     },
     none: {
-      type: oneOf(str(), num(), int(), json(), entityRef(), rejecting),
+      type: oneOf(str(), num(), int(), json(), checked, unchecked, rejecting),
       documentation: 'A free-form value without enumerated candidates.',
     },
     rejected: { type: rejecting, documentation: 'A value that always fails interpretation.' },
     recordValues: { type: record(bool()), documentation: 'Boolean values keyed by name.' },
     unionLists: {
       type: oneOf(
+        list(unchecked),
+        list(checked),
         list(identifier('A', { documentation: 'An accepted identifier in this test grammar.' })),
         list(identifier('B', { documentation: 'An accepted identifier in this test grammar.' })),
         list(identifier('A', { documentation: 'An accepted identifier in this test grammar.' })),
@@ -189,7 +196,7 @@ const pslBlockDescriptors: AuthoringPslBlockDescriptorNamespace = {
     keyword: 'policy',
     discriminator: 'completion-policy',
     name: { required: true },
-    parameters: {},
+    spec: () => structBlock({ parameters: {} }),
     attributes: { probe: () => blockSpec },
   },
 };
@@ -198,8 +205,9 @@ function complete(markedSource: string, snippets = false, parameterHints = false
   const offset = markedSource.indexOf('|');
   expect(offset).toBeGreaterThanOrEqual(0);
   const source = markedSource.slice(0, offset) + markedSource.slice(offset + 1);
-  const { document, sourceFile } = parse(source);
-  const { table: symbolTable } = buildSymbolTable({ document, sourceFile, pslBlockDescriptors });
+  const { document, sources } = parse(source, 'language-server-test.psl');
+  const sourceFile = sources.sourceFileFor(document.syntax);
+  const { symbolTable } = buildSymbolTable({ documents: [document], sources });
   const items = providePslCompletionItems({
     context: classifyPslCompletionContext({
       document,
@@ -253,7 +261,7 @@ describe('classified positions without cursor AST', () => {
             existingNamedKeys: [],
             hasColon,
           },
-          sourceFile: new SourceFile('mode: Asc'),
+          sourceFile: new SourceFile('language-server-test.psl', 'mode: Asc'),
           clientSupportsSnippets: true,
           clientSupportsTriggerSuggestCommand: true,
         },
@@ -262,7 +270,7 @@ describe('classified positions without cursor AST', () => {
       const item = items.find((candidate) => candidate.label === 'mode');
       expect(item?.textEdit).toEqual({
         range: { start: { line: 0, character: 0 }, end: { line: 0, character: 4 } },
-        newText: hasColon ? 'mode' : `mode: ${emptyTabStop1}`,
+        newText: hasColon ? 'mode' : `mode: ${namedTabStop(1, 'mode')}`,
       });
       expect(item?.command).toEqual(
         hasColon
@@ -276,7 +284,7 @@ describe('classified positions without cursor AST', () => {
   );
 
   it('resolves all matching nested signatures using only a path and existing keys', () => {
-    const sourceFile = new SourceFile('');
+    const sourceFile = new SourceFile('language-server-test.psl', '');
     const items = provideAttributeNamedKeyCompletionItems(
       {
         context: {
@@ -315,7 +323,7 @@ describe('classified positions without cursor AST', () => {
           hasColon: false,
           positionalIndex: 0,
         },
-        sourceFile: new SourceFile(''),
+        sourceFile: new SourceFile('language-server-test.psl', ''),
         clientSupportsSnippets: false,
         fieldNames: () => [],
       },
@@ -347,7 +355,7 @@ describe('classified positions without cursor AST', () => {
           path: [{ kind: 'namedArgument', name: 'value' }],
           syntax: 'functionName',
         },
-        sourceFile: new SourceFile('f()'),
+        sourceFile: new SourceFile('language-server-test.psl', 'f()'),
         clientSupportsSnippets: true,
         fieldNames: () => [],
       },
@@ -363,7 +371,7 @@ describe('classified positions without cursor AST', () => {
   });
 
   it('renders a scalar edit from the supplied span without an attribute or owner AST', () => {
-    const sourceFile = new SourceFile('old');
+    const sourceFile = new SourceFile('language-server-test.psl', 'old');
     const items = provideAttributeValueCompletionItems(
       {
         context: {
@@ -389,15 +397,38 @@ describe('classified positions without cursor AST', () => {
   });
 });
 
+describe('completion details', () => {
+  it.each([
+    ['mode: |', 'Asc', 'An accepted identifier in this test grammar.'],
+    ['|', 'First', 'An accepted identifier in this test grammar.'],
+    ['choice: |', 'ordered', 'Orders boolean values in a selected direction.'],
+    ['choice: or|dered(Asc)', 'ordered', 'Orders boolean values in a selected direction.'],
+    ['|', 'mode', 'The ascending or descending mode.'],
+    ['mo|de: Asc', 'mode', 'The ascending or descending mode.'],
+    ['choice: ordered(|)', 'required', 'The values to order.'],
+    ['choice: ordered(|)', 'optional', 'An optional label for the ordering.'],
+    [
+      'nested: wrap([ordered(direction: |)])',
+      'Desc',
+      'An accepted identifier in this test grammar.',
+    ],
+    ['scalar: |', 'true', 'PSL argument value'],
+  ])('uses grammar documentation for %s (%s)', (args, label, detail) => {
+    for (const snippets of [false, true]) {
+      expect(field(args, snippets).items.find((item) => item.label === label)?.detail).toBe(detail);
+    }
+  });
+});
+
 describe('named key separators', () => {
   it.each(['|', 'mo|de', 'choice: ordered(|)', 'choice: ordered(dir|ection)'])(
-    'inserts a separator and empty value stop for %s',
+    'inserts a separator and named value stop for %s',
     (args) => {
       const name = args.includes('ordered') ? 'direction' : 'mode';
       for (const snippets of [false, true]) {
         const result = field(args, snippets);
         const item = result.items.find((candidate) => candidate.label === name);
-        expect(item?.textEdit?.newText).toBe(`${name}: ${snippets ? emptyTabStop1 : ''}`);
+        expect(item?.textEdit?.newText).toBe(`${name}: ${snippets ? namedTabStop(1, name) : ''}`);
         expect(item?.insertTextFormat).toBe(snippets ? InsertTextFormat.Snippet : undefined);
         expect(result.apply(name)).not.toContain(`${name}de`);
       }
@@ -449,6 +480,12 @@ describe('recursive attribute values', () => {
     expect(complete(source).labels).toEqual(
       source.includes('mode:') ? ['Asc', 'Desc'] : ['true', 'false'],
     );
+  });
+
+  it('offers only pinned names when unchecked names and checked references are nested alternatives', () => {
+    expect(field('none: |').items).toEqual([]);
+    expect(field('unionLists: [|]').items.map((item) => item.label)).toEqual(['A', 'B']);
+    expect(rejectedParse).not.toHaveBeenCalled();
   });
 
   it('never invokes combinator parsing to select alternatives', () => {
@@ -507,8 +544,8 @@ describe('recursive attribute values', () => {
     const candidate = result.items[0];
     const edited = candidate === undefined ? result.source : result.apply(candidate.label);
     const source = `model Example {\n  value String @probe(${unchanged})\n}`;
-    expect(parse(source).diagnostics).toEqual([]);
-    expect(parse(edited).diagnostics).toEqual([]);
+    expect(parse(source, 'language-server-test.psl').diagnostics).toEqual([]);
+    expect(parse(edited, 'language-server-test.psl').diagnostics).toEqual([]);
     expect(edited).toBe(source);
     expect(result.items).toEqual([]);
   });
@@ -625,7 +662,7 @@ describe('recursive function arguments', () => {
           hasColon: false,
           positionalIndex: 0,
         },
-        sourceFile: new SourceFile(''),
+        sourceFile: new SourceFile('language-server-test.psl', ''),
         clientSupportsSnippets: true,
         clientSupportsTriggerParameterHintsCommand: true,
         fieldNames: () => [],
@@ -642,23 +679,23 @@ describe('recursive function arguments', () => {
     expect(field('choice: |').labels).toEqual(['ordered', 'empty']);
   });
 
-  it('inserts only required arguments with empty tab stops', () => {
+  it('inserts only required arguments with named tab stops', () => {
     const result = field('choice: |', true);
     expect(result.items.map((item) => [item.label, item.insertTextFormat])).toEqual([
       ['ordered', InsertTextFormat.Snippet],
       ['empty', InsertTextFormat.Snippet],
     ]);
     expect(result.apply('ordered')).toBe(
-      `model Example {\n  value String @probe(choice: ordered(${emptyTabStop1}, required: [${emptyTabStop2}]))\n}`,
+      `model Example {\n  value String @probe(choice: ordered(${namedTabStop(1, 'direction')}, required: [${namedTabStop(2, 'required')}]))\n}`,
     );
     expect(result.apply('empty')).toBe(
       'model Example {\n  value String @probe(choice: empty())\n}',
     );
   });
 
-  it('uses empty string and record tab stops and omits optional defaults', () => {
+  it('uses named string and record tab stops and omits optional defaults', () => {
     expect(field('format: |', true).apply('format')).toBe(
-      `model Example {\n  value String @probe(format: format(text: "${emptyTabStop1}", options: { ${emptyTabStop2} }))\n}`,
+      `model Example {\n  value String @probe(format: format(text: "${namedTabStop(1, 'text')}", options: { ${namedTabStop(2, 'options')} }))\n}`,
     );
   });
 
@@ -721,8 +758,8 @@ describe('recursive function arguments', () => {
   it('keeps same-name alternatives with different snippet edits', () => {
     const result = field('overlap: |', true);
     expect(result.items.map((item) => item.textEdit?.newText)).toEqual([
-      `same(first: ${emptyTabStop1})`,
-      `same(second: ${emptyTabStop1})`,
+      `same(first: ${namedTabStop(1, 'first')})`,
+      `same(second: ${namedTabStop(1, 'second')})`,
     ]);
   });
 

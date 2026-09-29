@@ -1,3 +1,4 @@
+import { ormConfigSection } from '@internal/config-loader';
 import type { Contract } from '@internal/contract/types';
 import { createControlStack } from '@internal/framework-components/control';
 import { contractSnapshotDir } from '@internal/migration-tools/contract-snapshot-store';
@@ -46,12 +47,12 @@ import { createToneMigrationListStyler } from '../utils/formatters/migration-lis
 import { toneDrawing } from '../utils/formatters/tone-markup';
 import { mapMigrateFailure } from '../utils/migrate-failure';
 import { runCommandAction } from '../utils/next-actions';
-import { ormConfigSection } from './config-section';
+import { snapshotVerifierFor } from '../utils/snapshot-content-verification';
 import { perSpaceBlocks } from './db/migration-blocks';
 import { prepareMigrationRun } from './db/prepare';
 import { defineOrmCommand } from './define-command';
 import { dbFlag } from './flags';
-import { displayPath, migrationsDirFor, projectConfigPathFor } from './migration/paths';
+import { baseDirFor, displayPath, migrationsDirFor } from './migration/paths';
 import { normalizeError } from './normalize-error';
 import { controlProgressReporter } from './progress';
 
@@ -243,7 +244,7 @@ export function createMigrateCommand(createClient: CreateControlClient) {
     handler: async (args, ctx) => {
       // `migrate` walks every contract space, so the header names the root they
       // all live under rather than the app subspace.
-      const migrationsRelative = displayPath(migrationsDirFor(ctx.config, ctx.cwd), ctx.cwd);
+      const migrationsRelative = displayPath(migrationsDirFor(ctx.config), ctx.cwd);
 
       if (args.flags.show) {
         const planned = await executeMigrateShowPlan({
@@ -325,6 +326,7 @@ export function createMigrateCommand(createClient: CreateControlClient) {
         appContract,
         extensions: ctx.config.extensions ?? [],
         deserializeContract: (json) => familyInstance.deserializeContract(json),
+        ...ifDefined('verifySnapshotContent', snapshotVerifierFor(ctx.config)),
       });
       if (!loaded.ok) {
         return notOk(normalizeError(loaded.failure));
@@ -423,7 +425,7 @@ export function createMigrateCommand(createClient: CreateControlClient) {
             name: args.flags.advanceRef,
             contractJson: snapshotContractJson,
             contractJsonPath: snapshotContractPath,
-            configPath: projectConfigPathFor(ctx.cwd),
+            projectDir: baseDirFor(ctx.config),
             client,
           });
           if (!preflight.ok) {

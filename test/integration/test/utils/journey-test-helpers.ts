@@ -98,7 +98,7 @@ export function useDevDatabase(options?: {
 
   afterAll(async () => {
     await close();
-  });
+  }, timeouts.spinUpPpgDev);
 
   return {
     get connectionString() {
@@ -290,6 +290,14 @@ export async function runContractInfer(
   options?: RunCommandOptions,
 ): Promise<EngineCommandResult> {
   return runOnEngine(ctx, ['contract', 'infer', ...extraArgs], options);
+}
+
+export async function runContractPrint(
+  ctx: JourneyContext,
+  extraArgs: readonly string[] = [],
+  options?: RunCommandOptions,
+): Promise<EngineCommandResult> {
+  return runOnEngine(ctx, ['contract', 'print', ...extraArgs], options);
 }
 
 export async function runDbInit(
@@ -740,6 +748,16 @@ export function latestMigrationDirName(ctx: JourneyContext): string {
     throw new Error('latestMigrationDirName: the journey has no migration directories yet');
   }
   return latest;
+}
+
+/**
+ * The destination contract hash of the newest migration — what `migration new
+ * --from` takes when a journey has no `db` ref (plain `migrate` never writes one).
+ */
+export function latestMigrationToHash(ctx: JourneyContext): string {
+  const manifestPath = join(appMigrationsDir(ctx), latestMigrationDirName(ctx), 'migration.json');
+  const manifest = JSON.parse(readFileSync(manifestPath, 'utf-8')) as { to: string };
+  return manifest.to;
 }
 
 export function getLatestMigrationDir(ctx: JourneyContext): string | undefined {

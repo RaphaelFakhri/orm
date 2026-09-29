@@ -11,6 +11,7 @@ import {
 import type { AuthoringPslBlockDescriptorNamespace } from '@internal/framework-components/authoring';
 import type { ControlStack } from '@internal/framework-components/control';
 import * as control from '@internal/framework-components/control';
+import { jsonValue, mapBlock } from '@internal/psl-parser';
 import { notOk, ok } from '@internal/utils/result';
 import { timeouts } from '@repo/test-utils';
 import { join } from 'pathe';
@@ -130,7 +131,7 @@ describe('resolveConfigInputs', { timeout: timeouts.coldTransformImport }, () =>
     expect(result.controlStack).toEqual({ scalarTypes: [], pslBlockDescriptors: {} });
   });
 
-  it('rejects a config that was not created by defineConfig', async () => {
+  it('rejects a config that was not created by definePrismaConfig', async () => {
     const root = await mkdtemp(join(tmpdir(), 'pn-lsp-unmarked-'));
     const configPath = join(root, 'prisma.config.ts');
     await writeFile(configPath, 'export default { family: {} };\n');
@@ -231,8 +232,11 @@ describe('control-stack input derivation', () => {
         keyword: 'enum',
         discriminator: 'enum',
         name: { required: true },
-        parameters: {},
-        variadicParameters: true,
+        spec: () =>
+          mapBlock({
+            value: { type: jsonValue(), documentation: 'The member value.' },
+            allowBare: true,
+          }),
       },
     };
     mockLoadedConfig(loadedConfig('psl', ['/abs/schema.psl']));

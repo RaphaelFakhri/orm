@@ -1,10 +1,73 @@
-import { strictEqual, throws } from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { deepStrictEqual, strictEqual, throws } from 'node:assert/strict';
+import { execFileSync, spawnSync } from 'node:child_process';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { describe, it } from 'node:test';
 import { fileURLToPath } from 'node:url';
-import { addModelMaps, UnhandledModelError } from './add-model-map.mjs';
+import { addModelMaps, addModelMapsWithReport, UnhandledModelError } from './add-model-map.mjs';
 
 const here = fileURLToPath(new URL('.', import.meta.url));
+
+describe('add-model-map CLI', () => {
+  it('rewrites matched schemas but never descends into node_modules or dist', () => {
+    const wip = join(here, '..', '..', 'wip');
+    mkdirSync(wip, { recursive: true });
+    const root = mkdtempSync(join(wip, 'add-model-map-cli-'));
+    const schema = 'model UserProfile {\n  id Int @id\n}\n';
+    const files = {
+      'src/contract.prisma': schema,
+      'node_modules/dep/contract.prisma': schema,
+      'dist/contract.prisma': schema,
+    };
+    try {
+      for (const [path, content] of Object.entries(files)) {
+        mkdirSync(join(root, path, '..'), { recursive: true });
+        writeFileSync(join(root, path), content);
+      }
+      const stdout = execFileSync(
+        process.execPath,
+        [join(here, 'add-model-map.mjs'), '**/*.prisma'],
+        {
+          cwd: root,
+          encoding: 'utf8',
+        },
+      );
+      strictEqual(readFileSync(join(root, 'src/contract.prisma'), 'utf8'), addModelMaps(schema));
+      strictEqual(readFileSync(join(root, 'node_modules/dep/contract.prisma'), 'utf8'), schema);
+      strictEqual(readFileSync(join(root, 'dist/contract.prisma'), 'utf8'), schema);
+      strictEqual(
+        stdout.includes('src/contract.prisma: model UserProfile -> @@map("userProfile")'),
+        true,
+      );
+      strictEqual(stdout.includes('node_modules'), false);
+      strictEqual(stdout.includes('dist/'), false);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it('fails when no file matches', () => {
+    const wip = join(here, '..', '..', 'wip');
+    mkdirSync(wip, { recursive: true });
+    const root = mkdtempSync(join(wip, 'add-model-map-cli-'));
+    try {
+      const result = spawnSync(
+        process.execPath,
+        [join(here, 'add-model-map.mjs'), 'typo/**/*.prisma'],
+        {
+          cwd: root,
+          encoding: 'utf8',
+        },
+      );
+      deepStrictEqual(
+        { status: result.status, stderr: result.stderr },
+        { status: 1, stderr: 'no files matched\n' },
+      );
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+});
 
 describe('addModelMaps', () => {
   it('appends @@map with the first letter lowered as the last line of a model block', () => {
@@ -348,6 +411,48 @@ describe('addModelMaps', () => {
     strictEqual(addModelMaps(input), expected);
   });
 
+  it('keeps a // inside a quoted default as string content', () => {
+    const oneLine = 'model Site { id Int @id url String @default("https://example.test") }\n';
+    strictEqual(
+      addModelMaps(oneLine),
+      'model Site { id Int @id url String @default("https://example.test") @@map("site") }\n',
+    );
+    const multiLine = [
+      'model Site {',
+      '  id  Int    @id',
+      '  url String @default("https://example.test") // canonical',
+      '}',
+      '',
+    ].join('\n');
+    const expected = [
+      'model Site {',
+      '  id  Int    @id',
+      '  url String @default("https://example.test") // canonical',
+      '  @@map("site")',
+      '}',
+      '',
+    ].join('\n');
+    strictEqual(addModelMaps(multiLine), expected);
+  });
+
+  it('reports the models it mapped', () => {
+    const input = [
+      'model UserProfile {',
+      '  id Int @id',
+      '}',
+      '',
+      'model TeamMember {',
+      '  id Int @id',
+      '  @@map("team_member")',
+      '}',
+      '',
+      'model OrderItem { id Int @id }',
+      '',
+    ].join('\n');
+    deepStrictEqual(addModelMapsWithReport(input).mapped, ['UserProfile', 'OrderItem']);
+    deepStrictEqual(addModelMapsWithReport(addModelMaps(input)).mapped, []);
+  });
+
   it('refuses a model block that never closes', () => {
     throws(() => addModelMaps('model UserProfile {\n  id Int @id\n'), UnhandledModelError);
   });
@@ -370,13 +475,15 @@ describe('addModelMaps', () => {
     strictEqual(addModelMaps(input), expected);
   });
 
-  it('is byte-identical to the copy shipped in the pending upgrade fragment', () => {
+  it('is byte-identical to the copies shipped in the upgrade guides', () => {
     const repoCopy = readFileSync(`${here}add-model-map.mjs`, 'utf8');
-    const fragmentCopy = readFileSync(
-      `${here}../../upgrade-instructions/pending/psl-verbatim-table-names/app/scripts/add-model-map.mjs`,
-      'utf8',
-    );
-    strictEqual(fragmentCopy, repoCopy);
+    for (const audience of ['app', 'extension']) {
+      const shippedCopy = readFileSync(
+        `${here}../../skills/prisma-8/upgrading/${audience}/upgrades/8.0.0-rc.11-to-8.0.0-rc.12/scripts/psl-verbatim-table-names/add-model-map.mjs`,
+        'utf8',
+      );
+      strictEqual(shippedCopy, repoCopy, audience);
+    }
   });
 
   it('is idempotent', () => {
