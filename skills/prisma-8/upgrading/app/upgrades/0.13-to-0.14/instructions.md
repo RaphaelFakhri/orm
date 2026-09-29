@@ -416,7 +416,7 @@ Because the contract hash does not change (the schema conversion in step 1 and t
 
 1. The ALTER is a column type change. Express it with `this.alterColumnType({ schema, table, column, options: { qualifiedTargetType: 'text', formatTypeExpected: 'text', rawTargetTypeForLabel: 'text' } })`. Its default `USING "<col>"::text` casts the stored labels. The planner emits the same operation for any column type change, with class `destructive`.
 2. `this.addCheckConstraint({ schema, table, constraint, column, values })`.
-3. The `DROP TYPE` has no op builder. Express it as an inline `rawSql` op with `operationClass: 'destructive'`.
+3. 0.14 has no op builder for `DROP TYPE` (`this.dropNativeEnumType` arrived in a later release). Express it as an inline `rawSql` op with `operationClass: 'destructive'`.
 
 Note: `prisma-next contract infer` **refuses** databases containing native enum types — it names each offending type and points at this conversion. Convert the database first, then infer.
 
