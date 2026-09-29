@@ -105,7 +105,7 @@ If you omit `--db`, the command runs offline: it lists the migrations on disk bu
 
 If you omit `--to`, the destination defaults to the contract head — which answers *"is this branch's contract reachable from the database, and how?"*, not *"what runs on deploy"*. Pass the ref explicitly when the question is about a specific environment.
 
-`migration status` summarises each pending migration's operations by class (`additive`, `widening`, `data`, `destructive`) and reports a destructive-op count when destructive operations are present. Surface that count to the user before they merge or deploy — destructive operations are the class that warrants manual review.
+`migration status` summarises each pending migration's operations by class (`additive`, `widening`, `data`, `destructive`) and reports a destructive-op count when destructive operations are present. Surface that count to the user before they merge or deploy. Review both `destructive` and `data` operations before deploy: both change stored data. In each pending migration's `migration.ts`, any `rawSql(...)` step is a finding unless it is DDL that no operation builder expresses; a `rawSql` step that reads or writes rows, or has class `data`, must become a typed data transform (`references/migrations.md` § *Data changes are typed transforms, never raw SQL*).
 
 ## Workflow — *"What state is each environment at?"*
 
@@ -204,7 +204,8 @@ This skill is intentionally body-only; the underlying CLI reference (`prisma mig
 - [ ] Read the `migration status` header (it names config, ref, database) and the summary line (it names the origin/destination distance) before reading the per-edge list.
 - [ ] For concurrent-migration conflicts: re-applied the *core* workflow (edit → plan → apply) rather than following a memorised "diamond convergence" procedure. Ported any data-transform logic from the abandoned `migration.ts` over.
 - [ ] For a ref-mismatch: investigated *which* piece of state is wrong (DB ahead, DB behind, DB on a divergent branch). Did NOT `migration ref set` to silence the mismatch.
-- [ ] Surfaced the destructive-op count from `migration status` (the only operation class that warrants manual review pre-deploy) before the user merges or deploys.
+- [ ] Surfaced the destructive-op count from `migration status` before the user merges or deploys, and reviewed every `destructive` and `data` operation.
+- [ ] Flagged every `rawSql(...)` step in a pending `migration.ts` that is not DDL no operation builder expresses. A `rawSql` step that reads or writes rows, or has class `data`, is a finding.
 - [ ] In CI: the deploy job is `prisma db migrate --to <ref> --db $URL` and nothing else. Did NOT rely on a `--dry-run` flag on `db migrate` (no such flag exists).
 - [ ] Did NOT confuse `--to` with database selection (`--to` picks the destination hash; `--db` picks the database).
 - [ ] Did NOT use `--ref` (removed; use `--to`).

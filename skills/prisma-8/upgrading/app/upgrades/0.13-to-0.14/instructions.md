@@ -412,9 +412,11 @@ A database created under 0.13 still has the native enum type and columns typed w
 2. Add the value-set CHECK constraint the contract now declares (name it as the contract does, e.g. `<table>_<col>_check`).
 3. Drop the native type: `DROP TYPE "<schema>"."<type>"`.
 
-Because the contract hash does not change (the schema conversion in step 1 and the emitted contract are the end state), scaffold the migration as a data-only edge on the current hash: `prisma-next migration new --name convert-<type>-to-value-set --from <current-storage-hash>`, give the ALTER op `operationClass: 'data'`, and self-emit by running the scaffolded `migration.ts`. The `DROP TYPE` has no op builder — express it as an inline `rawSql` op.
+Because the contract hash does not change (the schema conversion in step 1 and the emitted contract are the end state), scaffold the migration as an edge from the current hash to itself: `prisma-next migration new --name convert-<type>-to-value-set --from <current-storage-hash>`, and self-emit by running the scaffolded `migration.ts`. The three steps are all DDL; none of them is a data transform, so none carries `operationClass: 'data'`:
 
-A complete worked example ships in the Prisma 8 repo: `examples/prisma-8-demo/migrations/app/20260611T1856_convert_user_type_to_value_set/migration.ts` — three ops (data-class ALTER … USING, `addCheckConstraint`, rawSql `DROP TYPE`), each with pre/postchecks that make replay idempotent.
+1. The ALTER is a column type change. Express it with `this.alterColumnType({ schema, table, column, options: { qualifiedTargetType: 'text', formatTypeExpected: 'text', rawTargetTypeForLabel: 'text' } })`. Its default `USING "<col>"::text` casts the stored labels. The planner emits the same operation for any column type change, with class `destructive`.
+2. `this.addCheckConstraint({ schema, table, constraint, column, values })`.
+3. The `DROP TYPE` has no op builder. Express it as an inline `rawSql` op with `operationClass: 'destructive'`.
 
 Note: `prisma-next contract infer` **refuses** databases containing native enum types — it names each offending type and points at this conversion. Convert the database first, then infer.
 

@@ -31,6 +31,15 @@ Consequences worth internalising:
 - **The graph does not know where your database is.** "Where is my database" is answered by the database's **marker** (a live-DB record of "this database is at hash X") and, offline, by **refs**. Never by the graph.
 - **The graph does not know where your next migration should start.** The planner has to be told an origin. That is the entire job of refs and `--from`.
 
+### What a migration may contain
+
+Because a migration is an edge, it runs against every database whose marker is at its `from` hash, however that database got there: created by `db init`, adopted with `db sign`, restored from a backup, or brought along a different path through the graph. So every operation in it must be correct for any database at that hash:
+
+- Schema changes use the operation builders, whose prechecks and postchecks test the live schema instead of assuming it.
+- Data changes are data transforms built with the typed builder against the migration's contract.
+
+A raw SQL step that reads or writes rows is checked against nothing and assumes one history, so it does not belong in a migration. `references/migrations.md` § *Data changes are typed transforms, never raw SQL* has the rule, and what to do when the builder cannot express a transform.
+
 ### Refs — version-controlled pointers
 
 A ref is a small committed file, `migrations/<space>/refs/<name>.json` (for your app: `migrations/app/refs/<name>.json`), containing `{ hash, invariants }`. Two roles, by convention:
