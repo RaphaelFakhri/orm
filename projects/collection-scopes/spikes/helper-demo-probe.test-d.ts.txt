@@ -1,0 +1,86 @@
+import {
+  defineIndexOperation,
+  type IndexData,
+  type IndexOperationKind,
+  type IndexScopeContext,
+} from '@prisma/orm-postgres/orm-client';
+import {
+  fulltextSearchScopes,
+  fulltextSearchScopesWithPlaceholders,
+} from '@prisma/orm-postgres/runtime';
+import { expectTypeOf, test } from 'vitest';
+import { db } from '../src/prisma/db';
+
+type Query = Parameters<
+  ReturnType<typeof fulltextSearchScopes<typeof db.orm.public.Post>>['post_title_search']
+>[0];
+declare const query: Query;
+
+test('facade helper from built output: exact types on root, chained and include collections', async () => {
+  const posts = db.orm.public.Post;
+  expectTypeOf(posts).not.toBeAny();
+  const scopes = fulltextSearchScopes(posts);
+  expectTypeOf(scopes).not.toBeAny();
+  expectTypeOf<keyof typeof scopes>().toEqualTypeOf<'post_title_search'>();
+  expectTypeOf(scopes.post_title_search(query)).toEqualTypeOf<typeof posts>();
+  scopes.post_title_search(query, { only: 'title' });
+  // @ts-expect-error body is not a field of the index
+  scopes.post_title_search(query, { only: 'body' });
+  // @ts-expect-error the physical name is not a member
+  scopes.post_title_search_724b05e5;
+  // @ts-expect-error a btree index is not offered
+  scopes.post_userId_idx;
+
+  const chained = posts.where((p) => p.title.eq('x')).select('id', 'title');
+  expectTypeOf(fulltextSearchScopes(chained).post_title_search(query)).toEqualTypeOf<
+    typeof chained
+  >();
+
+  const users = await db.orm.public.User.select('id')
+    .include('posts', (p) => fulltextSearchScopes(p).post_title_search(query).select('id'))
+    .all();
+  expectTypeOf(users).toEqualTypeOf<{ id: string; posts: { id: string }[] }[]>();
+
+  expectTypeOf<
+    keyof ReturnType<typeof fulltextSearchScopes<typeof db.orm.public.User>>
+  >().toEqualTypeOf<never>();
+});
+
+test('placeholder builder from built output', () => {
+  const scopes = fulltextSearchScopesWithPlaceholders(db.orm.public.Post);
+  expectTypeOf(scopes.post_title_search(query)).toEqualTypeOf<typeof db.orm.public.Post>();
+  scopes.post_title_search(query, { only: 'title' });
+  // @ts-expect-error body is not a field of the index
+  scopes.post_title_search(query, { only: 'body' });
+});
+
+type TitleIndex = IndexData & { readonly type: 'gin'; readonly expression: string };
+
+function isTitleIndex(index: IndexData): index is TitleIndex {
+  return index.type === 'gin' && index.expression !== undefined;
+}
+
+function expressionEquals<I extends TitleIndex>(
+  { index }: IndexScopeContext<I>,
+  expected: I['expression'],
+) {
+  return { filter: query, orderBy: [], expected: expected === index.expression };
+}
+
+interface ExpressionScope extends IndexOperationKind<TitleIndex> {
+  readonly operation: typeof expressionEquals<this['index']>;
+}
+
+const expressionScopes = defineIndexOperation<ExpressionScope>({
+  match: isTitleIndex,
+  operation: expressionEquals,
+});
+
+test('an application-level helper written against the published building block', () => {
+  const result = expressionScopes(db.orm.public.Post).post_title_search(
+    `to_tsvector('english', "title")`,
+  );
+  expectTypeOf(result).toEqualTypeOf<typeof db.orm.public.Post>();
+  // @ts-expect-error the literal expression of the index is required
+  expressionScopes(db.orm.public.Post).post_title_search('other');
+});

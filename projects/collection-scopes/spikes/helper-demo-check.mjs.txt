@@ -1,0 +1,44 @@
+// usage: node wip/demo-check.mjs   (run from the repo root, after building the packages)
+import { spawnSync } from 'node:child_process';
+import { copyFileSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+
+const root = process.cwd();
+const demo = `${root}/examples/prisma-8-demo`;
+const contractPath = `${demo}/src/prisma/contract.d.ts`;
+const probeTarget = `${demo}/test/zz-helper-probe.test-d.ts`;
+const out = `${root}/wip/demo`;
+spawnSync('mkdir', ['-p', out]);
+
+const original = readFileSync(contractPath, 'utf8');
+const anchor = `readonly prefix: 'post_title_search';
+                  readonly expression: 'to_tsvector(\\'english\\', "title")';
+                  readonly unique: false;
+                  readonly type: 'gin';`;
+if (!original.includes(anchor)) throw new Error('anchor not found in contract.d.ts');
+const withOptions = original.replace(
+  anchor,
+  `${anchor}
+                  readonly options: { readonly fields: readonly [readonly ['title']]; readonly language: 'english' };`,
+);
+
+function typecheck(label) {
+  const r = spawnSync('pnpm', ['typecheck', '--extendedDiagnostics'], { cwd: demo, encoding: 'utf8' });
+  const text = `${r.stdout}\n${r.stderr}`;
+  writeFileSync(`${out}/${label}.txt`, text);
+  const inst = text.match(/^Instantiations:\s+(\S+)/m)?.[1];
+  const errors = text.split('\n').filter((l) => l.includes('error TS'));
+  console.log(`${label}\tinstantiations=${inst}\terrors=${errors.length}`);
+  for (const e of errors.slice(0, 30)) console.log(`  ${e}`);
+}
+
+try {
+  typecheck('demo-unchanged-1');
+  typecheck('demo-unchanged-2');
+  writeFileSync(contractPath, withOptions);
+  copyFileSync(`${root}/wip/demo-probe-helpers.test-d.ts`, probeTarget);
+  typecheck('demo-with-probe-1');
+  typecheck('demo-with-probe-2');
+} finally {
+  writeFileSync(contractPath, original);
+  rmSync(probeTarget, { force: true });
+}

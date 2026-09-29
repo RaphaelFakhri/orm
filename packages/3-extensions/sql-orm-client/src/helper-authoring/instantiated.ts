@@ -40,10 +40,8 @@ export type IndexOperationScopes<Kind extends IndexOperationKind, C> = {
 
 export function defineIndexOperation<Kind extends IndexOperationKind>(definition: {
   readonly match: (index: IndexData) => index is Kind['match'];
-  readonly operation: (
-    scope: IndexScopeContext<Kind['match']>,
-    ...args: never[]
-  ) => ScopeRefinement;
+  readonly operation: OperationFor<Kind, Kind['match']> &
+    ((scope: IndexScopeContext<Kind['match']>, ...args: never[]) => ScopeRefinement);
 }): <C extends object>(collection: C) => IndexOperationScopes<Kind, C> {
   return (collection) => {
     const { indexes, tableName } = collectionScopeTarget(collection);
@@ -80,10 +78,8 @@ export type IndexOperationsScopes<Kind extends IndexOperationsKind, C> = {
 export function defineIndexOperations<Kind extends IndexOperationsKind>(definition: {
   readonly match: (index: IndexData) => index is Kind['match'];
   readonly operations: {
-    readonly [Name in OperationNames<Kind>]: (
-      scope: IndexScopeContext<Kind['match']>,
-      ...args: never[]
-    ) => ScopeRefinement;
+    readonly [Name in OperationNames<Kind>]: (Kind & { readonly index: Kind['match'] })[Name] &
+      ((scope: IndexScopeContext<Kind['match']>, ...args: never[]) => ScopeRefinement);
   };
 }): <C extends object>(collection: C) => IndexOperationsScopes<Kind, C> {
   return (collection) => {

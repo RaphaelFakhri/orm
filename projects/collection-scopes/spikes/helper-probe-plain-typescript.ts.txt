@@ -1,0 +1,22 @@
+type Shape = { readonly type: 'gin'; readonly options: { readonly fields: readonly (readonly string[])[]; readonly language: string } };
+type Lit = { readonly name: 'x_1'; readonly prefix: 'x'; readonly type: 'gin'; readonly options: { readonly fields: readonly [readonly ['title', 'subtitle'], readonly ['body']]; readonly language: 'english' } };
+
+// (A) conditional inference against a generic function
+declare const op: <I extends Shape>(index: I, q: string, opts?: { only?: I['options']['fields'][number][number] }) => number;
+type ArgsFor<F, I> = F extends (index: I, ...args: infer A) => unknown ? A : 'no';
+type A1 = ArgsFor<typeof op, Lit>;
+export const a1: A1 = ['q', { only: 'title' }];
+// @ts-expect-error
+export const a1bad: A1 = ['q', { only: 'nope' }];
+
+// (B) curried
+declare const cur: <I extends Shape>(index: I) => (q: string, opts?: { only?: I['options']['fields'][number][number] }) => number;
+type Inner<F, I> = F extends (index: I) => infer R ? R : 'no';
+type B1 = Inner<typeof cur, Lit>;
+declare const b1v: B1;
+b1v('q', { only: 'body' });
+// @ts-expect-error
+b1v('q', { only: 'nope' });
+
+// (C) instantiation expression in a return type referencing a parameter
+declare function build<F extends (index: never, ...a: never[]) => unknown>(f: F): { [K in 'x']: typeof f<Lit> };

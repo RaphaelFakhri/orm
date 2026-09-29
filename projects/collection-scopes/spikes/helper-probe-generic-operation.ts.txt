@@ -1,0 +1,109 @@
+import type { Collection } from '../../src/collection';
+import { defineIndexScopes } from '../../src/helper-authoring/builder';
+import type {
+  CollectionIndexes,
+  IndexData,
+  IndexScopeContext,
+  IndexScopeName,
+  ScopeRefinement,
+} from '../../src/helper-authoring/core';
+import {
+  type FakeTsQuery,
+  type FullTextIndexShape,
+  type HelperContract,
+  isFullTextIndex,
+  rankOrder,
+  textSearchFilter,
+} from './fixture';
+
+declare const posts: Collection<HelperContract, 'Post'>;
+
+// 3a. A generic operation passed to the non-generic builder.
+export const genericScopes = defineIndexScopes({
+  match: isFullTextIndex,
+  operation: <I extends FullTextIndexShape>(
+    { index, tableName }: IndexScopeContext<I>,
+    query: FakeTsQuery,
+    options?: { readonly only?: I['options']['fields'][number][number] },
+  ) => ({
+    filter: textSearchFilter(
+      tableName,
+      options?.only ?? index.options.fields[0]?.[0] ?? 'id',
+      query,
+    ),
+    orderBy: rankOrder(tableName, 'id'),
+  }),
+});
+export const genericParams: Parameters<typeof genericScopes<typeof posts>> = 1;
+genericScopes(posts).post_title_search(null as unknown as FakeTsQuery, { only: 'not-a-field' });
+
+// 3b. A curried operation: the builder reads the inner function type for each literal index.
+type InnerFor<Operation, Index> = Operation extends (scope: IndexScopeContext<Index>) => infer Inner
+  ? Inner
+  : 'no match';
+
+declare function defineCurriedIndexScopes<Match extends IndexData, Operation>(definition: {
+  readonly match: (index: IndexData) => index is Match;
+  readonly operation: Operation &
+    ((scope: IndexScopeContext<Match>) => (...args: never[]) => ScopeRefinement);
+}): <C extends object>(
+  collection: C,
+) => {
+  readonly [Index in Extract<
+    CollectionIndexes<C>[number],
+    Match
+  > as IndexScopeName<Index>]: InnerFor<Operation, Index>;
+};
+
+export const curriedScopes = defineCurriedIndexScopes({
+  match: isFullTextIndex,
+  operation:
+    <I extends FullTextIndexShape>({ index, tableName }: IndexScopeContext<I>) =>
+    (query: FakeTsQuery, options?: { readonly only?: I['options']['fields'][number][number] }) => ({
+      filter: textSearchFilter(
+        tableName,
+        options?.only ?? index.options.fields[0]?.[0] ?? 'id',
+        query,
+      ),
+    }),
+});
+export const curriedMember: ReturnType<typeof curriedScopes<typeof posts>>['post_title_search'] = 1;
+
+// 3c. An instantiation expression on a generic-typed parameter.
+declare function defineWithInstantiation<
+  Operation extends <I extends FullTextIndexShape>(scope: IndexScopeContext<I>) => unknown,
+>(operation: Operation): <I extends FullTextIndexShape>() => typeof operation<I>;
+
+// 3d. Instantiation expression inside the builder's mapped type.
+declare function defineInstantiated<
+  Match extends IndexData,
+  Operation extends <I extends Match>(
+    scope: IndexScopeContext<I>,
+  ) => (...args: never[]) => ScopeRefinement,
+>(definition: {
+  readonly match: (index: IndexData) => index is Match;
+  readonly operation: Operation;
+}): <C extends object>(
+  collection: C,
+) => {
+  readonly [Index in Extract<
+    CollectionIndexes<C>[number],
+    Match
+  > as IndexScopeName<Index>]: ReturnType<typeof definition.operation<Index>>;
+};
+
+export const instantiatedScopes = defineInstantiated({
+  match: isFullTextIndex,
+  operation:
+    <I extends FullTextIndexShape>({ index, tableName }: IndexScopeContext<I>) =>
+    (query: FakeTsQuery, options?: { readonly only?: I['options']['fields'][number][number] }) => ({
+      filter: textSearchFilter(
+        tableName,
+        options?.only ?? index.options.fields[0]?.[0] ?? 'id',
+        query,
+      ),
+    }),
+});
+export const instantiatedMember: ReturnType<
+  typeof instantiatedScopes<typeof posts>
+>['post_title_search'] = 1;

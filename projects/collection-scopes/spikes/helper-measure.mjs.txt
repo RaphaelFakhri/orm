@@ -1,0 +1,92 @@
+// usage: node wip/measure-helpers.mjs [label ...]   (run from the repo root)
+import { execFileSync, spawnSync } from 'node:child_process';
+import { mkdirSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+
+const root = process.cwd();
+const pkg = `${root}/packages/3-extensions/sql-orm-client`;
+const out = `${root}/wip/measure`;
+mkdirSync(out, { recursive: true });
+
+const src = (f) => `src/helper-authoring/${f}.ts`;
+const test = (f) => `test/helper-authoring/${f}.ts`;
+const builder = [src('core'), src('builder'), src('index-literals'), test('fixture')];
+const instantiated = [src('core'), src('instantiated'), test('fixture')];
+
+const approaches = {
+  a1: { files: [src('core'), test('fixture'), test('a1-hand-written')], ten: 'a1-hand-written' },
+  a2: { files: [...builder, test('a2-builder')], ten: 'a2-builder' },
+  a3p: { files: [...builder, test('a3-placeholder')], ten: 'a3-placeholder' },
+  a3s: { files: [src('core'), src('slots'), test('fixture'), test('a3-slots')], ten: 'a3-slots' },
+  a4: { files: [...builder, test('a4-several')], ten: 'a4-several' },
+  a4i: { files: [...instantiated, test('a4-several-instantiated')], ten: 'a4-several-instantiated' },
+  a5: {
+    files: [src('core'), src('collection-returning'), src('index-literals'), test('fixture'), test('a5-collection')],
+    ten: 'a5-collection',
+  },
+  a6: { files: [...instantiated, test('a6-instantiated')], ten: 'a6-instantiated' },
+  control: { files: [test('fixture')], ten: 'control' },
+};
+
+const helperFiles = [
+  ...readdirSync(`${pkg}/src/helper-authoring`).map((f) => `src/helper-authoring/${f}`),
+  ...readdirSync(`${pkg}/test/helper-authoring`).map((f) => `test/helper-authoring/${f}`),
+];
+
+// Every file comes from the include globs, so the check order is the package's natural order.
+// The files of the other approaches are excluded one by one.
+function tsconfig(files) {
+  return {
+    extends: './tsconfig.json',
+    include: ['src', 'test', '*.config.*', 'package.json'],
+    exclude: [
+      'dist',
+      'dist-tsc',
+      'dist-tsc-prod',
+      'node_modules',
+      ...helperFiles.filter((f) => !files.includes(f)),
+    ],
+  };
+}
+
+function run(label, files) {
+  const config = `${pkg}/tsconfig.m-${label}.json`;
+  writeFileSync(config, JSON.stringify(tsconfig(files), null, 2));
+  const results = [];
+  for (const attempt of [1, 2]) {
+    const r = spawnSync('pnpm', ['typecheck', '-p', config, '--extendedDiagnostics'], { cwd: pkg, encoding: 'utf8' });
+    const text = `${r.stdout}\n${r.stderr}`;
+    writeFileSync(`${out}/${label}-${attempt}.txt`, text);
+    const grab = (name) => text.match(new RegExp(`^${name}:\\s+(\\S+)`, 'm'))?.[1];
+    results.push({
+      instantiations: grab('Instantiations'),
+      types: grab('Types'),
+      checkTime: grab('Check time'),
+      errors: (text.match(/error TS/g) ?? []).length,
+    });
+  }
+  rmSync(config);
+  const line = `${label}\t${results.map((x) => `${x.instantiations}\t${x.types}\t${x.checkTime}\terrors=${x.errors}`).join('\t|\t')}`;
+  console.log(line);
+  return line;
+}
+
+const labels = process.argv.slice(2);
+const lines = [];
+if (labels.length === 0 || labels.includes('branchpoint')) {
+  const typesPath = 'packages/3-extensions/sql-orm-client/src/types.ts';
+  const original = execFileSync('git', ['show', `HEAD:${typesPath}`], { cwd: root });
+  const branchPoint = execFileSync('git', ['show', `037cad4edd:${typesPath}`], { cwd: root });
+  writeFileSync(`${root}/${typesPath}`, branchPoint);
+  try {
+    lines.push(run('branchpoint', []));
+  } finally {
+    writeFileSync(`${root}/${typesPath}`, original);
+  }
+}
+if (labels.length === 0 || labels.includes('excluded')) lines.push(run('excluded', []));
+for (const [label, { files, ten }] of Object.entries(approaches)) {
+  if (labels.length > 0 && !labels.includes(label)) continue;
+  lines.push(run(`${label}-unused`, files));
+  lines.push(run(`${label}-ten`, [...files, test(`${ten}.ten`)]));
+}
+writeFileSync(`${out}/summary-${Date.now()}.tsv`, `${lines.join('\n')}\n`);

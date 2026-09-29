@@ -1,0 +1,88 @@
+import type { Collection } from '../../src/collection';
+import { defineIndexScopes } from '../../src/helper-authoring/builder';
+import {
+  defineCollectionIndexScopes,
+  type ScopeTargetCollection,
+} from '../../src/helper-authoring/collection-returning';
+import type { IndexData, IndexScopeContext } from '../../src/helper-authoring/core';
+import type { IndexElement } from '../../src/helper-authoring/index-literals';
+import {
+  defineIndexOperation,
+  type IndexOperationKind,
+} from '../../src/helper-authoring/instantiated';
+import {
+  type FakeTsQuery,
+  type FullTextIndexShape,
+  fakeTsQuery,
+  type HelperContract,
+  isFullTextIndex,
+  textSearchFilter,
+} from './fixture';
+
+declare const posts: Collection<HelperContract, 'Post'>;
+const q = fakeTsQuery('x');
+
+// M1. A match type that is not an IndexData.
+type BareShape = { readonly type: 'gin' };
+export const m1 = defineIndexScopes({
+  match: (index: IndexData): index is BareShape => index.type === 'gin',
+  operation: ({ tableName }, query: FakeTsQuery) => ({
+    filter: textSearchFilter(tableName, 'title', query),
+  }),
+});
+
+// M2. A misspelled placeholder path.
+export const m2 = defineIndexScopes({
+  match: isFullTextIndex,
+  operation: (
+    { tableName },
+    query: FakeTsQuery,
+    options?: { readonly only?: IndexElement<'options.feilds'> },
+  ) => ({ filter: textSearchFilter(tableName, options?.only ?? 'title', query) }),
+});
+m2(posts).post_title_search(q, { only: 'title' });
+
+// M3. A placeholder nested two levels deep is not replaced.
+export const m3 = defineIndexScopes({
+  match: isFullTextIndex,
+  operation: (
+    { tableName },
+    query: FakeTsQuery,
+    options?: { readonly weights?: { readonly only?: IndexElement<'options.fields'> } },
+  ) => ({ filter: textSearchFilter(tableName, options?.weights?.only ?? 'title', query) }),
+});
+export const m3Member: Parameters<ReturnType<typeof m3<typeof posts>>['post_title_search']> = 1;
+
+// M4. Collection-returning operation that changes the row type: accepted, and the consumer's type is wrong.
+export const m4 = defineCollectionIndexScopes({
+  match: isFullTextIndex,
+  operation: ({ tableName }, collection, query: FakeTsQuery) =>
+    collection.where(textSearchFilter(tableName, 'title', query)).select('id'),
+});
+export const m4Result: number = m4(posts).post_title_search(q);
+
+// M5. Collection-returning operation written generically to keep the input type.
+export const m5 = defineCollectionIndexScopes({
+  match: isFullTextIndex,
+  operation: <T extends ScopeTargetCollection>(
+    { tableName }: IndexScopeContext<FullTextIndexShape>,
+    collection: T,
+    query: FakeTsQuery,
+  ): T => collection.where(textSearchFilter(tableName, 'title', query)),
+});
+
+// M6. Instantiated kind whose interface names a different function than the runtime one.
+function fulltext<I extends FullTextIndexShape>(
+  { tableName }: IndexScopeContext<I>,
+  query: FakeTsQuery,
+  options?: { readonly only?: I['options']['fields'][number][number] },
+) {
+  return { filter: textSearchFilter(tableName, options?.only ?? 'title', query) };
+}
+function other({ tableName }: IndexScopeContext<FullTextIndexShape>, count: number) {
+  return { filter: textSearchFilter(tableName, 'title', fakeTsQuery(String(count))) };
+}
+interface Mismatched extends IndexOperationKind<FullTextIndexShape> {
+  readonly operation: typeof fulltext<this['index']>;
+}
+export const m6 = defineIndexOperation<Mismatched>({ match: isFullTextIndex, operation: other });

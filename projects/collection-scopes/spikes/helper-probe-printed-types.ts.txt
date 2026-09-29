@@ -1,0 +1,54 @@
+import type { ExecutionContext } from '@internal/sql-relational-core/query-lane-context';
+import { Collection } from '../../src/collection';
+import { orm } from '../../src/orm';
+import type { RuntimeQueryable } from '../../src/types';
+import { fulltextSearchScopes as a1 } from './a1-hand-written';
+import { fulltextSearchScopes as a2 } from './a2-builder';
+import { fulltextSearchScopes as a3p } from './a3-placeholder';
+import { fulltextSearchScopes as a3s } from './a3-slots';
+import { fulltextSearchScopes as a4 } from './a4-several';
+import { fulltextSearchScopes as a4i } from './a4-several-instantiated';
+import { fulltextSearchScopes as a5 } from './a5-collection';
+import { fulltextSearchScopes as a6 } from './a6-instantiated';
+import { type FakeTsQuery, fakeTsQuery, type HelperContract } from './fixture';
+
+declare const runtime: RuntimeQueryable;
+declare const context: ExecutionContext<HelperContract>;
+const db = orm({ runtime, context });
+const q = fakeTsQuery('hello');
+
+export const h1: number = a1;
+export const h2: number = a2;
+export const h3p: number = a3p;
+export const h3s: number = a3s;
+export const h4: number = a4;
+export const h4i: number = a4i;
+export const h5: number = a5;
+export const h6: number = a6;
+
+export const r1: number = a1(db.public.Post);
+export const r2: number = a2(db.public.Post);
+export const r3p: number = a3p(db.public.Post);
+export const r3s: number = a3s(db.public.Post);
+export const r4: number = a4(db.public.Post);
+export const r4i: number = a4i(db.public.Post);
+export const r5: number = a5(db.public.Post);
+export const r6: number = a6(db.public.Post);
+
+export const o1: number = a1(db.public.Post).post_title_body_search;
+export const o2: number = a2(db.public.Post).post_title_body_search;
+export const o3p: number = a3p(db.public.Post).post_title_body_search;
+export const o3s: number = a3s(db.public.Post).post_title_body_search;
+export const o4: number = a4(db.public.Post).post_title_body_search.fulltext;
+export const o4i: number = a4i(db.public.Post).post_title_body_search.fulltext;
+export const o5: number = a5(db.public.Post).post_title_body_search;
+export const o6: number = a6(db.public.Post).post_title_body_search;
+
+export const wrong6 = a6(db.public.Post).post_title_search(q, { only: 'body' });
+export const unknown6 = a6(db.public.Post).post_title_body_search_0a1b2c3d;
+
+export class PostCollection extends Collection<HelperContract, 'Post'> {
+  relevant(query: FakeTsQuery) {
+    return a6(this).post_title_search(query);
+  }
+}
