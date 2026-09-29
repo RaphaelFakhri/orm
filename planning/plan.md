@@ -76,6 +76,8 @@ Update every record that contradicts the code. Known so far: the non-portable an
 | `relationMode = "prisma"` | Never. Prisma 8 will not imitate foreign keys in the client. The upgrade guide tells those users to add foreign keys. |
 | Referential actions on MongoDB | After GA. |
 
+When `contract infer` or the Prisma 7 source meets a column type with no codec, it fails and names the column and the missing codec. It does not leave the column out. Today `contract infer` prints `Unsupported(...)` instead, which must change.
+
 Stopping point for the open upgrade issues: every urgent and high issue is closed before GA. Medium and low issues may remain. The issues are in two Linear projects: "Prisma 7 contract source: gaps and defects" and "Contract print and Prisma 7 source follow-ups".
 
 ## Query features: required for GA
