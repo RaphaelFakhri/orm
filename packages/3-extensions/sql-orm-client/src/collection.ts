@@ -431,7 +431,7 @@ class CollectionImpl<
   /**
    * Call `step` with this collection and return its result.
    */
-  pipe<Result>(step: (collection: this) => Result): Result {
+  pipe<Self, Result>(this: Self, step: (collection: Self) => Result): Result {
     return step(this);
   }
 
