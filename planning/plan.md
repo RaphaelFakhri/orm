@@ -49,6 +49,7 @@ Existing Prisma 7 users must be able to upgrade. They reacted badly to the relea
 | Verify cursor pagination and fix its behavior for 8.x | Prisma 8 starts after the cursor row. Prisma 7 includes it. 13 ported tests fail on it. Nobody has confirmed the difference is deliberate, and the docs do not mention it. After GA it cannot change. |
 | Correct the query reference in the agent skill (`skills/prisma-8/references/queries-postgres.md`) | Urgent, same kind of fault as TML-3340. It sends users to `db.sql` for set operations and window functions, and neither exists. `prisma init` copies the skill into every new project. |
 | Correct the other documents that contradict the code | Listed in [query-feature-gaps.md](query-feature-gaps.md). |
+| Decide what project the ORM scenario of the eval builds, then build the scenario | It is the GA test for the new user. It runs without a deploy, against every database. |
 | Design how a query leaves fields out, the Prisma 8 replacement for `omit` | Design work. If it is not built by GA, a clear plan must exist. |
 | Large `IN` lists: raise a clear error before the query is sent | Prisma 8 does not split them, and will not. On PostgreSQL an oversized query drops the connection today. Lowest priority on this list. |
 

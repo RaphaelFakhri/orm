@@ -38,10 +38,9 @@ Linear and the ported test records drift from the code. Before relying on a stat
 
 Will has not answered these yet. Ask them when the discussion resumes, a few at a time.
 
-1. Nested writes on relations: Will agreed they can technically ship after GA. Confirm whether the team still aims to have them at GA.
-7. What project does the ORM scenario of the eval build?
-8. Two documents claim the number ADR 256, and two ADR files carry the number 255.
-9. Sixteen Linear issues are marked In Progress with no evidence either way. They are listed in the conversation of 2026-09-28 and in [open-projects.md](open-projects.md), section 2.3.
+1. Should the required work be laid out week by week, to test whether October is realistic?
+
+Settled and not to be raised again: ADR numbering (fixed), stale In Progress issues in Linear (moved back to To-do on 2026-09-29), the eval's ORM scenario (a task in plan.md).
 
 ## Work agreed for after the plan is finished
 
