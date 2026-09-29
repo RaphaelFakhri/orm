@@ -2,9 +2,7 @@ import {
   Collection,
   type DefaultCollectionTypeState,
   type orm,
-  type ShorthandWhereFilter,
 } from '@prisma/orm-postgres/orm-client';
-import { blindCast } from '@prisma/orm-postgres/utils/casts';
 import type { Contract } from '../prisma/contract.d';
 
 type DemoOrm = ReturnType<typeof orm<Contract>>['public'];
@@ -26,16 +24,19 @@ type TaskBaseCollection = Collection<Contract, 'Task', DemoRow<'Task'>, PublicRo
 declare const taskBaseCollection: TaskBaseCollection;
 type TaskBugCollection = ReturnType<typeof taskBaseCollection.variant<BugRoot, 'Bug'>>;
 type TaskFeatureCollection = ReturnType<typeof taskBaseCollection.variant<FeatureRoot, 'Feature'>>;
-type TaskWhereFilter = ShorthandWhereFilter<Contract, 'public', 'Task'>;
+type TaskWhereCollection = ReturnType<typeof taskBaseCollection.where>;
 
-export interface TaskCollectionSurface extends Omit<TaskBaseCollection, 'where'> {
-  where(filters: TaskWhereFilter): TaskCollectionSurface;
+export interface TaskCollectionSurface extends TaskBaseCollection {
   bugs(): TaskBugCollection;
   features(): TaskFeatureCollection;
-  forUser(userId: string): TaskCollectionSurface;
+  forUser(userId: string): TaskWhereCollection;
 }
 
-export type TaskCollectionConstructor = new (...args: never[]) => TaskCollectionSurface;
+export type TaskCollectionConstructor = new (
+  ...args: ConstructorParameters<
+    typeof Collection<Contract, 'Task', DemoRow<'Task'>, PublicRootState>
+  >
+) => TaskCollectionSurface;
 
 export class UserCollection extends Collection<Contract, 'User', DemoRow<'User'>, PublicRootState> {
   admins() {
@@ -80,25 +81,22 @@ export class TagCollection extends Collection<Contract, 'Tag', DemoRow<'Tag'>, P
 }
 
 export function createTaskCollection(getRoots: () => TaskVariantRoots): TaskCollectionConstructor {
-  return blindCast<
-    TaskCollectionConstructor,
-    'TaskCollection runtime cloning uses the subclass constructor, so cloned where results retain helper methods'
-  >(
-    class TaskCollection extends Collection<Contract, 'Task', DemoRow<'Task'>, PublicRootState> {
-      bugs(): TaskBugCollection {
-        return this.variant(getRoots().Bug);
-      }
+  return class TaskCollection extends Collection<
+    Contract,
+    'Task',
+    DemoRow<'Task'>,
+    PublicRootState
+  > {
+    bugs(): TaskBugCollection {
+      return this.variant(getRoots().Bug);
+    }
 
-      features(): TaskFeatureCollection {
-        return this.variant(getRoots().Feature);
-      }
+    features(): TaskFeatureCollection {
+      return this.variant(getRoots().Feature);
+    }
 
-      forUser(userId: string): TaskCollectionSurface {
-        return blindCast<
-          TaskCollectionSurface,
-          'TaskCollection.where returns a runtime clone constructed with the TaskCollection subclass'
-        >(this.where({ userId }));
-      }
-    },
-  );
+    forUser(userId: string): TaskWhereCollection {
+      return this.where({ userId });
+    }
+  };
 }

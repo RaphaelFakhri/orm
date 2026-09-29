@@ -54,15 +54,22 @@ test('task helper rows reject unrelated variant-only properties', () => {
   expectTypeOf(rejectCrossVariantProperties).returns.toEqualTypeOf<void>();
 });
 
-test('task helper chains keep helper methods', () => {
-  db.Task.where({ userId: 'user_1' }).bugs().create({
-    title: 'Crash',
-    userId: 'user_1',
-    severity: 'critical',
-  });
-  db.Task.forUser('user_1').bugs().create({
-    title: 'Crash',
-    userId: 'user_1',
-    severity: 'critical',
-  });
+test('task helpers preserve existing collection APIs and precise return types', () => {
+  const filteredTask = db.Task.where((task) => task.title.eq('Crash'));
+  const filteredBug = db.Task.forUser('user_1').variant(db.Bug);
+  const createdBug = db.Task.bugs()
+    .where((bug) => bug.severity.eq('critical'))
+    .create({
+      title: 'Crash',
+      userId: 'user_1',
+      severity: 'critical',
+    });
+
+  expectTypeOf<Awaited<ReturnType<typeof filteredTask.first>>>().toEqualTypeOf<
+    Awaited<ReturnType<typeof db.Task.first>>
+  >();
+  expectTypeOf<
+    Awaited<ReturnType<typeof filteredBug.first>>
+  >().toEqualTypeOf<Scalars<Models.public_Bug> | null>();
+  expectTypeOf<Awaited<typeof createdBug>>().toEqualTypeOf<Scalars<Models.public_Bug>>();
 });
