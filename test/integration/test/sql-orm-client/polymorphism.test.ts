@@ -1,4 +1,4 @@
-import { Collection } from '@internal/sql-orm-client';
+import { orm } from '@internal/sql-orm-client';
 import { describe, expect, it } from 'vitest';
 import { getPolyTestContext } from './helpers';
 import { timeouts, withCollectionRuntime } from './integration-helpers';
@@ -19,8 +19,8 @@ const polyContext = getPolyTestContext();
 // tests need; they are nullable and surface in the default (no-`select`)
 // projection here as `projectId`, `reporterId`, and variant-scoped `assigneeId`.
 
-function createTaskCollection(runtime: PgIntegrationRuntime) {
-  return new Collection({ runtime, context: polyContext }, 'Task', { namespaceId: 'public' });
+function createPolyOrm(runtime: PgIntegrationRuntime) {
+  return orm({ runtime, context: polyContext });
 }
 
 async function setupPolySchema(runtime: PgIntegrationRuntime): Promise<void> {
@@ -80,7 +80,8 @@ describe('integration/polymorphism', () => {
         await setupPolySchema(runtime);
         await seedPolyData(runtime);
 
-        const tasks = createTaskCollection(runtime);
+        const db = createPolyOrm(runtime);
+        const tasks = db.public.Task;
         // No `.select(...)` on purpose: this pins the default projection of a
         // base poly query — each row carries the base fields plus only its own
         // variant's field (Bug rows carry `severity`, Feature rows carry
@@ -140,12 +141,13 @@ describe('integration/polymorphism', () => {
         await setupPolySchema(runtime);
         await seedPolyData(runtime);
 
-        const tasks = createTaskCollection(runtime);
+        const db = createPolyOrm(runtime);
+        const tasks = db.public.Task;
         // STI variant (`severity` is a base-table column). No `.select(...)`:
         // pins the default projection of an STI-variant-narrowed query — base
         // fields plus the Bug variant's `severity`, and only the Bug rows.
         const bugs = await tasks
-          .variant('Bug')
+          .variant(db.public.Bug)
           .orderBy((task) => task.id.asc())
           .all()
           .toArray();
@@ -182,13 +184,14 @@ describe('integration/polymorphism', () => {
         await setupPolySchema(runtime);
         await seedPolyData(runtime);
 
-        const tasks = createTaskCollection(runtime);
+        const db = createPolyOrm(runtime);
+        const tasks = db.public.Task;
         // MTI variant (`priority` lives on the joined `features` table). No
         // `.select(...)`: pins the default projection of an MTI-variant-narrowed
         // query — base fields plus the joined `priority`, and only the Feature
         // rows (the INNER JOIN drops non-Feature rows).
         const features = await tasks
-          .variant('Feature')
+          .variant(db.public.Feature)
           .orderBy((task) => task.id.asc())
           .all()
           .toArray();
@@ -224,8 +227,9 @@ describe('integration/polymorphism', () => {
       await withCollectionRuntime(async (runtime) => {
         await setupPolySchema(runtime);
 
-        const tasks = createTaskCollection(runtime);
-        const bugs = tasks.variant('Bug');
+        const db = createPolyOrm(runtime);
+        const tasks = db.public.Task;
+        const bugs = tasks.variant(db.public.Bug);
         const created = await bugs.create({ title: 'New bug', severity: 'high', assigneeId: 17 });
 
         const id = created.id;
@@ -243,7 +247,7 @@ describe('integration/polymorphism', () => {
         // rather than re-reading the discriminator column raw: the discriminator
         // round-trips through the mapped variant shape, which is what callers see.
         const readBack = await tasks
-          .variant('Bug')
+          .variant(db.public.Bug)
           .orderBy((task) => task.id.asc())
           .all()
           .toArray();
@@ -269,8 +273,9 @@ describe('integration/polymorphism', () => {
       await withCollectionRuntime(async (runtime) => {
         await setupPolySchema(runtime);
 
-        const tasks = createTaskCollection(runtime);
-        const features = tasks.variant('Feature');
+        const db = createPolyOrm(runtime);
+        const tasks = db.public.Task;
+        const features = tasks.variant(db.public.Feature);
         const created = await features.create({
           title: 'New feature',
           priority: 5,

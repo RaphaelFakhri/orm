@@ -85,7 +85,7 @@ A polymorphic base emits three shapes: the base member, one member per variant, 
 ```ts
 type TaskType = Models.public_Task['type']; // 'bug' | 'feature' | 'epic'
 
-const bugs = db.orm.public.Task.variant('Bug');
+const bugs = db.orm.public.Task.variant(db.orm.public.Bug);
 type Bug = ResultType<typeof bugs>; // Scalars<Models.public_Bug>
 
 type AnyTask = ResultType<typeof db.orm.public.Task>; // Scalars<Models.public_AnyTask>

@@ -1,7 +1,21 @@
-import { Collection } from '@prisma/orm-postgres/orm-client';
+import {
+  Collection,
+  type DefaultCollectionTypeState,
+  type orm,
+} from '@prisma/orm-postgres/orm-client';
 import type { Contract } from '../prisma/contract.d';
 
-export class UserCollection extends Collection<Contract, 'User'> {
+type DemoOrm = ReturnType<typeof orm<Contract>>['public'];
+type PublicRootState = Omit<DefaultCollectionTypeState, 'nsId'> & { readonly nsId: 'public' };
+type DemoRow<ModelName extends keyof DemoOrm> = DemoOrm[ModelName] extends {
+  readonly _row?: infer Row;
+}
+  ? Row
+  : never;
+type BugRoot = DemoOrm['Bug'];
+type FeatureRoot = DemoOrm['Feature'];
+
+export class UserCollection extends Collection<Contract, 'User', DemoRow<'User'>, PublicRootState> {
   admins() {
     return this.where({ kind: 'admin' });
   }
@@ -23,7 +37,7 @@ export class UserCollection extends Collection<Contract, 'User'> {
   }
 }
 
-export class PostCollection extends Collection<Contract, 'Post'> {
+export class PostCollection extends Collection<Contract, 'Post', DemoRow<'Post'>, PublicRootState> {
   forUser(userId: string) {
     return this.where({ userId });
   }
@@ -37,19 +51,19 @@ export class PostCollection extends Collection<Contract, 'Post'> {
   }
 }
 
-export class TagCollection extends Collection<Contract, 'Tag'> {
+export class TagCollection extends Collection<Contract, 'Tag', DemoRow<'Tag'>, PublicRootState> {
   byLabel(label: string) {
     return this.where({ label });
   }
 }
 
-export class TaskCollection extends Collection<Contract, 'Task'> {
-  bugs() {
-    return this.variant('Bug');
+export class TaskCollection extends Collection<Contract, 'Task', DemoRow<'Task'>, PublicRootState> {
+  bugs(bug: BugRoot) {
+    return this.variant(bug);
   }
 
-  features() {
-    return this.variant('Feature');
+  features(feature: FeatureRoot) {
+    return this.variant(feature);
   }
 
   forUser(userId: string) {

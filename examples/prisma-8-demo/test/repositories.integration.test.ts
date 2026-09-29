@@ -233,28 +233,28 @@ async function seedEmbeddingPosts(runtime: Runtime): Promise<void> {
 async function seedOrmClientTasks(runtime: Runtime): Promise<SeededTaskIds> {
   const orm = createOrmClient(runtime);
 
-  const adminBug = await orm.Task.bugs().create({
+  const adminBug = await orm.Task.bugs(orm.Bug).create({
     userId: seededUserIds.admin,
     title: 'Login crashes on Safari',
     severity: 'critical',
     stepsToRepro: 'Open Safari → click "Sign in" → blank white screen',
     createdAt: Temporal.Instant.from('2024-03-01T00:00:00.000Z'),
   });
-  const adminFeature = await orm.Task.features().create({
+  const adminFeature = await orm.Task.features(orm.Feature).create({
     userId: seededUserIds.admin,
     title: 'Dark mode',
     priority: 'P1',
     targetRelease: 'v2.0',
     createdAt: Temporal.Instant.from('2024-03-02T00:00:00.000Z'),
   });
-  const memberBug = await orm.Task.bugs().create({
+  const memberBug = await orm.Task.bugs(orm.Bug).create({
     userId: seededUserIds.member,
     title: 'Typo on pricing page',
     severity: 'low',
     stepsToRepro: 'Visit /pricing → "recieve" should be "receive"',
     createdAt: Temporal.Instant.from('2024-03-03T00:00:00.000Z'),
   });
-  const memberFeature = await orm.Task.features().create({
+  const memberFeature = await orm.Task.features(orm.Feature).create({
     userId: seededUserIds.member,
     title: 'Slack integration',
     priority: 'P0',

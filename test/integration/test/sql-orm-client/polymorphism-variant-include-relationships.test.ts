@@ -1,4 +1,4 @@
-import { Collection } from '@internal/sql-orm-client';
+import { orm } from '@internal/sql-orm-client';
 import { describe, expect, it } from 'vitest';
 import { getPolyTestContext } from './helpers';
 import { timeouts, withCollectionRuntime } from './integration-helpers';
@@ -6,8 +6,8 @@ import type { PgIntegrationRuntime } from './runtime-helpers';
 
 const polyContext = getPolyTestContext();
 
-function tasksOf(runtime: PgIntegrationRuntime) {
-  return new Collection({ runtime, context: polyContext }, 'Task', { namespaceId: 'public' });
+function ormOf(runtime: PgIntegrationRuntime) {
+  return orm({ runtime, context: polyContext });
 }
 
 async function setupVariantAssigneeSchema(runtime: PgIntegrationRuntime): Promise<void> {
@@ -64,8 +64,8 @@ describe('integration/polymorphism-variant-include-relationships', () => {
       await withCollectionRuntime(async (runtime) => {
         await setupVariantAssigneeSchema(runtime);
 
-        const rows = await tasksOf(runtime)
-          .variant('Bug')
+        const db = ormOf(runtime);
+        const rows = await db.public.Task.variant(db.public.Bug)
           .select('id', 'title', 'type')
           .orderBy((task) => task.id.asc())
           .include('assignee', (person) => person.select('id', 'name'))
@@ -96,8 +96,8 @@ describe('integration/polymorphism-variant-include-relationships', () => {
       await withCollectionRuntime(async (runtime) => {
         await setupVariantAssigneeSchema(runtime);
 
-        const rows = await tasksOf(runtime)
-          .variant('Feature')
+        const db = ormOf(runtime);
+        const rows = await db.public.Task.variant(db.public.Feature)
           .select('id', 'title', 'type')
           .orderBy((task) => task.id.asc())
           .include('assignee', (person) => person.select('id', 'name'))

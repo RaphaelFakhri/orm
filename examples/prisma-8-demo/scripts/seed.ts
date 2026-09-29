@@ -218,47 +218,47 @@ async function main() {
 
     // Insert polymorphic tasks. `Task` is a discriminated base (`@@discriminator(type)`)
     // with `Bug` / `Feature` variants stored in their own tables. The ORM client's
-    // variant scopes (`Task.bugs()` / `Task.features()`) auto-inject the discriminator
+    // variant scopes (`Task.bugs(orm.Bug)` / `Task.features(orm.Feature)`) auto-inject the discriminator
     // and, for the multi-table `Feature` variant, write the base + variant rows in one
     // transaction. These rows power the polymorphic-include demos (`repo-task-board`,
     // `repo-bug-triage`, `repo-feature-roadmap`).
     const orm = createOrmClient(runtime);
 
-    await orm.Task.bugs().create({
+    await orm.Task.bugs(orm.Bug).create({
       title: 'Login crashes on Safari',
       userId: alice.id,
       severity: 'critical',
       stepsToRepro: 'Open Safari → click "Sign in" → blank white screen',
       createdAt: Temporal.Instant.from('2024-03-01T09:00:00.000Z'),
     });
-    await orm.Task.features().create({
+    await orm.Task.features(orm.Feature).create({
       title: 'Dark mode',
       userId: alice.id,
       priority: 'P1',
       targetRelease: 'v2.0',
       createdAt: Temporal.Instant.from('2024-03-02T09:00:00.000Z'),
     });
-    await orm.Task.features().create({
+    await orm.Task.features(orm.Feature).create({
       title: 'CSV export',
       userId: alice.id,
       priority: 'P2',
       createdAt: Temporal.Instant.from('2024-03-03T09:00:00.000Z'),
     });
 
-    await orm.Task.bugs().create({
+    await orm.Task.bugs(orm.Bug).create({
       title: 'Memory leak in import worker',
       userId: bob.id,
       severity: 'critical',
       stepsToRepro: 'Import 1M rows → RSS climbs without bound',
       createdAt: Temporal.Instant.from('2024-03-04T09:00:00.000Z'),
     });
-    await orm.Task.bugs().create({
+    await orm.Task.bugs(orm.Bug).create({
       title: 'Typo on pricing page',
       userId: bob.id,
       severity: 'low',
       createdAt: Temporal.Instant.from('2024-03-05T09:00:00.000Z'),
     });
-    await orm.Task.features().create({
+    await orm.Task.features(orm.Feature).create({
       title: 'Slack integration',
       userId: bob.id,
       priority: 'P0',

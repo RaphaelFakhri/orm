@@ -31,10 +31,10 @@
  *                              each task comes back shaped per its variant
  *                              (Bug: severity/stepsToRepro, Feature: priority/targetRelease)
  * - repo-bug-triage [severity] [limit]
- *                              Users with a `.variant('Bug')`-narrowed include,
+ *                              Users with a `.variant(db.Bug)`-narrowed include,
  *                              filtered by the Bug-only `severity` column
  * - repo-feature-roadmap <targetRelease> [limit]
- *                              Users with a `.variant('Feature')`-narrowed include,
+ *                              Users with a `.variant(db.Feature)`-narrowed include,
  *                              filtered by the Feature-only `targetRelease` column
  * - repo-post-tags <postId>    Include a post's tags (N:M read through the junction)
  * - repo-tag-posts <tagId>     Include a tag's posts (N:M read, reverse direction)
@@ -203,6 +203,13 @@ function toJson(value: unknown): string {
     (_key, entry) => (typeof entry === 'bigint' ? `${entry}n` : entry),
     2,
   );
+}
+
+function toNumberArray(value: unknown, label: string): number[] {
+  if (!Array.isArray(value) || !value.every((entry) => typeof entry === 'number')) {
+    throw new TypeError(`${label} must be an array of numbers`);
+  }
+  return value;
 }
 
 async function main() {
@@ -503,13 +510,8 @@ async function main() {
       }
       let searchEmbedding: number[];
       try {
-        searchEmbedding = JSON.parse(embeddingStr) as number[];
-        if (
-          !Array.isArray(searchEmbedding) ||
-          !searchEmbedding.every((v) => typeof v === 'number')
-        ) {
-          throw new TypeError('embedding must be an array of numbers');
-        }
+        const parsedEmbedding: unknown = JSON.parse(embeddingStr);
+        searchEmbedding = toNumberArray(parsedEmbedding, 'embedding');
       } catch (error) {
         console.error(
           'Error parsing embedding:',
@@ -554,10 +556,8 @@ async function main() {
       }
       let queryVector: number[];
       try {
-        queryVector = JSON.parse(queryVectorStr) as number[];
-        if (!Array.isArray(queryVector) || !queryVector.every((v) => typeof v === 'number')) {
-          throw new TypeError('queryVector must be an array of numbers');
-        }
+        const parsedQueryVector: unknown = JSON.parse(queryVectorStr);
+        queryVector = toNumberArray(parsedQueryVector, 'queryVector');
       } catch (error) {
         console.error(
           'Error parsing queryVector:',
@@ -680,12 +680,11 @@ async function main() {
       } catch (error) {
         console.error('Budget violation caught:');
         if (error instanceof Error) {
-          const budgetError = error as { code?: string; category?: string; details?: unknown };
-          console.error('  Code:', budgetError.code);
-          console.error('  Category:', budgetError.category);
+          console.error('  Code:', 'code' in error ? error.code : undefined);
+          console.error('  Category:', 'category' in error ? error.category : undefined);
           console.error('  Message:', error.message);
-          if (budgetError.details) {
-            console.error('  Details:', JSON.stringify(budgetError.details, null, 2));
+          if ('details' in error && error.details) {
+            console.error('  Details:', JSON.stringify(error.details, null, 2));
           }
         } else {
           console.error('  Error:', error);
@@ -791,8 +790,8 @@ async function main() {
         if (
           typeof error === 'object' &&
           error !== null &&
-          Object.hasOwn(error, 'code') &&
-          Reflect.get(error, 'code') === 'LINT.DELETE_WITHOUT_WHERE'
+          'code' in error &&
+          error.code === 'LINT.DELETE_WITHOUT_WHERE'
         ) {
           console.log('Guardrail correctly blocked execution: LINT.DELETE_WITHOUT_WHERE');
         } else {

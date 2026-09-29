@@ -16,7 +16,14 @@ export const stack = db.stack;
 export const enums = db.enums;
 export const sql = db.sql.public;
 
-export function createOrmClient(runtime: Runtime) {
+type NoEmitCollections = {
+  User: typeof UserCollection;
+  Post: typeof PostCollection;
+};
+
+type NoEmitOrmClient = ReturnType<typeof orm<typeof contract, NoEmitCollections>>['public'];
+
+export function createOrmClient(runtime: Runtime): NoEmitOrmClient {
   // The demo builds runtimes externally (custom pool/middleware) and passes
   // them in, so the ORM client is built against that runtime via the `orm()`
   // builder rather than the facade's own lazily-bound `db.orm`.

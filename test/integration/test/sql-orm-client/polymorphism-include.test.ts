@@ -1,5 +1,5 @@
 import type { AsyncIterableResult } from '@internal/framework-components/runtime';
-import { Collection } from '@internal/sql-orm-client';
+import { orm } from '@internal/sql-orm-client';
 import type { ExecutionContext } from '@internal/sql-relational-core/query-lane-context';
 import { describe, expect, it } from 'vitest';
 import {
@@ -37,7 +37,7 @@ interface TaskRefinementRow extends RefinementRow {
   priority: ScalarFilter;
 }
 interface PolyIncludeRefinement {
-  variant(name: string): PolyIncludeRefinement;
+  variant(root: unknown): PolyIncludeRefinement;
   where(predicate: (row: TaskRefinementRow) => unknown): PolyIncludeRefinement;
   select(...fields: string[]): PolyIncludeRefinement;
   orderBy(selector: (row: TaskRefinementRow) => unknown): PolyIncludeRefinement;
@@ -182,35 +182,45 @@ function buildMtiIncludeContract(): TestContract {
   return raw as unknown as TestContract;
 }
 
-function createAccountCollection(runtime: PgIntegrationRuntime): PolyIncludeParent {
-  const contract = buildStiIncludeContract();
-  const context = { ...getTestContext(), contract } as ExecutionContext<TestContract>;
-  return new Collection({ runtime, context }, 'Account' as never, {
-    namespaceId: 'public',
-  }) as unknown as PolyIncludeParent;
-}
-
-function createProjectCollection(runtime: PgIntegrationRuntime): PolyIncludeParent {
-  const contract = buildMtiIncludeContract();
-  const context = { ...getTestContext(), contract } as ExecutionContext<TestContract>;
-  return new Collection({ runtime, context }, 'Project' as never, {
-    namespaceId: 'public',
-  }) as unknown as PolyIncludeParent;
-}
-
 interface RootTaskCollection {
-  variant(name: string): RootTaskCollection;
+  variant(root: unknown): RootTaskCollection;
   select(...fields: string[]): RootTaskCollection;
   orderBy(selector: (row: TaskRefinementRow) => unknown): RootTaskCollection;
   all(): AsyncIterableResult<Record<string, unknown>>;
 }
 
-function createTaskCollection(runtime: PgIntegrationRuntime): RootTaskCollection {
+interface StiIncludeRoots {
+  readonly accounts: PolyIncludeParent;
+  readonly admin: unknown;
+}
+
+interface MtiIncludeRoots {
+  readonly projects: PolyIncludeParent;
+  readonly tasks: RootTaskCollection;
+  readonly bug: unknown;
+  readonly feature: unknown;
+}
+
+function createStiIncludeRoots(runtime: PgIntegrationRuntime): StiIncludeRoots {
+  const contract = buildStiIncludeContract();
+  const context = { ...getTestContext(), contract } as ExecutionContext<TestContract>;
+  const facet = orm({ runtime, context }).public as unknown as {
+    readonly Account: PolyIncludeParent;
+    readonly Admin: unknown;
+  };
+  return { accounts: facet.Account, admin: facet.Admin };
+}
+
+function createMtiIncludeRoots(runtime: PgIntegrationRuntime): MtiIncludeRoots {
   const contract = buildMtiIncludeContract();
   const context = { ...getTestContext(), contract } as ExecutionContext<TestContract>;
-  return new Collection({ runtime, context }, 'Task' as never, {
-    namespaceId: 'public',
-  }) as unknown as RootTaskCollection;
+  const facet = orm({ runtime, context }).public as unknown as {
+    readonly Project: PolyIncludeParent;
+    readonly Task: RootTaskCollection;
+    readonly Bug: unknown;
+    readonly Feature: unknown;
+  };
+  return { projects: facet.Project, tasks: facet.Task, bug: facet.Bug, feature: facet.Feature };
 }
 
 async function setupStiIncludeSchema(runtime: PgIntegrationRuntime): Promise<void> {
@@ -307,7 +317,7 @@ describe('integration/polymorphism-include', () => {
         await setupStiIncludeSchema(runtime);
         await seedStiIncludeData(runtime);
 
-        const accounts = createAccountCollection(runtime);
+        const { accounts } = createStiIncludeRoots(runtime);
         // `select(['id','kind','role','plan'])` projects all four base columns
         // (STI variant fields are base-table columns); `mapPolymorphicRow`
         // then drops the sibling-variant field per row by the discriminator —
@@ -345,7 +355,7 @@ describe('integration/polymorphism-include', () => {
         await setupMtiIncludeSchema(runtime);
         await seedMtiIncludeData(runtime);
 
-        const projects = createProjectCollection(runtime);
+        const { projects } = createMtiIncludeRoots(runtime);
         const implicitRows = await projects
           .select('id', 'name')
           .orderBy((project) => project.id.asc())
@@ -442,7 +452,7 @@ describe('integration/polymorphism-include', () => {
         await setupMtiIncludeSchema(runtime);
         await seedMtiIncludeData(runtime);
 
-        const projects = createProjectCollection(runtime);
+        const { projects, bug } = createMtiIncludeRoots(runtime);
         // `severity` is the Bug variant's discriminating field. Filtering an
         // STI-variant-narrowed include on it confirms the refinement's where
         // is scoped to the joined child rows and filters per the variant field.
@@ -451,7 +461,7 @@ describe('integration/polymorphism-include', () => {
           .orderBy((project) => project.id.asc())
           .include('tasks', (tasks) =>
             tasks
-              .variant('Bug')
+              .variant(bug)
               .where((task) => task.severity.eq('critical'))
               .select('id', 'title', 'type', 'severity')
               .orderBy((task) => task.id.asc()),
@@ -478,7 +488,7 @@ describe('integration/polymorphism-include', () => {
         await setupMtiIncludeSchema(runtime);
         await seedMtiIncludeData(runtime);
 
-        const projects = createProjectCollection(runtime);
+        const { projects, feature } = createMtiIncludeRoots(runtime);
         // The filter still requires the joined MTI table, but the explicit
         // selection controls which fields reach the returned row.
         const rows = await projects
@@ -486,7 +496,7 @@ describe('integration/polymorphism-include', () => {
           .orderBy((project) => project.id.asc())
           .include('tasks', (tasks) =>
             tasks
-              .variant('Feature')
+              .variant(feature)
               .where((task) => task.priority.gte(3))
               .select('id', 'title', 'type')
               .orderBy((task) => task.id.asc()),
@@ -513,13 +523,13 @@ describe('integration/polymorphism-include', () => {
         await setupMtiIncludeSchema(runtime);
         await seedMtiIncludeData(runtime);
 
-        const projects = createProjectCollection(runtime);
+        const { projects, feature } = createMtiIncludeRoots(runtime);
         const rows = await projects
           .select('id', 'name')
           .orderBy((project) => project.id.asc())
           .include('tasks', (tasks) =>
             tasks
-              .variant('Feature')
+              .variant(feature)
               .select('id', 'title', 'type')
               .orderBy((task) => task.id.asc()),
           )
@@ -548,7 +558,7 @@ describe('integration/polymorphism-include', () => {
         await setupMtiIncludeSchema(runtime);
         await seedMtiIncludeData(runtime);
 
-        const tasks = createTaskCollection(runtime);
+        const { tasks } = createMtiIncludeRoots(runtime);
         const implicitRows = await tasks.orderBy((task) => task.id.asc()).all();
 
         expect(implicitRows).toEqual([
@@ -611,7 +621,7 @@ describe('integration/polymorphism-include', () => {
         await setupMtiIncludeSchema(runtime);
         await seedMtiIncludeData(runtime);
 
-        const tasks = createTaskCollection(runtime);
+        const { tasks, feature } = createMtiIncludeRoots(runtime);
         // `priority` lives on the joined `features` table, not the base
         // `tasks` table. Ordering a root Feature-narrowed collection by it
         // confirms the orderBy selector names the variant column against the
@@ -620,7 +630,7 @@ describe('integration/polymorphism-include', () => {
         // (priority 1) and id=4 (priority 3), so `priority.desc()` yields 4
         // before 3.
         const rows = await tasks
-          .variant('Feature')
+          .variant(feature)
           .orderBy((task) => task.priority.desc())
           .all();
 
@@ -640,7 +650,7 @@ describe('integration/polymorphism-include', () => {
         await setupMtiIncludeSchema(runtime);
         await seedMtiIncludeData(runtime);
 
-        const projects = createProjectCollection(runtime);
+        const { projects, feature } = createMtiIncludeRoots(runtime);
         // Mirror of the root case inside an include refinement: the refined
         // child collection is narrowed to Feature and ordered by the MTI
         // variant column `priority` (joined from `features`). Default selection
@@ -650,7 +660,7 @@ describe('integration/polymorphism-include', () => {
           .select('id', 'name')
           .orderBy((project) => project.id.asc())
           .include('tasks', (tasks) =>
-            tasks.variant('Feature').orderBy((task) => task.priority.desc()),
+            tasks.variant(feature).orderBy((task) => task.priority.desc()),
           )
           .all();
 
@@ -677,13 +687,13 @@ describe('integration/polymorphism-include', () => {
         await setupStiIncludeSchema(runtime);
         await seedStiIncludeData(runtime);
 
-        const accounts = createAccountCollection(runtime);
+        const { accounts, admin } = createStiIncludeRoots(runtime);
         const rows = await accounts
           .select('id', 'name')
           .orderBy((account) => account.id.asc())
           .include('members', (members) =>
             members
-              .variant('Admin')
+              .variant(admin)
               .select('id', 'kind', 'role')
               .orderBy((member) => member.id.asc()),
           )
