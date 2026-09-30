@@ -22,6 +22,7 @@ Reviewer-maintained. Contract: `projects/data-types-completion/design.md` sectio
 | e | 2 (`6b28dbff21`, `511e3fd4b1`) | SATISFIED: S1-e-R1-1 and S1-e-R1-2 closed, no new finding |
 | f | 1 (`4b33205e76..ddb0814c42`) | ANOTHER ROUND NEEDED: 1 must-fix, 2 should-fix, 1 low |
 | f | 2 (`ddb0814c42..2f23721797`) | ANOTHER ROUND NEEDED: S1-f-R1-1 to S1-f-R1-4 closed; 1 new low |
+| f | 3 (`9ddfaa62e3`) | SATISFIED: S1-f-R2-1 closed, no new finding |
 
 ## Findings log
 
@@ -194,6 +195,10 @@ Reviewer-maintained. Contract: `projects/data-types-completion/design.md` sectio
 - Where: `upgrade-instructions/pending/data-types-declare-names/app/instructions.md`.
 - What is wrong: applications call `vector(n)` from `@prisma/orm-extension-pgvector/column-types` and `geometry({ srid })` from `@prisma/orm-extension-postgis/column-types`. A bad argument now throws `CONTRACT.TYPE_PARAMS_INVALID`, not `CONTRACT.ARGUMENT_INVALID`, and `srid: 0` is now refused when the contract is authored. Before, the contract built and the column failed later, when the migration planner wrote it. An application that tests for the old code, or that has an SRID of 0, sees a change the app entry does not describe.
 - Change: add an app entry naming both helpers, the new code, and the SRID bound of 1 or more. Detect it with `CONTRACT\.ARGUMENT_INVALID` near those imports, or `srid\s*:\s*0\b`.
+
+### Dispatch f round 3 status of the round 2 finding
+
+- S1-f-R2-1: closed. The app entry `column-helpers-raise-type-params-invalid` names `vector(length)`, `geometry({ srid })` and `pgGeometryColumn({ srid })`, the change from `CONTRACT.ARGUMENT_INVALID` to `CONTRACT.TYPE_PARAMS_INVALID`, and that `srid: 0` is refused when the contract is built. It detects both `CONTRACT.ARGUMENT_INVALID` and `srid: 0`. Its `meta` claim (`{ dataType, parameters }`) matches `validateSqlTypeParams` in `sql-data-type.ts:245-250`. `check:upgrade-coverage --mode pr` exits 0 against both `bot/data-types-completion` and the default base. The commit carries both sign-offs and no AI attribution.
 
 ## Round notes
 
