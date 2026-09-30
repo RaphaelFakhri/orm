@@ -119,6 +119,7 @@ flowchart LR
 
 - `sqlTextReadsBack` and its tests move here from slice 2a, next to their only caller (design section 11.2). Its test: true for canonical text (a single line, several lines, an empty text); false for indented text, a blank first or last line, a carriage return and a NUL character. Add `canonicalizeTaggedLiteralBody` to the framework's `authoring` export with it.
 - Before writing ADR 256, check the ADR numbering: three files are already numbered 255.
+- `docs/architecture docs/subsystems/6. Ecosystem Extensions & Packs.md`, section "Template-Tagged Literals": add an `` @@index(where: sql`...`) `` example.
 
 ## Slice 3 — The TypeScript builder takes `sql` values
 

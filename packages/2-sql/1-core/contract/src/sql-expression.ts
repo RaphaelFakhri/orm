@@ -8,7 +8,7 @@ import { InternalError } from '@internal/utils/internal-error';
 export const SQL_EXPRESSION_DATA_TYPE_ID: DataTypeId = dataTypeId('sql/expression');
 export const SQL_EXPRESSION_TAG = 'sql';
 
-/** The data type of SQL text in the target's language. It declares no casts. Each SQL target registers it unchanged. ADR 254. */
+/** The data type of a SQL expression in the target database's language. It declares no casts. Each SQL target registers it unchanged. ADR 254. */
 export const sqlExpressionDataType: DataType = dataType(SQL_EXPRESSION_DATA_TYPE_ID, {});
 
 /** PSL support for `sql/expression`. Each SQL target registers it unchanged under `SQL_EXPRESSION_DATA_TYPE_ID`. */
@@ -16,7 +16,7 @@ export const sqlExpressionAuthoringEntry: DataTypeAuthoringEntry = {
   written: { kind: 'tag', tag: SQL_EXPRESSION_TAG, parse: (text) => text },
   print: (value) => sqlTextFromCanonical(value),
   documentation:
-    "SQL in the target database's language. Prisma passes it to the database unchanged.",
+    "A SQL expression in the target database's language. Prisma passes it to the database unchanged.",
 };
 
 /** The SQL text held by the canonical form of a `sql/expression` value. */

@@ -8,7 +8,7 @@ Slice 2t (sections 4 to 7) is the argument type that other projects reuse; it sh
 
 ## 1. Vocabulary
 
-- **`sql/expression`**: the data type (ADR 254) of SQL text in the target database's language. Its canonical form is a JSON string: the text. It has no codec and no DDL name, no column has it, it declares no casts, and no type casts from it.
+- **`sql/expression`**: the data type (ADR 254) of a SQL expression in the target database's language. An expression, not a statement or a query: every place that takes one (a default, an index element, a predicate, a CHECK body) takes an expression. Its canonical form is a JSON string: the text. It has no codec and no DDL name, no column has it, it declares no casts, and no type casts from it.
 - **`sql` literal**: the PSL syntax for a value of `sql/expression`: `` sql`...` ``, `sql"..."` or `sql'...'`. Its text is canonicalized by `canonicalizeTaggedLiteralBody` (ADR 129).
 - **Typed value**: a value together with its data type, `{ type, value }`, where `value` is the canonical form of `type`.
 - **Admitted forms of a type T**: the ways a position of type T can be written: T's own written form and the written forms of the types T casts from.
@@ -27,14 +27,14 @@ This package is the lowest one that the authoring packages, the family, both tar
 export const SQL_EXPRESSION_DATA_TYPE_ID: DataTypeId = dataTypeId('sql/expression');
 export const SQL_EXPRESSION_TAG = 'sql';
 
-/** The data type of SQL text in the target's language. It declares no casts. Each SQL target registers it unchanged. ADR 254. */
+/** The data type of a SQL expression in the target database's language. It declares no casts. Each SQL target registers it unchanged. ADR 254. */
 export const sqlExpressionDataType: DataType = dataType(SQL_EXPRESSION_DATA_TYPE_ID, {});
 
 /** PSL support for `sql/expression`. Each SQL target registers it unchanged under `SQL_EXPRESSION_DATA_TYPE_ID`. */
 export const sqlExpressionAuthoringEntry: DataTypeAuthoringEntry = {
   written: { kind: 'tag', tag: SQL_EXPRESSION_TAG, parse: (text) => text },
   print: (value) => sqlTextFromCanonical(value),
-  documentation: "SQL in the target database's language. Prisma passes it to the database unchanged.",
+  documentation: "A SQL expression in the target database's language. Prisma passes it to the database unchanged.",
 };
 
 /** The SQL text held by the canonical form of a `sql/expression` value. */
@@ -687,7 +687,7 @@ A new ADR 256, "Raw SQL is a value of the data type `sql/expression`", written i
 | ADR 195 | 5 | The recorded exception (section 17.2) |
 | ADRs 234, 236, 243, 244 | 2b, 3 | PSL examples in 2b, TS examples in 3 |
 | `docs/architecture docs/ADR-INDEX.md` | 2a, 2b | Rows for ADR 129, 254 and the new 256 |
-| `docs/architecture docs/subsystems/6. Ecosystem Extensions & Packs.md` | 2a | Lines using `pg.sql` and `pg.predicate` use `sql` |
+| `docs/architecture docs/subsystems/6. Ecosystem Extensions & Packs.md` | 2a, 2b | 2a: the section on tagged literals becomes two sentences that point to ADR 129 and ADR 254 (a tag names a data type; `sql` writes `sql/expression`); the view example is dropped, because a view query is not an expression. 2b: add an `` @@index(where: sql`...`) `` example |
 | `docs/reference/error-reference.md` | 2a, 2b, 3 | New, renamed and retired codes (section 13); correct `PSL_TAGGED_LITERAL_*` ("at every place"), `PSL_INVALID_DEFAULT_SQL` (tag `sql` only), `CONTRACT.DEFAULT_INVALID` (raised by `.default()`), `CONTRACT.CAST_REFUSED` and `CONTRACT.INVALID_JSON_LITERAL` cross-references |
 | `docs/reference/psl-editor-tooling-tagged-literals.md` | 2a, 2b | Cover every place; no prefixed tags; `dataTypes` on the context; completion and semantic tokens now done; the multi-line formatter check is done |
 | `docs/reference/codec-authoring-guide.md` | 2a | Line 477 codes; a type whose entry is a tag with no casts; a family-defined type |

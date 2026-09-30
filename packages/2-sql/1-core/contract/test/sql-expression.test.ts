@@ -34,7 +34,7 @@ describe('sqlExpressionAuthoringEntry', () => {
       tag: 'sql',
       written: { kind: 'tag' },
       documentation:
-        "SQL in the target database's language. Prisma passes it to the database unchanged.",
+        "A SQL expression in the target database's language. Prisma passes it to the database unchanged.",
     });
     expect(sqlExpressionAuthoringEntry.written).toMatchObject({ kind: 'tag', tag: 'sql' });
   });
