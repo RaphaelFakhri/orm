@@ -40,11 +40,13 @@ changes:
   - id: comments-name-removed-apis
     summary: |
       Comments that describe `expandNativeType`, `targetTypes` or the `nativeType()` hook describe
-      code that no longer exists. Delete each such sentence.
+      code that no longer exists. Delete each such sentence, and say that a codec descriptor
+      carries its data type where a comment lists target types or a native type among its parts.
     detection:
       glob: "**/*.{ts,mts,cts}"
       matches:
         - '(?://|\*).*\b(?:expandNativeType|targetTypes)\b'
+        - '(?://|\*).*\b(?:target types|native type|bare `nativeType)'
   - id: postgres-codec-takes-data-type
     summary: |
       `postgresCodec(template, options)` and `sqliteCodec(template, options)` take the data type
@@ -347,6 +349,37 @@ In comments, delete each sentence that names `expandNativeType`, `targetTypes` o
 /**
  * Per-codec column helper for `pg/vector@1`. Generic over `N extends number` so the column site preserves the dimension literal in `typeParams` (e.g. `pgVectorColumn(1536)` packs `typeParams: { length: 1536 }`).
  */
+```
+
+A codec module's summary comment that lists what the descriptor carries names the data type and its params schema in place of target types and a native type, and says the data type declares the type's name and the bounds of its parameters. A column helper no longer passes a bare `nativeType`, so that clause goes too. Write each rewritten list item on one line. The pgvector and PostGIS summaries:
+
+```ts
+// before
+ * 2. `PgVectorDescriptor` extends {@link PostgresCodecDescriptor} with the codec id, traits, target types, params schema (`{ length: number }`, validated against {@link VECTOR_MAX_DIM}), the postgres native type `vector`, explicit target behavior, and the emit-path `renderOutputType` producing `Vector<${length}>`.
+ * 3. `pgVectorColumn(length)` per-codec column helper invoking `descriptor.factory({ length })` directly + passing the bare `nativeType: 'vector'`. The family-layer {@link expandNativeType} hook renders the parameterized form (`vector(1536)`) at emit/verify time from `nativeType` + `typeParams`.
+
+// after
+ * 2. `PgVectorDescriptor` extends {@link PostgresCodecDescriptor} with the codec id, traits, the `pgvector/vector` data type and its params schema, explicit target behavior, and the emit-path `renderOutputType` producing `Vector<${length}>`. The data type declares the type's name and the bounds of `length`.
+ * 3. `pgVectorColumn(length)` per-codec column helper invoking `descriptor.factory({ length })` directly.
+```
+
+```ts
+// before
+ * 2. `PostgisGeometryDescriptor` extends {@link PostgresCodecDescriptor}
+ *    with the codec id, traits, target types, params schema
+ *    (`{ srid?: number }`, preserving unparameterized geometry while validating supplied SRIDs), explicit target behavior, and
+ *    the emit-path `renderOutputType` producing `Geometry<${srid}>` /
+ *    `Geometry` when no SRID is supplied.
+ * 3. `pgGeometryColumn({ srid })` per-codec column helper invoking
+ *    `descriptor.factory({ srid })` and passing the bare
+ *    `nativeType: 'geometry'`. The family-layer `expandNativeType`
+ *    hook renders the parameterised form
+ *    (`geometry(Geometry,${srid})`) at emit/verify time from
+ *    `nativeType` + `typeParams`.
+
+// after
+ * 2. `PostgisGeometryDescriptor` extends {@link PostgresCodecDescriptor} with the codec id, traits, the `postgis/geometry` data type and its params schema (`{ srid?: number }`), explicit target behavior, and the emit-path `renderOutputType` producing `Geometry<${srid}>` / `Geometry` when no SRID is supplied. The data type declares the type's name and the bound of `srid`.
+ * 3. `pgGeometryColumn({ srid })` per-codec column helper invoking `descriptor.factory({ srid })`.
 ```
 
 ## `postgres-codec-takes-data-type`
