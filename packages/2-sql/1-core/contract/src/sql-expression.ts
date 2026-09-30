@@ -2,7 +2,8 @@ import type { JsonValue } from '@internal/contract/types';
 import type { DataTypeAuthoringEntry } from '@internal/framework-components/authoring';
 import { printTaggedLiteral } from '@internal/framework-components/authoring';
 import type { DataType, DataTypeId } from '@internal/framework-components/codec';
-import { dataType, dataTypeId, runtimeError } from '@internal/framework-components/codec';
+import { dataType, dataTypeId } from '@internal/framework-components/codec';
+import { runtimeError } from '@internal/framework-components/components';
 import { InternalError } from '@internal/utils/internal-error';
 
 export const SQL_EXPRESSION_DATA_TYPE_ID: DataTypeId = dataTypeId('sql/expression');
