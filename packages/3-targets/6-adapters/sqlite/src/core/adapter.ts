@@ -235,9 +235,9 @@ function renderLimitOffset(
 function renderSelect(ast: SelectAst, ctx: SqliteRenderContext): string {
   if (ast.locking !== undefined && ast.locking.length > 0) {
     throw structuredError(
-      'RUNTIME.LOCK_UNSUPPORTED',
+      'RUNTIME.AST_UNSUPPORTED',
       'SQLite has no row locks, so a select cannot carry a locking clause such as FOR UPDATE',
-      { meta: { target: 'sqlite' } },
+      { meta: { target: 'sqlite', feature: 'locking-clause' } },
     );
   }
   const distinctPrefix = ast.distinct ? 'DISTINCT ' : '';

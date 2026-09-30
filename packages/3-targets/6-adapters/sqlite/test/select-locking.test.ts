@@ -9,6 +9,7 @@ import { applicationDomainOf } from '@repo/test-utils';
 import { describe, expect, it } from 'vitest';
 import { TestSqlContractSerializer as SqlContractSerializer } from '../../../../2-sql/9-family/test/test-sql-contract-serializer';
 import { createSqliteAdapter } from '../src/core/adapter';
+import { sqliteAdapterDescriptorMeta } from '../src/core/descriptor-meta';
 import type { SqliteContract } from '../src/core/types';
 
 const contract = new SqlContractSerializer().deserializeContract({
@@ -53,15 +54,24 @@ describe('SQLite adapter row locking', () => {
     expect(() => adapter.lower(ast, { contract })).toThrow(
       expect.objectContaining({
         name: 'StructuredError',
-        code: 'RUNTIME.LOCK_UNSUPPORTED',
+        code: 'RUNTIME.AST_UNSUPPORTED',
         message:
           'SQLite has no row locks, so a select cannot carry a locking clause such as FOR UPDATE',
-        meta: { target: 'sqlite' },
+        meta: { target: 'sqlite', feature: 'locking-clause' },
       }),
     );
   });
 
-  it('reports no locking capability flags', () => {
-    expect(adapter.profile.capabilities).not.toMatchObject({ sql: { forUpdate: true } });
+  it.each([
+    ['sql', 'forUpdate'],
+    ['sql', 'forShare'],
+    ['sql', 'lockOf'],
+    ['sql', 'lockNowait'],
+    ['sql', 'lockSkipLocked'],
+    ['postgres', 'forNoKeyUpdate'],
+    ['postgres', 'forKeyShare'],
+  ])('does not report %s.%s', (group, flag) => {
+    expect(adapter.profile.capabilities).not.toHaveProperty([group, flag]);
+    expect(sqliteAdapterDescriptorMeta.capabilities).not.toHaveProperty([group, flag]);
   });
 });

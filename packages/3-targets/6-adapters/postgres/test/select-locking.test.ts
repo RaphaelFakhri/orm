@@ -142,14 +142,22 @@ describe('Postgres adapter row locking', () => {
     });
 
     it.each([
-      ['sql', 'forUpdate', LockingClause.of('forUpdate')],
-      ['sql', 'forShare', LockingClause.of('forShare')],
-      ['postgres', 'forNoKeyUpdate', LockingClause.of('forNoKeyUpdate')],
-      ['postgres', 'forKeyShare', LockingClause.of('forKeyShare')],
-      ['sql', 'lockOf', LockingClause.of('forUpdate', { of: ['j'] })],
-      ['sql', 'lockNowait', LockingClause.of('forUpdate', { wait: 'nowait' })],
-      ['sql', 'lockSkipLocked', LockingClause.of('forUpdate', { wait: 'skipLocked' })],
-    ] as const)('without %s.%s', (group, flag, clause) => {
+      { group: 'sql', flag: 'forUpdate', clause: LockingClause.of('forUpdate') },
+      { group: 'sql', flag: 'forShare', clause: LockingClause.of('forShare') },
+      { group: 'postgres', flag: 'forNoKeyUpdate', clause: LockingClause.of('forNoKeyUpdate') },
+      { group: 'postgres', flag: 'forKeyShare', clause: LockingClause.of('forKeyShare') },
+      { group: 'sql', flag: 'lockOf', clause: LockingClause.of('forUpdate', { of: ['j'] }) },
+      {
+        group: 'sql',
+        flag: 'lockNowait',
+        clause: LockingClause.of('forUpdate', { wait: 'nowait' }),
+      },
+      {
+        group: 'sql',
+        flag: 'lockSkipLocked',
+        clause: LockingClause.of('forUpdate', { wait: 'skipLocked' }),
+      },
+    ] as const)('without $group.$flag', ({ group, flag, clause }) => {
       const capability = `${group}.${flag}`;
       expect(() =>
         renderLoweredSql(

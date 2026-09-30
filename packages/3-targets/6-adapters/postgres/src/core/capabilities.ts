@@ -24,4 +24,4 @@ export const postgresAdapterCapabilities = Object.freeze({
     lockNowait: true,
     lockSkipLocked: true,
   },
-});
+} as const);
