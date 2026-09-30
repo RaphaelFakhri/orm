@@ -4,6 +4,8 @@ Read this first when you resume the project. It records where the work stands an
 
 ## State on 2026-09-30
 
+- Slice 2b (TML-3288) is on branch `tml-3288-sql-expression-places`, stacked on the 2t branch. Pull request: https://github.com/prisma/orm/pull/30550 (opened 2026-09-30, base `tml-3367-data-type-value`; retarget to `main` once #30539 merges). Two review rounds done, every finding fixed. Next: slice 3 (TML-3289); its "Carried over" list in plan.md holds the deferred items.
+
 - Slice 2t (TML-3367) is on branch `tml-3367-data-type-value`, stacked on the 2a branch. Pull request: https://github.com/prisma/orm/pull/30539 (opened 2026-09-30, base `main` since #30534 merged; approved for merge by Will, auto-merge on). Two review rounds done, every finding fixed. Next: slice 2b (TML-3288) once 2a merges; its "Carried over" list in plan.md holds the deferred items from both 2t reviews.
 
 - Planning is finished. Slice 2a merged on 2026-09-30.
@@ -246,7 +248,7 @@ Built in the linked worktree `wip/wt-1` from `main`, since it depends on no othe
 | --- | --- | --- | --- |
 | 1 | 2a: `sql` is the data type `sql/expression` | TML-3296 | Merged 2026-09-30 (#30534) |
 | 2 | 2t: an argument declares the data type it receives | TML-3367 | PR #30539 open against the 2a branch; two review rounds done, all findings fixed |
-| 3 | 2b: the six places take `sql` literals | TML-3288 | Dispatches (a) to (d) done on `tml-3288-sql-expression-places`; review next |
+| 3 | 2b: the six places take `sql` literals | TML-3288 | PR #30550 open against the 2t branch (2026-09-30); two review rounds done, all findings fixed; retarget to `main` when #30539 merges |
 | 4 | 3: the TypeScript builder takes `sql` values | TML-3289 | Waiting for 2b |
 | On the side | 1: line comments in raw SQL | TML-3287 | PR #30546 open against `main` (2026-09-30); two review rounds done, all findings fixed; awaits Will's approval |
 | Last | 4: migration files write template literals | TML-3290 | Waiting for 1 |
