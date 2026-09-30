@@ -189,6 +189,11 @@ Whichever PR merges second rebases. From [research/review-followups.md](research
 | #30278, #30308, #30301, #30306, #30095 | 1, 2a, 2b | Postgres migration operations and `psl-infer` tests |
 | #30396, #30392, #30362, #30333, #30202, #30152, #30133, #30101, #29953, #30277 | 2a, 2b | Docs, skills and single test files |
 
+## Deferred beyond this project
+
+- The four DDL sites that render a string wrapped in `opaqueSql(...)` on the spot (`addCheckConstraint`, both targets' `buildColumnDefaultSql`, the `alterColumnType` USING clause) should become DDL nodes, so the type of the field enforces the render rule instead of the doc. Found by the slice 1 architect review (A01); it belongs to the typed-DDL work, not this project.
+- Column defaults refuse `--` at authoring and in `assertSafeDefaultExpression`, so a default cannot carry a line comment. Slice 1 keeps the ban and documents why; lifting it is a separate decision.
+
 ## Close-out
 
 After the last delivered slice merges: final retro; map every decision in `design-notes.md` to its durable home (ADR 260, or an amended ADR) in the close-out PR; delete `projects/sql-expression-literals/`; mark the Linear project completed.
