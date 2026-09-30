@@ -250,9 +250,11 @@ export interface DataTypeValueArgType<Ctx extends AttributeCtx = AttributeCtx>
 ```
 
 ```ts
-/** An argument typed by a data type: any literal, admitted by the ADR 254 cast rule. Must not be an arm of `oneOf`. ADR 256. */
+/** An argument typed by a data type: any literal, admitted by the ADR 254 cast rule. Used as a parameter of a `funcCall`. ADR 256. */
 export function dataTypeValue(dataType: DataTypeId, support: DataTypeSupport): DataTypeValueArgType<AttributeCtx>;
 ```
+
+`dataTypeValue` is used as a parameter of a `funcCall`, not as a bare arm of `oneOf`, which would replace its diagnostics with `Expected one of: …`. When the argument is a call whose callee is a plain identifier and exactly one alternative is a `funcCall` of that name, `oneOf` returns that alternative's result, success or failure, so the diagnostics about the call's arguments are kept. So `oneOf(funcCall('nanoid', { positional: [dataTypeValue('pg/int4', support)] }), str())` given `nanoid("8")` reports `pg/int4 has no cast from pg/text; write a number` at `"8"`; given `other(1)` it still reports `Expected one of: nanoid() | string`.
 
 Construction never throws. The language server builds every spec only to list attribute names, including on stacks that lack the type.
 
@@ -690,7 +692,7 @@ A new ADR 256, "Raw SQL is a value of the data type `sql/expression`", written i
 | `docs/architecture docs/subsystems/7. Migration System.md` | 1 | New section "Opaque SQL in DDL": the node, the renderer rule, the invariant, the template-string sites, the data-transform exception |
 | ADR 254 | 2a | Widen the definition: a data type is the type of a value Prisma stores or passes to the database; most are database types; `sql/expression` has no codec and no DDL name, no column has it, it declares no casts, and no type casts from it. A family registers only a type that is the same on every target and that nothing casts from; the SQL family registers `sql/expression` itself. Lowering entries are gone; `sql` is `sql/expression`'s tag. Tell the follow-up project that a DDL name is optional for such types. State the prefix rule once: a tag is unprefixed when the owner of its data type is the family or a target; every other owner prefixes its tags. `@default` reports the cast-rule codes at the `@default` attribute. Only the scalar cast rule moves to the framework (2t); list casts stay in the family's default reader |
 | ADR 129 | 2a | Retitle it "Tagged literals write values of data types" (the file name stays). The tag names the data type of the text, not a pack that owns it. The body is what is written between the quotes; the text is the canonical value. Delete the prefixed-alias rule and link to the prefix rule in ADR 254. Move "the SQL family owns the unprefixed `sql` tag" from rejected alternatives into the decision, with the reason: the tag is part of the definition of `sql/expression`, which the family owns. `@default` stores a `sql/expression` value; its checks belong to `@default`, and in TypeScript the `sql` tag runs the same checks |
-| ADR 129 | 2b | The six places; move "check the tag while parsing the argument" from rejected alternatives into the decision for typed positions, with the rule that `dataTypeValue` is never an arm of `oneOf`; record the infer read-back rule and the skip notes (section 11.2) |
+| ADR 129 | 2b | The six places; move "check the tag while parsing the argument" from rejected alternatives into the decision for typed positions, with the rule that `dataTypeValue` is used as a parameter of a `funcCall`, whose diagnostics `oneOf` keeps when exactly one arm names the called function; record the infer read-back rule and the skip notes (section 11.2) |
 | ADR 129 | 3 | The TS tag returns `SqlExpression`, interpolates other `sql` values, and the checks moved to `.default()` |
 | ADR 254 | 3 | The TypeScript paragraph gains `SqlExpression`, the TypeScript value of a type that has no codec |
 | ADR 231 | 2b | Add `taggedLiteral`, `jsonValue` and `dataTypeValue` to the combinator kit; `dataTypeValue` decides literal-to-type compatibility for positions with a fixed receiving type (its "follow-up" item); `@default` still casts in lowering because its type comes from the column; the `oneOf` rule |

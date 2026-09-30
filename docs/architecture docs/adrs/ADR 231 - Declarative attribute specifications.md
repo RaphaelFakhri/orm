@@ -197,11 +197,11 @@ This is intentionally narrower than an arbitrary JSON value. Its shipped use is 
 
 Building the argument never throws, because the language server builds every spec, including on stacks that lack the type. Parsing throws an internal error when the stack does not register `dataType`: a spec that names a type its stack lacks is a pack bug. The argument carries `tags` and `documentation` for completion.
 
-`dataTypeValue` is never an arm of `oneOf`, because `oneOf` discards its diagnostics, which say how to write the value. It works as a parameter in a `funcCall` signature.
+`dataTypeValue` is used as a parameter in a `funcCall` signature, not as a bare arm of `oneOf`, whose aggregate diagnostic would hide the message that says how to write the value.
 
 ### Alternatives
 
-`oneOf(first, ...rest)` tries its alternatives in order and returns the first success. If every alternative fails, it discards the branch diagnostics and emits one aggregate `Expected one of: …` diagnostic assembled from the alternatives' labels.
+`oneOf(first, ...rest)` tries its alternatives in order and returns the first success. If every alternative fails, it discards the branch diagnostics and emits one aggregate `Expected one of: …` diagnostic assembled from the alternatives' labels. One exception: when the argument is a call whose callee is a plain identifier and exactly one alternative is a `funcCall` of that name, `oneOf` returns that alternative's result, success or failure, so the diagnostics about the call's arguments are kept. The author named the function, so `@default(nanoid("8"))` reports what is wrong with `"8"`, not the list of every default form.
 
 This trade-off keeps the leaf contract small and allows backtracking, at the cost of less specific diagnostics for malformed input that resembles one particular branch.
 
