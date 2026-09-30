@@ -54,6 +54,12 @@ describe.each([
     );
   });
 
+  it('lists the sql/expression entry first, so users see the sql tag first', () => {
+    expect(Object.keys(stack.authoringContributions.dataTypes)[0]).toBe(
+      SQL_EXPRESSION_DATA_TYPE_ID,
+    );
+  });
+
   it('registers no data type that casts from sql/expression', () => {
     const registered = stack.declaredDataTypes.map(({ type }) => type);
     expect(registered).toContain(sqlExpressionDataType);

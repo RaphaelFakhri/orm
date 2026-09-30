@@ -108,9 +108,9 @@ CONTRACT.SOURCE_LOAD_FAILED: Failed to resolve contract source
   PSL_DEFAULT_TYPE_INCOMPATIBLE [{"offset":51,"line":4,"column":13}] Field "T.v": this column holds a list, so its default is a list literal, as in [1, 2]
 ```
 
-### Run on 2026-09-30, after the review fixes
+### Run on 2026-09-30, after the round 2 review fixes
 
-Result: every case gave the expected code and message. Case 9 now reports `PSL_DEFAULT_LIST_EXPECTED`, the new name of `PSL_DEFAULT_TYPE_INCOMPATIBLE`; its message did not change. Every other case gave the same code, position and message as the run of 2026-09-29. The reserved-name message of case 3 is now built from the tag constant and reads the same.
+Run on commit `7870e28f59` plus the tag-order test, after `pnpm build`. Result: every case gave the expected code and message. Case 2 lists the known tags as `sql, json`, because the family registers `sql` and is assembled before the target. The diagnostics of cases 2, 3 and 4 start at the literal. The others start at the `@default` attribute. Case 9 reports `PSL_DEFAULT_LIST_EXPECTED`, the new name of `PSL_DEFAULT_TYPE_INCOMPATIBLE`; its message did not change.
 
 ```text
 === case 1: v String @default(sql`gen_random_uuid()`)
@@ -118,7 +118,7 @@ ok
   stored default: ["\"default\":{\"expression\":\"gen_random_uuid()\",\"kind\":\"function\"}"]
 === case 2: v String @default(pg.sql`gen_random_uuid()`)
 CONTRACT.SOURCE_LOAD_FAILED: Failed to resolve contract source
-  PSL_UNKNOWN_LITERAL_TAG [{"offset":59,"line":4,"column":21}] Unknown literal tag "pg.sql". Known tags: json, sql.
+  PSL_UNKNOWN_LITERAL_TAG [{"offset":59,"line":4,"column":21}] Unknown literal tag "pg.sql". Known tags: sql, json.
 === case 3: v DateTime @default(sql`now()`)
 CONTRACT.SOURCE_LOAD_FAILED: Failed to resolve contract source
   PSL_INVALID_DEFAULT_SQL [{"offset":61,"line":4,"column":23}] Write @default(now()) instead of sql`now()`; now() is a Prisma default function, not raw SQL.
