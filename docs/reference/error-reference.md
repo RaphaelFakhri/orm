@@ -787,7 +787,7 @@ A backtick string appears somewhere other than after a tag, for example `` @map(
 
 ### PSL_UNKNOWN_LITERAL_TAG
 
-A tagged literal uses a tag no pack in the stack registered: `Unknown literal tag "<tag>". Known tags: <tags in registration order>.` The SQL family registers `sql`, and every SQL target registers `json`. `pg.sql` and `sqlite.sql` are not registered; write `sql`. Reported at the literal.
+A tagged literal uses a tag no pack in the stack registered: `Unknown literal tag "<tag>". Known tags: <tags in registration order>.` In a `@default` the message starts with the field it is about, `Field "<Model>.<field>": `, with ` at element <n>` after the field when the literal is one element of a written list. The SQL family registers `sql`, and every SQL target registers `json`. `pg.sql` and `sqlite.sql` are not registered; write `sql`. Reported at the literal.
 
 ### PSL_DEPRECATED_SCALAR_NAME
 
@@ -795,9 +795,9 @@ A warning, not an error: a Mongo schema types a field with a deprecated scalar n
 
 ### PSL_VALUE_TYPE_INCOMPATIBLE
 
-A written value has a data type the receiving type neither is nor casts from. For a `@default` the receiving type is the column's: `Field "<Model>.<field>": <column type> has no cast from <value type>; it casts from <types>`, or `; it casts from nothing` when the column's type declares no cast at all. A written value has a data type of its own — a number's comes from its own size and precision, so on Postgres `42` is `pg/int2` and `100000000000000099` is `pg/int8` — and a data type declares which other types' values it takes. Inside a written list the message names the element: `Field "<Model>.<field>" at element 2: ...`. A list written on a column that holds one value, and a `sql` literal inside a list literal, are reported the same way.
+A written value has a data type the receiving type neither is nor casts from: `<receiving type> has no cast from <value type>; write <forms>`, where `<forms>` says how a value the receiving type takes is written — `a number`, `true or false`, `a quoted string`, `` json`...` `` — joined with `or`. A quoted string refused by a type that has a tag ends instead with the literal to write, as in ``; write it as sql`now()` ``. For a `@default` the receiving type is the column's, and the message starts with the field: `Field "<Model>.<field>": pg/int4 has no cast from pg/int8; write a number`. A written value has a data type of its own — a number's comes from its own size and precision, so on Postgres `42` is `pg/int2` and `100000000000000099` is `pg/int8` — and a data type declares which other types' values it takes. Inside a written list the message names the element: `Field "<Model>.<field>" at element 2: ...`. A list written on a column that holds one value is `<column type> has no cast from a list; write <forms>`, and a `sql` literal inside a list literal is reported like any other element.
 
-The same code reports a written form this target has no data type for at all: `Field "<Model>.<field>"[ at element <n>]: this target has no data type for a <string|boolean|number> value` — `true` on SQLite, for instance, which registers no boolean entry.
+The same code reports a written form this target has no data type for at all: `This target has no data type for a <string|boolean|number> value; write <forms>`, after `Field "<Model>.<field>"[ at element <n>]: ` in a `@default` — `true` on SQLite, for instance, which registers no boolean entry.
 
 Reported at the written value, or at the list element the message names. See [ADR 254](../architecture%20docs/adrs/ADR%20254%20-%20Data%20types%20and%20casts.md).
 

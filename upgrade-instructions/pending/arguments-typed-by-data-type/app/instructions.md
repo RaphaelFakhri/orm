@@ -9,6 +9,15 @@ changes:
         - '\bPSL_VALUE_TYPE_INCOMPATIBLE\b'
         - '\bPSL_INVALID_LITERAL\b'
         - 'list of \([^)]*\bsql`\.\.\.`'
+  - id: default-refusals-say-what-to-write
+    summary: |
+      A `@default` refusal from the cast rule ends with what to write instead, not the list of types the column casts from. `Unknown literal tag` in a `@default` starts with the field it is about, and `this target has no data type for` starts with a capital and says what to write.
+    detection:
+      glob: "**/*.{ts,mts,cts,js,mjs,json}"
+      matches:
+        - '; it casts from '
+        - 'this target has no data type for a (string|boolean|number) value[''"`]'
+        - '[''"`]Unknown literal tag '
   - id: function-call-arguments-keep-their-diagnostics
     summary: |
       A call to a function that exactly one alternative of an attribute argument names, such as `@default(uuid(5))`, reports what is wrong with its arguments instead of `Expected one of: …`.
@@ -24,13 +33,29 @@ This matters only to code that reads the location of a PSL diagnostic, or the te
 
 ## Where the refusal is reported
 
-`PSL_VALUE_TYPE_INCOMPATIBLE` and `PSL_INVALID_LITERAL` from `@default` used to point at the whole `@default(...)` attribute. They now point at the written value. When the message names a list element (`at element 2`), they point at that element. The codes and messages are unchanged. `PSL_DEFAULT_LIST_EXPECTED` and `PSL_INVALID_DEFAULT_LITERAL` still point at the attribute.
+`PSL_VALUE_TYPE_INCOMPATIBLE` and `PSL_INVALID_LITERAL` from `@default` used to point at the whole `@default(...)` attribute. They now point at the written value. When the message names a list element (`at element 2`), they point at that element. The codes are unchanged; the next section describes the new wording. `PSL_DEFAULT_LIST_EXPECTED` and `PSL_INVALID_DEFAULT_LITERAL` still point at the attribute.
 
-For `tags Int[] @default([1, "x"])`, the diagnostic `Field "Post.tags" at element 2: pg/int4 has no cast from pg/text; it casts from pg/int2` now spans `"x"`.
+For `tags Int[] @default([1, "x"])`, the diagnostic `Field "Post.tags" at element 2: pg/int4 has no cast from pg/text; write a number` now spans `"x"`.
+
+When a tagged literal has both an unknown tag and a NUL character or more text than the limit, `@default` now reports the canonicalization code, `PSL_TAGGED_LITERAL_NUL` or `PSL_TAGGED_LITERAL_TOO_LARGE`, where it used to report `PSL_UNKNOWN_LITERAL_TAG`.
 
 This supersedes the last row of the table in the pending `sql-is-a-data-type` instructions: a `sql` literal inside a list literal is reported with `PSL_VALUE_TYPE_INCOMPATIBLE` at the element, not at the `@default` attribute.
 
 Update an assertion on the span or range of one of these diagnostics to the written value.
+
+## Refusals say what to write
+
+`@default` and every other position that takes a value of a data type now word a refusal of the cast rule the same way. A missing cast ends with what to write instead, the forms the column's type admits, not the list of types it casts from. The two other refusals change as the table shows. The codes do not change.
+
+| Written | Message before | Message now |
+| --- | --- | --- |
+| `count Int @default(100000000000000099)` | `Field "N.count": pg/int4 has no cast from pg/int8; it casts from pg/int2` | `Field "N.count": pg/int4 has no cast from pg/int8; write a number` |
+| `meta Json @default("{}")` | `Field "N.meta": pg/jsonb has no cast from pg/text; it casts from pg/json` | ``Field "N.meta": pg/jsonb has no cast from pg/text; write json`...` `` |
+| `count Int @default([1])` | `Field "N.count": pg/int4 has no cast from a list; it casts from pg/int2` | `Field "N.count": pg/int4 has no cast from a list; write a number` |
+| `active Boolean @default(true)` on SQLite | `Field "N.active": this target has no data type for a boolean value` | `Field "N.active": This target has no data type for a boolean value; write a number` |
+| ``v String @default(pg.sql`x`)`` | `Unknown literal tag "pg.sql". Known tags: sql, json.` | `Field "N.v": Unknown literal tag "pg.sql". Known tags: sql, json.` |
+
+Update an assertion on one of these messages to the new text.
 
 ## `sql` is no longer offered as a list element
 
