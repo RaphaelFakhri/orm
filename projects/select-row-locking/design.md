@@ -134,7 +134,7 @@ At run time each method goes through the builder's existing `_gate(...)` (`query
 
 `groupBy()` already returns a different type, `GroupedQuery`, which does not get the four methods. That keeps the most common invalid combination out of the types entirely. The other invalid combinations are refused at `build()`; they are listed in one place under "What is refused, and where".
 
-A locked select used as a subquery through `.as(...)` is legal Postgres but rare. The first version refuses it at `build()`.
+A locked select used as a subquery through `.as(...)`, or as an `exists`, `in` or lateral source, is legal Postgres but rare. The first version refuses it at the point it becomes a subquery, which is one step before the outer `build()` and closer to the mistake than walking the finished tree would be.
 
 ## What you write: the ORM client
 
@@ -242,7 +242,8 @@ Future renderers map the same node to their own syntax: MariaDB writes `LOCK IN 
 | An option passed without its flag, builder | the method | the same error, naming the option's flag |
 | A method called without its flag, ORM | the method | `ORM.CAPABILITY_MISSING`, `meta.capability` = the flag |
 | A lock with `distinct`, `distinctOn`, `groupBy` or `having` | `SelectAst` constructor | a structured error, `RUNTIME.LOCK_INCOMPATIBLE` |
-| A lock with an aggregate projection, or a locked subquery | builder `build()` | a structured error, `SQL_BUILDER.LOCK_INCOMPATIBLE` |
+| A lock with an aggregate or window function in the projection | builder `build()` | `ORM.LOCK_INCOMPATIBLE`, `meta.conflict: 'aggregate'`; the builder's errors already use the `ORM` namespace |
+| A locked select used as a subquery, through `.as(...)` or as an `exists`, `in` or lateral source | the moment it becomes a subquery, one step before the outer `build()` | `ORM.LOCK_INCOMPATIBLE`, `meta.conflict: 'subquery'` |
 | A lock with `include`, `aggregate`, `distinct` or `distinctOn`, ORM | compile | a structured error, `ORM.LOCK_INCOMPATIBLE` |
 | A mutation terminal (`update`, `updateAll`, `updateAndCount`, `delete`, `deleteAll`, `deleteAndCount`, `create`, `upsert`) on a locked collection | the terminal | `ORM.LOCK_INCOMPATIBLE`; a mutation already locks the rows it changes, and dropping the requested lock silently would hide a mistake |
 | A strength or option the adapter did not report, in a tree | Postgres renderer | `RUNTIME.AST_UNSUPPORTED` with `meta: { target, capability }`, the code the renderers already use for a feature a target cannot render |
