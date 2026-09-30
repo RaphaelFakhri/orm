@@ -21,6 +21,7 @@ Reviewer-maintained. Contract: `projects/data-types-completion/design.md` sectio
 | e | 1 (`f8903ee5dc..c7965f6d86`) | ANOTHER ROUND NEEDED: 2 low |
 | e | 2 (`6b28dbff21`, `511e3fd4b1`) | SATISFIED: S1-e-R1-1 and S1-e-R1-2 closed, no new finding |
 | f | 1 (`4b33205e76..ddb0814c42`) | ANOTHER ROUND NEEDED: 1 must-fix, 2 should-fix, 1 low |
+| f | 2 (`ddb0814c42..2f23721797`) | ANOTHER ROUND NEEDED: S1-f-R1-1 to S1-f-R1-4 closed; 1 new low |
 
 ## Findings log
 
@@ -178,6 +179,21 @@ Reviewer-maintained. Contract: `projects/data-types-completion/design.md` sectio
 - Where: `docs/reference/codec-authoring-guide.md:331-364` ("Stack contribution and direct adapter injection").
 - What is wrong: the snippets contribute pgvector and postgis descriptors, and build `createPostgresAdapter({ codecDescriptors })`, with no `dataTypes`. Copied as written, a query that binds a vector parameter fails when the cast is rendered, because the runtime has no `pgvector/vector` data type. The guide says to register `dataTypes` elsewhere (line 588), and the extension entry shows `createPostgresAdapter({ codecDescriptors, dataTypes })`, but these snippets contradict both.
 - Change: add `dataTypes` to both extension descriptors and to the `createPostgresAdapter` call, and say that a custom codec's data types are passed beside it.
+
+### Dispatch f round 2 status of the round 1 findings
+
+- S1-f-R1-1: closed. I reran the extension flow myself in a fresh `git worktree add wip/proof-review 2f23721797`, removed afterwards. I restored `packages/3-extensions/` from the merge base with `bot/data-types-completion` (`1e9cc29f05`) and ran `wip/proof/apply.py`, which is the implementer's recorded application of the entry's prose. I spot-checked it against the prose of `define-contract-wrapper-builds-data-type-lookup` and `comments-name-removed-apis`. Then I ran biome on the three changed files, as the entry's opening instruction says ("run the package's formatter"). Step 4 (`git status --porcelain` over the non-test paths) prints nothing. Step 5 (`git diff --exit-code` of the test paths against the base, and untracked test files) exits 0 with no output. Step 6 then runs the tip's own extension tests, since the non-test files are byte-identical to the tip: pgvector 191, postgis 129 and arktype-json 53 pass. The implementer's `ext-step6.log` also shows all ten `packages/3-extensions/*` suites passing. App flow, from the logs: `app-emit.log` re-emits `examples/prisma-8-demo-sqlite`, `app-step4.txt` is empty, and the example has no `test` script, so `app-typecheck.log` (clean) stands in for step 6.
+- S1-f-R1-2: closed. The entry adds `parameter-casts-use-base-names`, `resolve-identity-value-receives-data-type` and `contract-to-schema-takes-components`, each with before and after code and a detection pattern.
+- S1-f-R1-3: closed. `vector`, `geometry` and `pgGeometryColumn` call the new `validateSqlTypeParams(type, params)`, which is the old private `validatedParams` exported, so the data type's `params` is the only bound (design 2.4). The helpers now raise `CONTRACT.TYPE_PARAMS_INVALID`, the design 2.3 code for parameters a data type refuses, in place of `ARGUMENT_INVALID`. With the three helper files set back to their parent commit, 5 pgvector and 8 postgis new assertions fail, including SRID 0 (I checked), so the tests were able to fail.
+- S1-f-R1-4: closed. Both stack snippets and the `createPostgresAdapter` call pass `dataTypes`.
+
+`99da8c769a` changes only comment lines in eight extension source files. Every changed line is inside a comment, and it touches no test. Checks at `2f23721797`: root typecheck, `lint:agent`, `check:error-reference` (360) and `check:upgrade-coverage --mode pr --prev bot/data-types-completion` exit 0; `@internal/sql-contract` has 482 tests passing. Every commit carries both sign-offs and no AI attribution.
+
+### S1-f-R2-1 (low): the app entry does not mention the column helpers' new refusal
+
+- Where: `upgrade-instructions/pending/data-types-declare-names/app/instructions.md`.
+- What is wrong: applications call `vector(n)` from `@prisma/orm-extension-pgvector/column-types` and `geometry({ srid })` from `@prisma/orm-extension-postgis/column-types`. A bad argument now throws `CONTRACT.TYPE_PARAMS_INVALID`, not `CONTRACT.ARGUMENT_INVALID`, and `srid: 0` is now refused when the contract is authored. Before, the contract built and the column failed later, when the migration planner wrote it. An application that tests for the old code, or that has an SRID of 0, sees a change the app entry does not describe.
+- Change: add an app entry naming both helpers, the new code, and the SRID bound of 1 or more. Detect it with `CONTRACT\.ARGUMENT_INVALID` near those imports, or `srid\s*:\s*0\b`.
 
 ## Round notes
 
