@@ -56,6 +56,6 @@
 
 ## After the last slice
 
-- Set ADR 259 and ADR 257 to Accepted in the slice that completes their examples.
+- Set ADR 259 and ADR 260 to Accepted in the slice that completes their examples.
 - Delete the spike branches on `bot`.
 - Close-out per the projects README: move anything long-lived to `docs/`, delete `projects/collection-scopes/`.

@@ -77,7 +77,7 @@ const posts = await db.Post
 - **Postgres facade (`@prisma/orm-postgres`).** Re-exports the new ORM client surface and the scope helper from `orm-client`.
 - **Contract and emitter.** Carry the full-text index as structured data. A changed index representation changes storage hashes of contracts that declare one.
 - **Migrations and upgrades.** The feature has no consumers yet, so no migration path from the opaque representation is provided. The index change and the `DefaultCollectionTypeState` change need upgrade instructions.
-- **Mongo ORM client.** Out of scope, but ADR 257 records the MongoDB constraints so the design does not rule it out.
+- **Mongo ORM client.** Out of scope, but ADR 260 records the MongoDB constraints so the design does not rule it out.
 
 ## Cross-cutting requirements
 
@@ -99,7 +99,7 @@ const posts = await db.Post
 ## Project Definition of Done
 
 - [ ] Team-DoD floor (repo checks, docs, upgrade instructions, Linear close-out).
-- [ ] ADR 259 and ADR 257 are Accepted and match what shipped, including their examples.
+- [ ] ADR 259 and ADR 260 are Accepted and match what shipped, including their examples.
 - [ ] TML-3397 is closed by a test: a ternary between a filtered and an unfiltered collection refuses `deleteAll`.
 - [ ] `examples/prisma-8-demo` has a conditional list query written with `pipe`, a shared soft-delete filter typed with `FieldExpression`, and a sort field from a request.
 - [ ] A model with a weighted multi-field full-text index can be searched through a scope on a root collection, a chained collection, an include refinement, and a custom collection class, with whole-result assertions.
