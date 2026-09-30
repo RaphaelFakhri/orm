@@ -1,5 +1,11 @@
 import type { SqlStorage } from '@internal/sql-contract/types';
-import { check, defineContract, field, model } from '@internal/sql-contract-ts/contract-builder';
+import {
+  check,
+  defineContract,
+  field,
+  model,
+  sql,
+} from '@internal/sql-contract-ts/contract-builder';
 import { describe, expect, it, vi } from 'vitest';
 import { createTestSqlNamespace } from '../../../1-core/contract/test/test-support';
 import { interpretPslDocumentToSqlContract } from '../src/interpreter';
@@ -78,7 +84,7 @@ model Order {
       models: {
         Order: model('Order', { fields: orderFields }).sql({
           table: 'Order',
-          checks: [check({ expression: 'total > 0', name: 'order_total_positive' })],
+          checks: [check({ expression: sql`total > 0`, name: 'order_total_positive' })],
         }),
       },
     });
@@ -119,7 +125,7 @@ model LegacyOrder {
         models: {
           LegacyOrder: model('LegacyOrder', { fields: orderFields }).sql({
             table: 'LegacyOrder',
-            checks: [check({ expression: '(total > (0)::numeric)', map: 'positive_total' })],
+            checks: [check({ expression: sql`(total > (0)::numeric)`, map: 'positive_total' })],
           }),
         },
       });
@@ -165,8 +171,8 @@ model Order {
           Order: model('Order', { fields: orderFields }).sql({
             table: 'Order',
             checks: [
-              check({ expression: 'total > 0', name: 'order_total_positive' }),
-              check({ expression: '(total > (0)::numeric)', map: 'positive_total' }),
+              check({ expression: sql`total > 0`, name: 'order_total_positive' }),
+              check({ expression: sql`(total > (0)::numeric)`, map: 'positive_total' }),
             ],
           }),
         },
