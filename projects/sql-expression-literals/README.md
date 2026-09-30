@@ -4,6 +4,7 @@ Raw SQL in PSL and in the TypeScript contract builder is written one way everywh
 
 - Linear project: [SQL expression literals](https://linear.app/prisma-company/project/sql-expression-literals-c8a6659e7f4c)
 - Decision ticket: [TML-3282](https://linear.app/prisma-company/issue/TML-3282)
+- [handover.md](handover.md): the next steps, for an agent taking over. Read it first.
 - [status.md](status.md): where the work stands, and the context for resuming it. Read it first.
 - [spec.md](spec.md): what the project delivers and when it is done.
 - [design.md](design.md): every name, signature, message and file the project changes.
