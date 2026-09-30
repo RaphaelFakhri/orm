@@ -1,7 +1,6 @@
 import type { Contract } from '@internal/contract/types';
 import { INIT_ADDITIVE_POLICY } from '@internal/family-sql/control';
 import { collectScalarTypeConstructors } from '@internal/framework-components/authoring';
-import { createDataTypeLookup } from '@internal/framework-components/codec';
 import {
   APP_SPACE_ID,
   assembleAuthoringContributions,
@@ -10,7 +9,6 @@ import { buildSymbolTable } from '@internal/psl-parser';
 import { parse } from '@internal/psl-parser/syntax';
 import type { SqlStorage } from '@internal/sql-contract/types';
 import { interpretPslDocumentToSqlContract } from '@internal/sql-contract-psl';
-import { postgresDataTypes } from '@internal/target-postgres/data-types';
 import {
   PostgresRlsPolicy,
   PostgresSchema,
@@ -18,6 +16,7 @@ import {
 } from '@internal/target-postgres/types';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { postgresScalarAuthoringTypes } from '../../src/core/control-mutation-defaults';
+import { postgresDataTypeSupport } from '../helpers/postgres-data-type-support';
 import {
   controlAdapter,
   createDriver,
@@ -29,8 +28,6 @@ import {
   postgresTargetDescriptor,
   testTimeout,
 } from './fixtures/runner-fixtures';
-
-const postgresDataTypeLookup = createDataTypeLookup(postgresDataTypes);
 
 // ============================================================================
 // PSL source — the author-facing input
@@ -48,7 +45,7 @@ namespace public {
   policy_select p_read {
     target = profile
     roles  = [app_user]
-    using  = "owner_id = current_setting('app.uid')::int"
+    using  = sql\`owner_id = current_setting('app.uid')::int\`
   }
 }
 `;
@@ -76,7 +73,7 @@ function buildPslContract() {
 
   return interpretPslDocumentToSqlContract({
     documents: [document],
-    dataTypes: { entries: assembled.dataTypes, lookup: postgresDataTypeLookup },
+    dataTypes: postgresDataTypeSupport,
     symbolTable,
     sources,
     target: {
