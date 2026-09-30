@@ -651,6 +651,38 @@ export function assertDistinctOnCapability(
   );
 }
 
+export type LockCapability =
+  | 'sql.forUpdate'
+  | 'sql.forShare'
+  | 'postgres.forNoKeyUpdate'
+  | 'postgres.forKeyShare'
+  | 'sql.lockNowait'
+  | 'sql.lockSkipLocked';
+
+const lockCapabilityFlags: Record<LockCapability, readonly [string, string]> = {
+  'sql.forUpdate': ['sql', 'forUpdate'],
+  'sql.forShare': ['sql', 'forShare'],
+  'postgres.forNoKeyUpdate': ['postgres', 'forNoKeyUpdate'],
+  'postgres.forKeyShare': ['postgres', 'forKeyShare'],
+  'sql.lockNowait': ['sql', 'lockNowait'],
+  'sql.lockSkipLocked': ['sql', 'lockSkipLocked'],
+};
+
+export function assertLockCapability(
+  contract: Contract<SqlStorage>,
+  capability: LockCapability,
+  methodName: string,
+): void {
+  const [group, flag] = lockCapabilityFlags[capability];
+  if (contract.capabilities[group]?.[flag] === true) {
+    return;
+  }
+
+  throw ormError('ORM.CAPABILITY_MISSING', `${methodName}() requires capability ${capability}`, {
+    meta: { capability, method: methodName },
+  });
+}
+
 export function hasContractCapability(contract: Contract<SqlStorage>, capability: string): boolean {
   const capabilities = contract.capabilities;
   const value = capabilities[capability];

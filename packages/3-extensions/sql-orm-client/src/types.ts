@@ -15,6 +15,7 @@ import {
   type CodecTrait,
   type LimitOffsetValue,
   ListExpression,
+  type LockingClause,
   NullCheckExpr,
   type OrderByItem,
   type OrderByNulls,
@@ -97,6 +98,7 @@ export interface CollectionState {
   readonly limit: LimitOffsetValue | undefined;
   readonly offset: LimitOffsetValue | undefined;
   readonly variantName: string | undefined;
+  readonly locking: ReadonlyArray<LockingClause> | undefined;
   /**
    * Annotations attached to this query at terminal-call time.
    * Populated transiently by the read terminals `all` and `first` just before dispatch. Terminals
@@ -121,6 +123,7 @@ export function emptyState(): CollectionState {
     limit: undefined,
     offset: undefined,
     variantName: undefined,
+    locking: undefined,
     annotations: new Map(),
   };
 }
@@ -216,6 +219,16 @@ export type ComparisonMethodFns<T, CodecId extends string = never> = {
 export type OrderOptions = {
   readonly nulls?: OrderByNulls;
 };
+
+/** Options for the row-locking methods; each key exists only when the contract carries its capability. */
+export type OrmLockOptions<TContract extends Contract<SqlStorage>> =
+  | (TContract['capabilities'] extends { sql: { lockNowait: true } }
+      ? { readonly nowait?: true; readonly skipLocked?: never }
+      : never)
+  | (TContract['capabilities'] extends { sql: { lockSkipLocked: true } }
+      ? { readonly skipLocked?: true; readonly nowait?: never }
+      : never)
+  | { readonly nowait?: never; readonly skipLocked?: never };
 
 /** A value the collection can order by: `asc`/`desc`, optionally placing nulls first or last. */
 export type Orderable = {

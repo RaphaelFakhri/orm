@@ -12,6 +12,9 @@ import {
   ColumnRef,
   isWhereExpr,
   LiteralExpr,
+  LockingClause,
+  type LockStrength,
+  type LockWaitPolicy,
   type OrderByItem,
   type ToWhereExpr,
   type WhereArg,
@@ -31,10 +34,12 @@ import { mapCursorValuesToColumns, mapFieldsToColumns } from './collection-colum
 import {
   assertDistinctOnCapability,
   assertInsertConflictSkipCapability,
+  assertLockCapability,
   assertReturningCapability,
   getColumnToFieldMap,
   getFieldToColumnMap,
   isToOneCardinality,
+  type LockCapability,
   modelOf,
   type PolymorphismInfo,
   type PolymorphismVariantInfo,
@@ -132,6 +137,7 @@ import {
   type MutationCreateInput,
   type MutationCreateInputWithRelations,
   type MutationUpdateInput,
+  type OrmLockOptions,
   type RelatedModelName,
   type RelationTargetNamespace,
   type ResolvedCreateInput,
@@ -1112,6 +1118,62 @@ class CollectionImpl<
       distinct: undefined,
       distinctOn: distinctOnFields,
     });
+  }
+
+  /**
+   * Lock the selected rows of this model with `FOR UPDATE` until the transaction ends.
+   *
+   * Requires the `sql.forUpdate` capability.
+   *
+   * ```typescript
+   * const job = await tx.orm.Job.where({ state: 'queued' }).limit(1).forUpdate({ skipLocked: true }).first();
+   * ```
+   */
+  forUpdate(
+    ...options: TContract['capabilities'] extends { sql: { forUpdate: true } }
+      ? [options?: OrmLockOptions<TContract>]
+      : never
+  ): Collection<TContract, ModelName, Row, State> {
+    return this.#lock('forUpdate', 'sql.forUpdate', options[0]);
+  }
+
+  /**
+   * Lock the selected rows of this model with `FOR NO KEY UPDATE` until the transaction ends. Unlike `forUpdate`, it does not block foreign-key checks from rows that reference them.
+   *
+   * Requires the `postgres.forNoKeyUpdate` capability.
+   */
+  forNoKeyUpdate(
+    ...options: TContract['capabilities'] extends { postgres: { forNoKeyUpdate: true } }
+      ? [options?: OrmLockOptions<TContract>]
+      : never
+  ): Collection<TContract, ModelName, Row, State> {
+    return this.#lock('forNoKeyUpdate', 'postgres.forNoKeyUpdate', options[0]);
+  }
+
+  /**
+   * Lock the selected rows of this model with `FOR SHARE` until the transaction ends; other transactions may share-lock them but not write them.
+   *
+   * Requires the `sql.forShare` capability.
+   */
+  forShare(
+    ...options: TContract['capabilities'] extends { sql: { forShare: true } }
+      ? [options?: OrmLockOptions<TContract>]
+      : never
+  ): Collection<TContract, ModelName, Row, State> {
+    return this.#lock('forShare', 'sql.forShare', options[0]);
+  }
+
+  /**
+   * Lock the selected rows of this model with `FOR KEY SHARE` until the transaction ends; only deletes and key changes are blocked.
+   *
+   * Requires the `postgres.forKeyShare` capability.
+   */
+  forKeyShare(
+    ...options: TContract['capabilities'] extends { postgres: { forKeyShare: true } }
+      ? [options?: OrmLockOptions<TContract>]
+      : never
+  ): Collection<TContract, ModelName, Row, State> {
+    return this.#lock('forKeyShare', 'postgres.forKeyShare', options[0]);
   }
 
   /**
@@ -2682,6 +2744,26 @@ class CollectionImpl<
     );
   }
 
+  #lock(
+    strength: LockStrength,
+    capability: LockCapability,
+    options: LockRequest | undefined,
+  ): Collection<TContract, ModelName, Row, State> {
+    assertLockCapability(this.contract, capability, strength);
+    const waitPolicy = lockWaitPolicyOf(strength, options);
+    if (waitPolicy === 'nowait') {
+      assertLockCapability(this.contract, 'sql.lockNowait', strength);
+    }
+    if (waitPolicy === 'skipLocked') {
+      assertLockCapability(this.contract, 'sql.lockSkipLocked', strength);
+    }
+    const clause = LockingClause.of(strength, {
+      of: [this.tableName],
+      ...ifDefined('waitPolicy', waitPolicy),
+    });
+    return this.#clone({ locking: [...(this.state.locking ?? []), clause] });
+  }
+
   #clone<NextState extends CollectionTypeState = State>(
     overrides: Partial<CollectionState>,
   ): Collection<TContract, ModelName, Row, NextState> {
@@ -2911,3 +2993,22 @@ export const Collection = blindCast<
  * those checks need.
  */
 export const CollectionBase = CollectionImpl;
+
+interface LockRequest {
+  readonly nowait?: true;
+  readonly skipLocked?: true;
+}
+
+function lockWaitPolicyOf(
+  methodName: string,
+  options: LockRequest | undefined,
+): LockWaitPolicy | undefined {
+  if (options?.nowait && options.skipLocked) {
+    throw ormError('ORM.ARGUMENT_INVALID', `${methodName}() takes nowait or skipLocked, not both`, {
+      meta: { method: methodName },
+    });
+  }
+  if (options?.nowait) return 'nowait';
+  if (options?.skipLocked) return 'skipLocked';
+  return undefined;
+}
