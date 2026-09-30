@@ -47,6 +47,7 @@ flowchart LR
 - `schema-ir/test/naming.test.ts`: `normalizeSqlBody` for the rows E1–E12 of [research/review-followups.md](research/review-followups.md) F02 under rule A3 (E1 and E2 differ; one-line bodies and bodies without `--` are unchanged; CRLF and lone CR end a line; the function gives the same output on its own output); the pinned hash table is unchanged; check, index and policy hashes of E1 and E2 differ.
 - The existing render and lowering tests in [research/ddl.md](research/ddl.md) §8 are updated for the new field types; every exact-SQL assertion stays byte-identical.
 - `git status` shows no committed `ops.json` or `migration.json` changed.
+- `test/integration/test/cli-journeys/sql-expression-literals.e2e.test.ts` (update): one text ends in a `--` comment, as slice 2b's plan entry asked; slice 2b left it out because the SQL breaks until this slice.
 
 ## Slice 2a — The `sql` tag writes the data type `sql/expression`
 
@@ -112,7 +113,7 @@ flowchart LR
 - `postgres/test/psl-infer/*` (update): index, check and policy texts print as `sql` literals; a text holding a backtick in the double-quote form; a CHECK whose reprint holds `E'a\r\nb'` is skipped with the note in design 11.2, and so is a policy.
 - `language-server/test/completion-provider.test.ts` (update): `@@index(where: |` and `@@check(expression: |` offer `sql`; the `@@check(` snippet is ``check(expression: sql`${1:expression}`)``; a source with no data types still completes model and field attributes.
 - `language-server/test/semantic-tokens.test.ts`: a `sql` literal gives a `keyword` token for `sql` and a `string` token per line of its literal.
-- `test/integration/test/cli-journeys/sql-expression-literals.e2e.test.ts` (new): author a partial index, an expression index, a CHECK and a policy with `using` and `withCheck`; one text spans several lines, one ends in a `--` comment, one policy has an `EXISTS (SELECT … FROM … WHERE …)` predicate. Emit, plan, apply, verify clean. Infer, and assert every text prints as a `sql` literal. Emit the inferred schema and verify it clean against the same database. Infer again and assert the PSL equals the first inference.
+- `test/integration/test/cli-journeys/sql-expression-literals.e2e.test.ts` (new): author a partial index, an expression index, a CHECK and a policy with `using` and `withCheck`; one text spans several lines, one policy has an `EXISTS (SELECT … FROM … WHERE …)` predicate. Emit, plan, apply, verify clean. Infer, and assert every text prints as a `sql` literal. Emit the inferred schema and verify it clean against the same database. Infer again and assert the PSL equals the first inference.
 - `test/integration/test/cli-journeys/infer-roundtrip-fidelity*.e2e.test.ts` and `sign-the-database.e2e.test.ts` (update): assertions expect `sql` literals and the round trips still verify clean.
 
 **Carried over from the slice 2a review:**
