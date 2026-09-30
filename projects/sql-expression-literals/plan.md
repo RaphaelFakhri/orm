@@ -90,6 +90,7 @@ flowchart LR
 - Rename `TaggedLiteralCanonicalization.body` to `text` (the body is what is written between the quotes; the text is the canonical value).
 - `@default` reports its cast-rule refusals (`PSL_VALUE_TYPE_INCOMPATIBLE`, `PSL_INVALID_LITERAL`, `PSL_UNKNOWN_LITERAL_TAG`) at the written value, as `dataTypeValue` does, not at the whole attribute. Update ADR 254 and `error-reference.md` to match.
 - The `unknown-tag` arm of `lowerDataTypeDefault` cannot be reached from PSL; the framework's `readWrittenValue` replaces it.
+- `readTaggedLiteral` in `contract-psl/src/psl-column-resolution.ts` was named `lowerTaggedLiteral` until slice 2a. A tag no longer lowers its own body, so when the framework's reader replaces the function, no name about lowering a tag survives the move.
 - The `@default` list arm offers `` sql`...` `` as a list element, which the cast rule always refuses. Remove `sql` from the list-element tags, so completion and "Expected one of" stop offering it.
 
 ## Slice 2b — The six places take `sql` literals

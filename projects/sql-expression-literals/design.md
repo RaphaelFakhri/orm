@@ -341,14 +341,14 @@ Amend ADR 255 (in slice 2b): a block spec may depend on the stack's data types. 
 
 In `packages/2-sql/2-authoring/contract-psl/src/psl-column-resolution.ts`:
 
-- `lowerTaggedLiteral` looks up `entryForTag(support, literal.tag)` only. It loses its `context` parameter and the `LoweredPslDefaultResult` success arm; it returns a refusal or `{ ok: true, written: { kind: 'tag', tag: literal.tag, text } }`. Order: unknown tag, then canonicalization. Delete the outer `context` declaration in `lowerDefaultForField` (about lines 645-650), which is then unused; the inner one (about 724-729) stays.
+- `lowerTaggedLiteral` is renamed `readTaggedLiteral`, because a tag no longer lowers its own body. It looks up `entryForTag(support, literal.tag)` only. It loses its `context` parameter and the `LoweredPslDefaultResult` types; it returns its own result type, `{ ok: false, diagnostic }` or `{ ok: true, written: { kind: 'tag', tag: literal.tag, text } }`. Order: unknown tag, then canonicalization. Delete the outer `context` declaration in `lowerDefaultForField` (about lines 645-650), which is then unused; the inner one (about 724-729) stays.
 - In `data-type-default.ts`, rename the `WrittenValue` tag arm's `body` field to `text`, with the matching edits in `psl-column-resolution.ts` and `contract-prisma7/src/defaults.ts` (about lines 277, 298, 300). Export `readValue` from `data-type-default.ts` (slice 2t replaces it with the framework's `readWrittenValue` and removes the export).
 - At the point `if ('written' in lowered) return readAsLiteral(lowered.written);` (about line 746), for a scalar parsed value, call `readValue(support, lowered.written, undefined)`. When it returns `ok: true` with `typed.type === SQL_EXPRESSION_DATA_TYPE_ID`, take the SQL expression path below with `text = sqlTextFromCanonical(read.typed.value)`, on scalar and list columns alike. `@default` reads the value, not the written body, so it reads `sql/expression` the same way as the six places in slice 2b. In every other case call `readAsLiteral(lowered.written)` as today, so a refusal is reported once, by `lowerDataTypeDefault`. The SQL expression path:
   1. `reservedSqlDefaultBody(text)` defined: report `PSL_INVALID_DEFAULT_SQL` at the literal span, `` `Write @default(${reserved}()) instead of ${SQL_EXPRESSION_TAG}\`${reserved}()\`; ${reserved}() is a Prisma default function, not raw SQL.` ``, and return no default.
   2. `checkSqlDefaultBody(text)` defined: report `PSL_INVALID_DEFAULT_SQL` at the literal span with the reason.
   3. Otherwise the default is `{ kind: 'function', expression: text }`.
 - Delete the list-element special case (about lines 683-690). A `sql` literal inside a list literal reaches `readDataTypeDefault` and is refused by the cast rule, for example ``Field "Post.tags" at element 1: pg/text has no cast from sql/expression; it casts from nothing`` with `PSL_VALUE_TYPE_INCOMPATIBLE`.
-- Move the constant `PSL_INVALID_DEFAULT_SQL: ContributedPslDiagnosticCode = 'PSL_INVALID_DEFAULT_SQL'` to `data-type-default.ts`.
+- Declare the constant `PSL_INVALID_DEFAULT_SQL: ContributedPslDiagnosticCode = 'PSL_INVALID_DEFAULT_SQL'` in `psl-column-resolution.ts`, next to the SQL expression path, its only user. `data-type-default.ts` holds no per-type code.
 
 ### 10.1 One set of codes (slice 2a)
 

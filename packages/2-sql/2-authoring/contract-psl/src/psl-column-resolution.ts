@@ -26,12 +26,14 @@ import {
   describeTaggedLiteralFailure,
   type MutationDefaultGeneratorDescriptor,
 } from '@internal/framework-components/control';
+import type { ContributedPslDiagnosticCode } from '@internal/framework-components/psl-ast';
 import type {
   Binder,
   FieldSymbol,
   ModelSymbol,
   NumLiteral,
   ParsedTaggedLiteral,
+  PslDiagnostic,
   PslSpan,
   ResolvedTypeConstructorCall,
   SymbolTable,
@@ -62,14 +64,10 @@ import {
   entryForTag,
   knownTags,
   lowerDataTypeDefault,
-  PSL_INVALID_DEFAULT_SQL,
   readValue,
   type WrittenValue,
 } from './data-type-default';
-import {
-  type LoweredPslDefaultResult,
-  lowerDefaultFunctionWithRegistry,
-} from './default-function-registry';
+import { lowerDefaultFunctionWithRegistry } from './default-function-registry';
 
 import {
   fieldSpecContext,
@@ -553,23 +551,24 @@ export function resolveFieldTypeDescriptor(input: {
   return { ok: true, descriptor };
 }
 
+const PSL_INVALID_DEFAULT_SQL: ContributedPslDiagnosticCode = 'PSL_INVALID_DEFAULT_SQL';
+
 const TAGGED_LITERAL_CANONICALIZATION_CODES = {
   nul: 'PSL_TAGGED_LITERAL_NUL',
   'too-large': 'PSL_TAGGED_LITERAL_TOO_LARGE',
 } as const;
 
-type TaggedLiteralLowering =
-  | Extract<LoweredPslDefaultResult, { readonly kind: 'owned' }>
+type TaggedLiteralRead =
+  | { readonly ok: false; readonly diagnostic: PslDiagnostic }
   | { readonly ok: true; readonly written: Extract<WrittenValue, { readonly kind: 'tag' }> };
 
-function lowerTaggedLiteral(
+function readTaggedLiteral(
   literal: ParsedTaggedLiteral,
   support: DataTypeSupport,
   source: DiagnosticSource,
-): TaggedLiteralLowering {
-  const reject = (code: string, message: string): TaggedLiteralLowering => ({
+): TaggedLiteralRead {
+  const reject = (code: string, message: string): TaggedLiteralRead => ({
     ok: false,
-    kind: 'owned',
     diagnostic: {
       code,
       message,
@@ -662,12 +661,12 @@ export function lowerDefaultForField(input: {
     if (typeof element === 'string') return { kind: 'string', text: element };
     if (typeof element === 'boolean') return { kind: 'boolean', value: element };
     if ('text' in element) return { kind: 'number', text: element.text };
-    const lowered = lowerTaggedLiteral(element, input.dataTypeSupport, source);
-    if (!lowered.ok) {
-      input.diagnostics.push(lowered.diagnostic);
+    const literal = readTaggedLiteral(element, input.dataTypeSupport, source);
+    if (!literal.ok) {
+      input.diagnostics.push(literal.diagnostic);
       return { ok: false };
     }
-    return lowered.written;
+    return literal.written;
   };
 
   const sqlExpressionDefault = (text: string, span: PslSpan) => {
@@ -717,16 +716,16 @@ export function lowerDefaultForField(input: {
   }
 
   if ('tag' in value) {
-    const lowered = lowerTaggedLiteral(value, input.dataTypeSupport, source);
-    if (!lowered.ok) {
-      input.diagnostics.push(lowered.diagnostic);
+    const literal = readTaggedLiteral(value, input.dataTypeSupport, source);
+    if (!literal.ok) {
+      input.diagnostics.push(literal.diagnostic);
       return {};
     }
-    const read = readValue(input.dataTypeSupport, lowered.written, undefined);
+    const read = readValue(input.dataTypeSupport, literal.written, undefined);
     if (read.ok && read.typed.type === SQL_EXPRESSION_DATA_TYPE_ID) {
       return sqlExpressionDefault(sqlTextFromCanonical(read.typed.value), value.span);
     }
-    return readAsLiteral(lowered.written);
+    return readAsLiteral(literal.written);
   }
 
   if (typeof value === 'object') {
