@@ -16,6 +16,7 @@ Reviewer-maintained. Contract: `projects/data-types-completion/design.md` sectio
 | b | 1 (`48b4fc0c59..14645c85c8`, design `4fc18309bc`) | ANOTHER ROUND NEEDED: 3 low |
 | b | 2 (`006f164312`, design `185969a71c`) | SATISFIED: S1-b-R1-1 to S1-b-R1-3 closed, no new finding |
 | c | 1 (`707b4c86af..806c08cfc4`, design `bf9ebd9d60` excluded) | SATISFIED: no finding |
+| d | 1 (`7565a8f8f9`, `45fe7b6423`, `28773fa5f1..ecca4f2409`) | ANOTHER ROUND NEEDED: 1 should-fix, 2 low |
 
 ## Findings log
 
@@ -109,7 +110,42 @@ Reviewer-maintained. Contract: `projects/data-types-completion/design.md` sectio
 - S1-b-R1-2: closed. Both extension tests compare `sql.texts` with `toEqual` and check that `claimsKind` is undefined.
 - S1-b-R1-3: closed. Both `postgresCodec` examples pass the data type object and import what they use. The guide says the adapted codec's parameter schema is its data type's `params`. `lint:docs` passed.
 
+### S1-d-R1-1 (should-fix): the unmapped-key check skips every codec without a parameter schema
+
+- Where: `packages/1-framework/1-core/framework-components/src/control/control-stack.ts:473-485` (`enforceConstructorInvariants`).
+- What is wrong: `objectSchemaKeys` returns `undefined` both for a schema that is not an arktype object and for no schema at all, and the check is skipped in both cases. A codec with no `paramsSchema` declares no keys of its own, so a constructor that maps an argument onto any key its data type does not declare is exactly what design 5.1 refuses. Today it passes assembly silently. Skipping a schema that exists but exposes no keys (a non-arktype StandardSchema) is a reasonable choice and can stay.
+- Change: when `codec.paramsSchema` is `undefined`, treat the codec's own keys as empty and check the mapped keys against the data type's `params` keys only. Keep the skip only for a schema that is present but exposes no keys. Add a red-first test: a constructor mapping an argument onto a codec with no parameter schema and a data type without `params` is refused.
+
+### S1-d-R1-2 (low): no test shows the two assembly functions are called
+
+- Where: `packages/2-sql/9-family/src/core/control-instance.ts:509` and `packages/1-framework/1-core/framework-components/src/control/control-stack.ts:918-919`.
+- What is wrong: the checks are tested only by calling `enforceSqlDataTypeInvariants` and `enforceDataTypeInvariants` directly. Deleting the call in `createSqlFamilyInstance`, or the `constructors` and `codecDescriptorFor` inputs in `createControlStack`, leaves every test green.
+- Change: add one test that `createSqlFamilyInstance` throws for a stack with two colliding SQL data types, and one that `createControlStack` throws for a constructor naming an unregistered codec.
+
+### S1-d-R1-3 (low): the error reference does not describe the two codes' new raising site
+
+- Where: `packages/2-sql/1-core/contract/src/sql-data-type.ts:338-352`; `docs/reference/error-reference.md` entries `CONTRACT.CODEC_DESCRIPTOR_MISSING` (line 256) and `CONTRACT.DATA_TYPE_UNREGISTERED` (line 374).
+- What is wrong: `storedSqlTypeNameOfCodec` reuses both codes when a contract is authored. This is the error a user now sees when a `contract.ts` uses an extension's codec without listing the extension. The entries describe only control-plane resolution and assembly. The `DATA_TYPE_UNREGISTERED` entry gives the payload `dataType, contributedBy`, but this site sends `codecId, dataType` (`.agents/rules/doc-maintenance.mdc`).
+- Change: add the authoring site to both entries, say how to fix it (list the pack that provides the codec), and list the payload of each site.
+
 ## Round notes
+
+### Dispatch d, round 1
+
+Scope: `7565a8f8f9`, `45fe7b6423` and `28773fa5f1..ecca4f2409`. Every brief item is built. Writers: `buildStorageColumn`, raw `storage.types`, the `type.*` helpers, PSL `types {}` aliases and the Prisma 7 reader all write `storedSqlTypeNameOfCodec`, which is `sqlBaseName` of the data type with `dataTypeParams`, or `typeParams.typeName` for a `claimsKind` type. The value-object column keeps `jsonb`. `postgresQualifyColumnType` now qualifies only `typeName`, and the stored name follows from it. `buildSqlContractFromDefinition` requires both lookups. `ColumnTypeDescriptor.nativeType` is optional and unread. No template carries `nativeType`. The `inferred` marks equal design 13.4 for the constructors that exist (tested both ways), and SQLite, Mongo and `sql.String` carry none. Mapped arguments lose `minimum` and `maximum`; `nanoid` keeps 2 to 255; the temporal `precision` bound is gone. PSL reports a bound at the argument with `PSL_INVALID_ATTRIBUTE_ARGUMENT` (offset asserted); TypeScript helpers report `CONTRACT.ARGUMENT_INVALID`, as other argument errors do. Every 2.4 edge I checked has a test. `validateScalarTypeCodecIds` is deleted. Nothing from dispatch e is in the diff.
+
+The implementer's five open decisions:
+1. Both lookups required, and the facades build them from the target and the listed extensions. This follows from design 4 and is fine. It is the only application-visible change: a `contract.ts` that uses an extension codec without listing the extension now throws (see S1-d-R1-3). Dispatch f should mention it in the app-audience declaration if `check:upgrade-coverage` asks for one.
+2. The Mongo warning drops "(stored as BSON X)". Fine; the replacement name, which the brief asked for, stays.
+3. Skipping a codec whose schema is not an arktype object is fine. Skipping a codec with no schema is wrong: S1-d-R1-1.
+4. Bounds are checked when the template has `typeParams`, including literal ones. With no `typeParams` there is nothing to check. Fine.
+5. `InternalError` for the new checks is what design 5.1 says; using it for 5.2 too is consistent, because both are pack-author errors. Fine.
+
+None of these is a design gap.
+
+Vocabulary: `scripts/lint-framework-vocabulary.mjs:142-148` fails when the count is below the threshold and tells the author to lower it. The count is 262, so lowering 272 to 262 is required.
+
+Checks I ran at `ecca4f2409`: root typecheck, `lint:deps`, `lint:agent`, `check:error-reference` and `lint:framework-vocabulary` (262 = 262) exit 0. `fixtures:check:agent` exits 0 with a clean tree. The first two runs hit the 300 s timeout under load from other sessions; the killed run left two retail-store migration files reformatted with identical JSON, which I restored. The golden planner test passes: 684, goldens unchanged. No `contract.json`, `contract.d.ts` or golden changed. Tests of the 17 touched packages pass (Postgres adapter 907 with 3 expected fails). The implementer's full `test:packages` log also shows one Postgres adapter round-trip test timing out at 8 s; it passes in my run. Rules: no `any`, no bare `as` in production code, no test name with "should", both sign-offs on every commit, no AI attribution. Tests and code share commits, but every new check and bound test asserts a refusal the old code did not make.
 
 ### Dispatch c, round 1
 
