@@ -37,12 +37,14 @@ import {
   type Codec,
   type CodecLookup,
   type ColumnTypeDescriptor,
+  type DataTypeLookup,
   materializeCodec,
 } from '@internal/framework-components/codec';
 import { mergeCapabilityMatrices } from '@internal/framework-components/components';
 import { UNBOUND_NAMESPACE_ID } from '@internal/framework-components/ir';
 import { lowerAuthoredCheck } from '@internal/sql-contract/authored-check-naming';
 import { sqlContractCanonicalizationHooks } from '@internal/sql-contract/canonicalization-hooks';
+import { storedSqlTypeNameOfCodec } from '@internal/sql-contract/data-type';
 import { tableEntityKind, valueSetEntityKind } from '@internal/sql-contract/entity-kinds';
 import {
   type ForeignKeyAuthoringInput,
@@ -389,7 +391,7 @@ function isValueObjectField(
  * Resolves a deferred entity-ref column descriptor (e.g. a `pg.enum(handle)`
  * column) against the field's now-known owning namespace: attaches the
  * storage `valueSet` ref the collected entity's derived value-set is stored
- * under. `nativeType` / `typeParams.typeName` stay bare here — schema
+ * under. `typeParams.typeName` stays bare here — schema
  * qualification (e.g. `auth.aal_level`) is a target concern applied in the
  * next step, `qualifyColumnDescriptor`. A descriptor with no `entityRef` (the
  * ordinary case) passes through unchanged.
@@ -425,11 +427,10 @@ function resolveEntityRefDescriptor(
 type ColumnTypeQualifier = (
   input: {
     readonly codecId: string;
-    readonly nativeType: string;
     readonly typeParams?: Record<string, unknown>;
   },
   namespaceId: string,
-) => { readonly nativeType: string; readonly typeParams?: Record<string, unknown> };
+) => { readonly typeParams?: Record<string, unknown> };
 
 /**
  * Structural check for a target that contributes a `qualifyColumnType` hook
@@ -635,20 +636,15 @@ function qualifyColumnDescriptor(
   const qualified = qualify(
     {
       codecId: descriptor.codecId,
-      nativeType: descriptor.nativeType,
       ...ifDefined('typeParams', descriptor.typeParams),
     },
     namespaceId,
   );
-  if (
-    qualified.nativeType === descriptor.nativeType &&
-    qualified.typeParams === descriptor.typeParams
-  ) {
+  if (qualified.typeParams === descriptor.typeParams) {
     return descriptor;
   }
   return {
     ...descriptor,
-    nativeType: qualified.nativeType,
     ...ifDefined('typeParams', qualified.typeParams),
   };
 }
@@ -827,13 +823,19 @@ function targetColumnsForJunction(targetModel: ModelNode, fieldName: string): re
   );
 }
 
+interface TypeLookups {
+  readonly codecLookup: CodecLookup;
+  readonly dataTypeLookup: DataTypeLookup;
+}
+
 function buildStorageColumn(
   field: FieldNode | ValueObjectFieldNode,
   storageValueSetRef: ValueSetRef | undefined,
   modelName: string,
   storageTypes: Record<string, StorageTypeInstance>,
-  codecLookup?: CodecLookup,
+  lookups: TypeLookups,
 ): StorageColumn {
+  const { codecLookup } = lookups;
   if (isValueObjectField(field)) {
     const encodedDefault =
       field.default !== undefined
@@ -853,13 +855,13 @@ function buildStorageColumn(
   }
 
   const codecId = field.descriptor.codecId;
+  const typeParams = columnTypeParams(field.descriptor, storageTypes);
   const encodedDefault =
     field.default !== undefined
       ? encodeColumnDefault(
           field.default,
           codecLookup,
-          (lookup) =>
-            columnCodec(codecId, columnTypeParams(field.descriptor, storageTypes), lookup),
+          (lookup) => columnCodec(codecId, typeParams, lookup),
           { modelName, fieldName: field.fieldName, codecId },
           field.many === true,
         )
@@ -873,7 +875,7 @@ function buildStorageColumn(
   const valueSet = storageValueSetRef ?? field.descriptor.valueSet;
 
   return {
-    nativeType: field.descriptor.nativeType,
+    nativeType: storedSqlTypeNameOfCodec(codecId, typeParams, lookups),
     codecId,
     nullable: field.nullable,
     ...(field.many ? { many: true as const } : {}),
@@ -1084,8 +1086,10 @@ function columnsProducingCheckPrefix(
 
 export function buildSqlContractFromDefinition(
   definition: ContractDefinition,
-  codecLookup?: CodecLookup,
+  codecLookup: CodecLookup,
+  dataTypeLookup: DataTypeLookup,
 ): Contract<SqlStorage> {
+  const lookups: TypeLookups = { codecLookup, dataTypeLookup };
   const target = definition.target.targetId;
   const defaultNamespaceId = definition.target.defaultNamespaceId;
   const qualifyColumnType = resolveColumnTypeQualifier(definition.target);
@@ -1261,7 +1265,7 @@ export function buildSqlContractFromDefinition(
         storageValueSetRef,
         semanticModel.modelName,
         definition.storageTypes ?? {},
-        codecLookup,
+        lookups,
       );
       columns[field.columnName] = column;
       fieldToColumn[field.fieldName] = field.columnName;
@@ -1626,17 +1630,18 @@ export function buildSqlContractFromDefinition(
   // Normalise raw codec-triple inputs to the `kind: 'codec-instance'`
   // discriminator shape before hashing so the storageHash matches the
   // persisted JSON envelope produced from the SqlStorage class instance
-  // (which always carries the discriminator).
+  // (which always carries the discriminator). Each entry's type name is its
+  // codec's data type's.
   const rawStorageTypes = definition.storageTypes ?? {};
   const documentTypes: Record<string, StorageTypeInstance> = Object.fromEntries(
     Object.entries(rawStorageTypes).map(([name, entry]) => {
-      if ('kind' in entry && entry.kind === 'codec-instance') return [name, entry];
+      const typeParams = ('typeParams' in entry ? entry.typeParams : undefined) ?? {};
       return [
         name,
         toStorageTypeInstance({
           codecId: entry.codecId,
-          nativeType: entry.nativeType,
-          typeParams: ('typeParams' in entry ? entry.typeParams : undefined) ?? {},
+          nativeType: storedSqlTypeNameOfCodec(entry.codecId, typeParams, lookups),
+          typeParams,
         }),
       ];
     }),

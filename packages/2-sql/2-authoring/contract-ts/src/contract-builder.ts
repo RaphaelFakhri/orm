@@ -1,6 +1,6 @@
 import type { ControlPolicy } from '@internal/contract/types';
 import type { ForeignKeyDefaultsState } from '@internal/contract-authoring';
-import type { CodecLookup } from '@internal/framework-components/codec';
+import type { CodecLookup, DataTypeLookup } from '@internal/framework-components/codec';
 import type {
   ExtensionPackRef,
   FamilyPackRef,
@@ -78,7 +78,8 @@ type ContractDefinition<
   readonly createNamespace: (input: SqlNamespaceInput) => SqlNamespaceBase;
   readonly types?: Types;
   readonly models?: Models;
-  readonly codecLookup?: CodecLookup;
+  readonly codecLookup: CodecLookup;
+  readonly dataTypeLookup: DataTypeLookup;
   readonly enums?: Enums;
   readonly entities?: readonly PackEntityHandle[];
 };
@@ -104,7 +105,8 @@ type ContractScaffold<
   readonly createNamespace: (input: SqlNamespaceInput) => SqlNamespaceBase;
   readonly types?: never;
   readonly models?: never;
-  readonly codecLookup?: CodecLookup;
+  readonly codecLookup: CodecLookup;
+  readonly dataTypeLookup: DataTypeLookup;
   readonly enums?: Enums;
   readonly entities?: readonly PackEntityHandle[];
 };
@@ -358,7 +360,13 @@ function buildContractFromDsl<Definition extends ContractInput>(
   return blindCast<
     SqlContractResult<Definition>,
     'buildSqlContractFromDefinition return type is wide; SqlContractResult conditional resolves correctly at runtime for any concrete Definition'
-  >(buildSqlContractFromDefinition(buildContractDefinition(definition), definition.codecLookup));
+  >(
+    buildSqlContractFromDefinition(
+      buildContractDefinition(definition),
+      definition.codecLookup,
+      definition.dataTypeLookup,
+    ),
+  );
 }
 
 // Input for buildBoundContract — all fields from ContractInput except family/target
@@ -381,7 +389,8 @@ type BoundDefinitionInput<
   readonly createNamespace: (input: SqlNamespaceInput) => SqlNamespaceBase;
   readonly types?: Types;
   readonly models?: Models;
-  readonly codecLookup?: CodecLookup;
+  readonly codecLookup: CodecLookup;
+  readonly dataTypeLookup: DataTypeLookup;
   readonly enums?: Record<string, EnumTypeHandle>;
   readonly entities?: readonly PackEntityHandle[];
 };
@@ -490,6 +499,8 @@ export function buildBoundContract(
         family,
         target,
         extensions: definition.extensions,
+        codecLookup: definition.codecLookup,
+        dataTypeLookup: definition.dataTypeLookup,
       }),
     );
     const mergedEnums = { ...(definition.enums ?? {}), ...built.enums };

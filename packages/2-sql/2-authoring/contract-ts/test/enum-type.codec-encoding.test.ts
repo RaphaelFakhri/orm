@@ -8,6 +8,7 @@ import type { TargetPackRef } from '@internal/framework-components/components';
 import type { SqlStorage } from '@internal/sql-contract/types';
 import { describe, expect, it } from 'vitest';
 import { createTestSqlNamespace } from '../../../1-core/contract/test/test-support';
+import { withTestTypes } from '../../../1-core/contract/test/test-type-lookups';
 import { buildSqlContractFromDefinition } from '../src/build-contract';
 import type { ContractDefinition } from '../src/contract-definition';
 import { enumType, member } from '../src/enum-type';
@@ -66,7 +67,10 @@ describe('enum lowering encodes member values through the codec', () => {
       'pg/text@1': stubCodec('pg/text@1', (v) => v as JsonValue),
     });
 
-    const contract = buildSqlContractFromDefinition(definitionWith(Role), codecLookup);
+    const contract = buildSqlContractFromDefinition(
+      definitionWith(Role),
+      ...withTestTypes(codecLookup),
+    );
 
     expect(valueSetValues(contract, 'Role')).toEqual(['user', 'admin']);
     expect(memberValues(contract, 'Role')).toEqual(['user', 'admin']);
@@ -78,7 +82,10 @@ describe('enum lowering encodes member values through the codec', () => {
       'pg/int4@1': stubCodec('pg/int4@1', (v) => v as JsonValue),
     });
 
-    const contract = buildSqlContractFromDefinition(definitionWith(Priority), codecLookup);
+    const contract = buildSqlContractFromDefinition(
+      definitionWith(Priority),
+      ...withTestTypes(codecLookup),
+    );
 
     expect(valueSetValues(contract, 'Priority')).toEqual([1, 10]);
     expect(memberValues(contract, 'Priority')).toEqual([1, 10]);
@@ -90,7 +97,10 @@ describe('enum lowering encodes member values through the codec', () => {
       'pg/text@1': stubCodec('pg/text@1', (v) => String(v).toUpperCase()),
     });
 
-    const contract = buildSqlContractFromDefinition(definitionWith(Role), codecLookup);
+    const contract = buildSqlContractFromDefinition(
+      definitionWith(Role),
+      ...withTestTypes(codecLookup),
+    );
 
     expect(valueSetValues(contract, 'Role')).toEqual(['USER', 'ADMIN']);
     expect(memberValues(contract, 'Role')).toEqual(['USER', 'ADMIN']);

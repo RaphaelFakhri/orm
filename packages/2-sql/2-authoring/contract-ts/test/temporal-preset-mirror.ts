@@ -27,7 +27,6 @@ export const sqlTimestampPresetMirror = {
   ],
   output: {
     codecId: 'test/timestamp@1',
-    nativeType: 'timestamp',
     typeParams: { precision: { kind: 'arg', index: 0 } },
     executionDefaults: {
       onCreate: { kind: 'select', index: 1, cases: { now: NOW_PHASE } },

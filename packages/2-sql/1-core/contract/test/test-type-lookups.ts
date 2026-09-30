@@ -97,10 +97,14 @@ export interface TestSqlTypeLookups {
   readonly dataTypeLookup: DataTypeLookup;
 }
 
-/** Test lookups; `names` maps a codec id to the type name its data type is written as. */
+/**
+ * Test lookups. `names` maps a codec id to the type name its data type is written as. `codecs`, when
+ * given, supplies the codecs themselves: its descriptors are used where it has them, and every other
+ * codec id still names a test data type, with the codec `codecs.get` returns, or none.
+ */
 export function testSqlTypeLookups(
   names: Readonly<Record<string, string>> = {},
-  codecLookup?: CodecLookup,
+  codecs?: CodecLookup,
 ): TestSqlTypeLookups {
   const dataTypes = new Map<string, DataType>();
   const dataTypeFor = (id: string, name: string | undefined): DataType => {
@@ -115,31 +119,40 @@ export function testSqlTypeLookups(
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, '-')
       .replace(/^-|-$/g, '')}`;
+  const codecOf = (codecId: string): Codec | undefined =>
+    codecs === undefined ? storesAsAuthored(codecId) : codecs.get(codecId);
 
   const descriptorFor = (codecId: string): AnyCodecDescriptor => {
     const name = ENUM_CODEC_IDS.has(codecId)
       ? undefined
       : (names[codecId] ?? CODEC_TYPE_NAMES[codecId] ?? middlePart(codecId));
+    const dataType = () => dataTypeFor(dataTypeIdOf(codecId), name).id;
+    const own = codecs?.descriptorFor?.(codecId);
+    if (own !== undefined)
+      return own.dataType !== undefined ? own : { ...own, dataType: dataType() };
     return {
       codecId,
-      dataType: dataTypeFor(dataTypeIdOf(codecId), name).id,
+      dataType: dataType(),
       traits: [],
       targetTypes: [],
       paramsSchema: acceptAnything,
       isParameterized: true,
-      factory: () => () => storesAsAuthored(codecId),
+      factory: () => () =>
+        blindCast<
+          Codec,
+          'a test codec lookup may have no codec for this id, as a real one may not'
+        >(codecOf(codecId)),
     };
   };
 
-  const lenientCodecLookup: CodecLookup = {
-    get: (codecId) => storesAsAuthored(codecId),
-    descriptorFor,
-    targetTypesFor: () => undefined,
-    renderOutputTypeFor: () => undefined,
-  };
-
   return {
-    codecLookup: codecLookup ?? lenientCodecLookup,
+    codecLookup: {
+      targetTypesFor: () => undefined,
+      renderOutputTypeFor: () => undefined,
+      ...codecs,
+      get: codecOf,
+      descriptorFor,
+    },
     dataTypeLookup: {
       get: (id) =>
         dataTypeFor(
@@ -154,3 +167,12 @@ export function testSqlTypeLookups(
 
 /** Lookups for tests that do not care which type names their columns are written with. */
 export const testTypeLookups: TestSqlTypeLookups = testSqlTypeLookups();
+
+/** The lookup arguments of `buildSqlContractFromDefinition`, around a test's own codecs. */
+export function withTestTypes(
+  codecs?: CodecLookup,
+  names: Readonly<Record<string, string>> = {},
+): readonly [CodecLookup, DataTypeLookup] {
+  const lookups = testSqlTypeLookups(names, codecs);
+  return [lookups.codecLookup, lookups.dataTypeLookup];
+}

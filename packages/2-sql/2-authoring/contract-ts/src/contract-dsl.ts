@@ -12,7 +12,11 @@ import type {
 } from '@internal/contract-authoring';
 import type { AuthoringFieldPresetDescriptor } from '@internal/framework-components/authoring';
 import { instantiateAuthoringFieldPreset } from '@internal/framework-components/authoring';
-import type { CodecLookup, ColumnTypeDescriptor } from '@internal/framework-components/codec';
+import type {
+  CodecLookup,
+  ColumnTypeDescriptor,
+  DataTypeLookup,
+} from '@internal/framework-components/codec';
 import type {
   ExtensionPackRef,
   FamilyPackRef,
@@ -1975,7 +1979,10 @@ export type ContractInput<
   readonly createNamespace: (input: SqlNamespaceInput) => SqlNamespaceBase;
   readonly types?: Types;
   readonly models?: Models;
-  readonly codecLookup?: CodecLookup;
+  /** The codecs of the packs the contract is authored with; a column's database type is its codec's data type's. */
+  readonly codecLookup: CodecLookup;
+  /** The data types of the packs the contract is authored with. */
+  readonly dataTypeLookup: DataTypeLookup;
   /**
    * Domain enum handles authored via `enumType()`. Each handle lowers to a
    * domain `enum` entry and a storage `valueSet` entry in the target's

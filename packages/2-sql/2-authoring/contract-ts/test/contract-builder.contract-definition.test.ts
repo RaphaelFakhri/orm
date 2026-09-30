@@ -2,6 +2,7 @@ import type { AnyCodecDescriptor, CodecLookup } from '@internal/framework-compon
 import type { TargetPackRef } from '@internal/framework-components/components';
 import { describe, expect, it } from 'vitest';
 import { createTestSqlNamespace } from '../../../1-core/contract/test/test-support';
+import { testTypeLookups, withTestTypes } from '../../../1-core/contract/test/test-type-lookups';
 import { buildSqlContractFromDefinition } from '../src/contract-builder';
 import { modelsOf } from './contract-test-helpers';
 import { crossRef, documentScopedTypes } from './cross-ref-helpers';
@@ -18,121 +19,124 @@ const postgresTargetPack: TargetPackRef<'sql', 'postgres'> = {
 
 describe('shared contract definition lowering', () => {
   it('builds SQL contract IR from contract model nodes', () => {
-    const contract = buildSqlContractFromDefinition({
-      warnings: undefined,
-      target: postgresTargetPack,
-      createNamespace: createTestSqlNamespace,
-      storageTypes: {
-        Role: {
-          kind: 'codec-instance',
-          codecId: 'app/test-enum@1',
-          nativeType: 'role',
-          typeParams: { values: ['USER', 'ADMIN'] },
+    const contract = buildSqlContractFromDefinition(
+      {
+        warnings: undefined,
+        target: postgresTargetPack,
+        createNamespace: createTestSqlNamespace,
+        storageTypes: {
+          Role: {
+            kind: 'codec-instance',
+            codecId: 'app/test-enum@1',
+            nativeType: 'role',
+            typeParams: { values: ['USER', 'ADMIN'] },
+          },
         },
+        models: [
+          {
+            modelName: 'User',
+            tableName: 'app_user',
+            fields: [
+              {
+                fieldName: 'id',
+                columnName: 'id',
+                descriptor: {
+                  codecId: 'sql/char@1',
+                  nativeType: 'character',
+                  typeParams: { length: 36 },
+                },
+                nullable: false,
+                executionDefaults: { onCreate: { kind: 'generator', id: 'uuidv4' } },
+              },
+              {
+                fieldName: 'role',
+                columnName: 'role',
+                descriptor: {
+                  codecId: 'app/test-enum@1',
+                  nativeType: 'role',
+                  typeRef: 'Role',
+                },
+                nullable: false,
+              },
+            ],
+            id: {
+              columns: ['id'],
+              name: 'app_user_pkey',
+            },
+            relations: [
+              {
+                fieldName: 'posts',
+                toModel: 'Post',
+                toTable: 'blog_post',
+                cardinality: '1:N',
+                on: {
+                  parentTable: 'app_user',
+                  parentColumns: ['id'],
+                  childTable: 'blog_post',
+                  childColumns: ['author_id'],
+                },
+              },
+            ],
+          },
+          {
+            modelName: 'Post',
+            tableName: 'blog_post',
+            fields: [
+              {
+                fieldName: 'id',
+                columnName: 'id',
+                descriptor: {
+                  codecId: 'pg/int4@1',
+                  nativeType: 'int4',
+                },
+                nullable: false,
+              },
+              {
+                fieldName: 'authorId',
+                columnName: 'author_id',
+                descriptor: {
+                  codecId: 'sql/char@1',
+                  nativeType: 'character',
+                  typeParams: { length: 36 },
+                },
+                nullable: false,
+              },
+            ],
+            id: {
+              columns: ['id'],
+              name: 'blog_post_pkey',
+            },
+            foreignKeys: [
+              {
+                columns: ['author_id'],
+                references: {
+                  model: 'User',
+                  table: 'app_user',
+                  columns: ['id'],
+                },
+                name: 'blog_post_author_id_fkey',
+              },
+            ],
+            relations: [
+              {
+                fieldName: 'author',
+                toModel: 'User',
+                toTable: 'app_user',
+                cardinality: 'N:1',
+                nullable: false,
+                on: {
+                  parentTable: 'blog_post',
+                  parentColumns: ['author_id'],
+                  childTable: 'app_user',
+                  childColumns: ['id'],
+                },
+              },
+            ],
+          },
+        ],
       },
-      models: [
-        {
-          modelName: 'User',
-          tableName: 'app_user',
-          fields: [
-            {
-              fieldName: 'id',
-              columnName: 'id',
-              descriptor: {
-                codecId: 'sql/char@1',
-                nativeType: 'character',
-                typeParams: { length: 36 },
-              },
-              nullable: false,
-              executionDefaults: { onCreate: { kind: 'generator', id: 'uuidv4' } },
-            },
-            {
-              fieldName: 'role',
-              columnName: 'role',
-              descriptor: {
-                codecId: 'app/test-enum@1',
-                nativeType: 'role',
-                typeRef: 'Role',
-              },
-              nullable: false,
-            },
-          ],
-          id: {
-            columns: ['id'],
-            name: 'app_user_pkey',
-          },
-          relations: [
-            {
-              fieldName: 'posts',
-              toModel: 'Post',
-              toTable: 'blog_post',
-              cardinality: '1:N',
-              on: {
-                parentTable: 'app_user',
-                parentColumns: ['id'],
-                childTable: 'blog_post',
-                childColumns: ['author_id'],
-              },
-            },
-          ],
-        },
-        {
-          modelName: 'Post',
-          tableName: 'blog_post',
-          fields: [
-            {
-              fieldName: 'id',
-              columnName: 'id',
-              descriptor: {
-                codecId: 'pg/int4@1',
-                nativeType: 'int4',
-              },
-              nullable: false,
-            },
-            {
-              fieldName: 'authorId',
-              columnName: 'author_id',
-              descriptor: {
-                codecId: 'sql/char@1',
-                nativeType: 'character',
-                typeParams: { length: 36 },
-              },
-              nullable: false,
-            },
-          ],
-          id: {
-            columns: ['id'],
-            name: 'blog_post_pkey',
-          },
-          foreignKeys: [
-            {
-              columns: ['author_id'],
-              references: {
-                model: 'User',
-                table: 'app_user',
-                columns: ['id'],
-              },
-              name: 'blog_post_author_id_fkey',
-            },
-          ],
-          relations: [
-            {
-              fieldName: 'author',
-              toModel: 'User',
-              toTable: 'app_user',
-              cardinality: 'N:1',
-              nullable: false,
-              on: {
-                parentTable: 'blog_post',
-                parentColumns: ['author_id'],
-                childTable: 'app_user',
-                childColumns: ['id'],
-              },
-            },
-          ],
-        },
-      ],
-    });
+      ...withTestTypes(undefined, { 'app/test-enum@1': 'role' }),
+    );
 
     const models = modelsOf(contract) as Record<
       string,
@@ -233,7 +237,7 @@ describe('shared contract definition lowering', () => {
           },
         ],
       },
-      codecLookup,
+      ...withTestTypes(codecLookup),
     );
 
     expect(unboundTables(contract.storage)['event']?.columns['scheduled_at']?.default).toEqual({
@@ -302,7 +306,7 @@ describe('shared contract definition lowering', () => {
           },
         ],
       },
-      codecLookup,
+      ...withTestTypes(codecLookup),
     );
 
     expect(unboundTables(contract.storage)['document']?.columns['embedding']?.default).toEqual({
@@ -312,32 +316,36 @@ describe('shared contract definition lowering', () => {
   });
 
   it('builds phase-specific execution defaults', () => {
-    const contract = buildSqlContractFromDefinition({
-      warnings: undefined,
-      target: postgresTargetPack,
-      createNamespace: createTestSqlNamespace,
-      models: [
-        {
-          modelName: 'User',
-          tableName: 'app_user',
-          fields: [
-            {
-              fieldName: 'updatedAt',
-              columnName: 'updated_at',
-              descriptor: {
-                codecId: 'pg/timestamptz-temporal@1',
-                nativeType: 'timestamptz',
+    const contract = buildSqlContractFromDefinition(
+      {
+        warnings: undefined,
+        target: postgresTargetPack,
+        createNamespace: createTestSqlNamespace,
+        models: [
+          {
+            modelName: 'User',
+            tableName: 'app_user',
+            fields: [
+              {
+                fieldName: 'updatedAt',
+                columnName: 'updated_at',
+                descriptor: {
+                  codecId: 'pg/timestamptz-temporal@1',
+                  nativeType: 'timestamptz',
+                },
+                nullable: false,
+                executionDefaults: {
+                  onCreate: { kind: 'generator', id: 'timestampNow' },
+                  onUpdate: { kind: 'generator', id: 'timestampNow' },
+                },
               },
-              nullable: false,
-              executionDefaults: {
-                onCreate: { kind: 'generator', id: 'timestampNow' },
-                onUpdate: { kind: 'generator', id: 'timestampNow' },
-              },
-            },
-          ],
-        },
-      ],
-    });
+            ],
+          },
+        ],
+      },
+      testTypeLookups.codecLookup,
+      testTypeLookups.dataTypeLookup,
+    );
 
     expect(contract.execution?.mutations.defaults).toEqual([
       {
@@ -350,138 +358,150 @@ describe('shared contract definition lowering', () => {
 
   it('rejects generated fields that also declare storage defaults', () => {
     expect(() =>
-      buildSqlContractFromDefinition({
-        warnings: undefined,
-        target: postgresTargetPack,
-        createNamespace: createTestSqlNamespace,
-        models: [
-          {
-            modelName: 'User',
-            tableName: 'app_user',
-            fields: [
-              {
-                fieldName: 'id',
-                columnName: 'id',
-                descriptor: {
-                  codecId: 'pg/text@1',
-                  nativeType: 'text',
-                },
-                nullable: false,
-                default: {
-                  kind: 'function',
-                  expression: 'gen_random_uuid()',
-                },
-                executionDefaults: {
-                  onCreate: {
-                    kind: 'generator',
-                    id: 'uuidv4',
+      buildSqlContractFromDefinition(
+        {
+          warnings: undefined,
+          target: postgresTargetPack,
+          createNamespace: createTestSqlNamespace,
+          models: [
+            {
+              modelName: 'User',
+              tableName: 'app_user',
+              fields: [
+                {
+                  fieldName: 'id',
+                  columnName: 'id',
+                  descriptor: {
+                    codecId: 'pg/text@1',
+                    nativeType: 'text',
+                  },
+                  nullable: false,
+                  default: {
+                    kind: 'function',
+                    expression: 'gen_random_uuid()',
+                  },
+                  executionDefaults: {
+                    onCreate: {
+                      kind: 'generator',
+                      id: 'uuidv4',
+                    },
                   },
                 },
-              },
-            ],
-          },
-        ],
-      }),
+              ],
+            },
+          ],
+        },
+        testTypeLookups.codecLookup,
+        testTypeLookups.dataTypeLookup,
+      ),
     ).toThrow('Field "User.id" cannot define both default and executionDefaults.');
   });
 
   it('default-and-executionDefaults rejection carries CONTRACT.DEFAULT_INVALID', () => {
     expect(() =>
-      buildSqlContractFromDefinition({
-        warnings: undefined,
-        target: postgresTargetPack,
-        createNamespace: createTestSqlNamespace,
-        models: [
-          {
-            modelName: 'User',
-            tableName: 'app_user',
-            fields: [
-              {
-                fieldName: 'id',
-                columnName: 'id',
-                descriptor: {
-                  codecId: 'pg/text@1',
-                  nativeType: 'text',
-                },
-                nullable: false,
-                default: {
-                  kind: 'function',
-                  expression: 'gen_random_uuid()',
-                },
-                executionDefaults: {
-                  onCreate: {
-                    kind: 'generator',
-                    id: 'uuidv4',
+      buildSqlContractFromDefinition(
+        {
+          warnings: undefined,
+          target: postgresTargetPack,
+          createNamespace: createTestSqlNamespace,
+          models: [
+            {
+              modelName: 'User',
+              tableName: 'app_user',
+              fields: [
+                {
+                  fieldName: 'id',
+                  columnName: 'id',
+                  descriptor: {
+                    codecId: 'pg/text@1',
+                    nativeType: 'text',
+                  },
+                  nullable: false,
+                  default: {
+                    kind: 'function',
+                    expression: 'gen_random_uuid()',
+                  },
+                  executionDefaults: {
+                    onCreate: {
+                      kind: 'generator',
+                      id: 'uuidv4',
+                    },
                   },
                 },
-              },
-            ],
-          },
-        ],
-      }),
+              ],
+            },
+          ],
+        },
+        testTypeLookups.codecLookup,
+        testTypeLookups.dataTypeLookup,
+      ),
     ).toThrow(expect.objectContaining({ code: 'CONTRACT.DEFAULT_INVALID' }));
   });
 
   it('rejects a foreign key whose referenced table disagrees with the target model mapping', () => {
     const build = () =>
-      buildSqlContractFromDefinition({
-        warnings: undefined,
-        target: postgresTargetPack,
-        createNamespace: createTestSqlNamespace,
-        models: [
-          {
-            modelName: 'User',
-            tableName: 'app_user',
-            fields: [
-              {
-                fieldName: 'id',
-                columnName: 'id',
-                descriptor: {
-                  codecId: 'pg/int4@1',
-                  nativeType: 'int4',
+      buildSqlContractFromDefinition(
+        {
+          warnings: undefined,
+          target: postgresTargetPack,
+          createNamespace: createTestSqlNamespace,
+          models: [
+            {
+              modelName: 'User',
+              tableName: 'app_user',
+              fields: [
+                {
+                  fieldName: 'id',
+                  columnName: 'id',
+                  descriptor: {
+                    codecId: 'pg/int4@1',
+                    nativeType: 'int4',
+                  },
+                  nullable: false,
                 },
-                nullable: false,
-              },
-            ],
-            id: { columns: ['id'] },
-          },
-          {
-            modelName: 'Post',
-            tableName: 'blog_post',
-            fields: [
-              {
-                fieldName: 'id',
-                columnName: 'id',
-                descriptor: {
-                  codecId: 'pg/int4@1',
-                  nativeType: 'int4',
+              ],
+              id: { columns: ['id'] },
+            },
+            {
+              modelName: 'Post',
+              tableName: 'blog_post',
+              fields: [
+                {
+                  fieldName: 'id',
+                  columnName: 'id',
+                  descriptor: {
+                    codecId: 'pg/int4@1',
+                    nativeType: 'int4',
+                  },
+                  nullable: false,
                 },
-                nullable: false,
-              },
-              {
-                fieldName: 'authorId',
-                columnName: 'author_id',
-                descriptor: {
-                  codecId: 'pg/int4@1',
-                  nativeType: 'int4',
+                {
+                  fieldName: 'authorId',
+                  columnName: 'author_id',
+                  descriptor: {
+                    codecId: 'pg/int4@1',
+                    nativeType: 'int4',
+                  },
+                  nullable: false,
                 },
-                nullable: false,
-              },
-            ],
-            id: { columns: ['id'] },
-            foreignKeys: [
-              {
-                columns: ['author_id'],
-                references: {
-                  model: 'User',
-                  table: 'wrong_table',
-                  columns: ['id'],
+              ],
+              id: { columns: ['id'] },
+              foreignKeys: [
+                {
+                  columns: ['author_id'],
+                  references: {
+                    model: 'User',
+                    table: 'wrong_table',
+                    columns: ['id'],
+                  },
                 },
-              },
-            ],
-          },
-        ],
-      });
+              ],
+            },
+          ],
+        },
+        testTypeLookups.codecLookup,
+        testTypeLookups.dataTypeLookup,
+      );
 
     expect(build).toThrow(
       'Foreign key on model "Post" references table "wrong_table" but model "User" maps to "app_user"',
@@ -491,64 +511,72 @@ describe('shared contract definition lowering', () => {
 
   it('rejects generated fields that are still marked nullable', () => {
     expect(() =>
-      buildSqlContractFromDefinition({
-        warnings: undefined,
-        target: postgresTargetPack,
-        createNamespace: createTestSqlNamespace,
-        models: [
-          {
-            modelName: 'User',
-            tableName: 'app_user',
-            fields: [
-              {
-                fieldName: 'id',
-                columnName: 'id',
-                descriptor: {
-                  codecId: 'pg/text@1',
-                  nativeType: 'text',
-                },
-                nullable: true,
-                executionDefaults: {
-                  onCreate: {
-                    kind: 'generator',
-                    id: 'uuidv4',
+      buildSqlContractFromDefinition(
+        {
+          warnings: undefined,
+          target: postgresTargetPack,
+          createNamespace: createTestSqlNamespace,
+          models: [
+            {
+              modelName: 'User',
+              tableName: 'app_user',
+              fields: [
+                {
+                  fieldName: 'id',
+                  columnName: 'id',
+                  descriptor: {
+                    codecId: 'pg/text@1',
+                    nativeType: 'text',
+                  },
+                  nullable: true,
+                  executionDefaults: {
+                    onCreate: {
+                      kind: 'generator',
+                      id: 'uuidv4',
+                    },
                   },
                 },
-              },
-            ],
-          },
-        ],
-      }),
+              ],
+            },
+          ],
+        },
+        testTypeLookups.codecLookup,
+        testTypeLookups.dataTypeLookup,
+      ),
     ).toThrow('Field "User.id" cannot be nullable when executionDefaults are present.');
   });
 
   it('rejects nullable identity fields', () => {
     expect(() =>
-      buildSqlContractFromDefinition({
-        warnings: undefined,
-        target: postgresTargetPack,
-        createNamespace: createTestSqlNamespace,
-        models: [
-          {
-            modelName: 'User',
-            tableName: 'app_user',
-            fields: [
-              {
-                fieldName: 'id',
-                columnName: 'id',
-                descriptor: {
-                  codecId: 'pg/int4@1',
-                  nativeType: 'int4',
+      buildSqlContractFromDefinition(
+        {
+          warnings: undefined,
+          target: postgresTargetPack,
+          createNamespace: createTestSqlNamespace,
+          models: [
+            {
+              modelName: 'User',
+              tableName: 'app_user',
+              fields: [
+                {
+                  fieldName: 'id',
+                  columnName: 'id',
+                  descriptor: {
+                    codecId: 'pg/int4@1',
+                    nativeType: 'int4',
+                  },
+                  nullable: true,
                 },
-                nullable: true,
+              ],
+              id: {
+                columns: ['id'],
               },
-            ],
-            id: {
-              columns: ['id'],
             },
-          },
-        ],
-      }),
+          ],
+        },
+        testTypeLookups.codecLookup,
+        testTypeLookups.dataTypeLookup,
+      ),
     ).toThrow(
       /Contract semantic validation failed:.*primary key column "id".*primary key columns must be NOT NULL/,
     );
@@ -556,29 +584,33 @@ describe('shared contract definition lowering', () => {
 
   it('rejects a check on a model that shares its base table (STI variant backstop)', () => {
     expect(() =>
-      buildSqlContractFromDefinition({
-        warnings: undefined,
-        target: postgresTargetPack,
-        createNamespace: createTestSqlNamespace,
-        models: [
-          {
-            modelName: 'Bug',
-            tableName: 'task',
-            sharesBaseTable: true,
-            fields: [
-              {
-                fieldName: 'severity',
-                columnName: 'severity',
-                descriptor: { codecId: 'pg/text@1', nativeType: 'text' },
-                nullable: true,
-              },
-            ],
-            checks: [
-              { expression: "severity <> ''", name: 'bug_severity_present', map: undefined },
-            ],
-          },
-        ],
-      }),
+      buildSqlContractFromDefinition(
+        {
+          warnings: undefined,
+          target: postgresTargetPack,
+          createNamespace: createTestSqlNamespace,
+          models: [
+            {
+              modelName: 'Bug',
+              tableName: 'task',
+              sharesBaseTable: true,
+              fields: [
+                {
+                  fieldName: 'severity',
+                  columnName: 'severity',
+                  descriptor: { codecId: 'pg/text@1', nativeType: 'text' },
+                  nullable: true,
+                },
+              ],
+              checks: [
+                { expression: "severity <> ''", name: 'bug_severity_present', map: undefined },
+              ],
+            },
+          ],
+        },
+        testTypeLookups.codecLookup,
+        testTypeLookups.dataTypeLookup,
+      ),
     ).toThrow(
       expect.objectContaining({
         code: 'CONTRACT.CHECK_ON_STI_VARIANT',
@@ -613,65 +645,69 @@ describe('M:N through descriptor lowering', () => {
   });
 
   const buildWithTag = (target: Parameters<typeof tagModel>[0]) =>
-    buildSqlContractFromDefinition({
-      warnings: undefined,
-      target: postgresTargetPack,
-      createNamespace: createTestSqlNamespace,
-      models: [
-        {
-          modelName: 'Post',
-          tableName: 'posts',
-          fields: [
-            {
-              fieldName: 'id',
-              columnName: 'id',
-              descriptor: { codecId: 'pg/int4@1', nativeType: 'int4' },
-              nullable: false,
-            },
-          ],
-          id: { columns: ['id'] },
-          relations: [
-            {
-              fieldName: 'tags',
-              toModel: 'Tag',
-              toTable: 'tags',
-              cardinality: 'N:M',
-              on: {
-                parentTable: 'posts',
-                parentColumns: ['id'],
-                childTable: 'tags',
-                childColumns: ['id'],
+    buildSqlContractFromDefinition(
+      {
+        warnings: undefined,
+        target: postgresTargetPack,
+        createNamespace: createTestSqlNamespace,
+        models: [
+          {
+            modelName: 'Post',
+            tableName: 'posts',
+            fields: [
+              {
+                fieldName: 'id',
+                columnName: 'id',
+                descriptor: { codecId: 'pg/int4@1', nativeType: 'int4' },
+                nullable: false,
               },
-              through: {
-                table: 'post_tags',
-                parentColumns: ['post_id'],
-                childColumns: ['tag_id'],
+            ],
+            id: { columns: ['id'] },
+            relations: [
+              {
+                fieldName: 'tags',
+                toModel: 'Tag',
+                toTable: 'tags',
+                cardinality: 'N:M',
+                on: {
+                  parentTable: 'posts',
+                  parentColumns: ['id'],
+                  childTable: 'tags',
+                  childColumns: ['id'],
+                },
+                through: {
+                  table: 'post_tags',
+                  parentColumns: ['post_id'],
+                  childColumns: ['tag_id'],
+                },
               },
-            },
-          ],
-        },
-        tagModel(target),
-        {
-          modelName: 'PostTag',
-          tableName: 'post_tags',
-          fields: [
-            {
-              fieldName: 'postId',
-              columnName: 'post_id',
-              descriptor: { codecId: 'pg/int4@1', nativeType: 'int4' },
-              nullable: false,
-            },
-            {
-              fieldName: 'tagId',
-              columnName: 'tag_id',
-              descriptor: { codecId: 'pg/int4@1', nativeType: 'int4' },
-              nullable: false,
-            },
-          ],
-          id: { columns: ['post_id', 'tag_id'] },
-        },
-      ],
-    });
+            ],
+          },
+          tagModel(target),
+          {
+            modelName: 'PostTag',
+            tableName: 'post_tags',
+            fields: [
+              {
+                fieldName: 'postId',
+                columnName: 'post_id',
+                descriptor: { codecId: 'pg/int4@1', nativeType: 'int4' },
+                nullable: false,
+              },
+              {
+                fieldName: 'tagId',
+                columnName: 'tag_id',
+                descriptor: { codecId: 'pg/int4@1', nativeType: 'int4' },
+                nullable: false,
+              },
+            ],
+            id: { columns: ['post_id', 'tag_id'] },
+          },
+        ],
+      },
+      testTypeLookups.codecLookup,
+      testTypeLookups.dataTypeLookup,
+    );
 
   const throughOf = (contract: ReturnType<typeof buildWithTag>) => {
     const models = modelsOf(contract) as Record<
