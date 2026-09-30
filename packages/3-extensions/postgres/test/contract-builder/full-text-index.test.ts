@@ -4,10 +4,12 @@
  * operations lower to, from the resolved storage column, so the two surfaces
  * produce the same index for the same model.
  */
+
 import { createDataTypeLookup } from '@internal/framework-components/codec';
 import { assembleAuthoringContributions } from '@internal/framework-components/control';
 import { buildSymbolTable } from '@internal/psl-parser';
 import { parse } from '@internal/psl-parser/syntax';
+import { sql } from '@internal/sql-contract/sql-expression';
 import { interpretPslDocumentToSqlContract } from '@internal/sql-contract-psl';
 import postgresTargetControl from '@internal/target-postgres/control';
 import { postgresDataTypes } from '@internal/target-postgres/data-types';
@@ -137,7 +139,7 @@ describe('fullTextIndex, the TypeScript twin of @@fullTextIndex', () => {
         }).sql(({ cols }) => ({
           table: 'message',
           indexes: [
-            fullTextIndex(cols.text, { where: 'id > 0', name: 'message_text_search_live' }),
+            fullTextIndex(cols.text, { where: sql`id > 0`, name: 'message_text_search_live' }),
           ],
         })),
       },

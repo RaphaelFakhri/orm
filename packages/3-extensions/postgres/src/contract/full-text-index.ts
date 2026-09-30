@@ -1,3 +1,4 @@
+import type { SqlExpression } from '@internal/sql-contract/sql-expression';
 import type { ColumnRef, IndexConstraint } from '@internal/sql-contract-ts/contract-builder';
 import type { FullTextSearchLanguage } from '@internal/target-postgres/operation-types';
 import {
@@ -11,7 +12,7 @@ import { postgresError } from '../errors';
 type FullTextIndexOptionsBase = {
   readonly language?: FullTextSearchLanguage;
   /** The SQL predicate restricting rows included in a partial index. */
-  readonly where?: string;
+  readonly where?: SqlExpression;
 };
 
 /**
