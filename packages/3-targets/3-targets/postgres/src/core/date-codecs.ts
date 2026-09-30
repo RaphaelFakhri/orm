@@ -88,7 +88,7 @@ function decodeDate(wire: unknown): Date {
   return validateDate(value);
 }
 
-export function encodeDate(value: Date): string {
+function encodeDate(value: Date): string {
   validateDate(value);
   const iso = value.toISOString();
   const year = value.getUTCFullYear();

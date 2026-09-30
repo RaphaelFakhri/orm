@@ -28,22 +28,14 @@ import {
   pgTimestamptz,
   pgTimestamptzCanonical,
 } from './data-types';
-import { encodeDate } from './date-codecs';
 import {
   PG_DATE_NATIVE_TYPE,
   PG_TIME_NATIVE_TYPE,
   PG_TIMESTAMP_NATIVE_TYPE,
   PG_TIMESTAMPTZ_NATIVE_TYPE,
+  utcTimestampText,
+  utcTimestamptzText,
 } from './temporal-codec-helpers';
-
-/** `timestampNow`, the generator behind `@updatedAt` and the `*String` presets, yields a `Date`. */
-function timestamptzText(value: string | Date): string {
-  return value instanceof Date ? encodeDate(value) : value;
-}
-
-function timestampText(value: string | Date): string {
-  return value instanceof Date ? encodeDate(value).replace('Z', '') : value;
-}
 
 export class PgDateStringCodec extends CodecImpl<
   typeof PG_DATE_STRING_CODEC_ID,
@@ -98,8 +90,11 @@ export class PgTimestampStringCodec extends CodecImpl<
   string,
   string
 > {
-  async encode(value: string, _ctx: CodecCallContext): Promise<string> {
-    return timestampText(value);
+  // `CodecTypes` reads the application type from the last signature, so `string` stays last.
+  encode(value: Date, ctx: CodecCallContext): Promise<string>;
+  encode(value: string, ctx: CodecCallContext): Promise<string>;
+  async encode(value: string | Date, _ctx: CodecCallContext): Promise<string> {
+    return value instanceof Date ? utcTimestampText(value, this.id) : value;
   }
   async decode(wire: string, _ctx: CodecCallContext): Promise<string> {
     return wire;
@@ -157,8 +152,11 @@ export class PgTimestamptzStringCodec extends CodecImpl<
   string,
   string
 > {
-  async encode(value: string, _ctx: CodecCallContext): Promise<string> {
-    return timestamptzText(value);
+  // `CodecTypes` reads the application type from the last signature, so `string` stays last.
+  encode(value: Date, ctx: CodecCallContext): Promise<string>;
+  encode(value: string, ctx: CodecCallContext): Promise<string>;
+  async encode(value: string | Date, _ctx: CodecCallContext): Promise<string> {
+    return value instanceof Date ? utcTimestamptzText(value, this.id) : value;
   }
   async decode(wire: string, _ctx: CodecCallContext): Promise<string> {
     return wire;

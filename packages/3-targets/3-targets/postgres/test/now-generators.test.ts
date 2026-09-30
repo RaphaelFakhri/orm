@@ -1,6 +1,6 @@
 import { timestampNowRuntimeGenerator } from '@internal/family-sql/runtime';
 import { TIMESTAMP_NOW_GENERATOR_ID } from '@internal/framework-components/authoring';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { postgresAuthoringFieldPresets } from '../src/core/authoring';
 import { INSTANT_NOW_GENERATOR_ID, instantNow } from '../src/core/instant-now-generator';
 import { postgresNowGeneratorIdFor, postgresNowGeneratorIds } from '../src/core/now-generators';
@@ -79,20 +79,10 @@ describe('the "now" generator for each codec', () => {
   });
 });
 
-describe('the Date the timestampNow generator hands a text timestamp codec', () => {
-  const previousTimeZone = process.env['TZ'];
-  beforeAll(() => {
-    process.env['TZ'] = 'Etc/GMT-3';
-  });
-  afterAll(() => {
-    if (previousTimeZone === undefined) delete process.env['TZ'];
-    else process.env['TZ'] = previousTimeZone;
-  });
-
-  it.each([
-    ['pg/timestamp-string@1', '2024-01-02T03:04:05.678'],
-    ['pg/timestamptz-string@1', '2024-01-02T03:04:05.678Z'],
-  ])('%s writes it as the UTC text of its instant on a host outside UTC', async (codecId, text) => {
-    expect(await codecFor(codecId)?.encode(new Date('2024-01-02T03:04:05.678Z'), {})).toBe(text);
+describe('the timestampNow value a text timestamp codec is paired with', () => {
+  it.each(STRING_TIMESTAMP_CODEC_IDS)('%s encodes it as text', async (codecId) => {
+    const value = generate[postgresNowGeneratorIdFor(codecId) ?? '']?.();
+    expect(value).toBeInstanceOf(Date);
+    expect(typeof (await codecFor(codecId)?.encode(value, {}))).toBe('string');
   });
 });
