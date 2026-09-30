@@ -51,3 +51,4 @@ export {
   resolveCodecDescriptorOrThrow,
   validateCodecTypeParams,
 } from '../shared/resolve-codec';
+export { runtimeError } from '../shared/runtime-error';

@@ -32,6 +32,7 @@ import { isPlainRecord } from '@internal/framework-components/ir';
 import type { PslDocumentAst } from '@internal/framework-components/psl-ast';
 import { assertDescriptorSelfConsistency } from '@internal/migration-tools/spaces';
 import { sqlContractCanonicalizationHooks } from '@internal/sql-contract/canonicalization-hooks';
+import { assertNothingCastsFromSqlExpression } from '@internal/sql-contract/sql-expression';
 import type { SqlControlDriverInstance, SqlStorage } from '@internal/sql-contract/types';
 import type {
   AnyQueryAst,
@@ -508,6 +509,11 @@ export function createSqlFamilyInstance<TTargetId extends string>(
   if (!stack.adapter) {
     throw new InternalError('SQL family requires an adapter descriptor in ControlStack');
   }
+  assertNothingCastsFromSqlExpression(
+    [stack.family, stack.target, stack.adapter, ...stack.extensions].flatMap(
+      (descriptor) => descriptor.dataTypes ?? [],
+    ),
+  );
 
   const target = blindCast<
     TargetDescriptor<'sql', TTargetId> & DescriptorWithStorageTypes,

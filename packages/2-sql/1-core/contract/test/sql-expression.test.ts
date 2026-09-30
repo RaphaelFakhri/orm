@@ -1,5 +1,7 @@
+import { dataType } from '@internal/framework-components/codec';
 import { describe, expect, it } from 'vitest';
 import {
+  assertNothingCastsFromSqlExpression,
   printSqlExpressionLiteral,
   SQL_EXPRESSION_DATA_TYPE_ID,
   SQL_EXPRESSION_TAG,
@@ -62,5 +64,43 @@ describe('sqlTextFromCanonical', () => {
 describe('printSqlExpressionLiteral', () => {
   it('prints a sql literal', () => {
     expect(printSqlExpressionLiteral('gen_random_uuid()')).toBe('sql`gen_random_uuid()`');
+  });
+});
+
+describe('assertNothingCastsFromSqlExpression', () => {
+  const text = dataType('pg/text', {});
+
+  it('accepts data types that do not cast from sql/expression', () => {
+    const json = dataType('pg/jsonb', { casts: { 'pg/text': (value) => value } });
+    expect(() =>
+      assertNothingCastsFromSqlExpression([text, json, sqlExpressionDataType]),
+    ).not.toThrow();
+  });
+
+  it('refuses a data type with a cast from sql/expression', () => {
+    const geometry = dataType('postgis/geometry', {
+      casts: { [SQL_EXPRESSION_DATA_TYPE_ID]: (value) => value },
+    });
+    expect(() => assertNothingCastsFromSqlExpression([text, geometry])).toThrow(
+      expect.objectContaining({
+        code: 'CONTRACT.DATA_TYPE_CASTS_FROM_SQL_EXPRESSION',
+        message:
+          'Data type "postgis/geometry" declares a cast from sql/expression. No data type may cast from sql/expression: a sql literal is SQL the database runs, not a value of another type.',
+        details: { dataType: 'postgis/geometry' },
+      }),
+    );
+  });
+
+  it('refuses a data type with a list cast from sql/expression', () => {
+    const vector = dataType('pgvector/vector', {
+      listCast: { of: [SQL_EXPRESSION_DATA_TYPE_ID], cast: (elements) => elements },
+    });
+    expect(() => assertNothingCastsFromSqlExpression([vector])).toThrow(
+      expect.objectContaining({
+        code: 'CONTRACT.DATA_TYPE_CASTS_FROM_SQL_EXPRESSION',
+        message:
+          'Data type "pgvector/vector" declares a list cast from sql/expression. No data type may cast from sql/expression: a sql literal is SQL the database runs, not a value of another type.',
+      }),
+    );
   });
 });

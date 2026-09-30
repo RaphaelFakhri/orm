@@ -131,6 +131,10 @@ In `mutation-default-types.ts`: delete `TaggedLiteralValue` and its export from 
 
 In `control-stack.ts`: delete the two `isLoweringEntryKey` skips (rule 2 and the `writable` set). Every entry key must be a registered data type id.
 
+### 3.5 The family refuses a cast from `sql/expression`
+
+`@internal/sql-contract/sql-expression` exports `assertNothingCastsFromSqlExpression(dataTypes: readonly DataType[]): void`. It throws `runtimeError('CONTRACT.DATA_TYPE_CASTS_FROM_SQL_EXPRESSION', ...)`, the kind of error `enforceDataTypeInvariants` throws for a pack's mistake, when a type names `sql/expression` in `casts` or in `listCast.of`. The message names the type and the rule: `` Data type "<id>" declares a cast from sql/expression. No data type may cast from sql/expression: a sql literal is SQL the database runs, not a value of another type. `` (or `a list cast`). `runtimeError` is exported from the shared-plane entry `@internal/framework-components/codec` for it. `createSqlFamilyInstance` calls it with the data types of the stack's family, target, adapter and extensions, because the family instance is the one SQL-family place that can list every registered type; a `DataTypeLookup` has no way to list them.
+
 ## 4. The cast rule moves into the framework (slice 2t)
 
 New file `packages/1-framework/1-core/framework-components/src/shared/written-value.ts`, exported from `src/exports/authoring.ts`. It holds the family-blind half of `packages/2-sql/2-authoring/contract-psl/src/data-type-default.ts`, so that the parser's combinator (section 6) can run the ADR 254 cast rule.

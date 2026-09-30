@@ -101,6 +101,6 @@ export function myTargetDataTypeEntries(): Readonly<Record<string, DataTypeAutho
 }
 ```
 
-An extension does not register `sql/expression`. Its own data types must not declare a cast from `sql/expression`.
+An extension does not register `sql/expression`. Its own data types must not declare a cast or a list cast from `sql/expression`. The SQL family refuses a stack that has one with `CONTRACT.DATA_TYPE_CASTS_FROM_SQL_EXPRESSION` when it creates its control instance.
 
 The `WrittenValue` tag arm in `@internal/sql-contract-psl` names its text `text`, not `body`.
