@@ -1399,6 +1399,28 @@ describe('interpretPslDocumentToMongoContract', () => {
       expect(indexes![0]!['keys']).toEqual([{ field: 'wildcard', direction: -1 }]);
     });
 
+    it('reports a wrong argument of a field function in @@index inside that function', () => {
+      const result = interpret(`model Events {
+  id    ObjectId @id @map("_id")
+  email String
+  @@index([email(sort: Up)])
+}
+`);
+      expect(result.ok).toBe(false);
+      if (result.ok) return;
+      expect(result.failure.diagnostics).toEqual([
+        {
+          code: 'PSL_INVALID_ATTRIBUTE_SYNTAX',
+          message: 'Expected one of: Asc | Desc',
+          sourceId: 'test.prisma',
+          span: {
+            start: { offset: 86, line: 4, column: 24 },
+            end: { offset: 88, line: 4, column: 26 },
+          },
+        },
+      ]);
+    });
+
     it('creates descending index from sort: Desc', () => {
       const ir = interpretOk(`
         model Events {
