@@ -168,6 +168,7 @@ export function buildSelectAst(state: BuilderState): SelectAst {
     having: state.having,
     limit: state.limit,
     offset: state.offset,
+    locking: undefined,
     selectAllIntent: undefined,
   });
 }
