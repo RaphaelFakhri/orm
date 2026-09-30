@@ -31,18 +31,6 @@ const lockIncompatible = (conflict: string) =>
     meta: { conflict },
   });
 
-async function refusal(run: () => unknown): Promise<unknown> {
-  try {
-    const result = await run();
-    if (result !== null && typeof result === 'object' && 'toArray' in result) {
-      await (result as { toArray(): Promise<unknown> }).toArray();
-    }
-  } catch (error) {
-    return error;
-  }
-  return undefined;
-}
-
 describe('ORM row locking, rendered SQL', () => {
   it.each([
     ['forUpdate', 'FOR UPDATE'],
@@ -110,20 +98,50 @@ describe('ORM row locking, rendered SQL', () => {
     );
   });
 
-  it('a polymorphic variant locks the base table', async () => {
+  describe('a polymorphic model locks only the base table', () => {
     const contract = buildMixedPolyContract();
-    const runtime = createMockRuntime();
-    const tasks = new Collection({ runtime, context: { ...getTestContext(), contract } }, 'Task', {
-      namespaceId: 'public',
+    const tasksWith = (runtime: MockRuntime) =>
+      new Collection({ runtime, context: { ...getTestContext(), contract } }, 'Task', {
+        namespaceId: 'public',
+      });
+
+    it('without a variant', async () => {
+      const runtime = createMockRuntime();
+
+      await tasksWith(runtime).forUpdate().all().toArray();
+
+      expect(sqlOf(runtime, contract)).toBe(
+        'SELECT "tasks"."id" AS "id", "tasks"."title" AS "title", "tasks"."type" AS "type", "tasks"."severity" AS "severity", "tasks"."project_id" AS "project_id", "tasks"."parent_id" AS "parent_id", "tasks"."assignee_id" AS "assignee_id", "features"."priority" AS "features__priority", "features"."assignee_id" AS "features__assignee_id" FROM "public"."tasks" LEFT JOIN "public"."features" ON "tasks"."id" = "features"."id" FOR UPDATE OF "tasks"',
+      );
     });
 
-    await tasks
-      .variant('Feature' as never)
-      .forUpdate()
-      .all()
-      .toArray();
+    it('the Feature variant', async () => {
+      const runtime = createMockRuntime();
 
-    expect(sqlOf(runtime, contract)).toMatch(/ FROM "public"\."tasks" .* FOR UPDATE OF "tasks"$/);
+      await tasksWith(runtime)
+        .variant('Feature' as never)
+        .forUpdate()
+        .all()
+        .toArray();
+
+      expect(sqlOf(runtime, contract)).toBe(
+        'SELECT "tasks"."id" AS "id", "tasks"."title" AS "title", "tasks"."type" AS "type", "tasks"."severity" AS "severity", "tasks"."project_id" AS "project_id", "tasks"."parent_id" AS "parent_id", "tasks"."assignee_id" AS "assignee_id", "features"."priority" AS "features__priority", "features"."assignee_id" AS "features__assignee_id" FROM "public"."tasks" INNER JOIN "public"."features" ON "tasks"."id" = "features"."id" WHERE "tasks"."type" = $1 FOR UPDATE OF "tasks"',
+      );
+    });
+
+    it('the Bug variant', async () => {
+      const runtime = createMockRuntime();
+
+      await tasksWith(runtime)
+        .variant('Bug' as never)
+        .forUpdate()
+        .all()
+        .toArray();
+
+      expect(sqlOf(runtime, contract)).toBe(
+        'SELECT "tasks"."id" AS "id", "tasks"."title" AS "title", "tasks"."type" AS "type", "tasks"."severity" AS "severity", "tasks"."project_id" AS "project_id", "tasks"."parent_id" AS "parent_id", "tasks"."assignee_id" AS "assignee_id" FROM "public"."tasks" WHERE "tasks"."type" = $1 FOR UPDATE OF "tasks"',
+      );
+    });
   });
 });
 
@@ -132,7 +150,7 @@ describe('ORM row locking, refusals', () => {
   const lockedUsers = () => createCollectionFor('User').collection.forUpdate();
 
   it('a lock with include', async () => {
-    expect(await refusal(() => lockedUsers().include('posts').all())).toEqual(
+    await expect(lockedUsers().include('posts').all().toArray()).rejects.toThrow(
       lockIncompatible('include'),
     );
   });
@@ -140,56 +158,57 @@ describe('ORM row locking, refusals', () => {
   it('a lock inside an include refinement', async () => {
     const { collection } = createCollectionFor('User');
 
-    expect(
-      await refusal(() => collection.include('posts', (posts) => posts.forUpdate()).all()),
-    ).toEqual(lockIncompatible('include'));
+    await expect(
+      collection
+        .include('posts', (posts) => posts.forUpdate())
+        .all()
+        .toArray(),
+    ).rejects.toThrow(lockIncompatible('include'));
   });
 
   it('a lock inside an include scalar reducer', async () => {
     const { collection } = createCollectionFor('User');
 
-    expect(
-      await refusal(() => collection.include('posts', (posts) => posts.forUpdate().count()).all()),
-    ).toEqual(lockIncompatible('include'));
+    await expect(
+      collection
+        .include('posts', (posts) => posts.forUpdate().count())
+        .all()
+        .toArray(),
+    ).rejects.toThrow(lockIncompatible('include'));
   });
 
   it('a lock inside an include combine branch', async () => {
     const { collection } = createCollectionFor('User');
 
-    expect(
-      await refusal(() =>
-        collection.include('posts', (posts) => posts.combine({ locked: posts.forUpdate() })).all(),
-      ),
-    ).toEqual(lockIncompatible('include'));
+    await expect(
+      collection
+        .include('posts', (posts) => posts.combine({ locked: posts.forUpdate() }))
+        .all()
+        .toArray(),
+    ).rejects.toThrow(lockIncompatible('include'));
   });
 
   it('a lock with groupBy', async () => {
-    expect(await refusal(() => lockedPosts().groupBy('userId'))).toEqual(
-      lockIncompatible('groupBy'),
-    );
+    expect(() => lockedPosts().groupBy('userId')).toThrow(lockIncompatible('groupBy'));
   });
 
   it('a lock with aggregate', async () => {
-    expect(await refusal(() => lockedPosts().aggregate((agg) => ({ n: agg.count() })))).toEqual(
+    await expect(lockedPosts().aggregate((agg) => ({ n: agg.count() }))).rejects.toThrow(
       lockIncompatible('aggregate'),
     );
   });
 
   it('a lock with distinct', async () => {
-    expect(await refusal(() => lockedPosts().distinct('title').all())).toEqual(
-      lockIncompatible('distinct'),
-    );
+    expect(() => lockedPosts().distinct('title').all()).toThrow(lockIncompatible('distinct'));
   });
 
   it('a lock with distinctOn', async () => {
-    expect(
-      await refusal(() =>
-        lockedPosts()
-          .orderBy((post) => post.title.asc())
-          .distinctOn('title')
-          .all(),
-      ),
-    ).toEqual(lockIncompatible('distinctOn'));
+    expect(() =>
+      lockedPosts()
+        .orderBy((post) => post.title.asc())
+        .distinctOn('title')
+        .all(),
+    ).toThrow(lockIncompatible('distinctOn'));
   });
 
   describe('a mutation terminal on a locked collection', () => {
@@ -197,28 +216,33 @@ describe('ORM row locking, refusals', () => {
 
     it.each([
       ['create', () => lockedPosts().create({ title: 't' } as never)],
-      ['createAll', () => lockedPosts().createAll([{ title: 't' }] as never)],
       ['createAndCount', () => lockedPosts().createAndCount([{ title: 't' }] as never)],
       ['upsert', () => lockedPosts().upsert({ create: {}, update: {} } as never)],
       ['update', () => lockedWhere().update({ title: 't' })],
-      ['updateAll', () => lockedWhere().updateAll({ title: 't' })],
       ['updateAndCount', () => lockedWhere().updateAndCount({ title: 't' })],
       ['delete', () => lockedWhere().delete()],
-      ['deleteAll', () => lockedWhere().deleteAll()],
       ['deleteAndCount', () => lockedWhere().deleteAndCount()],
-    ] as const)('%s', async (_terminal, run) => {
-      expect(await refusal(run)).toEqual(lockIncompatible('mutation'));
+    ] as const)('%s rejects', async (_terminal, run) => {
+      await expect(run()).rejects.toThrow(lockIncompatible('mutation'));
+    });
+
+    it.each([
+      ['createAll', () => lockedPosts().createAll([{ title: 't' }] as never)],
+      ['updateAll', () => lockedWhere().updateAll({ title: 't' })],
+      ['deleteAll', () => lockedWhere().deleteAll()],
+    ] as const)('%s throws', (_terminal, run) => {
+      expect(run).toThrow(lockIncompatible('mutation'));
     });
 
     it('update runs no statement, including its read-back', async () => {
       const { collection, runtime } = createCollectionFor('Post');
 
-      await refusal(() =>
+      await expect(
         collection
           .forUpdate()
           .where((post) => post.id.eq(1))
           .update({ title: 't' }),
-      );
+      ).rejects.toThrow(lockIncompatible('mutation'));
 
       expect(runtime.executions).toEqual([]);
     });
