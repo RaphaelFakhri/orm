@@ -1,0 +1,67 @@
+#!/bin/zsh
+# usage: zsh measure-pipe.sh.txt <label> [probe-dir]   (run from the repo root, after `pnpm build`)
+# Typechecks the ORM client package and the demo twice each with --extendedDiagnostics.
+# With a probe dir, also typechecks each probe twice: pkg-*.test-d.ts inside the package, demo-*.test-d.ts inside the demo.
+# A probe is copied to test/zz-probe.test-d.ts, so it is always checked after the existing tests.
+# The package runs exclude the spike tests (test/fulltext-search*, test/pipe-*). Probes may import the spike fixture.
+# Demo probes run with deletedAt added to Post in the demo contract; the contract is restored afterwards.
+# The package and the demo run in parallel; each runs its probes one after the other.
+# SKIP_BASE=1 skips the runs without a probe. Output goes to wip/spike/out/<label>.
+set -u
+setopt null_glob
+ROOT=$(pwd)
+LABEL=$1
+PROBES=${2:-}
+OUT=$ROOT/wip/spike/out/$LABEL
+mkdir -p $OUT
+PKG=$ROOT/packages/3-extensions/sql-orm-client
+DEMO=$ROOT/examples/prisma-8-demo
+PATCH=$ROOT/wip/spike/contract-soft-delete.mjs
+cp $ROOT/projects/collection-scopes/spikes/contract-soft-delete.mjs.txt $PATCH
+
+pkg_run() {
+  (cd $PKG && mise exec -- pnpm typecheck -p tsconfig.measure.json --extendedDiagnostics > $OUT/$1.txt 2>&1; echo "exit $?" >> $OUT/$1.txt)
+}
+demo_run() {
+  (cd $DEMO && mise exec -- pnpm typecheck --extendedDiagnostics > $OUT/$1.txt 2>&1; echo "exit $?" >> $OUT/$1.txt)
+}
+
+cat > $PKG/tsconfig.measure.json <<EOT
+{ "extends": "./tsconfig.json", "exclude": ["dist", "dist-tsc", "dist-tsc-prod", "node_modules", "test/fulltext-search*", "test/pipe-*"] }
+EOT
+rm -f $PKG/test/zz-probe.test-d.ts $DEMO/test/zz-probe.test-d.ts
+
+pkg_all() {
+  if [ -z "${SKIP_BASE:-}" ]; then for r in 1 2; do pkg_run pkg-base-$r; done; fi
+  [ -z "$PROBES" ] && return
+  for p in $PROBES/pkg-*.test-d.ts; do
+    n=${${p:t}%.test-d.ts}
+    cp $p $PKG/test/zz-probe.test-d.ts
+    for r in 1 2; do pkg_run $n-$r; done
+    rm -f $PKG/test/zz-probe.test-d.ts
+  done
+}
+
+demo_all() {
+  if [ -z "${SKIP_BASE:-}" ]; then for r in 1 2; do demo_run demo-base-$r; done; fi
+  [ -z "$PROBES" ] && return
+  cp $DEMO/src/prisma/contract.d.ts $OUT/contract.d.ts.orig
+  mise exec -- node $PATCH $DEMO/src/prisma/contract.d.ts $DEMO/src/prisma/contract.d.ts pg/timestamptz-temporal@1 Post:post:deletedAt || return 1
+  for p in $PROBES/demo-*.test-d.ts; do
+    n=${${p:t}%.test-d.ts}
+    cp $p $DEMO/test/zz-probe.test-d.ts
+    for r in 1 2; do demo_run $n-$r; done
+    rm -f $DEMO/test/zz-probe.test-d.ts
+  done
+  cp $OUT/contract.d.ts.orig $DEMO/src/prisma/contract.d.ts
+}
+
+pkg_all &
+demo_all &
+wait
+rm -f $PKG/tsconfig.measure.json
+
+for f in $OUT/*.txt; do
+  printf '%s\t%s\t%s\n' "${${f:t}%.txt}" "$(grep -E '^Instantiations' $f | awk '{print $2}')" "$(grep -cE 'error TS' $f)"
+done > $OUT/summary.tsv
+cat $OUT/summary.tsv

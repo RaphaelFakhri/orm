@@ -1,10 +1,13 @@
-// usage: node gen-pipe-probes.mjs <out-dir>
+// usage: node gen-pipe-probes.mjs <out-dir> [selection...]
 // Writes one probe per (target, case, use count). A probe has ten call sites.
 // With N uses, the first N sites use the case's form; the rest use the case's plain form.
 // The definitions a case needs are written only when N > 0, so "1 use" includes the definition.
+// With no selection it writes the main cases and q4. A selection item is a case name (0, 1 and 10 uses),
+// or `name@k`, which writes a probe where only site k uses the form (for per-site costs).
 import { mkdirSync, writeFileSync } from 'node:fs';
 
 const out = process.argv[2];
+const selection = process.argv.slice(3);
 mkdirSync(out, { recursive: true });
 
 const targets = {
@@ -91,14 +94,27 @@ const notDeleted = (p: { readonly deletedAt: DeletedAt }) => p.deletedAt.isNull(
     use: (t, src) => `${t}.orderBy(sortField(${src}, input.sort, input.direction))`,
     plain: (t) => `${t}.orderBy((p) => p.title.desc())`,
   },
+  // Experiments: they compile only in the state that adds the method or overload.
+  q1e: {
+    experiment: true,
+    use: (t, _s, { order }) =>
+      `${t}.when(search, (c, s) => c.where((p) => p.title.eq(s))).when(sort, (c, dir) => c.orderBy((p) => p.${order}[dir]()))`,
+    plain: (t, _s, { order }) => plainChain(t, order),
+  },
+  q1f: {
+    experiment: true,
+    use: (t, _s, { order }) =>
+      `${t}.where(search ? (p) => p.title.eq(search) : undefined).orderBy(sort ? (p) => p.${order}[sort]() : undefined)`,
+    plain: (t, _s, { order }) => plainChain(t, order),
+  },
 };
 
-function probe(target, name, uses) {
+function probe(target, name, uses, only) {
   const ctx = targets[target];
   const c = cases[name];
   const defs = typeof c.defs === 'function' ? c.defs(ctx) : (c.defs ?? '');
   const site = (i, t, src, isThis = false) => {
-    const form = i <= uses ? c.use : c.plain;
+    const form = (only === undefined ? i <= uses : i === only) ? c.use : c.plain;
     const text = form(t, src, { ...ctx, isThis });
     return target === 'demo' && name === 'q2b' ? text.replace('pg/timestamptz-date@1', 'pg/timestamptz-temporal@1') : text;
   };
@@ -159,15 +175,28 @@ export type ProbeUser = typeof User;
 `;
 }
 
+const main = Object.keys(cases).filter((name) => !cases[name].experiment);
+const items = selection.length > 0 ? selection : [...main, 'q4'];
 for (const target of Object.keys(targets)) {
-  for (const name of Object.keys(cases)) {
+  for (const item of items) {
+    if (item === 'q4') {
+      for (const kind of ['none', 'direct', 'pipe']) {
+        writeFileSync(`${out}/${target}-q4-${kind}.test-d.ts`, chainProbe(target, kind));
+      }
+      continue;
+    }
+    const [name, only] = item.split('@');
+    if (only !== undefined) {
+      writeFileSync(
+        `${out}/${target}-${name}-site${only}.test-d.ts`,
+        probe(target, name, 1, Number(only)),
+      );
+      continue;
+    }
     for (const uses of [0, 1, 10]) {
       if (uses === 0 && name.startsWith('q1') && name !== 'q1a') continue;
       if (uses === 0 && name === 'q3pick') continue;
       writeFileSync(`${out}/${target}-${name}-${uses}.test-d.ts`, probe(target, name, uses));
     }
-  }
-  for (const kind of ['none', 'direct', 'pipe']) {
-    writeFileSync(`${out}/${target}-q4-${kind}.test-d.ts`, chainProbe(target, kind));
   }
 }

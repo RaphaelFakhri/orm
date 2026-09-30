@@ -436,6 +436,27 @@ class CollectionImpl<
   }
 
   /**
+   * Apply `step` only when `value` is truthy. The result has this collection's type.
+   */
+  when<Self extends RowSelection<unknown>, T>(
+    this: Self,
+    value: T,
+    step: (
+      collection: Self,
+      value: Exclude<T, false | 0 | 0n | '' | null | undefined>,
+    ) => RowSelection<Self[typeof RowType]>,
+  ): Self {
+    return value
+      ? blindCast<Self, 'a row-preserving step returns the same collection class'>(
+          step(
+            this,
+            blindCast<Exclude<T, false | 0 | 0n | '' | null | undefined>, 'checked truthy'>(value),
+          ),
+        )
+      : this;
+  }
+
+  /**
    * Narrow a polymorphic model to a specific variant. The returned
    * collection has the variant's row shape and a discriminator filter
    * is automatically applied. Chaining `.variant(...)` again replaces
