@@ -46,6 +46,7 @@ import { providePslCompletionItems } from '../src/completion-provider';
 const scalarTypes = ['String', 'Int', 'Boolean', 'DateTime'] as const;
 const nameSnippetPlaceholder = '$' + '{1:Name}';
 const emptySnippetPlaceholder1 = '$' + '{1:}';
+const expressionSnippetPlaceholder = '$' + '{1:expression}';
 const packageRoot = dirname(dirname(fileURLToPath(import.meta.url)));
 
 const markerAttribute = fieldAttribute('marker', {
@@ -845,14 +846,17 @@ describe('providePslCompletionItems', () => {
     const checkItem = completionItemByLabel(checkCompletion.items, 'check');
     expect(checkItem).toMatchObject({
       insertTextFormat: InsertTextFormat.Snippet,
-      textEdit: { newText: 'check(expression: ${1:expression})' },
+      textEdit: { newText: `check(expression: ${expressionSnippetPlaceholder})` },
     });
     expect(
       applyCompletionItem({ sourceFile: checkCompletion.sourceFile, item: checkItem }),
     ).toEqual(
-      ['model Post {', '  id Int', '  @@check(expression: ${1:expression}) // keep', '}'].join(
-        '\n',
-      ),
+      [
+        'model Post {',
+        '  id Int',
+        `  @@check(expression: ${expressionSnippetPlaceholder}) // keep`,
+        '}',
+      ].join('\n'),
     );
   }, 5_000);
 
