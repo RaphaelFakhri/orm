@@ -44,7 +44,7 @@ Verification (logs in the gitignored `wip/v4/`): `build`, `typecheck`, `lint`, `
 
 ## Slice 2t, 2026-09-30
 
-Implemented on branch `tml-3367-data-type-value`, on top of slice 2a. Not pushed; no pull request. Brief: `dispatches/2t-implementer-brief.md`. Two points need a decision: `dispatches/2t-findings.md`.
+Implemented on branch `tml-3367-data-type-value`, on top of slice 2a. Not pushed; no pull request. Brief: `dispatches/2t-implementer-brief.md`. Two findings (`dispatches/2t-findings.md`) are decided and fixed; see "Findings fixes" below.
 
 ### What was built
 
@@ -52,7 +52,7 @@ Implemented on branch `tml-3367-data-type-value`, on top of slice 2a. Not pushed
 - **Section 5** (`1e47750cf6`): `readWrittenLiteral` in `psl-parser/src/written-literal.ts`.
 - **Section 6** (`0f3d47efb9`): `dataTypeValue`, `ParsedTypedValue`, `DataTypeValueArgType`. The language server's `completion-values.ts` returns no items for it; completion is section 12, slice 2b.
 - **Section 7** (`42b9fc44b5`): `AttributeSpecContext.dataTypes`, `EMPTY_DATA_TYPES`, `ControlDefaultRegistries` with only the function registry. Every construction site passes the stack's data types, including the binder.
-- **Carried over from the 2a review:** ADR 254 has the scalar cast rule sentence (`32837b1c52`). `TaggedLiteralCanonicalization.text`, `TaggedLiteralExprAst.text()`, `parseJsonText` and `printJsonText` (`24c934710f`). `@default` reports `PSL_VALUE_TYPE_INCOMPATIBLE` and `PSL_INVALID_LITERAL` at the written value or the list element; the two default-only codes stay at the attribute (`32837b1c52`). The `@default` list arm no longer offers `sql` (`32837b1c52`). No name about lowering a tag is left. The `unknown-tag` arm of `lowerDataTypeDefault` is **not** removed: see finding 1.
+- **Carried over from the 2a review:** ADR 254 has the scalar cast rule sentence (`32837b1c52`). `TaggedLiteralCanonicalization.text`, `TaggedLiteralExprAst.text()`, `parseJsonText` and `printJsonText` (`24c934710f`). `@default` reports `PSL_VALUE_TYPE_INCOMPATIBLE` and `PSL_INVALID_LITERAL` at the written value or the list element; the two default-only codes stay at the attribute (`32837b1c52`). The `@default` list arm no longer offers `sql` (`32837b1c52`). No name about lowering a tag is left. The `unknown-tag` arm of `lowerDataTypeDefault` stays and is now the one place that reports an unknown tag: see finding 1 and "Findings fixes".
 - **Docs** (`bcae07f564`, `32837b1c52`): ADR 231 (`dataTypeValue`, the `oneOf` rule), ADR 249 (the context carries `dataTypes`), ADR 254, the error reference and the editor tooling brief.
 - **Upgrade instructions** (`55f5c11982`): `upgrade-instructions/pending/arguments-typed-by-data-type/{app,extension}`. The detection patterns are tested against a true positive and the nearest false positive (`wip/2t/detection.log`). The extension entry was validated by execution: with `packages/3-extensions/` restored to the merge base, no non-test path differs and the Mongo extension tests pass (`wip/2t/fragment-validation*.log`).
 - **Manual QA** (`907248634f`): the slice 2t script and run in `manual-qa.md`. Every case gives the expected code, message and start.
@@ -73,12 +73,20 @@ Logs are in the gitignored `wip/2t/`.
 - `test:packages` (`test-packages.log`): 1422 files pass. Seven failed. The three tarball tests fail on the registry refusal. `render-typescript.roundtrip.test.ts`, the two `cli-telemetry` files and `cli` `migration-plan.test.ts` pass when rerun alone (`rerun-*.log`).
 - Integration, run alone: `test/authoring`, `test/number-defaults` and the four Mongo and value-object files whose imports changed, 36 files, 244 tests, pass (`integration.log`).
 
+### Findings fixes, 2026-09-30
+
+Brief: `dispatches/2t-findings-fixes-brief.md`.
+
+- **Finding 1, option A** (`3facad43e0`): `@default` no longer checks a tag before it reads the value. `readTaggedLiteral` is gone; an unknown tag is reported by the `unknown-tag` arm of `lowerDataTypeDefault` at the written value or the list element. Messages and spans are unchanged; a new test covers a list element.
+- **Finding 2** (`c294bfd4f1`, `3ac77e2800`): `oneOf` returns the result of the one `funcCall` alternative that names the called function. `@default(uuid(5))` now reports `Expected one of: 4 | 7` at `5`, and `@default(nanoid("8"))` with a `dataTypeValue` parameter would report the cast refusal at `"8"`. ADR 231, design section 6, the app upgrade fragment and the manual QA script are updated; the run is recorded.
+- Verification, logs in `wip/2t-fixes/`: `build`, `typecheck`, `lint`, `lint:deps`, `check:error-reference` (361 codes), `fixtures:check` (tree clean), `check:upgrade-coverage` pass. `lint:casts` delta 0, `lint:throws` delta 0, `lint:framework-vocabulary` 272 of 272. `test:packages` (`test-packages.log`): 1423 files pass, 6 fail; the three tarball tests fail on the registry refusal, and `completion-provider.test.ts`, `cli-telemetry` `cli-e2e.test.ts` and `render-typescript.roundtrip.test.ts` timed out and pass alone (`rerun-*.log`). Integration `test/authoring test/number-defaults`: 28 files, 174 tests pass (`integration-authoring-number-defaults.log`). Manual QA: `manual-qa.log`.
+
 ## Slice order and tickets
 
 | Order | Plan slice | Ticket | State |
 | --- | --- | --- | --- |
 | 1 | 2a: `sql` is the data type `sql/expression` | TML-3296 | PR #30534 open; two review rounds done, all findings fixed |
-| 2 | 2t: an argument declares the data type it receives | TML-3367 | Implemented on `tml-3367-data-type-value`; review and two findings pending |
+| 2 | 2t: an argument declares the data type it receives | TML-3367 | Implemented on `tml-3367-data-type-value`; both findings fixed; review pending |
 | 3 | 2b: the six places take `sql` literals | TML-3288 | Waiting for 2t |
 | 4 | 3: the TypeScript builder takes `sql` values | TML-3289 | Waiting for 2b |
 | On the side | 1: line comments in raw SQL | TML-3287 | Not started; depends on nothing |
@@ -93,7 +101,7 @@ The Linear project "Data types own column types" finishes ADR 254. Its last slic
 
 Two notes were sent to that project's agent:
 
-- `dataTypeValue` must not be a direct arm of `oneOf`. Inside a function call signature it works, and slice 2t tests a function call that is an arm of `oneOf`.
+- `dataTypeValue` is used as a parameter of a `funcCall`, not as a bare arm of `oneOf`. When exactly one arm of `oneOf` names the called function, `oneOf` keeps that function's diagnostics, so `@default(nanoid("8"))` can report the cast refusal at `"8"` (updated 2026-09-30).
 - `dataTypeValue` throws an internal error when the stack does not register the named data type. A family spec must choose the type id from the stack, not hard-code one target's id.
 
 ## The design is older than `main`
