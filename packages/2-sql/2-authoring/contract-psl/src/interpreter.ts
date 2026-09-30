@@ -162,7 +162,7 @@ export interface InterpretPslDocumentToSqlContractInput {
   readonly composedExtensionContracts: ReadonlyMap<string, Contract>;
   /** Target-supplied factory that materialises a `SqlNamespaceBase` concretion for each namespace coordinate. */
   readonly createNamespace: (input: SqlNamespaceInput) => SqlNamespaceBase;
-  readonly codecLookup?: CodecLookup;
+  readonly codecLookup: CodecLookup;
   readonly seedDiagnostics?: readonly ContractSourceDiagnostic[];
   /** The target's default codec ids for an `enum` block that omits `@@type`. */
   readonly enumInferenceCodecs?: { readonly text: string; readonly int: string };
@@ -550,10 +550,7 @@ function processEnumDeclarations(input: ProcessEnumDeclarationsInput): {
     if (handle === undefined || handle === null) continue;
 
     enumHandles[envelope.name] = handle;
-    enumTypeDescriptors.set(envelope.name, {
-      codecId: handle.codecId,
-      nativeType: handle.nativeType,
-    });
+    enumTypeDescriptors.set(envelope.name, { codecId: handle.codecId });
   }
 
   return { enumHandles, enumTypeDescriptors };
@@ -2413,6 +2410,8 @@ export function interpretPslDocumentToSqlContract(
     familyId: input.target.familyId,
     targetId: input.target.targetId,
     authoringContributions: input.authoringContributions,
+    codecLookup: input.codecLookup,
+    dataTypeLookup: input.dataTypeLookup,
     diagnostics,
   });
 
@@ -2732,6 +2731,7 @@ export function interpretPslDocumentToSqlContract(
       })),
     },
     input.codecLookup,
+    input.dataTypeLookup,
   );
 
   // Include namespace in patch keys so same bare model names across namespaces

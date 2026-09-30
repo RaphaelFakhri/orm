@@ -10,10 +10,12 @@ import {
 } from '@internal/sql-contract-ts/contract-builder';
 import { describe, expect, it } from 'vitest';
 import { createTestSqlNamespace } from '../../../1-core/contract/test/test-support';
+import { testSqlTypeLookups } from '../../../1-core/contract/test/test-type-lookups';
 import {
   type InterpretPslDocumentToSqlContractInput,
   interpretPslDocumentToSqlContract,
 } from '../src/interpreter';
+import { fixtureTypeLookups } from './fixture-codec-descriptors';
 import { fixtureDataTypeSupport } from './fixture-data-types';
 import {
   createBuiltinLikeControlMutationDefaults,
@@ -77,16 +79,19 @@ const targetTypesById: Record<string, readonly string[]> = {
   'sqlite/integer@1': ['integer'],
 };
 
-const testCodecLookup: CodecLookup = {
-  get(id: string): Codec | undefined {
-    return codecsById[id];
+const testCodecLookup: CodecLookup = testSqlTypeLookups(
+  {},
+  {
+    get(id: string): Codec | undefined {
+      return codecsById[id];
+    },
+    descriptorFor: (id: string) => postgresCodecLookup.descriptorFor?.(id),
+    targetTypesFor(id: string): readonly string[] | undefined {
+      return targetTypesById[id];
+    },
+    renderOutputTypeFor: () => undefined,
   },
-  descriptorFor: (id: string) => postgresCodecLookup.descriptorFor?.(id),
-  targetTypesFor(id: string): readonly string[] | undefined {
-    return targetTypesById[id];
-  },
-  renderOutputTypeFor: () => undefined,
-};
+).codecLookup;
 
 const authoringContributions = {
   entityTypes: testEnumEntityContributions,
@@ -116,7 +121,7 @@ function interpret(schema: string, overrides?: Partial<InterpretPslDocumentToSql
         ...('dataTypes' in contributions ? contributions.dataTypes : {}),
       },
     },
-    dataTypeLookup: fixtureDataTypeSupport.lookup,
+    ...fixtureTypeLookups,
     codecLookup: testCodecLookup,
     createNamespace: createTestSqlNamespace,
     enumInferenceCodecs: postgresEnumInferenceCodecs,
@@ -206,6 +211,7 @@ model Post {
     };
 
     const tsContract = defineContract({
+      ...fixtureTypeLookups,
       family: sqlFamilyPack,
       target: postgresTargetPack,
       enums: { Priority: PriorityHandle },
@@ -294,6 +300,7 @@ model Post {
     };
 
     const tsContract = defineContract({
+      ...fixtureTypeLookups,
       family: sqlFamilyPack,
       target: postgresTargetPack,
       enums: { Priority: PriorityHandle },

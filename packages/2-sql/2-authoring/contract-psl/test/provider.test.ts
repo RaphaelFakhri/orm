@@ -826,7 +826,7 @@ model User {
             type: {
               Int: {
                 kind: 'typeConstructor',
-                output: { codecId: 'pg/int4@1', nativeType: 'int4' },
+                output: { codecId: 'pg/int4@1' },
               },
             },
             entityTypes: {},

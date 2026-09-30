@@ -197,7 +197,7 @@ model Other {
       binder: createSqlBinder({ symbolTable: input.symbolTable, sources: input.sources }).binder,
       symbolTable: input.symbolTable,
       sources: input.sources,
-      columnDescriptor: { codecId: 'pg/text@1', nativeType: 'text' },
+      columnDescriptor: { codecId: 'pg/text@1' },
       generatorDescriptorById: new Map(),
       defaultFunctionRegistry: new Map(),
       dataTypeSupport: fixtureDataTypeSupport,

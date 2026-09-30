@@ -2,6 +2,7 @@ import type { AuthoringTypeNamespace } from '@internal/framework-components/auth
 import { describe, expect, it } from 'vitest';
 import { createTestSqlNamespace } from '../../../1-core/contract/test/test-support';
 import { interpretPslDocumentToSqlContract } from '../src/interpreter';
+import { fixtureTypeLookups } from './fixture-codec-descriptors';
 import { fixtureDataTypeSupport } from './fixture-data-types';
 import {
   modelsOf,
@@ -18,7 +19,6 @@ const authoringTypes = {
     args: [{ kind: 'number', name: 'length', integer: true, minimum: 1 }],
     output: {
       codecId: 'sql/varchar@1',
-      nativeType: 'character varying',
       typeParams: { length: { kind: 'arg', index: 0 } },
     },
   },
@@ -35,7 +35,7 @@ describe('interpretPslDocumentToSqlContract list fields with type parameters', (
       target: postgresTarget,
       scalarColumnDescriptors: postgresNativeScalarTypeDescriptors,
       authoringContributions: { type: authoringTypes, dataTypes: fixtureDataTypeSupport.entries },
-      dataTypeLookup: fixtureDataTypeSupport.lookup,
+      ...fixtureTypeLookups,
       composedExtensionContracts: new Map(),
       createNamespace: createTestSqlNamespace,
       capabilities: { sql: { scalarList: true } },

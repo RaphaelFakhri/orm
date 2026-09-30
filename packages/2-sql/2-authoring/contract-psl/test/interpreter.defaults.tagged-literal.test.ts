@@ -3,10 +3,10 @@ import { structuredError } from '@internal/utils/structured-error';
 import { describe, expect, it } from 'vitest';
 import { createTestSqlNamespace } from '../../../1-core/contract/test/test-support';
 import { interpretPslDocumentToSqlContract as interpretPslDocumentToSqlContractInternal } from '../src/interpreter';
+import { fixtureTypeLookups } from './fixture-codec-descriptors';
 import { fixtureDataTypeSupport } from './fixture-data-types';
 import {
   createBuiltinLikeControlMutationDefaults,
-  postgresCodecLookup,
   postgresNativeScalarTypeDescriptors,
   postgresTarget,
   symbolTableInputFromParseArgs,
@@ -41,7 +41,6 @@ describe('interpretPslDocumentToSqlContract tagged literal defaults', () => {
     });
     return interpretPslDocumentToSqlContractInternal({
       target: postgresTarget,
-      codecLookup: postgresCodecLookup,
       scalarColumnDescriptors: postgresNativeScalarTypeDescriptors,
       composedExtensionContracts: new Map(),
       createNamespace: createTestSqlNamespace,
@@ -49,7 +48,7 @@ describe('interpretPslDocumentToSqlContract tagged literal defaults', () => {
       ...document,
       controlMutationDefaults: builtinControlMutationDefaults,
       authoringContributions: { dataTypes: entries },
-      dataTypeLookup: fixtureDataTypeSupport.lookup,
+      ...fixtureTypeLookups,
     });
   };
   const columnDefault = (

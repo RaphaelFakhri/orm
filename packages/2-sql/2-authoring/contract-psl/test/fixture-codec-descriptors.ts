@@ -10,10 +10,15 @@ import type {
   AnyCodecDescriptor,
   CodecLookup,
   CodecTrait,
+  DataType,
   DataTypeId,
+  DataTypeLookup,
 } from '@internal/framework-components/codec';
 import { blindCast } from '@internal/utils/casts';
+import { testSqlTypeLookups } from '../../../1-core/contract/test/test-type-lookups';
 import {
+  fixtureDataTypeSupport,
+  fixtureDataTypes,
   pgBool,
   pgBytea,
   pgChar,
@@ -174,27 +179,23 @@ const fixtureCodecs: Readonly<
   };
 })();
 
-/** Passes `typeParams` through: the fixture vector type constructor already validates its length. */
-const vectorParamsSchema: AnyCodecDescriptor['paramsSchema'] = {
-  '~standard': {
-    version: 1,
-    vendor: 'contract-psl-fixtures',
-    validate: (value: unknown) => ({ value }),
-  },
-};
+const fixtureDataTypeById: ReadonlyMap<string, DataType> = new Map(
+  fixtureDataTypes.map((type) => [type.id, type]),
+);
 
-/** A descriptor for a fixture codec, parameterized only for `pg/vector@1`, whose length the codec checks. */
+/** A descriptor for a fixture codec, taking the parameters its data type declares. */
 function fixtureDescriptor(codecId: string): AnyCodecDescriptor | undefined {
   const codec = fixtureCodecs[codecId];
   if (codec === undefined) return undefined;
-  const parameterized = codecId === 'pg/vector@1';
+  const dataType = dataTypeByCodecId[codecId] ?? pgText.id;
+  const paramsSchema = fixtureDataTypeById.get(dataType)?.params;
   return {
     codecId,
-    dataType: dataTypeByCodecId[codecId] ?? pgText.id,
+    dataType,
     traits: codec.traits,
     targetTypes: targetTypesByCodecId[codecId] ?? [],
-    paramsSchema: parameterized ? vectorParamsSchema : undefined,
-    isParameterized: parameterized,
+    paramsSchema,
+    isParameterized: paramsSchema !== undefined,
     factory: (params: unknown) => () => ({
       id: codecId,
       encode: async (value: unknown) =>
@@ -207,7 +208,7 @@ function fixtureDescriptor(codecId: string): AnyCodecDescriptor | undefined {
       decodeJson: (value: JsonValue) =>
         codec.decodeJson(
           value,
-          blindCast<Record<string, unknown>, 'the fixture vector schema passes typeParams through'>(
+          blindCast<Record<string, unknown>, 'the parameter schema accepted these parameters'>(
             params ?? {},
           ),
         ),
@@ -221,4 +222,25 @@ export const postgresCodecLookup: CodecLookup = {
   descriptorFor: fixtureDescriptor,
   targetTypesFor: (id: string) => targetTypesByCodecId[id],
   renderOutputTypeFor: () => undefined,
+};
+
+const lenient = testSqlTypeLookups(
+  { 'custom/varchar@1': 'character varying', 'custom/text@1': 'custom_text' },
+  postgresCodecLookup,
+);
+
+/**
+ * The fixture stack's lookups, which also name a column of any codec the fixture does not declare,
+ * so tests about other things can use codecs of their own.
+ */
+export const fixtureTypeLookups: {
+  readonly codecLookup: CodecLookup;
+  readonly dataTypeLookup: DataTypeLookup;
+} = {
+  codecLookup: lenient.codecLookup,
+  dataTypeLookup: {
+    get: (id) => fixtureDataTypeSupport.lookup.get(id) ?? lenient.dataTypeLookup.get(id),
+    has: (id) => fixtureDataTypeSupport.lookup.has(id) || lenient.dataTypeLookup.has(id),
+    all: () => fixtureDataTypeSupport.lookup.all(),
+  },
 };

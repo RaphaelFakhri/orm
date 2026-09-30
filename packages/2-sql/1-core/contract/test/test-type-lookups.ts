@@ -97,6 +97,23 @@ export interface TestSqlTypeLookups {
   readonly dataTypeLookup: DataTypeLookup;
 }
 
+const slug = (text: string) =>
+  text
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '');
+
+/** Shared by every set of test lookups, so any of them reads a type another one declared. */
+const testDataTypes = new Map<string, DataType>();
+
+function testDataTypeFor(id: string, name: string | undefined): DataType {
+  const existing = testDataTypes.get(id);
+  if (existing !== undefined) return existing;
+  const created = testDataType(id, name);
+  testDataTypes.set(id, created);
+  return created;
+}
+
 /**
  * Test lookups. `names` maps a codec id to the type name its data type is written as. `codecs`, when
  * given, supplies the codecs themselves: its descriptors are used where it has them, and every other
@@ -106,19 +123,6 @@ export function testSqlTypeLookups(
   names: Readonly<Record<string, string>> = {},
   codecs?: CodecLookup,
 ): TestSqlTypeLookups {
-  const dataTypes = new Map<string, DataType>();
-  const dataTypeFor = (id: string, name: string | undefined): DataType => {
-    const existing = dataTypes.get(id);
-    if (existing !== undefined) return existing;
-    const created = testDataType(id, name);
-    dataTypes.set(id, created);
-    return created;
-  };
-  const dataTypeIdOf = (codecId: string) =>
-    `test-codec/${codecId
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/^-|-$/g, '')}`;
   const codecOf = (codecId: string): Codec | undefined =>
     codecs === undefined ? storesAsAuthored(codecId) : codecs.get(codecId);
 
@@ -126,7 +130,8 @@ export function testSqlTypeLookups(
     const name = ENUM_CODEC_IDS.has(codecId)
       ? undefined
       : (names[codecId] ?? CODEC_TYPE_NAMES[codecId] ?? middlePart(codecId));
-    const dataType = () => dataTypeFor(dataTypeIdOf(codecId), name).id;
+    const dataType = () =>
+      testDataTypeFor(`test-codec/${slug(codecId)}-as-${slug(name ?? 'enum')}`, name).id;
     const own = codecs?.descriptorFor?.(codecId);
     if (own !== undefined)
       return own.dataType !== undefined ? own : { ...own, dataType: dataType() };
@@ -155,12 +160,12 @@ export function testSqlTypeLookups(
     },
     dataTypeLookup: {
       get: (id) =>
-        dataTypeFor(
+        testDataTypeFor(
           id,
           ENUM_DATA_TYPE_IDS.has(id) ? undefined : (DATA_TYPE_NAMES[id] ?? id.split('/')[1] ?? id),
         ),
       has: () => true,
-      all: () => [...dataTypes.values()],
+      all: () => [...testDataTypes.values()],
     },
   };
 }
