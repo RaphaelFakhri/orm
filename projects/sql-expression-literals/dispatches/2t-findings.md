@@ -28,3 +28,11 @@ The project "Data types own column types" requires general codes at the written 
 **Decision:** `oneOf` keeps the diagnostics of the function the author named. When the argument is a call whose callee is a plain identifier and exactly one alternative is a `funcCall` of that name, `oneOf` returns that alternative's result, success or failure. Every other case is unchanged.
 
 **Outcome** (`c294bfd4f1`, `3ac77e2800`): `oneOf` has the rule and a one-sentence doc comment. `funcCall` and `oneOf` share `plainCallee` to read the callee. New tests: `nanoid("8")` reports `pg/int4 has no cast from pg/text; write a number` at `"8"`; `nanoid(8)` returns the typed value; `other(1)` and two arms named `nanoid` still give `Expected one of`. No existing test asserted a changed message. The one test that covered wrong default-function arguments (`interpreter.defaults.functions.test.ts`) only checked the code, so it now asserts the whole diagnostics: `cuid()` reports `Attribute "cuid" is missing required argument "version"`, `uuid(5)` reports `Expected one of: 4 | 7` at `5`, and `nanoid(1)` reports `Expected an integer between 2 and 255` at `1`. Design section 6, ADR 231, the app upgrade fragment and the manual QA script are updated; the QA run is recorded.
+
+## A08. A third default-only refusal, `no-list-cast`
+
+Review finding A08 asked for `DefaultRefusal` to be the framework's `ReadRefusal | CastRefusal` plus the two default-only arms. The implementer added a third arm, `no-list-cast`, and recorded it in `status.md` and design section 4 instead of here.
+
+A list written on a column that holds one value, whose type has no list cast, has no value type. The framework's `no-cast` needs a `valueType` that is a `DataTypeId`, so it cannot carry this case. Folding it into `unwritable` would say "this target has no data type for a list value", which is false on a stack where a type such as `pgvector/vector` takes lists. ADR 254 makes reading a written list the family's default reader's job, so the refusal belongs in the family, next to `not-a-list`.
+
+**Decision:** `no-list-cast` is approved. In the round 2 review fixes the same reason gave a fourth arm, `no-element-cast`, for an element of a written list that the column type's list cast does not take (review finding B02).
