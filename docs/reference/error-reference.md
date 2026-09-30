@@ -357,7 +357,7 @@ A model declares an empty unique constraint (a unique with no fields), raised du
 
 ### CONTRACT.DATA_TYPE_CASTS_FROM_SQL_EXPRESSION
 
-A data type in the composed stack declares a cast or a list cast from `sql/expression`: `Data type "<id>" declares a cast from sql/expression. No data type may cast from sql/expression: a sql literal is SQL the database runs, not a value of another type.` Such a cast would turn a `sql` literal into a value of another type with no diagnostic. Raised by the SQL family when it creates its control instance, which every command that plans, emits, prints or verifies does. Remove the cast from the pack that declares the type. Payload: `dataType`.
+A data type in the composed stack declares a cast or a list cast from `sql/expression`: `Data type "<id>" declares a cast from sql/expression. No data type may cast from sql/expression: a sql literal is SQL the database runs, not a value of another type.` Such a cast would turn a `sql` literal into a value of another type with no diagnostic. Raised by the SQL family when it creates its control instance, which the CLI does before it emits, prints, infers, plans or verifies a contract. The language server does not create one and does not report it. Remove the cast from the pack that declares the type. Payload: `dataType`.
 
 ### CONTRACT.DATA_TYPE_DUPLICATE
 
