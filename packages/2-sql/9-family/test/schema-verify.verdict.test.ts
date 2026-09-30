@@ -26,10 +26,10 @@ import {
   SqlTableIR,
 } from '@internal/sql-schema-ir/types';
 import { describe, expect, it } from 'vitest';
+import { testTypeLookups } from '../../1-core/contract/test/test-type-lookups';
 import { extractCodecControlHooks } from '../src/core/assembly';
 import { computeSqlDiffVerdict, computeStorageTypeVerdict } from '../src/core/diff/schema-verify';
 import type { DefaultNormalizer } from '../src/core/diff/sql-schema-diff';
-import { testTypeLookups } from '../../1-core/contract/test/test-type-lookups';
 import { contractToSchemaIR } from '../src/core/migrations/contract-to-schema-ir';
 import {
   createContractTable,

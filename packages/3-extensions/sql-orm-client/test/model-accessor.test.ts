@@ -82,7 +82,6 @@ describe('createModelAccessor', () => {
       values: function* () {
         yield* map.values();
       },
-      byTargetType: () => Object.freeze([]),
     };
   }
 

@@ -84,11 +84,9 @@ export function createAsyncSecretCodec({
 }: {
   seed: string;
   typeId?: string;
-  targetTypes?: readonly string[];
 }) {
   return defineTestCodec({
     typeId,
-    targetTypes,
     encode: (value: string) => encryptSecret(value, seed),
     decode: (wire: string) => decryptSecret(wire, seed),
   });

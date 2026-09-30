@@ -45,23 +45,22 @@ describe('sql-codec-helpers', () => {
     id: string;
     hasParamsSchema: boolean;
   }> = [
-    { scalar: 'char', id: SQL_CHAR_CODEC_ID, targetTypes: ['char'], hasParamsSchema: true },
+    { scalar: 'char', id: SQL_CHAR_CODEC_ID, hasParamsSchema: true },
     {
       scalar: 'varchar',
       id: SQL_VARCHAR_CODEC_ID,
       hasParamsSchema: true,
     },
-    { scalar: 'int', id: SQL_INT_CODEC_ID, targetTypes: ['int'], hasParamsSchema: false },
-    { scalar: 'float', id: SQL_FLOAT_CODEC_ID, targetTypes: ['float'], hasParamsSchema: false },
-    { scalar: 'text', id: SQL_TEXT_CODEC_ID, targetTypes: ['text'], hasParamsSchema: false },
+    { scalar: 'int', id: SQL_INT_CODEC_ID, hasParamsSchema: false },
+    { scalar: 'float', id: SQL_FLOAT_CODEC_ID, hasParamsSchema: false },
+    { scalar: 'text', id: SQL_TEXT_CODEC_ID, hasParamsSchema: false },
   ];
 
   it.each(codecDefinitionCases)(
     'defines descriptor for $scalar',
-    ({ scalar, id, targetTypes, hasParamsSchema }) => {
+    ({ scalar, id, hasParamsSchema }) => {
       const descriptor = descriptorsByScalar[scalar];
       expect(descriptor.codecId).toBe(id);
-      expect(descriptor.targetTypes).toEqual(targetTypes);
       expect(descriptor.paramsSchema !== undefined).toBe(hasParamsSchema);
     },
   );

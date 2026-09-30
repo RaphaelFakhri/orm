@@ -107,9 +107,9 @@ describe('requiredParamKeys', () => {
   });
 
   it('is empty for a data type whose parameters are optional', () => {
-    expect(requiredParamKeys(dataType('t/char', { params: type({ 'length?': 'number' }) }))).toEqual(
-      [],
-    );
+    expect(
+      requiredParamKeys(dataType('t/char', { params: type({ 'length?': 'number' }) })),
+    ).toEqual([]);
   });
 
   it('is empty for a data type without parameters', () => {

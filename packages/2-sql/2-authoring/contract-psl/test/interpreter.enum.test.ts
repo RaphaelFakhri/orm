@@ -71,14 +71,6 @@ const codecsById: Record<string, Codec> = {
   'sqlite/integer@1': sqliteIntegerCodec,
 };
 
-const targetTypesById: Record<string, readonly string[]> = {
-  'pg/text@1': ['text'],
-  'pg/int4@1': ['int4'],
-  'pg/int@1': ['int4'],
-  'sqlite/text@1': ['text'],
-  'sqlite/integer@1': ['integer'],
-};
-
 const testCodecLookup: CodecLookup = testSqlTypeLookups(
   {},
   {
@@ -86,9 +78,6 @@ const testCodecLookup: CodecLookup = testSqlTypeLookups(
       return codecsById[id];
     },
     descriptorFor: (id: string) => postgresCodecLookup.descriptorFor?.(id),
-    targetTypesFor(id: string): readonly string[] | undefined {
-      return targetTypesById[id];
-    },
     renderOutputTypeFor: () => undefined,
   },
 ).codecLookup;

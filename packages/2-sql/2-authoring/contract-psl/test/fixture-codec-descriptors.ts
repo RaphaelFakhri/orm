@@ -40,29 +40,6 @@ import {
   pgvectorVector,
 } from './fixture-data-types';
 
-const targetTypesByCodecId: Record<string, readonly string[]> = {
-  'pg/text@1': ['text'],
-  'pg/int@1': ['int4'],
-  'pg/bool@1': ['bool'],
-  'pg/int4@1': ['int4'],
-  'pg/int8@1': ['int8'],
-  'pg/float8@1': ['float8'],
-  'pg/numeric@1': ['numeric'],
-  'pg/timestamptz-temporal@1': ['timestamptz'],
-  'pg/jsonb@1': ['jsonb'],
-  'pg/bytea@1': ['bytea'],
-  'sql/char@1': ['character'],
-  'sql/varchar@1': ['character varying'],
-  'pg/int2@1': ['int2'],
-  'pg/float4@1': ['float4'],
-  'pg/timestamp-temporal@1': ['timestamp'],
-  'pg/date-temporal@1': ['date'],
-  'pg/time-temporal@1': ['time'],
-  'pg/timetz@1': ['timetz'],
-  'pg/json@1': ['json'],
-  'pg/vector@1': ['vector'],
-};
-
 const NON_FINITE: ReadonlySet<string> = new Set(['NaN', 'Infinity', '-Infinity']);
 
 const dataTypeByCodecId: Readonly<Record<string, DataTypeId>> = {

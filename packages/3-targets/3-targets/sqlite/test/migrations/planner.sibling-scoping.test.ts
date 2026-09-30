@@ -21,6 +21,7 @@ import { applicationDomainOf } from '@repo/test-utils';
 import { describe, expect, it } from 'vitest';
 import { createSqliteMigrationPlanner } from '../../src/core/migrations/planner';
 import { sqliteCreateNamespace } from '../../src/core/sqlite-unbound-database';
+import { sqliteTestComponents } from '../sqlite-test-types';
 
 const stubLowerer: ExecuteRequestLowerer = {
   lower: () => {
@@ -115,7 +116,7 @@ describe('SQLite planner ownership consultation', () => {
       schema: buildLiveSchema(),
       policy: { allowedOperationClasses: ['additive', 'widening', 'destructive'] },
       fromContract: null,
-      frameworkComponents: [],
+      frameworkComponents: sqliteTestComponents,
       spaceId: APP_SPACE_ID,
       snapshotsImportPath: '../../snapshots',
     });
@@ -137,7 +138,7 @@ describe('SQLite planner ownership consultation', () => {
       schema: buildLiveSchema(),
       policy: { allowedOperationClasses: ['additive', 'widening', 'destructive'] },
       fromContract: null,
-      frameworkComponents: [],
+      frameworkComponents: sqliteTestComponents,
       spaceId: APP_SPACE_ID,
       ownership: ownsOnly(table('app_user'), table('cipher_state')),
       snapshotsImportPath: '../../snapshots',
@@ -158,7 +159,7 @@ describe('SQLite planner ownership consultation', () => {
       schema: buildLiveSchema(),
       policy: { allowedOperationClasses: ['additive'] },
       fromContract: null,
-      frameworkComponents: [],
+      frameworkComponents: sqliteTestComponents,
       spaceId: APP_SPACE_ID,
       snapshotsImportPath: '../../snapshots',
     });
@@ -196,7 +197,7 @@ describe('SQLite planner ownership consultation', () => {
       schema: liveWithDriftColumn,
       policy: { allowedOperationClasses: ['additive', 'widening', 'destructive'] },
       fromContract: null,
-      frameworkComponents: [],
+      frameworkComponents: sqliteTestComponents,
       spaceId: APP_SPACE_ID,
       ownership: ownsOnly(table('app_user')),
       snapshotsImportPath: '../../snapshots',
@@ -222,7 +223,7 @@ describe('SQLite planner ownership consultation', () => {
       schema: buildLiveSchema(),
       policy: { allowedOperationClasses: ['additive', 'widening', 'destructive'] },
       fromContract: null,
-      frameworkComponents: [],
+      frameworkComponents: sqliteTestComponents,
       spaceId: APP_SPACE_ID,
       ownership: ownsOnly(table('app_user'), table('cipher_state'), {
         namespaceId: UNBOUND_NAMESPACE_ID,

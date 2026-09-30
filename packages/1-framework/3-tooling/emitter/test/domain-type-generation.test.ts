@@ -933,7 +933,6 @@ describe('generateValueObjectTypeAliases', () => {
 });
 
 type CodecStub = Codec & {
-  readonly targetTypes?: readonly string[];
   readonly renderOutputType?: (params: Record<string, unknown>) => string | undefined;
 };
 

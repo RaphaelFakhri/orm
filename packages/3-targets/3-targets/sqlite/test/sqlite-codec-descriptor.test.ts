@@ -195,7 +195,6 @@ describe('sqliteCodec', () => {
     expect(descriptor.descriptorKind).toBe('sqlite-codec');
     expect(descriptor.codecId).toBe(genericVectorDescriptor.codecId);
     expect(descriptor.traits).toBe(genericVectorDescriptor.traits);
-    expect(descriptor.targetTypes).toBe(genericVectorDescriptor.targetTypes);
     expect(descriptor.dataType).toBe(fixtureVectorType.id);
     expect(descriptor.isParameterized).toBe(genericVectorDescriptor.isParameterized);
     expect(descriptor.renderOutputType?.({ length: 6 })).toBe('Vector<6>');

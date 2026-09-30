@@ -5,7 +5,11 @@ import {
   profileHash,
   type StorageHashBase,
 } from '@internal/contract/types';
-import type { AnyCodecDescriptor, CodecLookup, DataType } from '@internal/framework-components/codec';
+import type {
+  AnyCodecDescriptor,
+  CodecLookup,
+  DataType,
+} from '@internal/framework-components/codec';
 import { createDataTypeLookup, emptyCodecLookup } from '@internal/framework-components/codec';
 import { UNBOUND_NAMESPACE_ID } from '@internal/framework-components/ir';
 import { sqlDataType } from '@internal/sql-contract/data-type';
@@ -371,7 +375,6 @@ describe('contractToSchemaIR', () => {
 
     expect(result.tables['Post']!.columns['embedding']!.nativeType).toBe('vector(1536)');
   });
-
 
   it('converts literal column defaults', () => {
     const storage = new SqlStorage({
@@ -871,7 +874,6 @@ describe('contractToSchemaIR', () => {
     expect(result.tables['T']!.columns['embedding']!.nativeType).toBe('vector(1536)');
     expect(result.annotations).toBeUndefined();
   });
-
 
   it('handles unique constraints without names', () => {
     const storage = new SqlStorage({

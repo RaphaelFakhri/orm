@@ -113,7 +113,6 @@ test('direct and adapted descriptors preserve codec and factory literals', () =>
   expectTypeOf(directDescriptor.codecId).toEqualTypeOf<'demo/direct-vector@1'>();
   expectTypeOf(adaptedDescriptor.codecId).toEqualTypeOf<'demo/vector@1'>();
   expectTypeOf(adaptedDescriptor.traits).toEqualTypeOf<readonly ['equality']>();
-  expectTypeOf(adaptedDescriptor.targetTypes).toEqualTypeOf<readonly ['vector']>();
 
   expectTypeOf(adaptedDescriptor.factory({ length: 1536 })).toEqualTypeOf<
     (ctx: CodecInstanceContext) => VectorCodec<1536>

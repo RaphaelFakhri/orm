@@ -13,6 +13,7 @@ import { mongoOrm } from '@internal/mongo-orm';
 import { buildSymbolTable } from '@internal/psl-parser';
 import { parse } from '@internal/psl-parser/syntax';
 import { interpretPslDocumentToSqlContract } from '@internal/sql-contract-psl';
+import { mongoDataTypes } from '@internal/target-mongo/data-types';
 import { createPostgresBuiltinCodecLookup } from '@internal/target-postgres/codecs';
 import { postgresDataTypes } from '@internal/target-postgres/data-types';
 import { postgresCreateNamespace } from '@internal/target-postgres/types';
@@ -87,6 +88,7 @@ function interpretMongoPsl(schema: string) {
     symbolTable,
     sources,
     scalarTypeCodecIds: mongoScalarTypeDescriptors,
+    dataTypeLookup: createDataTypeLookup(mongoDataTypes),
     controlMutationDefaults: {
       dataTypeEntries: {},
       defaultFunctionRegistry: new Map(),

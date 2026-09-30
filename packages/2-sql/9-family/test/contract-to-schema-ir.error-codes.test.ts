@@ -92,7 +92,9 @@ describe('contract-to-schema-ir structured error codes', () => {
   });
 
   it('raises CONTRACT.PACK_CONTRIBUTION_INVALID for an empty annotationNamespace', () => {
-    const error = captureError(() => contractToSchemaIR(null, { annotationNamespace: '', ...types }));
+    const error = captureError(() =>
+      contractToSchemaIR(null, { annotationNamespace: '', ...types }),
+    );
     expect(isStructuredError(error)).toBe(true);
     expect(error).toMatchObject({
       code: 'CONTRACT.PACK_CONTRIBUTION_INVALID',

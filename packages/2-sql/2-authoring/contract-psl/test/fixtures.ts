@@ -55,22 +55,12 @@ function testEnumFactory(
   }
   const { codecId, codecSpan } = resolved;
 
-  const nativeType = ctx.codecLookup?.targetTypesFor(codecId)?.[0];
-  if (nativeType === undefined) {
+  const descriptor = ctx.codecLookup?.descriptorFor?.(codecId);
+  const codec = ctx.codecLookup?.get(codecId);
+  if (descriptor === undefined || codec === undefined) {
     diagnostics?.push({
       code: 'PSL_EXTENSION_INVALID_VALUE',
       message: `enum "${block.name}" @@type references unknown codec "${codecId}"`,
-      sourceId,
-      span: codecSpan,
-    });
-    return undefined;
-  }
-
-  const codec = ctx.codecLookup?.get(codecId);
-  if (codec === undefined) {
-    diagnostics?.push({
-      code: 'PSL_EXTENSION_INVALID_VALUE',
-      message: `enum "${block.name}" @@type codec "${codecId}" resolves in targetTypesFor but is absent from codecLookup.get`,
       sourceId,
       span: codecSpan,
     });
@@ -140,7 +130,7 @@ function testEnumFactory(
 
   return enumType(
     block.name,
-    { codecId, nativeType },
+    { codecId },
     ...members.map((m) => ({ name: m.name, value: m.value })),
   );
 }

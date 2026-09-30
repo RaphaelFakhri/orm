@@ -41,17 +41,9 @@ const codecsById: Record<string, Codec> = {
   'pg/int4@1': int4Codec,
 };
 
-const targetTypesById: Record<string, readonly string[]> = {
-  'pg/text@1': ['text'],
-  'pg/int4@1': ['int4'],
-};
-
 const testCodecLookup: CodecLookup = {
   get(id: string): Codec | undefined {
     return codecsById[id];
-  },
-  targetTypesFor(id: string): readonly string[] | undefined {
-    return targetTypesById[id];
   },
   renderOutputTypeFor: () => undefined,
 };

@@ -26,7 +26,7 @@ describe('postgis codecs', () => {
     'has geometry descriptor registered',
     () => {
       expect(postgisGeometryDescriptor.codecId).toBe('pg/geometry@1');
-      expect(postgisGeometryDescriptor.targetTypes).toEqual(['geometry']);
+      expect(postgisGeometryDescriptor.dataType).toBe('postgis/geometry');
     },
     timeouts.default,
   );
