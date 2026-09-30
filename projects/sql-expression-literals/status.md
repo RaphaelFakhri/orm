@@ -131,13 +131,53 @@ Brief: `dispatches/2t-round-2-fixes-brief.md`. Reviews: `slice-reviews/2t-round-
 
 Verification, logs in `wip/2t-round-2-fixes/`: `build`, `typecheck`, `lint`, `lint:deps`, `check:error-reference` (361 codes), `fixtures:check` (tree clean) and `check:upgrade-coverage` pass. `lint:casts` delta 0, `lint:throws` delta 0, `lint:framework-vocabulary` 272 of 272. `test:packages` (`test-packages.log`): 1438 files pass, 6 fail. The three tarball tests fail on the registry refusal. `cli-telemetry` `cli-e2e.test.ts` and `integration.test.ts` timed out and pass alone (`rerun-cli-telemetry.log`); `cli` `migration-cli.exit-scheme.test.ts` failed once and passes alone (`rerun-cli-exit-scheme.log`). Integration `test/authoring test/number-defaults test/date-time-defaults`: 34 files, 230 tests pass (`integration.log`). Manual QA: `manual-qa.log`.
 
+## Slice 2b, dispatches (a) and (b), 2026-09-30
+
+Branch `tml-3288-sql-expression-places`, on top of slice 2t. Not pushed; no pull request. Brief: `dispatches/2b-places-brief.md`. Findings: `dispatches/2b-findings.md`. Commits `7833c3d94f` to `c0abc48222`.
+
+### What was built
+
+- **Dispatch (a)** (`65bfc09b5b`): `BlockSpecContext.dataTypes`. `interpretExtensionBlocks`, `interpretExtensionBlock`, `interpretExtensionBlockAttributes` and the binder put the stack's data types into every block spec and block attribute context. The SQL and Mongo interpreters pass theirs; the language server passes `source.dataTypes ?? EMPTY_DATA_TYPES`. Tests: `block-spec-context.test.ts` in psl-parser (binder and interpreter), contract-psl (SQL provider and interpreter), Mongo contract-psl (provider) and the language server (block key and block attribute completion).
+- **Carried over from 2t**: `ControlDefaultRegistries` is deleted and the context carries `defaultFunctionRegistry` (`0e83ea5e3f`). The `@default` literal arms yield written scalars with spans through the new `writtenScalar` and `writtenList` combinators, `lowerDataTypeDefault` reports at the spans it is given, and `writtenScalar`, `defaultValueExpression` and `listElements` in `psl-column-resolution.ts` are gone (`3196bb9ddd`, `f91b12183f`). `dataTypeValue` offers the exact rewrite only when it reads back, otherwise `write it as a sql literal`, and its doc comment cites ADR 256 (`c2ff027bb5`).
+- **The six places**: `@@index` and `@@check` (`984720a786`), `@@fullTextIndex(where:)` and policy `using`/`withCheck` (`907dfcb6cc`) receive `sql/expression` through `dataTypeValue`; lowering stores the canonical text. Guard test `postgres/test/sql-expression-places.test.ts`. Tests: `interpreter.sql-expression-places.test.ts`, `psl-full-text-index.test.ts`, `psl-policy-predicates.test.ts`, `sql-expression-wire-names.test.ts` (`913b8ba458`).
+- **Printers** (`f4cc10e9c2`): `contract infer` and `contract print` write index, check and policy SQL with `printSqlExpressionLiteral`; `contract infer` skips an object whose SQL does not read back, with the note of design 11.2. `sqlTextReadsBack` and the `canonicalizeTaggedLiteralBody` export (`1560661485`). Test: `psl-infer/infer-sql-expression-literals.test.ts`.
+- **Artefacts**: codemod `scripts/codemods/rewrite-sql-strings.mjs` with its test in `test:scripts` (`a0dbcbde3c`). Supabase pack contract regenerated; `contract.json` and `contract.d.ts` unchanged (`c50b808aa0`). The listed `.prisma` fixtures rewritten with the codemod (`44817e0e58`); `no-policy/contract.prisma` has no plain-string place. Inline PSL in package and integration tests rewritten. New journey `test/integration/test/cli-journeys/sql-expression-literals.e2e.test.ts` (`ce5991c385`).
+- **Docs**: ADR 255 amended (`caa1f38065`). Placeholder fragments `upgrade-instructions/pending/sql-expression-literals-psl/{app,extension}` with the change ids and detection patterns of design 20 (`dee2c93553`).
+
+### Design corrections
+
+- The index and check printers are in `psl-build/index-attributes.ts`; the policy printer function is `buildIntrospectedPolicyBlocks`.
+- `AttributeSpecContext` has no `parsedBlocks`, so `modelSpecContext` copies none.
+- The binder also builds block spec contexts; `interpretExtensionBlock` and `interpretExtensionBlockAttributes` take `dataTypes` too.
+- `contract print` prints the six places too. It now writes `sql` literals but does not check read-back (finding 1, open).
+- The rewrite check in `dataTypeValue` calls `canonicalizeTaggedLiteralBody`, because the parser cannot import `sqlTextReadsBack` (design section 6).
+- The journey test leaves out the `--` comment case until slice 1 lands (finding 2, open).
+- The language server's `@@check(` snippet expectation now reads `check(expression: ${1:expression})`; dispatch (c) makes it a `sql` literal.
+
+### Verification
+
+Logs in the gitignored `wip/2b/`.
+
+- `build` (`build.log`), `typecheck` (`typecheck.log`), `lint` (`lint.log`), `lint:deps` (`lint-deps.log`), `check:error-reference` (`check-error-reference.log`, 361 codes), `fixtures:check` (`fixtures-check.log`, tree clean), `test:scripts` (`test-scripts.log`, 577 pass) and `check:upgrade-coverage` (`check-upgrade-coverage.log`) pass.
+- `lint:casts` delta 0, `lint:throws` delta 0, `lint:framework-vocabulary` 272 of 272.
+- `test:packages` (`test-packages.log`): 1446 files pass, 8 fail. The three tarball tests fail on the registry refusal. `language-server` `server.test.ts` and `completion-provider.test.ts`, `cli-telemetry` `integration.test.ts` and `cli-e2e.test.ts`, and `mongo` `mongo.enum.e2e.test.ts` pass when rerun alone (`rerun-ls.log`, `rerun-cli-telemetry.log`, `rerun-mongo-enum.log`).
+- Integration, run alone (`integration.log`): `test/authoring`, `test/number-defaults`, `test/date-time-defaults`, the new journey, `infer-roundtrip-fidelity*`, `sign-the-database`, `expression-index-migration`, `rls-exact-name-adoption` and the two `psl-print` round trips: 60 files, 342 tests pass.
+- Supabase pack tests (`supabase-tests.log`): 18 files pass. Adapter RLS integration tests (`b8-adapter-rls.log`): pass.
+- Done-condition grep (`grep-prisma.log`, `grep-md.log`): in `.prisma` files only a Prisma 6 Mongo fixture and a Prisma 7 `dbgenerated(expression:)` fixture remain, both out of scope. In ```` ```prisma ```` blocks, `contract-psl/README.md` and `skills/prisma-8/references/{contract,queries-postgres,supabase}.md` remain for dispatch (d).
+
+### Still owed
+
+- Dispatch (c): language-server completion and colouring (design section 12), including the `@@check(` snippet.
+- Dispatch (d): ADR 256, the ADR 129/231/249/234/236/243/244 amendments (ADR 249 still names `ControlDefaultRegistries`), docs and skills from the grep above, the error reference, the upgrade fragments' prose and codemod copies, and the manual QA script for the new messages.
+- Findings 1 and 2 need decisions.
+
 ## Slice order and tickets
 
 | Order | Plan slice | Ticket | State |
 | --- | --- | --- | --- |
 | 1 | 2a: `sql` is the data type `sql/expression` | TML-3296 | PR #30534 open; two review rounds done, all findings fixed |
 | 2 | 2t: an argument declares the data type it receives | TML-3367 | PR #30539 open against the 2a branch; two review rounds done, all findings fixed |
-| 3 | 2b: the six places take `sql` literals | TML-3288 | Waiting for 2t |
+| 3 | 2b: the six places take `sql` literals | TML-3288 | Dispatches (a) and (b) done on `tml-3288-sql-expression-places`; (c) and (d) next |
 | 4 | 3: the TypeScript builder takes `sql` values | TML-3289 | Waiting for 2b |
 | On the side | 1: line comments in raw SQL | TML-3287 | Not started; depends on nothing |
 | Last | 4: migration files write template literals | TML-3290 | Waiting for 1 |
