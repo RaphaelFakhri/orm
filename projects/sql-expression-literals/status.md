@@ -4,6 +4,8 @@ Read this first when you resume the project. It records where the work stands an
 
 ## State on 2026-09-30
 
+- Slice 2t (TML-3367) is on branch `tml-3367-data-type-value`, stacked on the 2a branch. Pull request: https://github.com/prisma/orm/pull/30539 (opened 2026-09-30, base `tml-3296-sql-expression-data-type`; retarget to `main` once #30534 merges). Two review rounds done, every finding fixed. Next: slice 2b (TML-3288) once 2a merges; its "Carried over" list in plan.md holds the deferred items from both 2t reviews.
+
 - Planning is finished. No slice has merged.
 - PR #30349 (the binder) merged on 2026-09-25 and PR #30381 (block specs) on 2026-09-28. Nothing outside the project blocks it.
 - Slice 2a (TML-3296) is implemented on branch `tml-3296-sql-expression-data-type`, which also carries these project files. Two review rounds are done and every finding is fixed. Pull request: https://github.com/prisma/orm/pull/30534 (opened 2026-09-30, CI monitor on). Next: slice 2t (TML-3367) once it merges. [handover.md](handover.md) is the earlier handover and is superseded by this file.
@@ -134,7 +136,7 @@ Verification, logs in `wip/2t-round-2-fixes/`: `build`, `typecheck`, `lint`, `li
 | Order | Plan slice | Ticket | State |
 | --- | --- | --- | --- |
 | 1 | 2a: `sql` is the data type `sql/expression` | TML-3296 | PR #30534 open; two review rounds done, all findings fixed |
-| 2 | 2t: an argument declares the data type it receives | TML-3367 | Implemented on `tml-3367-data-type-value`; two review rounds done, all findings fixed |
+| 2 | 2t: an argument declares the data type it receives | TML-3367 | PR #30539 open against the 2a branch; two review rounds done, all findings fixed |
 | 3 | 2b: the six places take `sql` literals | TML-3288 | Waiting for 2t |
 | 4 | 3: the TypeScript builder takes `sql` values | TML-3289 | Waiting for 2b |
 | On the side | 1: line comments in raw SQL | TML-3287 | Not started; depends on nothing |
