@@ -13,7 +13,6 @@ import { sqlContractCanonicalizationHooks } from '@internal/sql-contract/canonic
 import { SqlStorage } from '@internal/sql-contract/types';
 import { applicationDomainOf } from '@repo/test-utils';
 import { describe, expect, it } from 'vitest';
-import { postgresDataTypeEntries } from '../../src/core/data-type-entries';
 import { PostgresSchema } from '../../src/core/postgres-schema';
 import { inferPostgresPslContract } from '../../src/core/psl-infer/infer-psl-contract';
 import { PostgresDatabaseSchemaNode } from '../../src/core/schema-ir/postgres-database-schema-node';
@@ -558,7 +557,6 @@ function makeRealPostgresStack(
       version: '0.0.1',
       familyId: TARGET_FAMILY,
       targetId: TARGET,
-      authoring: { dataTypes: postgresDataTypeEntries() },
       create: () => ({ familyId: TARGET_FAMILY, targetId: TARGET }),
     },
     extensions: extensions,

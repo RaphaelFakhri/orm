@@ -7,13 +7,11 @@ import {
   createPostgresDefaultFunctionRegistry,
   createPostgresMutationDefaultGeneratorDescriptors,
 } from '../core/control-mutation-defaults';
-import { createPostgresDataTypeEntries } from '../core/data-type-authoring';
 import { postgresAdapterDescriptorMeta } from '../core/descriptor-meta';
 
 const postgresAdapterDescriptor: SqlControlAdapterDescriptor<'postgres'> = {
   ...postgresAdapterDescriptorMeta,
   authoring: {
-    dataTypes: createPostgresDataTypeEntries(),
     valueObjectStorageType: 'Jsonb',
   },
   controlMutationDefaults: {

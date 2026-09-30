@@ -1350,10 +1350,10 @@ describe('providePslCompletionItems', () => {
     const stack = await actualSqlStack();
     const [postgres, sqlite] = await Promise.all([
       importFromPackageRoot<ActualPostgresDataTypesModule>(
-        '../../../3-targets/6-adapters/postgres/src/core/data-type-authoring.ts',
+        '../../../3-targets/3-targets/postgres/src/core/data-type-authoring.ts',
       ),
       importFromPackageRoot<ActualSqliteDataTypesModule>(
-        '../../../3-targets/6-adapters/sqlite/src/core/data-type-authoring.ts',
+        '../../../3-targets/3-targets/sqlite/src/core/data-type-authoring.ts',
       ),
     ]);
     const complete = (

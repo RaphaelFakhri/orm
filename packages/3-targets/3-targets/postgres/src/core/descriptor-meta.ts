@@ -9,6 +9,7 @@ import {
 } from './authoring';
 import { postgresRenderCheckExpressions } from './check-expressions';
 import { postgresQualifyColumnType } from './codecs';
+import { createPostgresDataTypeEntries } from './data-type-authoring';
 import { postgresTargetDescriptorMetaRuntime } from './descriptor-meta-runtime';
 import { postgresIndexTypes } from './index-types';
 import { DEFAULT_NAMESPACE_ID } from './namespace-ids';
@@ -22,6 +23,7 @@ const postgresTargetDescriptorMetaBase = {
   authoring: {
     type: postgresAuthoringTypes,
     field: postgresAuthoringFieldPresets,
+    dataTypes: createPostgresDataTypeEntries(),
     entityTypes: postgresAuthoringEntityTypes,
     pslBlockDescriptors: postgresAuthoringPslBlockDescriptors,
     modelAttributes: postgresAuthoringModelAttributes,

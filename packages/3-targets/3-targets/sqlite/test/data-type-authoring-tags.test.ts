@@ -4,7 +4,7 @@ import {
 } from '@internal/framework-components/authoring';
 import { describe, expect, it } from 'vitest';
 import { createSqliteDataTypeEntries } from '../src/core/data-type-authoring';
-import sqliteAdapterDescriptor from '../src/exports/control';
+import sqliteTargetPack from '../src/exports/pack';
 
 const stubSpan = {
   start: { offset: 0, line: 1, column: 1 },
@@ -51,10 +51,8 @@ describe('createSqliteDataTypeEntries', () => {
     });
   });
 
-  it('is wired as the adapter descriptor authoring entries', () => {
-    expect(Object.keys(sqliteAdapterDescriptor.authoring?.dataTypes ?? {})).toEqual(
-      Object.keys(entries),
-    );
+  it('is wired as the target descriptor authoring entries', () => {
+    expect(Object.keys(sqliteTargetPack.authoring.dataTypes)).toEqual(Object.keys(entries));
   });
 
   it.each([

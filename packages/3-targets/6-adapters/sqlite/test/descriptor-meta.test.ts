@@ -30,6 +30,10 @@ describe('the SQLite adapter descriptor metadata', () => {
   it('contributes no type constructors, because the target contributes them', () => {
     expect(sqliteAdapterDescriptor.authoring).not.toHaveProperty('type');
   });
+
+  it('contributes no data type entries, because the target contributes them', () => {
+    expect(sqliteAdapterDescriptor.authoring).not.toHaveProperty('dataTypes');
+  });
 });
 
 describe('the SQLite control stack codec lookup', () => {
