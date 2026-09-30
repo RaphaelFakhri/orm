@@ -62,7 +62,9 @@ One fact, the binary is gone, and its consequences: what ran it now runs `prisma
 ## Slice-specific done conditions
 
 - From `examples/orm-demo`, `bun node_modules/.bin/prisma deploy --help` and `prisma dev --help` exit 0 and run the workspace family (prove it by a family-side change visible in the output, or by the pin check's externality assertion).
-- The packed `@prisma/composer-cli` declares no `bin`; a boundary search for the command form over the repo excluding `docs/design/` and `node_modules` finds nothing; the new CI check passes on the branch and fails on a planted mention.
+- The packed `@prisma/composer-cli` declares no `bin`; a boundary search for the command form over the repo excluding `docs/design/`, `node_modules`, the dated project records under `.drive/` and the friction report `open-chat-port-friction.md` finds nothing; the new CI check passes on the branch and fails on a planted mention.
+
+Two facts found during implementation, recorded so the spec matches the code: the repository uses the hoisted linker, so the `prisma` bin exists only in the root `node_modules/.bin` and example scripts call it by a repo-relative path, and the override needs a root devDependency on `@prisma/composer-cli` for the hoisted host to find the link. The tarball-resolution script's adversarial shape asserts the family module still imports in the broken tree, since there is no binary to start.
 - `.github/workflows/e2e-deploy.yml` passes on the PR with `prisma deploy` and the destroy script.
 
 ## Open questions

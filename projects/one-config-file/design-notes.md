@@ -49,7 +49,7 @@ What stays: the exact pins on `effect` and its companions, and the CI script `sc
 
 ### The standalone binary
 
-`prisma-composer` is declared by `@prisma/composer-cli`, not `@prisma/composer` as two stale comments say. Its entry `bin.ts`, `cli.ts`, `family/engine-cli.ts`, and the pass-through `orm` section family that `engine-cli.ts` mounts so a shared config loads, are deleted. `destroy` and `log` remain as operations in `ComposerOperations` and on `@prisma/composer/control`, where the public docs already send readers, but no command mounts them.
+`prisma-composer` is declared by `@prisma/composer-cli`, not `@prisma/composer` as two stale comments say. Its entry `bin.ts`, `cli.ts`, `family/engine-cli.ts`, and the pass-through `orm` section family that `engine-cli.ts` mounts so a shared config loads, are deleted. `destroy` and `log` remain as operations on `@prisma/composer/control`, where the public docs already send readers, but no command mounts them, and the family's internal operations seam (`ComposerOperations` and its test double) narrows to `deploy` and `dev`, since nothing else reads it. Inside the repository the examples and CI run the published `prisma` host with a root `pnpm.overrides` entry pointing `@prisma/composer-cli` at the workspace; the hoisted linker means example scripts call the bin by a repo-relative path and CI teardown is a repo-private script over the programmatic `destroy`.
 
 ### Docs and the skill
 
