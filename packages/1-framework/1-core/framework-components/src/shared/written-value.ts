@@ -45,6 +45,38 @@ export type CastRefusal =
     }
   | { readonly kind: 'unreadable'; readonly message: string };
 
+/** A cast-rule refusal worded for a diagnostic. */
+export interface RefusalDescription {
+  readonly code: 'PSL_UNKNOWN_LITERAL_TAG' | 'PSL_VALUE_TYPE_INCOMPATIBLE' | 'PSL_INVALID_LITERAL';
+  readonly message: string;
+}
+
+/** Words a refusal of the cast rule; `forms` says what to write instead, as in `a number`. */
+export function describeRefusal(
+  refusal: ReadRefusal | CastRefusal,
+  forms: string,
+): RefusalDescription {
+  switch (refusal.kind) {
+    case 'unknown-tag':
+      return {
+        code: 'PSL_UNKNOWN_LITERAL_TAG',
+        message: `Unknown literal tag "${refusal.tag}". Known tags: ${refusal.known.join(', ')}.`,
+      };
+    case 'unwritable':
+      return {
+        code: 'PSL_VALUE_TYPE_INCOMPATIBLE',
+        message: `This target has no data type for a ${refusal.syntax} value; write ${forms}`,
+      };
+    case 'unreadable':
+      return { code: 'PSL_INVALID_LITERAL', message: refusal.message };
+    case 'no-cast':
+      return {
+        code: 'PSL_VALUE_TYPE_INCOMPATIBLE',
+        message: `${refusal.receivingType} has no cast from ${refusal.valueType}; write ${forms}`,
+      };
+  }
+}
+
 interface FoundEntry {
   readonly key: DataTypeId;
   readonly entry: DataTypeAuthoringEntry;

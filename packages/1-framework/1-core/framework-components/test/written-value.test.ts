@@ -8,6 +8,7 @@ import {
   castTypedValue,
   type DataTypeSupport,
   describeAdmittedForms,
+  describeRefusal,
   entryForPlain,
   entryForTag,
   knownTags,
@@ -20,7 +21,7 @@ const sqlExpression = dataType('sql/expression', {});
 const text = dataType('t/text', {});
 const bool = dataType('t/bool', {});
 const small = dataType('t/small', {});
-const big = dataType('t/big', { casts: { [small.id]: unchanged } });
+const big = dataType('t/big', { casts: { [small.id]: (value) => `${String(value)}n` } });
 const json = dataType('t/json', {});
 const jsonb = dataType('t/jsonb', { casts: { [json.id]: unchanged } });
 const uuid = dataType('t/uuid', {
@@ -187,9 +188,9 @@ describe('castTypedValue', () => {
     );
   });
 
-  it('casts a value through the cast the receiving type declares', () => {
+  it('casts a value through the cast the receiving type declares, returning the cast value', () => {
     expect(castTypedValue(support, big.id, { type: small.id, value: 7 })).toEqual(
-      ok({ type: big.id, value: 7 }),
+      ok({ type: big.id, value: '7n' }),
     );
   });
 
@@ -227,6 +228,22 @@ describe('admittedTags', () => {
   it('lists nothing for a type the stack does not register', () => {
     expect(admittedTags(support, dataTypeId('x/missing'))).toEqual([]);
   });
+
+  it('lists the own tag first, then the tags of its cast sources', () => {
+    const geo = dataType('t/geo', { casts: { [json.id]: unchanged } });
+    const withGeo: DataTypeSupport = {
+      entries: {
+        ...entries,
+        [geo.id]: {
+          written: { kind: 'tag', tag: 'geo', parse: (value) => value },
+          print: (value) => String(value),
+          documentation: 'A geometry.',
+        },
+      },
+      lookup: createDataTypeLookup([json, geo]),
+    };
+    expect(admittedTags(withGeo, geo.id)).toEqual(['geo', 'json']);
+  });
 });
 
 describe('describeAdmittedForms', () => {
@@ -254,5 +271,41 @@ describe('describeAdmittedForms', () => {
 
   it('says a type with no written form has none', () => {
     expect(describeAdmittedForms(support, dataTypeId('x/missing'))).toBe('no written form');
+  });
+});
+
+describe('describeRefusal', () => {
+  it('words an unknown tag with the known tags', () => {
+    expect(
+      describeRefusal({ kind: 'unknown-tag', tag: 'pg.sql', known: ['sql', 'json'] }, 'a number'),
+    ).toEqual({
+      code: 'PSL_UNKNOWN_LITERAL_TAG',
+      message: 'Unknown literal tag "pg.sql". Known tags: sql, json.',
+    });
+  });
+
+  it('words a syntax the target has no data type for, with the forms to write', () => {
+    expect(describeRefusal({ kind: 'unwritable', syntax: 'boolean' }, 'a number')).toEqual({
+      code: 'PSL_VALUE_TYPE_INCOMPATIBLE',
+      message: 'This target has no data type for a boolean value; write a number',
+    });
+  });
+
+  it('words an unreadable value by its message', () => {
+    expect(
+      describeRefusal({ kind: 'unreadable', message: '"a" is not a UUID.' }, 'a number'),
+    ).toEqual({ code: 'PSL_INVALID_LITERAL', message: '"a" is not a UUID.' });
+  });
+
+  it('words a missing cast with the forms to write', () => {
+    expect(
+      describeRefusal(
+        { kind: 'no-cast', receivingType: big.id, valueType: text.id, casts: [small.id] },
+        'a number',
+      ),
+    ).toEqual({
+      code: 'PSL_VALUE_TYPE_INCOMPATIBLE',
+      message: 't/big has no cast from t/text; write a number',
+    });
   });
 });
