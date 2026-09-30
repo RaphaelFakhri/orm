@@ -18,3 +18,6 @@ After dispatch f: `/drive-code-review` without the walkthrough, fix its findings
 ## Open items
 
 - TML-3253 has not merged as of 2026-09-30, so design 3.7 does not apply to this slice; TML-3253 uses `resolveReportedSqlType` when it lands.
+- Dispatch a accepted on 2026-09-30 after two rounds. The golden planner test covers all 340 committed SQL contracts and two fixture contracts with every column type shape.
+- Dispatch e: the golden for `snapshot-read-shapes/codec-instance.json` records a planner error that quotes the `expandNativeType` hook's message. Deleting the hook changes that message and not any DDL; re-record that one golden in dispatch e. This is not a halt.
+- Dispatch c must register `sql/char@1` and `sql/varchar@1` on SQLite (design 2.7 item 9) before dispatch e makes the planner read the codec's data type, or the SQLite goldens break.
