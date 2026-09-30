@@ -52,7 +52,7 @@ Existing Prisma 7 users must be able to upgrade. They reacted badly to the relea
 | Correct the other documents that contradict the code | Listed in [query-feature-gaps.md](query-feature-gaps.md). |
 | Decide what project the ORM scenario of the eval builds, then build the scenario | It is the GA test for the new user. It runs without a deploy, against every database. |
 | Design how a query leaves fields out, the Prisma 8 replacement for `omit` | Design work. If it is not built by GA, a clear plan must exist. |
-| Large `IN` lists: raise a clear error before the query is sent | Prisma 8 does not split them, and will not. On PostgreSQL an oversized query drops the connection today. Lowest priority on this list. |
+| Large `IN` lists: not a task (Will, 2026-09-30) | In Prisma 7 the problem came from joining in memory. Prisma 8 joins in the database, so it does not create large `IN` lists itself. Earlier text: Prisma 8 does not split them, and will not. On PostgreSQL an oversized query drops the connection today. Lowest priority on this list. |
 
 ## After the plan is finished
 
@@ -64,7 +64,7 @@ Update every record that contradicts the code. Known so far: the non-portable an
 
 1. Prisma 8 does not build implicit behavior that the user did not ask for. Automatic batching of lookups is the example.
 2. Every design accounts for all four databases, even when only PostgreSQL ships the feature at GA. Take this as given. Do not ask Will to confirm it.
-3. Everything in a contract can be verified against the database. Nothing in a contract is opaque or untyped.
+3. Everything Prisma 8 manages can be verified against the database. Reopened 2026-09-30: a column Prisma 8 does not manage may be declared with control policy `external`, possibly with an unknown type. See the upgrade path section.
 4. The Prisma 7 contract source describes a database. It does not commit Prisma 8 to reproducing Prisma 7 query behavior.
 
 ## Upgrade path: what Prisma 8 must describe
@@ -74,11 +74,11 @@ Update every record that contradicts the code. Known so far: the non-portable an
 | Views | After GA. They are a preview feature in Prisma 7. |
 | Native types with no codec: `citext`, `bit`, `varbit`, `xml`, `oid` | Add codecs (TML-3270). |
 | `money` | Can get a codec. Low priority: the PostgreSQL `money` type is considered bad practice. |
-| `Unsupported("...")` columns, or any opaque or untyped column | Never. A column the contract cannot describe cannot be verified. TML-3271 is canceled. A column type Prisma 8 cannot describe needs a codec. |
+| `Unsupported("...")` columns | Reopened 2026-09-30 after a discussion with Serhii: Prisma 7 contracts need a way to state such columns, and legacy columns need a way to be managed outside Prisma 8. Proposal: `@control(external)` on the column, with an `unknown` type when no codec fits. Not decided. The earlier decision follows. Never. A column the contract cannot describe cannot be verified. TML-3271 is canceled. A column type Prisma 8 cannot describe needs a codec. |
 | `relationMode = "prisma"` | Never. Prisma 8 will not imitate foreign keys in the client. The upgrade guide tells those users to add foreign keys. |
 | Referential actions on MongoDB | After GA. |
 
-When `contract infer` or the Prisma 7 source meets a column type with no codec, it fails and names the column and the missing codec. It does not leave the column out. Today `contract infer` prints `Unsupported(...)` instead, which must change.
+Superseded if the external-column proposal is adopted: when `contract infer` or the Prisma 7 source meets a column type with no codec, it fails and names the column and the missing codec. It does not leave the column out. Today `contract infer` prints `Unsupported(...)` instead, which must change.
 
 Stopping point for the open upgrade issues: every urgent and high issue is closed before GA. Medium and low issues may remain. The issues are in two Linear projects: "Prisma 7 contract source: gaps and defects" and "Contract print and Prisma 7 source follow-ups".
 
@@ -88,7 +88,7 @@ Transaction options: isolation levels, timeouts, and transactions inside transac
 
 ## Query features: build when there is time
 
-`increment`, `decrement`, and `firstOrThrow` on the query.
+The needs that `increment`, `decrement` and `firstOrThrow` met in Prisma 7. Prisma 8 need not copy their API (Will, 2026-09-30). Expressions in updates meet the first two. `firstOrThrow` is a separate need.
 
 ## Query features: high priority
 

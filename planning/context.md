@@ -106,3 +106,40 @@ Rule for choosing the next piece of work. Stop at the first yes:
 - [open-projects.md](open-projects.md) is the first inventory. Parts of it are out of date, such as its list of stale issues and its statement that ADR 254 is not started.
 - [query-feature-gaps.md](query-feature-gaps.md) was gathered by two agents. Four of its source records were wrong. Check the code before acting on a line.
 - States in [plan.md](plan.md) are as of 2026-09-29. Whether prisma/orm#30381 has merged is not rechecked.
+
+## Columns Prisma 8 does not manage (added 2026-09-30)
+
+Proposed by Will and Serhii: Prisma 7 contracts need a way to state `Unsupported(...)` columns, and legacy columns need a way to be managed outside Prisma 8, through control policy. Syntax ideas they considered:
+
+```prisma
+model User {
+  name      String
+  legacy_id unknown @control(external)
+}
+```
+
+```prisma
+model User {
+  name String
+  sql {
+    legacy_id unknown @control(external)
+  }
+}
+```
+
+```prisma
+model User {
+  name String
+}
+
+table User {
+  legacy_id unknown @control(external)
+}
+```
+
+Facts read on `main`:
+
+- The contract IR already stores a control policy on each column (`storage-column.ts`) and each table.
+- PSL has only a model-level `@@control`. There is no field-level `@control`.
+- A model whose control policy is not `managed` gets no derived CHECK constraints (`psl-field-resolution.ts`). This bears on the enum membership check during adoption.
+- The TypeScript contract builder describes table details in a `.sql({ ... })` section on the model, apart from the fields. A `sql { }` block in a PSL model would mirror it.

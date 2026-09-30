@@ -29,10 +29,11 @@ Test: an existing Prisma 7 database can be signed by Prisma 8.
 | 2 | Baseline command | Must | Not tracked | |
 | 3 | Upgrade guide rewrite | Must | Not tracked | 2 |
 | 4 | Codecs for `citext`, `bit`, `varbit`, `xml`, `oid` (TML-3270) | Must | Backlog | |
-| 5 | `contract infer` fails on a column type with no codec, and names it | Must | Not tracked | |
-| 6 | Medium and low upgrade issues | Later | Backlog | |
-| 7 | `money` codec | Later | Backlog | |
-| 8 | Views | Later | | |
+| 5 | Design: columns Prisma 8 does not manage, including columns of unknown type, in PSL and the Prisma 7 source (proposed: `@control(external)` on a column, and an `unknown` type) | Must | Proposed 2026-09-30. Not designed. The contract IR already has a control policy per column. PSL only has `@@control` per model. | Design |
+| 6 | Adopting a Prisma 7 database without changing it: the enum membership check must not require a database change before cutover | Must | Not designed. Today a model with a non-managed control policy gets no derived checks, which may be the answer. | Design |
+| 7 | Medium and low upgrade issues | Later | Backlog | |
+| 8 | `money` codec | Later | Backlog | |
+| 9 | Views | Later | | |
 
 ## Stream 3: Editor and tools
 
@@ -41,6 +42,7 @@ Test: an existing Prisma 7 database can be signed by Prisma 8.
 | 1 | Multi-file PSL | Must | 2 of 3 parts merged. Last part in prisma/orm#30456. | Review |
 | 2 | Emulator controls in the `prisma` CLI: start, stop, list, reset | Must | Not tracked | |
 | 3 | VS Code extension: formatter without the CLI installed, go-to-definition, multi-file PSL, emulator controls | Must | In progress | 1 and 2 |
+| 4 | Review how the VS Code extension handles local and remote Prisma Postgres instances, and make it match the current CLI and its emulators | Must | Not started | 2 |
 
 ## Stream 4: Query features
 
@@ -51,8 +53,8 @@ Everything here is additive, so nothing here can block a breaking change.
 | 1 | Transaction options: isolation levels, timeouts, nested transactions | Must | Not designed | Design |
 | 2 | Nested writes on relations: `update`, `delete`, `upsert`, `set`, `connectOrCreate` (TML-2781) | Aim | Not started. Large. | Spec |
 | 3 | Design the replacement for `omit` | Must (design only) | Not started | |
-| 4 | Clear error for large `IN` lists | Aim | Not started | |
-| 5 | `increment`, `decrement`, `firstOrThrow` on the query | Later, or when there is time | Not started | |
+| 4 | Expressions in updates, which cover what `increment` and `decrement` did in Prisma 7 | When there is time | Not designed. `update` takes plain values only today. | |
+| 5 | A query that fails when nothing matches, which covers what `firstOrThrow` did in Prisma 7 | When there is time | Exists only as `.all().firstOrThrow()`, which reads every row | |
 | 6 | JSON filters and list filters | Later | prisma/orm#29834 stalled | |
 
 ## Stream 5: Docs and the new user's first hour
@@ -91,4 +93,4 @@ Test: the getting-started eval passes, in few steps and with no workarounds.
 
 ## Never
 
-`$extends`, the fluent relation API, `P2002`-style error codes, `Prisma.skip`, `omit` under that name, automatic batching, relation load strategy, `Unsupported(...)` or any opaque column, `relationMode = "prisma"`, soft delete, validation rules, lifecycle hooks, read replicas.
+`$extends`, the fluent relation API, `P2002`-style error codes, `Prisma.skip`, `omit` under that name, automatic batching, relation load strategy, `relationMode = "prisma"`, splitting large `IN` lists, soft delete, validation rules, lifecycle hooks, read replicas.
