@@ -65,6 +65,7 @@ import type {
   PslSources,
 } from '@internal/psl-parser/syntax';
 import { FunctionCallAst } from '@internal/psl-parser/syntax';
+import { SQL_EXPRESSION_DATA_TYPE_ID } from '@internal/sql-contract/sql-expression';
 import { blindCast } from '@internal/utils/casts';
 import { notOk } from '@internal/utils/result';
 import { removedDbgeneratedMessage } from './default-function-registry';
@@ -281,17 +282,28 @@ function scalarDefaultArms(
 ): readonly [ArgType<DefaultArgValue, AttributeCtx>, ...ArgType<DefaultArgValue, AttributeCtx>[]] {
   // One arm per distinct documentation, so each tag's completion and signature help carries the
   // text of the tag it names rather than every registered tag's text run together.
-  const tagsByDocumentation = new Map<string, string[]>();
-  for (const entry of Object.values(dataTypes.entries)) {
-    if (entry.written.kind !== 'tag') continue;
-    const tags = tagsByDocumentation.get(entry.documentation);
-    if (tags === undefined) tagsByDocumentation.set(entry.documentation, [entry.written.tag]);
-    else tags.push(entry.written.tag);
-  }
-  const tagArms = () =>
-    [...tagsByDocumentation].map(([documentation, tags]) => taggedLiteral(tags, { documentation }));
-  // A list element may itself be a tagged literal, so `Jsonb[] @default([json`{}`])` parses.
-  const literal = () => oneOf(str(), numLiteral(), bool(), ...tagArms());
+  const tagArms = (admits: (dataType: string) => boolean) => {
+    const tagsByDocumentation = new Map<string, string[]>();
+    for (const [dataType, entry] of Object.entries(dataTypes.entries)) {
+      if (entry.written.kind !== 'tag' || !admits(dataType)) continue;
+      const tags = tagsByDocumentation.get(entry.documentation);
+      if (tags === undefined) tagsByDocumentation.set(entry.documentation, [entry.written.tag]);
+      else tags.push(entry.written.tag);
+    }
+    return [...tagsByDocumentation].map(([documentation, tags]) =>
+      taggedLiteral(tags, { documentation }),
+    );
+  };
+  const anyTag = () => tagArms(() => true);
+  // A list element may itself be a tagged literal, so `Jsonb[] @default([json`{}`])` parses. A
+  // SQL expression is never a list element, so the list does not offer its tag.
+  const literal = () =>
+    oneOf(
+      str(),
+      numLiteral(),
+      bool(),
+      ...tagArms((dataType) => dataType !== SQL_EXPRESSION_DATA_TYPE_ID),
+    );
   const listArm = () => list(literal(), { label: `list of (${literal().label})` });
   const funcArms = [...registries.defaultFunctionRegistry.entries()].map(([name, entry]) =>
     funcCall(
@@ -305,8 +317,8 @@ function scalarDefaultArms(
   // A scalar column takes a list literal too: a codec such as `pg/vector@1` declares a list of
   // element types, and its value is written as a PSL list on a column that is not a list.
   return isList
-    ? [listArm(), ...funcArms, ...tagArms()]
-    : [str(), numLiteral(), bool(), ...funcArms, ...tagArms(), listArm()];
+    ? [listArm(), ...funcArms, ...anyTag()]
+    : [str(), numLiteral(), bool(), ...funcArms, ...anyTag(), listArm()];
 }
 
 /**

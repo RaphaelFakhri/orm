@@ -77,7 +77,7 @@ describe('taggedLiteral', () => {
     });
   });
 
-  it('accepts a tag it does not list, leaving the tag check to lowering', () => {
+  it('accepts a tag it does not list, leaving the tag check to its consumer', () => {
     const { expr, ctx } = argOf('sql`x`');
     expect(type.parse(expr, ctx)).toMatchObject({
       ok: true,
@@ -108,7 +108,7 @@ describe('taggedLiteral', () => {
     });
   });
 
-  it('returns a failed canonicalization for lowering to report', () => {
+  it('returns a failed canonicalization for its consumer to report', () => {
     const nul = argOf('sql`a\0b`');
     expect(type.parse(nul.expr, nul.ctx)).toMatchObject({
       ok: true,

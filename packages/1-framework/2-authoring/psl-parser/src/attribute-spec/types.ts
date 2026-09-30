@@ -234,7 +234,7 @@ export type StrArgType<
 
 /**
  * A tagged literal argument as parsed: its tag, the canonicalization of its string literal, and its
- * span. Neither the tag nor the canonicalization has been checked; lowering does both.
+ * span. Neither the tag nor the canonicalization has been checked; the consumer checks both.
  */
 export interface ParsedTaggedLiteral {
   readonly tag: string;

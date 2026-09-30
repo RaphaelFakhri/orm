@@ -327,6 +327,22 @@ describe('sqlAttributeSpecs.field.default', () => {
     ]);
   });
 
+  it('offers every tag but sql as a list element', () => {
+    const listCtx = fieldSpecContext({
+      symbols: symbolTable,
+      model,
+      field: field(model, 'tags'),
+      controlMutationDefaults,
+      dataTypes: fixtureDataTypeSupport,
+    });
+    const value = oneOfMetadata(positionalType(sqlAttributeSpecs.field.default(listCtx)));
+    const element = oneOfMetadata(listMetadata(value.alternatives[0]).of);
+    expect(
+      element.alternatives.filter((alt) => alt.kind === 'taggedLiteral').map((alt) => alt.tags),
+    ).toEqual([['json']]);
+    expect(element.label).toBe('string | number | boolean | json`...`');
+  });
+
   it('exposes enum default alternatives and empty-enum rejection metadata', () => {
     const enumProject = project(
       'enum Priority {\n  Low\n  High\n}\nmodel Post {\n  id Int @id\n  priority Priority\n}\n',

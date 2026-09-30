@@ -60,9 +60,22 @@ export type ReadDefaultResult =
   | { readonly ok: true; readonly value: JsonValue }
   | { readonly ok: false; readonly refusal: DefaultRefusal };
 
+/**
+ * Where a refused default is reported: a cast-rule refusal at the written value, or the element of
+ * a written list it is about; a refusal only defaults have at the `@default` attribute.
+ */
+export type DefaultRefusalPlace =
+  | { readonly kind: 'written-value'; readonly elementIndex: number | undefined }
+  | { readonly kind: 'attribute' };
+
 export type LowerDefaultResult =
   | { readonly ok: true; readonly value: JsonValue }
-  | { readonly ok: false; readonly code: string; readonly message: string };
+  | {
+      readonly ok: false;
+      readonly code: string;
+      readonly message: string;
+      readonly place: DefaultRefusalPlace;
+    };
 
 function messageOf(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
@@ -289,43 +302,47 @@ export function lowerDataTypeDefault(input: {
   if (read.ok) return read;
   const { refusal } = read;
   const where = `Field "${input.fieldPath}"${at(refusal.elementIndex)}`;
+  const atWrittenValue: DefaultRefusalPlace = {
+    kind: 'written-value',
+    elementIndex: refusal.elementIndex,
+  };
+  const refuse = (code: string, message: string, place: DefaultRefusalPlace) => ({
+    ok: false as const,
+    code,
+    message,
+    place,
+  });
   switch (refusal.kind) {
     case 'unreadable':
-      return {
-        ok: false,
-        code: 'PSL_INVALID_LITERAL',
-        message: `${where}: ${refusal.message}`,
-      };
+      return refuse('PSL_INVALID_LITERAL', `${where}: ${refusal.message}`, atWrittenValue);
     case 'unknown-tag':
-      return {
-        ok: false,
-        code: 'PSL_UNKNOWN_LITERAL_TAG',
-        message: `Unknown literal tag "${refusal.tag}". Known tags: ${refusal.known.join(', ')}.`,
-      };
+      return refuse(
+        'PSL_UNKNOWN_LITERAL_TAG',
+        `Unknown literal tag "${refusal.tag}". Known tags: ${refusal.known.join(', ')}.`,
+        atWrittenValue,
+      );
     case 'unwritable':
-      return {
-        ok: false,
-        code: 'PSL_VALUE_TYPE_INCOMPATIBLE',
-        message: `${where}: this target has no data type for a ${refusal.syntax} value`,
-      };
+      return refuse(
+        'PSL_VALUE_TYPE_INCOMPATIBLE',
+        `${where}: this target has no data type for a ${refusal.syntax} value`,
+        atWrittenValue,
+      );
     case 'not-a-list':
-      return {
-        ok: false,
-        code: PSL_DEFAULT_LIST_EXPECTED,
-        message: `${where}: this column holds a list, so its default is a list literal, as in [1, 2]`,
-      };
+      return refuse(
+        PSL_DEFAULT_LIST_EXPECTED,
+        `${where}: this column holds a list, so its default is a list literal, as in [1, 2]`,
+        { kind: 'attribute' },
+      );
     case 'no-cast':
-      return {
-        ok: false,
-        code: 'PSL_VALUE_TYPE_INCOMPATIBLE',
-        message: `${where}: ${refusal.columnType} has no cast from ${refusal.valueType}; ${describeCasts(refusal.casts)}`,
-      };
+      return refuse(
+        'PSL_VALUE_TYPE_INCOMPATIBLE',
+        `${where}: ${refusal.columnType} has no cast from ${refusal.valueType}; ${describeCasts(refusal.casts)}`,
+        atWrittenValue,
+      );
     case 'undecodable':
-      return {
-        ok: false,
-        code: PSL_INVALID_DEFAULT_LITERAL,
-        message: `${where}: ${refusal.message}`,
-      };
+      return refuse(PSL_INVALID_DEFAULT_LITERAL, `${where}: ${refusal.message}`, {
+        kind: 'attribute',
+      });
   }
 }
 

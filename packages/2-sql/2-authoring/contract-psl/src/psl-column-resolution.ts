@@ -54,7 +54,12 @@ import {
   reportUncomposedNamespace,
   reportUnknownFieldPreset,
 } from '@internal/psl-parser/interpret';
-import type { PslSources } from '@internal/psl-parser/syntax';
+import {
+  ArrayLiteralAst,
+  type ExpressionAst,
+  type FieldAttributeAst,
+  type PslSources,
+} from '@internal/psl-parser/syntax';
 import {
   SQL_EXPRESSION_DATA_TYPE_ID,
   SQL_EXPRESSION_TAG,
@@ -64,7 +69,7 @@ import { checkSqlDefaultBody, reservedSqlDefaultBody } from '@internal/sql-contr
 import type { AuthoredColumnDefault } from '@internal/sql-contract-ts/contract-builder';
 import { InternalError } from '@internal/utils/internal-error';
 import { contractError } from './contract-errors';
-import { lowerDataTypeDefault } from './data-type-default';
+import { type DefaultRefusalPlace, lowerDataTypeDefault } from './data-type-default';
 import { lowerDefaultFunctionWithRegistry } from './default-function-registry';
 
 import {
@@ -589,6 +594,19 @@ function readTaggedLiteral(
   return { ok: true, written: { kind: 'tag', tag: literal.tag, text: canonicalization.text } };
 }
 
+function defaultValueExpression(node: FieldAttributeAst): ExpressionAst | undefined {
+  const args = [...(node.argList()?.args() ?? [])];
+  const argument =
+    args.find((arg) => arg.colon() === undefined) ??
+    args.find((arg) => arg.name()?.name() === 'value');
+  return argument?.value();
+}
+
+function listElements(expression: ExpressionAst | undefined): readonly ExpressionAst[] {
+  const list = expression === undefined ? undefined : ArrayLiteralAst.cast(expression.syntax);
+  return list === undefined ? [] : [...list.elements()];
+}
+
 export function lowerDefaultForField(input: {
   readonly modelName: string;
   readonly fieldName: string;
@@ -631,6 +649,20 @@ export function lowerDefaultForField(input: {
   });
   if (interpreted === undefined) return {};
   const value = interpreted.value;
+  const valueExpression = defaultValueExpression(node);
+  const refusalLocation = (place: DefaultRefusalPlace) => {
+    if (place.kind === 'attribute') return source.at();
+    const expression =
+      place.elementIndex === undefined
+        ? valueExpression
+        : listElements(valueExpression)[place.elementIndex];
+    if (expression === undefined) {
+      throw new InternalError(
+        `Field "${input.modelName}.${input.fieldName}": the refused @default value has no written expression.`,
+      );
+    }
+    return diagnosticSource(input.sources, expression.syntax).at();
+  };
   const readAsLiteral = (written: WrittenValue) => {
     const lowered = lowerDataTypeDefault({
       written,
@@ -644,7 +676,7 @@ export function lowerDefaultForField(input: {
       input.diagnostics.push({
         code: lowered.code,
         message: lowered.message,
-        ...source.at(),
+        ...refusalLocation(lowered.place),
       });
       return {};
     }
