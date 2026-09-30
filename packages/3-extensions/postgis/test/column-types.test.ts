@@ -29,14 +29,5 @@ describe('postgis column-types', () => {
         typeParams: { srid: 3857 },
       });
     });
-
-    it.each([0, -1, 1.5])('refuses the srid %s with the data type parameter error', (srid) => {
-      expect(() => geometry({ srid })).toThrow(
-        expect.objectContaining({
-          code: 'CONTRACT.TYPE_PARAMS_INVALID',
-          meta: { dataType: 'postgis/geometry', parameters: ['srid'] },
-        }),
-      );
-    });
   });
 });

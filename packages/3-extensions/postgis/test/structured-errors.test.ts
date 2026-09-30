@@ -1,8 +1,7 @@
 import { isStructuredError } from '@internal/utils/structured-error';
 import { describe, expect, it } from 'vitest';
-import { pgGeometryColumn, postgisGeometryDescriptor } from '../src/core/codecs';
+import { postgisGeometryDescriptor } from '../src/core/codecs';
 import type { Geometry } from '../src/core/geojson';
-import { geometry } from '../src/exports/column-types';
 import { bboxPolygon, point, polygon } from '../src/exports/geojson';
 
 type AsyncGeometryCodec = {
@@ -84,26 +83,6 @@ describe('geometry helpers raise POSTGIS.GEOMETRY_INVALID', () => {
       code: 'POSTGIS.GEOMETRY_INVALID',
       message: 'bboxPolygon: inverted bbox [10, 0, 0, 10] (expected minX <= maxX and minY <= maxY)',
       meta: { helper: 'bboxPolygon', reason: 'inverted bbox' },
-    });
-  });
-});
-
-describe('column helpers raise CONTRACT.TYPE_PARAMS_INVALID', () => {
-  it('geometry() with srid 0', () => {
-    const error = capture(() => geometry({ srid: 0 }));
-    expect(isStructuredError(error)).toBe(true);
-    expect(error).toMatchObject({
-      code: 'CONTRACT.TYPE_PARAMS_INVALID',
-      meta: { dataType: 'postgis/geometry', parameters: ['srid'] },
-    });
-  });
-
-  it('pgGeometryColumn() with a non-integer srid', () => {
-    const error = capture(() => pgGeometryColumn({ srid: 1.5 }));
-    expect(isStructuredError(error)).toBe(true);
-    expect(error).toMatchObject({
-      code: 'CONTRACT.TYPE_PARAMS_INVALID',
-      meta: { dataType: 'postgis/geometry', parameters: ['srid'] },
     });
   });
 });

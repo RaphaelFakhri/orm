@@ -66,9 +66,9 @@ changes:
         - '\bconst\s+[\w$]*[pP]aramsSchema\s*=\s*(?:arktype|type)\s*\('
   - id: column-helper-checks-data-type-params
     summary: |
-      A column helper that checks its arguments against bounds of its own checks them against its
-      data type instead, with `validateSqlTypeParams(dataType, params)` from
-      `@internal/sql-contract/data-type`, which raises `CONTRACT.TYPE_PARAMS_INVALID`.
+      A column helper no longer checks its arguments against bounds of its own. Delete the check:
+      building the contract checks every column's parameters against its data type and raises
+      `CONTRACT.TYPE_PARAMS_INVALID`.
     detection:
       glob: "**/*.{ts,mts,cts}"
       matches:
@@ -375,7 +375,7 @@ A codec with keys of its own sets `paramsSchema` to `dataType.params.and(ownKeys
 
 ## `column-helper-checks-data-type-params`
 
-Replace the helper's own range check with a call that checks the arguments against the data type, and say so in its `@throws`:
+Delete the helper's own range check and the `@throws` tag that describes it, with the blank comment line directly before the tag when there is one. The helper returns its descriptor unchecked:
 
 ```ts
 // before
@@ -384,6 +384,7 @@ import { pgVectorError } from '../core/errors';
 
 /**
  * …
+ * @returns A column type descriptor with `typeParams.length` set
  * @throws `CONTRACT.ARGUMENT_INVALID` if length is not an integer in the range [1, VECTOR_MAX_DIM]
  */
 export function vector<N extends number>(length: N) /* : … */ {
@@ -394,36 +395,18 @@ export function vector<N extends number>(length: N) /* : … */ {
 }
 
 // after
-import { validateSqlTypeParams } from '@internal/sql-contract/data-type';
 import { VECTOR_CODEC_ID } from '../core/constants';
-import { pgvectorVector } from '../core/data-types';
 
 /**
  * …
- * @throws `CONTRACT.TYPE_PARAMS_INVALID` if the `pgvector/vector` data type does not accept `length`
+ * @returns A column type descriptor with `typeParams.length` set
  */
 export function vector<N extends number>(length: N) /* : … */ {
-  validateSqlTypeParams(pgvectorVector, { length });
   return { /* … */ } as const;
 }
 ```
 
-In the `@throws` text, keep its layout and replace only the code and the clause that describes the bound, which becomes "the `<data type id>` data type does not accept `<parameter>`". PostGIS's `geometry({ srid })` and `pgGeometryColumn({ srid })` become:
-
-```ts
-/**
- * …
- * @throws If the `postgis/geometry` data type does not accept `srid`
- * (structured `CONTRACT.TYPE_PARAMS_INVALID`).
- */
-export function geometry<S extends number>(options: { readonly srid: S }) /* : … */ {
-  const { srid } = options;
-  validateSqlTypeParams(postgisGeometry, { srid });
-  return { /* … */ } as const;
-}
-```
-
-The error's `meta` is `{ dataType, parameters }`, naming the parameters at fault.
+PostGIS's `geometry({ srid })` and `pgGeometryColumn({ srid })` lose their `srid` checks the same way and keep `const { srid } = options;`. A contract whose column has parameters its data type refuses, such as `vector(0)` or `geometry({ srid: 0 })`, fails when it is built, with `CONTRACT.TYPE_PARAMS_INVALID` and the meta `{ dataType, parameters, modelName, fieldName }`.
 
 ## `type-constructor-templates-lose-native-type`
 

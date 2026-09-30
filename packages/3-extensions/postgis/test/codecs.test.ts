@@ -184,15 +184,6 @@ describe('postgis codecs', () => {
       expect(spec.nativeType).toBe('geometry');
       expect(spec.typeParams).toEqual({ srid: 4326 });
     });
-
-    it.each([0, -1, 1.5])('refuses the srid %s with the data type parameter error', (srid) => {
-      expect(() => pgGeometryColumn({ srid })).toThrow(
-        expect.objectContaining({
-          code: 'CONTRACT.TYPE_PARAMS_INVALID',
-          meta: { dataType: 'postgis/geometry', parameters: ['srid'] },
-        }),
-      );
-    });
   });
 
   describe('paramsSchema', () => {

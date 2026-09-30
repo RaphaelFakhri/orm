@@ -23,9 +23,11 @@ changes:
   - id: column-helpers-raise-type-params-invalid
     summary: |
       pgvector's `vector(length)` and PostGIS's `geometry({ srid })` and `pgGeometryColumn({ srid })`
-      check their arguments against the data type. An argument outside its bounds now throws
-      `CONTRACT.TYPE_PARAMS_INVALID` instead of `CONTRACT.ARGUMENT_INVALID`, and `srid: 0` is
-      refused when the contract is written, not later when a migration is planned.
+      no longer check their arguments. Building the contract checks every column's parameters
+      against its data type: an argument outside its bounds now fails `defineContract` with
+      `CONTRACT.TYPE_PARAMS_INVALID` instead of failing the helper call with
+      `CONTRACT.ARGUMENT_INVALID`, and `srid: 0` is refused when the contract is built, not later
+      when a migration is planned.
     detection:
       glob: "**/*.{ts,mts,cts}"
       matches:
@@ -64,7 +66,7 @@ readonly 'sql/varchar@1': { readonly output: 'sql/varchar@1'; readonly nullable:
 
 ## `column-helpers-raise-type-params-invalid`
 
-Code that catches the error from these helpers by its code checks the new code:
+The error now comes from `defineContract`, not from the helper call. Code that catches it by its code checks the new code, around the contract build:
 
 ```ts
 // before
@@ -74,4 +76,6 @@ if (error.code === 'CONTRACT.ARGUMENT_INVALID') { /* … */ }
 if (error.code === 'CONTRACT.TYPE_PARAMS_INVALID') { /* … */ }
 ```
 
-The error's `meta` is `{ dataType, parameters }`, for example `{ dataType: 'postgis/geometry', parameters: ['srid'] }`, in place of `helperPath`, `expected` and `received`. A contract that passes `srid: 0` now fails when it is built; PostgreSQL refuses an SRID below 1, so such a column never migrated. Use a real SRID such as `4326`, or `geometryColumn` for a column with no SRID.
+The error's `meta` is `{ dataType, parameters, modelName, fieldName }`, for example `{ dataType: 'postgis/geometry', parameters: ['srid'], modelName: 'Place', fieldName: 'location' }`, in place of `helperPath`, `expected` and `received`. A contract that passes `srid: 0` now fails when it is built; PostgreSQL refuses an SRID below 1, so such a column never migrated. Use a real SRID such as `4326`, or `geometryColumn` for a column with no SRID.
+
+The build checks every column, so the PostgreSQL column helpers' parameters are checked too: a contract with `varcharColumn(0)` or `numericColumn(2000)` now fails when it is built, where before `migration plan` or `db verify` failed.

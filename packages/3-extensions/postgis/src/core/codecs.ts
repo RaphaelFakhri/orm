@@ -38,7 +38,6 @@ import {
   type ColumnHelperForStrict,
   column,
 } from '@internal/framework-components/codec';
-import { validateSqlTypeParams } from '@internal/sql-contract/data-type';
 import type { ExtractCodecTypes, ProjectionExpr } from '@internal/sql-relational-core/ast';
 import {
   definePostgresCodecs,
@@ -157,13 +156,9 @@ export const postgisGeometryDescriptor = new PostgisGeometryDescriptor();
  * Generic over `S extends number` so the column site preserves the
  * SRID literal in `typeParams` (e.g. `pgGeometryColumn({ srid: 4326 })`
  * packs `typeParams: { srid: 4326 }`).
- *
- * @throws If the `postgis/geometry` data type does not accept `srid`
- * (structured `CONTRACT.TYPE_PARAMS_INVALID`).
  */
 export const pgGeometryColumn = <S extends number>(options: { readonly srid: S }) => {
   const { srid } = options;
-  validateSqlTypeParams(postgisGeometry, { srid });
   return column(
     postgisGeometryDescriptor.factory({ srid }),
     postgisGeometryDescriptor.codecId,

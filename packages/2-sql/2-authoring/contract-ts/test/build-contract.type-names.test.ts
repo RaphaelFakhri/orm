@@ -188,6 +188,74 @@ describe('the type name a built contract stores', () => {
     });
   });
 
+  it('refuses a column whose type parameters its data type does not accept, naming the field', () => {
+    expect(() =>
+      columnsOf(
+        definitionWith([
+          {
+            fieldName: 'name',
+            columnName: 'name',
+            descriptor: { codecId: 't/varchar@1', typeParams: { length: 0 } },
+            nullable: false,
+          },
+        ]),
+      ),
+    ).toThrow(
+      expect.objectContaining({
+        code: 'CONTRACT.TYPE_PARAMS_INVALID',
+        message: expect.stringContaining('Field "Item.name"'),
+        meta: {
+          dataType: 't/varchar',
+          parameters: ['length'],
+          modelName: 'Item',
+          fieldName: 'name',
+        },
+      }),
+    );
+  });
+
+  it('refuses a column whose referenced storage type has parameters its data type does not accept', () => {
+    expect(() =>
+      columnsOf(
+        definitionWith(
+          [
+            {
+              fieldName: 'code',
+              columnName: 'code',
+              descriptor: { codecId: 't/varchar@1', typeRef: 'Code' },
+              nullable: false,
+            },
+          ],
+          {
+            Code: {
+              kind: 'codec-instance',
+              codecId: 't/varchar@1',
+              nativeType: 'character varying',
+              typeParams: { length: 0 },
+            },
+          },
+        ),
+      ),
+    ).toThrow(expect.objectContaining({ code: 'CONTRACT.TYPE_PARAMS_INVALID' }));
+  });
+
+  it('builds a storage type no column references without checking its parameters', () => {
+    expect(() =>
+      buildSqlContractFromDefinition(
+        definitionWith([], {
+          Code: {
+            kind: 'codec-instance',
+            codecId: 't/varchar@1',
+            nativeType: 'character varying',
+            typeParams: { length: 0 },
+          },
+        }),
+        codecLookup,
+        dataTypeLookup,
+      ),
+    ).not.toThrow();
+  });
+
   it('refuses a column whose codec is not registered', () => {
     expect(() =>
       columnsOf(

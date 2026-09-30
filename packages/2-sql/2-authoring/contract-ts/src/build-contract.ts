@@ -44,7 +44,14 @@ import { mergeCapabilityMatrices } from '@internal/framework-components/componen
 import { UNBOUND_NAMESPACE_ID } from '@internal/framework-components/ir';
 import { lowerAuthoredCheck } from '@internal/sql-contract/authored-check-naming';
 import { sqlContractCanonicalizationHooks } from '@internal/sql-contract/canonicalization-hooks';
-import { storedSqlTypeNameOfCodec } from '@internal/sql-contract/data-type';
+import {
+  dataTypeParams,
+  type SqlDataType,
+  sqlDataTypeOfCodec,
+  storedSqlTypeName,
+  storedSqlTypeNameOfCodec,
+  validateSqlTypeParams,
+} from '@internal/sql-contract/data-type';
 import { tableEntityKind, valueSetEntityKind } from '@internal/sql-contract/entity-kinds';
 import {
   type ForeignKeyAuthoringInput,
@@ -119,7 +126,10 @@ function columnCodec(
         'typeParams',
         typeParams === undefined
           ? undefined
-          : blindCast<JsonValue, 'typeParams are validated by the codec paramsSchema'>(typeParams),
+          : blindCast<
+              JsonValue,
+              'a CodecRef types typeParams as JSON because contract.json stores them; materializeCodec checks them against the codec paramsSchema before the factory sees them'
+            >(typeParams),
       ),
     },
     { name: codecId },
@@ -823,6 +833,23 @@ function targetColumnsForJunction(targetModel: ModelNode, fieldName: string): re
   );
 }
 
+function validateColumnTypeParams(
+  dataType: SqlDataType,
+  typeParams: Record<string, unknown> | undefined,
+  site: { readonly modelName: string; readonly fieldName: string },
+): void {
+  try {
+    validateSqlTypeParams(dataType, dataTypeParams(dataType, typeParams));
+  } catch (cause) {
+    if (!isStructuredError(cause) || cause.code !== 'CONTRACT.TYPE_PARAMS_INVALID') throw cause;
+    throw contractError(
+      'CONTRACT.TYPE_PARAMS_INVALID',
+      `Field "${site.modelName}.${site.fieldName}" has type parameters that its data type does not accept: ${cause.message}`,
+      { cause, meta: { ...cause.meta, modelName: site.modelName, fieldName: site.fieldName } },
+    );
+  }
+}
+
 interface TypeLookups {
   readonly codecLookup: CodecLookup;
   readonly dataTypeLookup: DataTypeLookup;
@@ -856,6 +883,8 @@ function buildStorageColumn(
 
   const codecId = field.descriptor.codecId;
   const typeParams = columnTypeParams(field.descriptor, storageTypes);
+  const dataType = sqlDataTypeOfCodec(codecId, lookups);
+  validateColumnTypeParams(dataType, typeParams, { modelName, fieldName: field.fieldName });
   const encodedDefault =
     field.default !== undefined
       ? encodeColumnDefault(
@@ -875,7 +904,7 @@ function buildStorageColumn(
   const valueSet = storageValueSetRef ?? field.descriptor.valueSet;
 
   return {
-    nativeType: storedSqlTypeNameOfCodec(codecId, typeParams, lookups),
+    nativeType: storedSqlTypeName(dataType, typeParams),
     codecId,
     nullable: field.nullable,
     ...(field.many ? { many: true as const } : {}),

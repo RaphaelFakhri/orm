@@ -1,8 +1,6 @@
 import { isStructuredError } from '@internal/utils/structured-error';
 import { describe, expect, it } from 'vitest';
 import { PgVectorCodec, pgVectorDescriptor } from '../src/core/codecs';
-import { VECTOR_MAX_DIM } from '../src/core/constants';
-import { vector } from '../src/exports/column-types';
 
 const codecCtx = {};
 
@@ -74,15 +72,6 @@ describe('pgvector structured error codes', () => {
     expect(err).toMatchObject({
       code: 'RUNTIME.DECODE_FAILED',
       message: 'Vector database JSON value must be an array',
-    });
-  });
-
-  it('CONTRACT.TYPE_PARAMS_INVALID on vector() with an out-of-range dimension', () => {
-    const err = catchError(() => vector(VECTOR_MAX_DIM + 1));
-    expect(isStructuredError(err)).toBe(true);
-    expect(err).toMatchObject({
-      code: 'CONTRACT.TYPE_PARAMS_INVALID',
-      meta: { dataType: 'pgvector/vector', parameters: ['length'] },
     });
   });
 });
