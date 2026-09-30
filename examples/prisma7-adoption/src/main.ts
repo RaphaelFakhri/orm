@@ -39,6 +39,8 @@ console.log(
 const renamed = await db.orm.public.User.where({ id: alice.id }).update({
   name: `Alice (renamed by Prisma 8 at ${new Date().toISOString()})`,
 });
-console.log(`updatedAt advanced: ${alice.updatedAt} -> ${renamed?.updatedAt}`);
+console.log(
+  `updatedAt advanced: ${alice.updatedAt.replace(' ', 'T')} -> ${renamed?.updatedAt.replace(' ', 'T')}`,
+);
 
 await prisma.$disconnect();
