@@ -1,0 +1,384 @@
+import type { JsonValue } from '@internal/contract/types';
+import type {
+  DataTypeAuthoringEntry,
+  DataTypeSupport,
+} from '@internal/framework-components/authoring';
+import {
+  createDataTypeLookup,
+  type DataTypeId,
+  dataType,
+  dataTypeId,
+} from '@internal/framework-components/codec';
+import { InternalError } from '@internal/utils/internal-error';
+import { notOk, ok } from '@internal/utils/result';
+import { describe, expect, it } from 'vitest';
+import type { AttributeCtx } from '../src/attribute-spec/types';
+import { dataTypeValue, funcCall, oneOf, str } from '../src/exports';
+import { Cursor, parseAttribute } from '../src/parse';
+import { PslSources } from '../src/source-file';
+import { FieldAttributeAst } from '../src/syntax/ast/attributes';
+import type { ExpressionAst } from '../src/syntax/ast/expressions';
+import { createSyntaxTree } from '../src/syntax/red';
+import { supportBinder } from './support';
+
+const unchanged = (value: JsonValue) => value;
+
+const sqlExpression = dataType('sql/expression', {});
+const pgText = dataType('pg/text', {});
+const pgBool = dataType('pg/bool', {});
+const pgInt2 = dataType('pg/int2', {});
+const pgInt4 = dataType('pg/int4', { casts: { [pgInt2.id]: unchanged } });
+const pgNumeric = dataType('pg/numeric', {});
+const pgJson = dataType('pg/json', {});
+const pgUuid = dataType('pg/uuid', {
+  casts: {
+    [pgText.id]: (value) => {
+      if (typeof value === 'string' && value.length === 36) return value;
+      throw new Error(`"${String(value)}" is not a UUID.`);
+    },
+  },
+});
+
+const entries: Readonly<Record<string, DataTypeAuthoringEntry>> = {
+  [sqlExpression.id]: {
+    written: { kind: 'tag', tag: 'sql', parse: (text) => text },
+    print: (value) => String(value),
+    documentation: 'A SQL expression in the language of the target database.',
+  },
+  [pgText.id]: {
+    written: { kind: 'plain', syntax: 'string', parse: (text) => text },
+    print: (value) => String(value),
+    documentation: 'Text.',
+  },
+  [pgBool.id]: {
+    written: {
+      kind: 'plain',
+      syntax: 'boolean',
+      parse: (text) => text === 'true',
+    },
+    print: (value) => String(value),
+    documentation: 'A boolean, written true or false.',
+  },
+  [pgNumeric.id]: {
+    written: {
+      kind: 'plain',
+      syntax: 'number',
+      types: [pgInt2.id, pgInt4.id, pgNumeric.id],
+      classify: (text) => {
+        if (!/^-?\d+$/.test(text)) return { type: pgNumeric.id, value: text };
+        const value = Number(text);
+        return { type: Math.abs(value) < 32768 ? pgInt2.id : pgInt4.id, value };
+      },
+    },
+    print: (value) => String(value),
+    documentation: 'A number.',
+  },
+  [pgJson.id]: {
+    written: { kind: 'tag', tag: 'json', parse: (text) => JSON.parse(text) },
+    print: (value) => JSON.stringify(value),
+    documentation: 'A JSON document.',
+  },
+};
+
+const support: DataTypeSupport = {
+  entries,
+  lookup: createDataTypeLookup([
+    sqlExpression,
+    pgText,
+    pgBool,
+    pgInt2,
+    pgInt4,
+    pgNumeric,
+    pgJson,
+    pgUuid,
+  ]),
+};
+
+function argOf(source: string): { expr: ExpressionAst; ctx: AttributeCtx } {
+  const cursor = new Cursor('schema.prisma', `@x(${source})`);
+  const root = createSyntaxTree(parseAttribute(cursor));
+  const expr = [...(FieldAttributeAst.cast(root)?.argList()?.args() ?? [])][0]?.value();
+  if (expr === undefined) throw new Error('expected an argument expression');
+  const sources = new PslSources([[root, cursor.sourceFile]]);
+  const symbols = {
+    topLevel: { namespaces: {}, models: {}, compositeTypes: {}, namedTypes: {}, blocks: {} },
+  };
+  return {
+    expr,
+    ctx: { sources, symbols, binder: supportBinder({ sources, symbolTable: symbols }) },
+  };
+}
+
+function parse(type: DataTypeId, source: string, over: DataTypeSupport = support) {
+  const { expr, ctx } = argOf(source);
+  return dataTypeValue(type, over).parse(expr, ctx);
+}
+
+/** The diagnostic for the argument `source`, which starts after `@x(` on the first line. */
+function refusal(source: string, code: string, message: string) {
+  return notOk([
+    {
+      code,
+      message,
+      filename: 'schema.prisma',
+      range: {
+        start: { line: 0, character: 3 },
+        end: { line: 0, character: 3 + source.length },
+      },
+    },
+  ]);
+}
+
+describe('dataTypeValue', () => {
+  it('describes a type with a tag by its tag and entry documentation', () => {
+    const type = dataTypeValue(sqlExpression.id, support);
+    expect({
+      kind: type.kind,
+      label: type.label,
+      dataType: type.dataType,
+      tags: type.tags,
+      documentation: type.documentation,
+    }).toEqual({
+      kind: 'dataTypeValue',
+      label: 'sql`...`',
+      dataType: 'sql/expression',
+      tags: ['sql'],
+      documentation: 'A SQL expression in the language of the target database.',
+    });
+  });
+
+  it('describes a type without a tag by its id', () => {
+    const type = dataTypeValue(pgInt4.id, support);
+    expect({
+      kind: type.kind,
+      label: type.label,
+      dataType: type.dataType,
+      tags: type.tags,
+      documentation: type.documentation,
+    }).toEqual({
+      kind: 'dataTypeValue',
+      label: 'pg/int4',
+      dataType: 'pg/int4',
+      tags: [],
+      documentation: '',
+    });
+  });
+
+  it('returns the canonical value, its type and the span of the argument', () => {
+    expect(parse(sqlExpression.id, 'sql`\n  now()\n`')).toEqual(
+      ok({
+        type: 'sql/expression',
+        value: 'now()',
+        span: { start: { offset: 3, line: 1, column: 4 }, end: { offset: 17, line: 3, column: 2 } },
+      }),
+    );
+  });
+
+  it('takes a value of a type the receiving type casts from', () => {
+    expect(parse(pgInt4.id, '8')).toEqual(
+      ok({
+        type: 'pg/int4',
+        value: 8,
+        span: { start: { offset: 3, line: 1, column: 4 }, end: { offset: 4, line: 1, column: 5 } },
+      }),
+    );
+  });
+
+  it.each([
+    ['an identifier', 'archived'],
+    ['a function call', 'now()'],
+    ['a list', '[1, 2]'],
+    ['an object', '{ a: 1 }'],
+  ])('refuses %s as invalid syntax', (found, source) => {
+    expect(parse(sqlExpression.id, source)).toEqual(
+      refusal(source, 'PSL_INVALID_ATTRIBUTE_SYNTAX', `Expected sql\`...\`, got ${found}`),
+    );
+  });
+
+  it('refuses a tagged literal holding a NUL character', () => {
+    const source = 'sql`a\0b`';
+    expect(parse(sqlExpression.id, source)).toEqual(
+      refusal(source, 'PSL_TAGGED_LITERAL_NUL', 'Tagged literals must not contain NUL characters.'),
+    );
+  });
+
+  it('refuses a tagged literal larger than the limit', () => {
+    const source = `sql\`${'a'.repeat(65537)}\``;
+    expect(parse(sqlExpression.id, source)).toEqual(
+      refusal(source, 'PSL_TAGGED_LITERAL_TOO_LARGE', 'Tagged literal exceeds 65536 bytes.'),
+    );
+  });
+
+  it('refuses a tag the stack does not register, listing the known tags', () => {
+    const source = 'pg.sql`x`';
+    expect(parse(sqlExpression.id, source)).toEqual(
+      refusal(
+        source,
+        'PSL_UNKNOWN_LITERAL_TAG',
+        'Unknown literal tag "pg.sql". Known tags: sql, json.',
+      ),
+    );
+  });
+
+  it('refuses a plain value the target has no data type for', () => {
+    const noText: DataTypeSupport = {
+      entries: { [sqlExpression.id]: entries[sqlExpression.id] ?? fail() },
+      lookup: support.lookup,
+    };
+    const source = '"x"';
+    expect(parse(sqlExpression.id, source, noText)).toEqual(
+      refusal(
+        source,
+        'PSL_VALUE_TYPE_INCOMPATIBLE',
+        'This target has no data type for a string value; write sql`...`',
+      ),
+    );
+  });
+
+  it('refuses text the entry of its tag cannot read', () => {
+    const source = 'json`{`';
+    const result = parse(sqlExpression.id, source);
+    expect(result).toEqual(refusal(source, 'PSL_INVALID_LITERAL', messageOfJsonParse('{')));
+  });
+
+  it('refuses a string for a type with a tag, ending with the exact rewrite', () => {
+    const source = '"(archived_at IS NULL)"';
+    expect(parse(sqlExpression.id, source)).toEqual(
+      refusal(
+        source,
+        'PSL_VALUE_TYPE_INCOMPATIBLE',
+        'sql/expression has no cast from pg/text; write it as sql`(archived_at IS NULL)`',
+      ),
+    );
+  });
+
+  it('writes the rewrite of a string holding a backtick in the double-quote form', () => {
+    const source = '"a `b`"';
+    expect(parse(sqlExpression.id, source)).toEqual(
+      refusal(
+        source,
+        'PSL_VALUE_TYPE_INCOMPATIBLE',
+        'sql/expression has no cast from pg/text; write it as sql"a `b`"',
+      ),
+    );
+  });
+
+  it.each([
+    ['42', 'pg/int2'],
+    ['true', 'pg/bool'],
+  ])('refuses %s for a type with a tag by naming its written form', (source, valueType) => {
+    expect(parse(sqlExpression.id, source)).toEqual(
+      refusal(
+        source,
+        'PSL_VALUE_TYPE_INCOMPATIBLE',
+        `sql/expression has no cast from ${valueType}; write sql\`...\``,
+      ),
+    );
+  });
+
+  it('refuses a string for a type without a tag by naming its written form', () => {
+    const source = '"8"';
+    expect(parse(pgInt4.id, source)).toEqual(
+      refusal(
+        source,
+        'PSL_VALUE_TYPE_INCOMPATIBLE',
+        'pg/int4 has no cast from pg/text; write a number',
+      ),
+    );
+  });
+
+  it('refuses a value its cast throws on, with the error message', () => {
+    const source = '"not-a-uuid"';
+    expect(parse(pgUuid.id, source)).toEqual(
+      refusal(source, 'PSL_INVALID_LITERAL', '"not-a-uuid" is not a UUID.'),
+    );
+  });
+
+  it('builds for a type the stack does not register, and throws an internal error when parsing', () => {
+    const missing = dataTypeId('postgis/geometry');
+    const type = dataTypeValue(missing, support);
+    expect({ label: type.label, tags: type.tags, documentation: type.documentation }).toEqual({
+      label: 'postgis/geometry',
+      tags: [],
+      documentation: '',
+    });
+    const { expr, ctx } = argOf('"POINT(0 0)"');
+    expect(() => type.parse(expr, ctx)).toThrow(
+      new InternalError(
+        'An argument receives data type "postgis/geometry", which this stack does not register.',
+      ),
+    );
+    expect(() => type.parse(expr, ctx)).toThrow(InternalError);
+  });
+
+  describe('as a parameter of a function call that is an arm of oneOf', () => {
+    const value = oneOf(
+      str(),
+      funcCall('nanoid', {
+        documentation: 'A random identifier.',
+        positional: [
+          {
+            key: 'length',
+            type: dataTypeValue(pgInt4.id, support),
+            documentation: 'The number of characters.',
+          },
+        ],
+      }),
+    );
+
+    it('returns the typed value in the call arguments', () => {
+      const { expr, ctx } = argOf('nanoid(8)');
+      expect(value.parse(expr, ctx)).toEqual(
+        ok({
+          fn: 'nanoid',
+          span: {
+            start: { offset: 3, line: 1, column: 4 },
+            end: { offset: 12, line: 1, column: 13 },
+          },
+          args: {
+            length: {
+              type: 'pg/int4',
+              value: 8,
+              span: {
+                start: { offset: 10, line: 1, column: 11 },
+                end: { offset: 11, line: 1, column: 12 },
+              },
+            },
+          },
+        }),
+      );
+    });
+
+    it('reports a refused argument at the written value when the call is parsed alone', () => {
+      const { expr, ctx } = argOf('nanoid("8")');
+      expect(value.alternatives[1].parse(expr, ctx)).toEqual(
+        notOk([
+          {
+            code: 'PSL_VALUE_TYPE_INCOMPATIBLE',
+            message: 'pg/int4 has no cast from pg/text; write a number',
+            filename: 'schema.prisma',
+            range: { start: { line: 0, character: 10 }, end: { line: 0, character: 13 } },
+          },
+        ]),
+      );
+    });
+
+    it('takes the other arm for a value that is not a call', () => {
+      const { expr, ctx } = argOf('"x"');
+      expect(value.parse(expr, ctx)).toEqual(ok('x'));
+    });
+  });
+});
+
+function fail(): never {
+  throw new Error('expected the sql/expression entry');
+}
+
+function messageOfJsonParse(text: string): string {
+  try {
+    JSON.parse(text);
+  } catch (error) {
+    if (error instanceof Error) return error.message;
+  }
+  throw new Error(`expected ${text} not to parse as JSON`);
+}

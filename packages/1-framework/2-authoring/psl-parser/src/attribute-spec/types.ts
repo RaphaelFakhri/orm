@@ -1,4 +1,6 @@
 import type { JsonValue } from '@internal/contract/types';
+import type { TypedValue } from '@internal/framework-components/authoring';
+import type { DataTypeId } from '@internal/framework-components/codec';
 import type { TaggedLiteralCanonicalization } from '@internal/framework-components/control';
 import type { PslSpan } from '@internal/framework-components/psl-ast';
 import type { Result } from '@internal/utils/result';
@@ -33,6 +35,7 @@ export interface FieldAttributeCtx extends ModelAttributeCtx {
 
 export type ArgTypeKind =
   | 'bool'
+  | 'dataTypeValue'
   | 'entityRef'
   | 'fieldRef'
   | 'funcCall'
@@ -246,6 +249,21 @@ export interface TaggedLiteralArgType<Ctx extends AttributeCtx = AttributeCtx>
   readonly documentation: string;
 }
 
+/** A typed value parsed from an argument, with the argument's span. */
+export interface ParsedTypedValue extends TypedValue {
+  readonly span: PslSpan;
+}
+
+export interface DataTypeValueArgType<Ctx extends AttributeCtx = AttributeCtx>
+  extends ArgTypeOutput<ParsedTypedValue, Ctx> {
+  readonly kind: 'dataTypeValue';
+  readonly dataType: DataTypeId;
+  /** The tags a position of this type admits, for completion. */
+  readonly tags: readonly string[];
+  /** The documentation of this type's authoring entry, or '' when it has none. */
+  readonly documentation: string;
+}
+
 type ArgTypeMetadata<Type> = Type extends object
   ? Omit<Type, keyof ArgTypeOutput<unknown, never>>
   : never;
@@ -278,6 +296,7 @@ export type InspectableArgType<Ctx extends AttributeCtx> = ArgType<unknown, Ctx>
 
 type ArgTypeVariant<Ctx extends AttributeCtx> =
   | BoolArgType<Ctx>
+  | DataTypeValueArgType<Ctx>
   | EntityRefArgType<EntityDeclaration, Ctx>
   | FieldRefArgType<ModelAttributeCtx & Ctx>
   | FuncCallArgType<string, Ctx>

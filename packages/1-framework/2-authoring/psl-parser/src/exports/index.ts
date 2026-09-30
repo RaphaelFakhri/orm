@@ -36,6 +36,7 @@ export type { AssembledAttributeSpecs } from '../attribute-spec/assemble';
 export { assembleAttributeSpecs } from '../attribute-spec/assemble';
 export { blockAttribute } from '../attribute-spec/block-attribute';
 export { bool } from '../attribute-spec/combinators/bool';
+export { dataTypeValue } from '../attribute-spec/combinators/data-type-value';
 export { leafDiagnostic } from '../attribute-spec/combinators/diagnostic';
 export { entityRef } from '../attribute-spec/combinators/entity-ref';
 export { fieldRef, referencedFieldRef } from '../attribute-spec/combinators/field-ref';
@@ -72,6 +73,7 @@ export type {
   AttributeLevel,
   AttributeOut,
   AttributeSpec,
+  DataTypeValueArgType,
   EntityRefArgType,
   FieldAttributeCtx,
   FixedIdentifierArgType,
@@ -88,6 +90,7 @@ export type {
   OutOf,
   Param,
   ParsedTaggedLiteral,
+  ParsedTypedValue,
   PositionalParam,
   PosOut,
   RejectingArgType,

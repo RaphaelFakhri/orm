@@ -153,6 +153,7 @@ function valueItems(
     case 'fieldRef':
     case 'referencedFieldRef':
       return scalarItems(input, input.fieldNames(type.kind));
+    case 'dataTypeValue':
     case 'list':
     case 'record':
     case 'entityRef':
