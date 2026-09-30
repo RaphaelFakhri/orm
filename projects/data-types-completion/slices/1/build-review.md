@@ -25,6 +25,7 @@ Reviewer-maintained. Contract: `projects/data-types-completion/design.md` sectio
 | f | 3 (`9ddfaa62e3`) | SATISFIED: S1-f-R2-1 closed, no new finding |
 | review fixes 1 | 1 (`01925ee865..f4e89409e0`) | ANOTHER ROUND NEEDED: 2 low |
 | review fixes 1 | 2 (`c409a672b8`, `ca0de95478`) | SATISFIED: S1-rf1-R1-1 and S1-rf1-R1-2 closed, no new finding |
+| review fixes 2 | 1 (`5a6f37bfaa..7bece37e1a`) | ANOTHER ROUND NEEDED: 1 must-fix, 2 low |
 
 ## Findings log
 
@@ -221,11 +222,48 @@ Reviewer-maintained. Contract: `projects/data-types-completion/design.md` sectio
 - Upgrade proof: `wip/proof2/` (on `f4e89409e0`) and `wip/proof/` (on `ca0de95478`, `steps.txt`). Steps 4 and 5 print nothing and exit 0 for both audiences. Step 6: the extension suites pass (postgres 257, pgvector 188, postgis 124, sqlite 55, supabase 102, mongo 150; 68 of 68 turbo tasks), and the SQLite demo re-emits and typechecks cleanly.
 - `@internal/mongo-contract-ts` (131) and `@internal/postgres` (257) pass. Both commits carry both sign-offs and no AI attribution.
 
+### S1-rf2-R1-1 (must-fix): the postcheck's keyword list leaves out 69 keywords that Postgres quotes
+
+- Where: `packages/3-targets/3-targets/postgres/src/core/sql-utils.ts` (`RESERVED_KEYWORDS`, `quoteIdentifierWhereNeeded`); tests in `packages/3-targets/3-targets/postgres/test/migrations/node-issue-planner.test.ts`.
+- What is wrong: Postgres `quote_identifier` quotes every keyword that is not unreserved: reserved, column-name and type-or-function-name keywords. The set holds 95 words, a copy of the deleted `formatUserDefinedTypeName` list. I checked it against PGlite (Postgres 18.3) with `pg_get_keywords()` and `quote_ident` (`wip/rf2-review/probe/kw.mjs`, `kw.log`): Postgres quotes 164 keywords, and 69 are missing from the set, including `position`, `time`, `interval`, `values`, `row`, `none`, `cross`, `returning` and `system_user`. No word in the set is one Postgres leaves unquoted. PGlite prints `format_type` of an enum named `position` as `"position"`, so a planned type change to that enum still fails its postcheck, the failure CR-F02 asked to remove. The doc comment says "reserved keyword", which is also the wrong rule, and none of the four test cases uses a keyword.
+- Change: make the set every keyword whose `pg_get_keywords()` category is not `U`, taken from the newest Postgres the target supports, and rename it to match (for example `QUOTED_KEYWORDS`). Say in the doc comment that it quotes every keyword that is not unreserved. Add planner test cases for a reserved word (`select`) and a column-name keyword (`position`), both expecting the quoted name.
+
+### S1-rf2-R1-2 (low): both targets' `data-type-entries.ts` still import the runtime lanes package
+
+- Where: `packages/3-targets/3-targets/postgres/src/core/data-type-entries.ts:16-21`, `packages/3-targets/3-targets/sqlite/src/core/data-type-entries.ts:11-16` (`createNumberClassifier`, `parseJsonBody`, `printJsonBody`, `signedRange` from `@internal/sql-relational-core/ast`).
+- What is wrong: both files are in shared-plane entries of `architecture.config.json`, and `packages/2-sql/4-lanes/**` is runtime plane. SD-F01 named these lines. Item 3 moved only `numeralText` and `isNonFiniteText`, as the brief asked. The import predates the slice (it is in both files at `bot/data-types-completion`); the slice only added the Postgres file to the shared map. I accept it for this slice.
+- Change: add a line to `projects/data-types-completion/deferred.md`: move the four PSL value helpers out of the lanes layer so the shared data type entry files stop importing a runtime package.
+
+### S1-rf2-R1-3 (low): the round 1 ruling on the enum postcheck is now wrong
+
+- Where: `projects/data-types-completion/slices/1/plan.md`, "Review fixes round 1 rulings".
+- What is wrong: it says an enum column that references a `types {}` entry is now unquoted in the postcheck. Item 1 changed that, and the plan does not say so.
+- Change: add a line to the round 2 ruling that the postcheck now quotes an enum name as `format_type` prints it, replacing the round 1 ruling.
+
 ### Review fixes round 1 status of the code review findings
 
 All 19 items of `wip/briefs/review-fixes-1.md` are built as written. Code review F01 to F09 and system design F01, F03 to F09 and F11 to F15 are closed. Details in the round note.
 
 ## Round notes
+
+### Review fixes, round 2
+
+Scope: `774cb701bf..7bece37e1a`, 10 commits (the dispatch said 11): one per item of `wip/briefs/review-fixes-2.md`, plus `9931528e4d` (a test type fix for item 2) and `7bece37e1a` (upgrade entry).
+
+Item by item:
+- 1 (CR-F02): a kind-claiming data type now takes `unquotedSqlBaseName`, split on `.`, each part through `quoteIdentifierWhereNeeded`. The pattern `^[a-z_][a-z0-9_]*$` matches Postgres's rule (the old one wrongly allowed `$`). The four cases (`UserRole` and `user_role`, with and without `typeRef`) assert `formatTypeExpected`; the two `UserRole` cases were red at the parent, which returned the unquoted name. The test header names TML-3387, which the rules allow. `wip/pr-notes.md` has the line. The keyword list is incomplete: S1-rf2-R1-1.
+- 2 (CR-F01): `readProps` returns `undefined` when arktype throws. The union and the piped object are tested for both key readers and for `sqlDataType`, which now refuses with an `InternalError` naming the id. Both were red at the parent (raw `ParseError`). `9931528e4d` adds `as never` in a test file only.
+- 3 (SD-F01): `numeral-text.ts` in `@internal/sql-contract`, exported from `./data-type`; every importer re-pointed; design 3.2 says "stays unmapped". See S1-rf2-R1-2.
+- 4 (SD-F02): `assembleDataTypes` lives in `shared/data-type.ts`, exported from `./codec` only. The three Postgres lookup functions are gone from `codec-registry.ts` and `./codecs`; `createPostgresBuiltinDataTypeLookup` is in `data-types.ts`, used by the serializer, the PSL inferrer and the testkit. The adapter no longer re-exports it; tests import from `@internal/target-postgres/data-types`. The adapter's other two re-exports (`createPostgresBuiltinCodecLookup`, `createPostgresCodecRegistryWithBuiltins`) predate the slice.
+- 5 (SD-F03): `AuthoringEntityContext.codecLookup` is required; every builder passes one. `bsonTypesOfCodec` takes `MongoTypeLookups`. `deriveJsonSchema` keeps its optional codec lookup, the round 1 deferral.
+- 6 (SD-F04): both functions take `SqlDataType` and data type parameters; the caller list is gone; the ruling line is in `plan.md`. See S1-rf2-R1-3.
+- 7 (SD-F05): renamed; no `sqlComponentTypes` or `assemblePostgresDataTypeLookup` remains outside project docs.
+
+Rules: no `any`, no bare `as` in production code, no test name with "should". Every commit carries both sign-offs and no AI attribution. No `contract.json`, `contract.d.ts` or golden changed.
+
+Upgrade proof, `wip/r2c/`: every check in `summary.log` exits 0, including `fixtures:check:agent`, `lint:docs`, `lint:throws` and the framework vocabulary (262 of 262); `ext-step6.log` shows 68 of 68 extension test tasks passing; the tree was clean afterwards and `wip/proof-checkout` is removed.
+
+Checks at `7bece37e1a`, logs under `wip/rf2-review/`: `typecheck:agent`, `lint:agent`, `lint:deps`, `check:error-reference` (360) and `check:upgrade-coverage --mode pr --prev bot/data-types-completion` all exit 0. The slice 1 grep check prints nothing. The golden planner test passes (684). The integration subset passes (34 files, 242 tests). The 20 touched packages' tests: 68 of 69 tasks pass; `@internal/adapter-postgres` failed only the two round-trip tests that time out under load, as in round 1, and that file passes alone (5 of 5).
 
 ### Review fixes, round 1
 
