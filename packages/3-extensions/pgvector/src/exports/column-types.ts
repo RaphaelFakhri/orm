@@ -3,8 +3,9 @@
  */
 
 import type { ColumnTypeDescriptor } from '@internal/framework-components/codec';
-import { VECTOR_CODEC_ID, VECTOR_MAX_DIM } from '../core/constants';
-import { pgVectorError } from '../core/errors';
+import { validateSqlTypeParams } from '@internal/sql-contract/data-type';
+import { VECTOR_CODEC_ID } from '../core/constants';
+import { pgvectorVector } from '../core/data-types';
 
 /**
  * Factory for creating dimensioned vector column descriptors.
@@ -16,25 +17,12 @@ import { pgVectorError } from '../core/errors';
  * ```
  * @param length - The dimension of the vector (e.g., 1536 for OpenAI embeddings)
  * @returns A column type descriptor with `typeParams.length` set
- * @throws `CONTRACT.ARGUMENT_INVALID` if length is not an integer in the range [1, VECTOR_MAX_DIM]
+ * @throws `CONTRACT.TYPE_PARAMS_INVALID` if the `pgvector/vector` data type does not accept the length
  */
 export function vector<N extends number>(
   length: N,
 ): ColumnTypeDescriptor<typeof VECTOR_CODEC_ID> & { readonly typeParams: { readonly length: N } } {
-  if (!Number.isInteger(length) || length < 1 || length > VECTOR_MAX_DIM) {
-    throw pgVectorError(
-      'CONTRACT.ARGUMENT_INVALID',
-      `pgvector: dimension must be an integer in [1, ${VECTOR_MAX_DIM}], got ${length}`,
-      {
-        fix: `Pass an integer dimension between 1 and ${VECTOR_MAX_DIM}, e.g. vector(1536).`,
-        meta: {
-          helperPath: 'vector',
-          expected: `an integer in [1, ${VECTOR_MAX_DIM}]`,
-          received: length,
-        },
-      },
-    );
-  }
+  validateSqlTypeParams(pgvectorVector, { length });
   return {
     codecId: VECTOR_CODEC_ID,
     nativeType: 'vector',

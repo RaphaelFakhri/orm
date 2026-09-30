@@ -77,13 +77,12 @@ describe('pgvector structured error codes', () => {
     });
   });
 
-  it('CONTRACT.ARGUMENT_INVALID on vector() with an out-of-range dimension', () => {
-    const err = catchError(() => vector(0 as number));
+  it('CONTRACT.TYPE_PARAMS_INVALID on vector() with an out-of-range dimension', () => {
+    const err = catchError(() => vector(VECTOR_MAX_DIM + 1));
     expect(isStructuredError(err)).toBe(true);
     expect(err).toMatchObject({
-      code: 'CONTRACT.ARGUMENT_INVALID',
-      message: `pgvector: dimension must be an integer in [1, ${VECTOR_MAX_DIM}], got 0`,
-      meta: { helperPath: 'vector', received: 0 },
+      code: 'CONTRACT.TYPE_PARAMS_INVALID',
+      meta: { dataType: 'pgvector/vector', parameters: ['length'] },
     });
   });
 });

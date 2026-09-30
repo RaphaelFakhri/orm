@@ -88,14 +88,13 @@ describe('geometry helpers raise POSTGIS.GEOMETRY_INVALID', () => {
   });
 });
 
-describe('column helpers raise CONTRACT.ARGUMENT_INVALID', () => {
-  it('geometry() with a negative srid', () => {
-    const error = capture(() => geometry({ srid: -1 }));
+describe('column helpers raise CONTRACT.TYPE_PARAMS_INVALID', () => {
+  it('geometry() with srid 0', () => {
+    const error = capture(() => geometry({ srid: 0 }));
     expect(isStructuredError(error)).toBe(true);
     expect(error).toMatchObject({
-      code: 'CONTRACT.ARGUMENT_INVALID',
-      message: 'postgis: srid must be a non-negative integer, got -1',
-      meta: { helperPath: 'geometry', expected: 'non-negative integer', received: -1 },
+      code: 'CONTRACT.TYPE_PARAMS_INVALID',
+      meta: { dataType: 'postgis/geometry', parameters: ['srid'] },
     });
   });
 
@@ -103,9 +102,8 @@ describe('column helpers raise CONTRACT.ARGUMENT_INVALID', () => {
     const error = capture(() => pgGeometryColumn({ srid: 1.5 }));
     expect(isStructuredError(error)).toBe(true);
     expect(error).toMatchObject({
-      code: 'CONTRACT.ARGUMENT_INVALID',
-      message: 'postgis: srid must be a non-negative integer, got 1.5',
-      meta: { helperPath: 'pgGeometryColumn' },
+      code: 'CONTRACT.TYPE_PARAMS_INVALID',
+      meta: { dataType: 'postgis/geometry', parameters: ['srid'] },
     });
   });
 });

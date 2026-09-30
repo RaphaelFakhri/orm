@@ -7,6 +7,7 @@ import {
   renderSqlTypeName,
   sqlBaseName,
   sqlDataType,
+  validateSqlTypeParams,
 } from '../src/sql-data-type';
 import {
   char,
@@ -21,6 +22,21 @@ import {
 } from './sql-data-type-fixtures';
 
 const invalidParams = expect.objectContaining({ code: 'CONTRACT.TYPE_PARAMS_INVALID' });
+
+describe('validateSqlTypeParams', () => {
+  it('returns parameters the data type accepts', () => {
+    expect(validateSqlTypeParams(vector, { length: 3 })).toEqual({ length: 3 });
+  });
+
+  it('refuses parameters the data type does not accept, naming the parameter', () => {
+    expect(() => validateSqlTypeParams(vector, { length: 0 })).toThrow(
+      expect.objectContaining({
+        code: 'CONTRACT.TYPE_PARAMS_INVALID',
+        meta: { dataType: 't/vector', parameters: ['length'] },
+      }),
+    );
+  });
+});
 
 describe('dataTypeParams', () => {
   it('keeps the optional and required keys the parameter schema declares', () => {

@@ -229,7 +229,8 @@ function formatKeys(keys: readonly string[]): string {
   return `[${[...keys].sort().join(', ')}]`;
 }
 
-function validatedParams<Params extends SqlTypeParams>(
+/** The parameters, when `type` accepts them; otherwise `CONTRACT.TYPE_PARAMS_INVALID` naming each parameter at fault. */
+export function validateSqlTypeParams<Params extends SqlTypeParams>(
   type: SqlDataType<Params>,
   params: SqlTypeParams,
 ): Params {
@@ -286,7 +287,7 @@ export function sqlBaseName<Params extends SqlTypeParams>(
   type: SqlDataType<Params>,
   params: SqlTypeParams,
 ): string {
-  if (type.sql.render !== undefined) return type.sql.render(validatedParams(type, params));
+  if (type.sql.render !== undefined) return type.sql.render(validateSqlTypeParams(type, params));
   const written = type.sql.texts.filter((text) => text.written === true);
   const fewest = written.reduce<SqlTypeText | undefined>(
     (best, text) =>
@@ -316,7 +317,7 @@ export function storedSqlTypeName(type: DataType, typeParams: SqlTypeParams | un
   }
   const params = dataTypeParams(type, typeParams);
   if (type.sql.claimsKind === undefined) return sqlBaseName(type, params);
-  const { typeName } = validatedParams(type, params);
+  const { typeName } = validateSqlTypeParams(type, params);
   if (typeof typeName !== 'string') {
     throw new InternalError(
       `Data type ${type.id} claims the kind "${type.sql.claimsKind}" but declares no string typeName parameter.`,
@@ -379,7 +380,7 @@ export function renderSqlTypeName<Params extends SqlTypeParams>(
   type: SqlDataType<Params>,
   params: SqlTypeParams,
 ): string {
-  const validated = validatedParams(type, params);
+  const validated = validateSqlTypeParams(type, params);
   if (type.sql.render !== undefined) return type.sql.render(validated);
   const normalized = type.sql.normalize(validated);
   const keys = presentKeys(params).filter((key) => Object.hasOwn(normalized, key));
@@ -391,7 +392,7 @@ export function renderSqlCatalogText<Params extends SqlTypeParams>(
   type: SqlDataType<Params>,
   params: SqlTypeParams,
 ): string {
-  const validated = validatedParams(type, params);
+  const validated = validateSqlTypeParams(type, params);
   if (type.sql.claimsKind !== undefined) {
     throw new InternalError(
       `Data type ${type.id} claims the kind "${type.sql.claimsKind}" and has no catalog text.`,

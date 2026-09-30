@@ -30,12 +30,13 @@ describe('postgis column-types', () => {
       });
     });
 
-    it('rejects a non-integer SRID', () => {
-      expect(() => geometry({ srid: 1.5 })).toThrow('srid must be a non-negative integer');
-    });
-
-    it('rejects a negative SRID', () => {
-      expect(() => geometry({ srid: -1 })).toThrow('srid must be a non-negative integer');
+    it.each([0, -1, 1.5])('refuses the srid %s with the data type parameter error', (srid) => {
+      expect(() => geometry({ srid })).toThrow(
+        expect.objectContaining({
+          code: 'CONTRACT.TYPE_PARAMS_INVALID',
+          meta: { dataType: 'postgis/geometry', parameters: ['srid'] },
+        }),
+      );
     });
   });
 });

@@ -22,4 +22,5 @@ export {
   sqlTypeTextsCollide,
   storedSqlTypeName,
   storedSqlTypeNameOfCodec,
+  validateSqlTypeParams,
 } from '../sql-data-type';
