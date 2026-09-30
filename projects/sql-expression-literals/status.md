@@ -234,7 +234,7 @@ Brief: `dispatches/2b-round-2-fixes-brief.md`. Reviews: `slice-reviews/2b-round-
 - **B07**: `canonicalSqlText` lives in `@internal/sql-contract/sql-expression`.
 - **G04, G05**: the codemod test finds fragment copies anywhere under `upgrade-instructions/` and fails when there are none; two tests pin `//` inside a string.
 
-Verification, logs in `wip/2b-round-2-fixes/`: `build`, `typecheck`, `lint`, `lint:deps`, `check:error-reference`, `lint:framework-vocabulary`, `lint:skills`, `fixtures:check` (tree clean) pass; `lint:casts` and `lint:throws` delta 0. `test:scripts`: 593 pass. `test:packages`: 1454 files pass, 5 fail: the three known tarball tests and two `cli-telemetry` files, which pass alone (`rerun-cli-telemetry.log`). Integration files: 44 files, 928 tests pass (`integration.log`).
+Verification, logs in `wip/2b-round-2-fixes/`: `build`, `typecheck`, `lint`, `lint:deps`, `check:error-reference`, `lint:framework-vocabulary`, `lint:skills`, `fixtures:check` (tree clean) pass; `lint:casts` and `lint:throws` delta 0. `test:scripts`: 593 pass. `test:packages`: 1454 files pass, 5 fail: the three known tarball tests and two `cli-telemetry` files, which pass alone (`rerun-cli-telemetry.log`). Integration files: 44 files, 928 tests pass (`integration.log`). `check:upgrade-coverage` after committing: pass (`upgrade-coverage.log`).
 
 ## Slice 1, 2026-09-30
 
