@@ -1,10 +1,21 @@
 import { validateSqlContractFully } from '@internal/sql-contract/validators';
-import { LockingClause } from '@internal/sql-relational-core/ast';
+import {
+  ColumnRef,
+  JsonArrayAggExpr,
+  LockingClause,
+  NativeJsonValueProjection,
+  OrderByItem,
+  ProjectionItem,
+  TableSource,
+  WindowFuncExpr,
+} from '@internal/sql-relational-core/ast';
 import type { ExecutionContext } from '@internal/sql-relational-core/query-lane-context';
 import { describe, expect, it } from 'vitest';
+import { buildSelectAst, emptyState } from '../../src/runtime/builder-base';
 import { sql } from '../../src/runtime/sql';
 import { contract as contractJson } from '../fixtures/contract';
 import type { Contract } from '../fixtures/generated/contract';
+import { usersScope } from './test-helpers';
 
 const countOnlyAggregateRegistry = {
   resolve: (operation: string) =>
@@ -165,6 +176,48 @@ describe('row locking', () => {
           code: 'RUNTIME.LOCK_INCOMPATIBLE',
           meta: { node: 'select', field },
         }),
+      );
+    });
+
+    it('a lock after groupBy(), through the syntax tree', () => {
+      expect(() => lockedUsers().groupBy('id').build()).toThrow(
+        expect.objectContaining({
+          code: 'RUNTIME.LOCK_INCOMPATIBLE',
+          meta: { node: 'select', field: 'groupBy' },
+        }),
+      );
+    });
+
+    it('distinctOn followed by a lock, through the syntax tree', () => {
+      expect(() => db().public.users.select('id').distinctOn('id').forShare().build()).toThrow(
+        expect.objectContaining({
+          code: 'RUNTIME.LOCK_INCOMPATIBLE',
+          meta: { node: 'select', field: 'distinctOn' },
+        }),
+      );
+    });
+
+    it.each([
+      {
+        kind: 'window-func',
+        expr: WindowFuncExpr.rowNumber({ orderBy: [OrderByItem.asc(ColumnRef.of('users', 'id'))] }),
+      },
+      {
+        kind: 'json-array-agg',
+        expr: JsonArrayAggExpr.of(new NativeJsonValueProjection(ColumnRef.of('users', 'id'))),
+      },
+    ])('a lock with a $kind projection', ({ expr }) => {
+      const state = {
+        ...emptyState(TableSource.named('users'), usersScope),
+        projections: [ProjectionItem.of('n', expr)],
+        locking: [LockingClause.of('forUpdate')],
+      };
+
+      expect(() => buildSelectAst(state)).toThrow(
+        lockIncompatible(
+          'aggregate',
+          'A locking clause cannot be combined with an aggregate or window function in the projection (column "n")',
+        ),
       );
     });
   });

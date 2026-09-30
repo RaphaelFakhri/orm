@@ -10,15 +10,19 @@ changes:
 
 ## `re-emit-for-the-row-locking-capabilities`
 
-The typed SQL builder gains four methods that lock the rows a select reads, named after the SQL they render: `forUpdate()`, `forNoKeyUpdate()`, `forShare()` and `forKeyShare()`. Each takes an optional `{ of, nowait, skipLocked }`:
+The typed SQL builder gains four methods that lock the rows a select reads, named after the SQL they render: `forUpdate()`, `forNoKeyUpdate()`, `forShare()` and `forKeyShare()`. Each takes an optional `{ of, nowait, skipLocked }`: `of` names the tables or aliases to lock, and `nowait` and `skipLocked` exclude each other. A lock lasts until the transaction ends, so use it inside `db.transaction(...)`:
 
 ```ts
-await db.sql.public.job
-  .select('id')
-  .where((f, fns) => fns.eq(f.state, 'queued'))
-  .limit(1)
-  .forUpdate({ skipLocked: true })
-  .build();
+await db.transaction(async (tx) => {
+  const [job] = await tx.query(
+    tx.sql.public.job
+      .select('id')
+      .where((f, fns) => fns.eq(f.state, 'queued'))
+      .limit(1)
+      .forUpdate({ skipLocked: true })
+      .build(),
+  );
+});
 ```
 
 Each method and each option is gated on a capability key that the Postgres adapter now reports: `sql.forUpdate`, `sql.forShare`, `postgres.forNoKeyUpdate`, `postgres.forKeyShare`, and `sql.lockOf`, `sql.lockNowait`, `sql.lockSkipLocked` for the options. A `contract.json` emitted before this release carries none of them, so the methods do not exist on its builder.

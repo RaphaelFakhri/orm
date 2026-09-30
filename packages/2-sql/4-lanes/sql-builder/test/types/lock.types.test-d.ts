@@ -47,6 +47,8 @@ test('the methods are absent on GroupedQuery', () => {
   grouped.forUpdate();
   // @ts-expect-error GroupedQuery has no locking methods
   grouped.forShare();
+  // @ts-expect-error GroupedQuery has no locking methods, including after having()
+  grouped.having((_f, fns) => fns.gt(fns.count(), 1)).forKeyShare();
 });
 
 test('the methods are never on a contract without the flags', () => {
