@@ -109,4 +109,4 @@ The namespace could contain a scalar leaf kind alongside a constructor leaf kind
 - [Ecosystem Extensions & Packs subsystem](../subsystems/6.%20Ecosystem%20Extensions%20&%20Packs.md) — component contribution and extension authoring boundaries.
 - Constructor and contribution types: [`framework-authoring.ts`](../../../packages/1-framework/1-core/framework-components/src/shared/framework-authoring.ts).
 - Namespace assembly and derived scalar view: [`control-stack.ts`](../../../packages/1-framework/1-core/framework-components/src/control/control-stack.ts).
-- PostgreSQL scalar and native-type contributions: [`control-mutation-defaults.ts`](../../../packages/3-targets/6-adapters/postgres/src/core/control-mutation-defaults.ts).
+- PostgreSQL scalar and native-type contributions: [`authoring.ts`](../../../packages/3-targets/3-targets/postgres/src/core/authoring.ts).

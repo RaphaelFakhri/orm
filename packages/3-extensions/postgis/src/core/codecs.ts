@@ -157,7 +157,6 @@ export const postgisGeometryDescriptor = new PostgisGeometryDescriptor();
  * Generic over `S extends number` so the column site preserves the
  * SRID literal in `typeParams` (e.g. `pgGeometryColumn({ srid: 4326 })`
  * packs `typeParams: { srid: 4326 }`).
-
  *
  * @throws If `srid` is not a non-negative integer
  * (structured `CONTRACT.ARGUMENT_INVALID`).

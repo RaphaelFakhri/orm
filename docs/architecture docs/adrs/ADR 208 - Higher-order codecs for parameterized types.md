@@ -37,7 +37,6 @@ Every codec is described by a single descriptor type. The consumer surface is th
 export interface CodecDescriptor<P = void> {
   readonly codecId: string;
   readonly traits: readonly CodecTrait[];
-  readonly targetTypes: readonly string[];
   readonly meta?: CodecMeta;
   readonly paramsSchema: StandardSchemaV1<P> | undefined; // undefined when P = void
   readonly isParameterized: boolean; // paramsSchema !== undefined
@@ -49,7 +48,6 @@ export interface CodecDescriptor<P = void> {
 export abstract class CodecDescriptorImpl<P = void> implements CodecDescriptor<P> {
   abstract readonly codecId: string;
   abstract readonly traits: readonly CodecTrait[];
-  abstract readonly targetTypes: readonly string[];
   readonly meta?: CodecMeta;
   abstract readonly paramsSchema: StandardSchemaV1<P> | undefined; // undefined when P = void
   readonly isParameterized: boolean; // derived from `paramsSchema !== undefined`
@@ -76,7 +74,6 @@ class VectorCodec<N extends number> extends CodecImpl<
 class PgVectorDescriptor extends CodecDescriptorImpl<{ readonly length: number }> {
   override readonly codecId = 'pg/vector@1' as const;
   override readonly traits = ['equality'] as const;
-  override readonly targetTypes = ['vector'] as const;
   override readonly paramsSchema = type({ length: 'number > 0' });
   override renderOutputType({ length }: { length: number }) { return `Vector<${length}>`; }
   override factory<N extends number>(
@@ -95,7 +92,7 @@ export const vector = <N extends number>(length: N) =>
 vector satisfies ColumnHelperFor<PgVectorDescriptor>;
 ```
 
-The descriptor registers the codec id with the framework and carries the codec-id-keyed metadata the framework consults without the runtime instance in scope: traits and target types for trait gating; `paramsSchema` for JSON-boundary validation; `renderOutputType` for `contract.d.ts`; the curried `factory` for runtime materialization. The `satisfies ColumnHelperFor<PgVectorDescriptor>` clause ties the helper to its descriptor at compile time, catching wiring mistakes (wrong `codecId`, wrong factory wired in, mismatched typeParams shape).
+The descriptor registers the codec id with the framework and carries the codec-id-keyed metadata the framework consults without the runtime instance in scope: traits for trait gating; `paramsSchema` for JSON-boundary validation; `renderOutputType` for `contract.d.ts`; the curried `factory` for runtime materialization. The `satisfies ColumnHelperFor<PgVectorDescriptor>` clause ties the helper to its descriptor at compile time, catching wiring mistakes (wrong `codecId`, wrong factory wired in, mismatched typeParams shape).
 
 **Non-parameterized codecs are the degenerate case.** A non-parameterized codec uses `P = void` and a constant factory that returns the same shared codec instance for every column:
 
@@ -108,7 +105,6 @@ class PgTextCodec extends CodecImpl<'pg/text@1', readonly ['equality', 'order', 
 class PgTextDescriptor extends CodecDescriptorImpl<void> {
   override readonly codecId = 'pg/text@1' as const;
   override readonly traits = ['equality', 'order', 'textual'] as const;
-  override readonly targetTypes = ['text'] as const;
   override readonly paramsSchema = undefined;
   override factory(): (ctx: CodecInstanceContext) => PgTextCodec {
     const shared = new PgTextCodec(this);
@@ -151,7 +147,7 @@ The same `vector(1536)` participates in four code paths. Each reads a different 
 
 ### 1. Column authoring
 
-`vector(1536)` returns a `ColumnTypeDescriptor` carrying both the data the contract IR needs (`codecId: 'pg/vector@1'`, `nativeType: 'vector'`, `typeParams: { length: 1536 }`) and, for codecs that need it, the curried factory itself, threaded through a first-class `type: (ctx: CodecInstanceContext) => Codec<…>` slot. The contract-authoring builder consumes the data part for the IR; the `type` slot is authoring-time only and is never serialized to `contract.json`.
+`vector(1536)` returns a `ColumnTypeDescriptor` carrying both the data the contract IR needs (`codecId: 'pg/vector@1'`, `typeParams: { length: 1536 }`; the contract's type name comes from the data type the codec represents) and, for codecs that need it, the curried factory itself, threaded through a first-class `type: (ctx: CodecInstanceContext) => Codec<…>` slot. The contract-authoring builder consumes the data part for the IR; the `type` slot is authoring-time only and is never serialized to `contract.json`.
 
 ### 2. No-emit type resolution
 
