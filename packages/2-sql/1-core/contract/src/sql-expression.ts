@@ -2,13 +2,16 @@ import type { JsonValue } from '@internal/contract/types';
 import type { DataTypeAuthoringEntry } from '@internal/framework-components/authoring';
 import {
   canonicalizeTaggedLiteralBody,
+  describeTaggedLiteralFailure,
   printTaggedLiteral,
+  resolveTemplateTagEscapes,
   taggedLiteralTextReadsBack,
 } from '@internal/framework-components/authoring';
 import type { DataType, DataTypeId } from '@internal/framework-components/codec';
 import { dataType, dataTypeId } from '@internal/framework-components/codec';
 import { runtimeError } from '@internal/framework-components/components';
 import { InternalError } from '@internal/utils/internal-error';
+import { contractError } from './contract-errors';
 
 export const SQL_EXPRESSION_DATA_TYPE_ID: DataTypeId = dataTypeId('sql/expression');
 export const SQL_EXPRESSION_TAG = 'sql';
@@ -22,6 +25,15 @@ export const sqlExpressionAuthoringEntry: DataTypeAuthoringEntry = {
   print: (value) => sqlTextFromCanonical(value),
   documentation:
     "A SQL expression in the target database's language. Prisma passes it to the database unchanged.",
+};
+
+/** The SQL family's registration of `sql/expression`: the data type and its authoring entry, keyed by its id. */
+export const sqlExpressionRegistration = {
+  dataTypes: [sqlExpressionDataType],
+  authoring: { [SQL_EXPRESSION_DATA_TYPE_ID]: sqlExpressionAuthoringEntry },
+} as const satisfies {
+  readonly dataTypes: readonly DataType[];
+  readonly authoring: Readonly<Record<string, DataTypeAuthoringEntry>>;
 };
 
 /** The SQL text held by the canonical form of a `sql/expression` value. */
@@ -77,4 +89,64 @@ export function assertNothingCastsFromSqlExpression(
       { dataType: type.id, contributedBy },
     );
   }
+}
+
+const SQL_EXPRESSION_MARKER: unique symbol = Symbol.for('@prisma/sql-expression');
+
+/** A value of the data type `sql/expression` in TypeScript. Its text is always canonical. */
+export class SqlExpression {
+  readonly [SQL_EXPRESSION_MARKER] = true as const;
+  readonly text: string;
+
+  /** Canonicalizes `text` as a PSL `sql` literal's text is canonicalized. Throws CONTRACT.SQL_EXPRESSION_INVALID on NUL or oversize text. */
+  constructor(text: string) {
+    const canonical = canonicalizeTaggedLiteralBody(text);
+    if (!canonical.ok) {
+      throw contractError(
+        'CONTRACT.SQL_EXPRESSION_INVALID',
+        describeTaggedLiteralFailure(canonical.reason),
+        { meta: { reason: canonical.reason, offset: canonical.offset } },
+      );
+    }
+    this.text = canonical.text;
+    Object.freeze(this);
+  }
+}
+
+export function isSqlExpression(value: unknown): value is SqlExpression {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    Reflect.get(value, SQL_EXPRESSION_MARKER) === true
+  );
+}
+
+/** Raw SQL written as a template literal: `` sql`"userId" = auth.uid()` ``. Other `sql` values may be interpolated. */
+export function sql(
+  strings: TemplateStringsArray,
+  ...values: readonly SqlExpression[]
+): SqlExpression {
+  const texts = values.map((value, index) => {
+    if (!isSqlExpression(value)) {
+      throw contractError(
+        'CONTRACT.SQL_EXPRESSION_INTERPOLATION',
+        'sql`...` only interpolates other sql`...` values; write any other text inside the template.',
+        { meta: { index } },
+      );
+    }
+    return value.text;
+  });
+  const joined = texts.reduce(
+    (text, value, index) => text + value + resolveTemplateTagEscapes(strings.raw[index + 1] ?? ''),
+    resolveTemplateTagEscapes(strings.raw[0] ?? ''),
+  );
+  return new SqlExpression(joined);
+}
+
+/** Returns `value` when it is a `SqlExpression`; throws for anything else. For callers that JavaScript cannot type-check. */
+export function requireSqlExpression(value: unknown, what: string): SqlExpression {
+  if (isSqlExpression(value)) return value;
+  throw contractError('CONTRACT.ARGUMENT_INVALID', `${what} must be a sql\`...\` value.`, {
+    meta: { what },
+  });
 }

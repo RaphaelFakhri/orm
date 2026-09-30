@@ -3,11 +3,16 @@ import { describe, expect, it } from 'vitest';
 import {
   assertNothingCastsFromSqlExpression,
   canonicalSqlText,
+  isSqlExpression,
   printSqlExpressionLiteral,
+  requireSqlExpression,
   SQL_EXPRESSION_DATA_TYPE_ID,
   SQL_EXPRESSION_TAG,
+  SqlExpression,
+  sql,
   sqlExpressionAuthoringEntry,
   sqlExpressionDataType,
+  sqlExpressionRegistration,
   sqlTextFromCanonical,
   sqlTextsReadBack,
 } from '../src/sql-expression';
@@ -150,4 +155,166 @@ describe('sqlTextsReadBack', () => {
   ] as const)('%s: %s', (_, texts, expected) => {
     expect(sqlTextsReadBack(texts)).toBe(expected);
   });
+});
+
+describe('sqlExpressionRegistration', () => {
+  it('holds the data type and its authoring entry, keyed by its id', () => {
+    expect(sqlExpressionRegistration).toEqual({
+      dataTypes: [sqlExpressionDataType],
+      authoring: { [SQL_EXPRESSION_DATA_TYPE_ID]: sqlExpressionAuthoringEntry },
+    });
+    expect(sqlExpressionRegistration.dataTypes[0]).toBe(sqlExpressionDataType);
+    expect(sqlExpressionRegistration.authoring[SQL_EXPRESSION_DATA_TYPE_ID]).toBe(
+      sqlExpressionAuthoringEntry,
+    );
+  });
+});
+
+describe('SqlExpression', () => {
+  it('canonicalizes its text as a PSL sql literal is canonicalized', () => {
+    expect(new SqlExpression('\n    a = 1\n      AND b = 2\n').text).toBe('a = 1\n  AND b = 2');
+  });
+
+  it('is frozen', () => {
+    expect(Object.isFrozen(new SqlExpression('a'))).toBe(true);
+  });
+
+  it('refuses a NUL character with CONTRACT.SQL_EXPRESSION_INVALID', () => {
+    expect(() => new SqlExpression('a\u0000b')).toThrow(
+      expect.objectContaining({
+        code: 'CONTRACT.SQL_EXPRESSION_INVALID',
+        message: 'Tagged literals must not contain NUL characters.',
+        meta: { reason: 'nul', offset: 1 },
+      }),
+    );
+  });
+
+  it('refuses a text over the size limit with CONTRACT.SQL_EXPRESSION_INVALID', () => {
+    expect(() => new SqlExpression('x'.repeat(65537))).toThrow(
+      expect.objectContaining({
+        code: 'CONTRACT.SQL_EXPRESSION_INVALID',
+        message: 'Tagged literal exceeds 65536 bytes.',
+      }),
+    );
+  });
+});
+
+describe('sql', () => {
+  it('returns a SqlExpression holding the text', () => {
+    const value = sql`gen_random_uuid()`;
+    expect(value).toBeInstanceOf(SqlExpression);
+    expect(value.text).toBe('gen_random_uuid()');
+  });
+
+  it('canonicalizes a multi-line text: blank edge lines dropped, common indentation removed', () => {
+    expect(
+      sql`
+      (now()
+        + '00:03:00'::interval)
+    `.text,
+    ).toBe("(now()\n  + '00:03:00'::interval)");
+  });
+
+  it('allows an empty text', () => {
+    expect(sql``.text).toBe('');
+  });
+
+  it('reads the raw text: JavaScript escapes are not interpreted', () => {
+    expect([sql`'\d+'`.text, sql`E'\n'`.text, sql`'C:\users'`.text]).toEqual([
+      "'\\d+'",
+      "E'\\n'",
+      "'C:\\users'",
+    ]);
+  });
+
+  it('resolves the three escapes a template tag understands', () => {
+    expect([sql`\``.text, sql`a\\b`.text, sql`'Home | \${user}'`.text, sql`\\$x`.text]).toEqual([
+      '`',
+      'a\\b',
+      `'Home | $${'{user}'}'`,
+      '\\$x',
+    ]);
+  });
+
+  it('joins interpolated sql values into the text', () => {
+    const owner = sql`"userId" = auth.uid()`;
+    expect(sql`${owner} AND deleted_at IS NULL`.text).toBe(
+      '"userId" = auth.uid() AND deleted_at IS NULL',
+    );
+  });
+
+  it('canonicalizes the joined text once', () => {
+    const first = sql`a = 1`;
+    expect(
+      sql`
+        ${first}
+          OR b = 2
+      `.text,
+    ).toBe('a = 1\n  OR b = 2');
+  });
+
+  it('inserts interpolated text as it is, resolving escapes only in the template', () => {
+    const inner = new SqlExpression('a\\\\b');
+    expect(sql`${inner} \\ c`.text).toBe('a\\\\b \\ c');
+  });
+
+  it.each([
+    ['a string', 'x', 0],
+    ['a number', 1, 0],
+    ['an object with a text', { text: 'x' }, 1],
+  ] as const)(
+    'refuses %s interpolated with CONTRACT.SQL_EXPRESSION_INTERPOLATION',
+    (_, value, index) => {
+      const untyped = sql as (
+        strings: TemplateStringsArray,
+        ...values: readonly unknown[]
+      ) => unknown;
+      const run = () => (index === 0 ? untyped`a ${value} b` : untyped`a ${sql`x`} ${value} b`);
+      expect(run).toThrow(
+        expect.objectContaining({
+          code: 'CONTRACT.SQL_EXPRESSION_INTERPOLATION',
+          message:
+            'sql`...` only interpolates other sql`...` values; write any other text inside the template.',
+          meta: { index },
+        }),
+      );
+    },
+  );
+});
+
+describe('isSqlExpression', () => {
+  it.each([
+    ['a sql value', sql`x`, true],
+    [
+      'a value made by another copy of the package',
+      { [Symbol.for('@prisma/sql-expression')]: true, text: 'x' },
+      true,
+    ],
+    ['an object with a text', { text: 'x' }, false],
+    ['a string', 'x', false],
+    ['null', null, false],
+    ['undefined', undefined, false],
+  ] as const)('%s: %s', (_, value, expected) => {
+    expect(isSqlExpression(value)).toBe(expected);
+  });
+});
+
+describe('requireSqlExpression', () => {
+  it('returns a sql value', () => {
+    const value = sql`x`;
+    expect(requireSqlExpression(value, 'Index "where"')).toBe(value);
+  });
+
+  it.each([['x'], [1], [{ text: 'x' }], [undefined]])(
+    'refuses %j with CONTRACT.ARGUMENT_INVALID',
+    (value) => {
+      expect(() => requireSqlExpression(value, 'Index "where"')).toThrow(
+        expect.objectContaining({
+          code: 'CONTRACT.ARGUMENT_INVALID',
+          message: 'Index "where" must be a sql`...` value.',
+          meta: { what: 'Index "where"' },
+        }),
+      );
+    },
+  );
 });
