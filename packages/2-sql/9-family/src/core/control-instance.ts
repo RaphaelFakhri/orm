@@ -45,6 +45,7 @@ import { ifDefined } from '@internal/utils/defined';
 import { InternalError } from '@internal/utils/internal-error';
 import type { JsonObject } from '@internal/utils/json';
 import type { StructuredError } from '@internal/utils/structured-error';
+import { enforceSqlDataTypeInvariants } from './assembly';
 import type { SqlControlAdapter } from './control-adapter';
 import type {
   SqlControlTargetDescriptor,
@@ -505,6 +506,7 @@ export function assertNoCrossSpaceFkReverseReferences(
 export function createSqlFamilyInstance<TTargetId extends string>(
   stack: ControlStack<'sql', TTargetId>,
 ): SqlFamilyInstance {
+  enforceSqlDataTypeInvariants(stack);
   if (!stack.adapter) {
     throw new InternalError('SQL family requires an adapter descriptor in ControlStack');
   }

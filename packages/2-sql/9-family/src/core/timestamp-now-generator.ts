@@ -24,7 +24,6 @@ const TEMPORAL_PRECISION_ARG = {
   kind: 'number',
   optional: true,
   integer: true,
-  minimum: 0,
 } as const;
 
 /**
