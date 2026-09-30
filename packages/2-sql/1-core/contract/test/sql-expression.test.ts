@@ -8,6 +8,7 @@ import {
   sqlExpressionAuthoringEntry,
   sqlExpressionDataType,
   sqlTextFromCanonical,
+  sqlTextReadsBack,
 } from '../src/sql-expression';
 
 describe('sqlExpressionDataType', () => {
@@ -111,5 +112,20 @@ describe('assertNothingCastsFromSqlExpression', () => {
         details: { dataType: 'pgvector/vector', contributedBy: 'pgvector' },
       }),
     );
+  });
+});
+
+describe('sqlTextReadsBack', () => {
+  it.each([
+    ['a single line', 'a = 1', true],
+    ['several lines', 'a = 1\n  AND b = 2', true],
+    ['an empty text', '', true],
+    ['indented text', '  a = 1', false],
+    ['a blank first line', '\na = 1', false],
+    ['a blank last line', 'a = 1\n', false],
+    ['a carriage return', 'a = 1\r\nAND b = 2', false],
+    ['a NUL character', 'a\u0000', false],
+  ])('%s reads back: %s', (_, text, expected) => {
+    expect(sqlTextReadsBack(text)).toBe(expected);
   });
 });

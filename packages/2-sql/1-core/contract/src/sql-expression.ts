@@ -1,6 +1,9 @@
 import type { JsonValue } from '@internal/contract/types';
 import type { DataTypeAuthoringEntry } from '@internal/framework-components/authoring';
-import { printTaggedLiteral } from '@internal/framework-components/authoring';
+import {
+  canonicalizeTaggedLiteralBody,
+  printTaggedLiteral,
+} from '@internal/framework-components/authoring';
 import type { DataType, DataTypeId } from '@internal/framework-components/codec';
 import { dataType, dataTypeId } from '@internal/framework-components/codec';
 import { runtimeError } from '@internal/framework-components/components';
@@ -29,6 +32,12 @@ export function sqlTextFromCanonical(value: JsonValue): string {
 /** A `sql` literal holding `text`, as `contract infer` prints it. */
 export function printSqlExpressionLiteral(text: string): string {
   return printTaggedLiteral(SQL_EXPRESSION_TAG, text);
+}
+
+/** Whether `text` reads back unchanged when printed as a `sql` literal. */
+export function sqlTextReadsBack(text: string): boolean {
+  const canonical = canonicalizeTaggedLiteralBody(text);
+  return canonical.ok && canonical.text === text;
 }
 
 function castFromSqlExpression(type: DataType): string | undefined {
