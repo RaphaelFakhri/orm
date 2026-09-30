@@ -311,3 +311,40 @@ CONTRACT.SOURCE_LOAD_FAILED: Failed to resolve contract source
 CONTRACT.SOURCE_LOAD_FAILED: Failed to resolve contract source
   PSL_VALUE_TYPE_INCOMPATIBLE [{"offset":56,"line":4,"column":18}] Field "T.v": pg/int4 has no cast from a list; write a number
 ```
+
+### Cases added by the round 2 review fixes
+
+The round 2 review fixes reword one refusal: an element of a list written on a column whose type has a list cast, such as a vector, that the list cast does not take. These cases need the pgvector extension, so the slice 2a `prisma.config.ts` adds `import pgvector from '@prisma/orm-extension-pgvector/control';` and `extensions: [pgvector],` inside `ormConfig`. Use these cases in place of the `CASES` block:
+
+```text
+tags Int[] @default([1, "x"])
+v Int @default([1])
+v pgvector.Vector(3) @default([1, "x", 3])
+v pgvector.Vector(3) @default([1, 2, 3])
+```
+
+| Case | Expected |
+| --- | --- |
+| 1 | Unchanged from case 5 above |
+| 2 | Unchanged from case 14 above |
+| 3 | `PSL_VALUE_TYPE_INCOMPATIBLE`, `Field "T.v" at element 2: pgvector/vector has no cast from a list holding pg/text; write a number`, starting at `"x"` (column 37) |
+| 4 | No diagnostic; the stored default is `[1, 2, 3]` |
+
+### Run on 2026-09-30, after the round 2 review fixes
+
+Run on commit `2d788c2342`, after `pnpm build`. Result: every case gave the expected code, start and message. Case 3 used to end `pgvector/vector has no cast from pg/text; write a number`, which named a cast the vector type does not declare.
+
+```text
+=== case 1: tags Int[] @default([1, "x"])
+CONTRACT.SOURCE_LOAD_FAILED: Failed to resolve contract source
+  PSL_VALUE_TYPE_INCOMPATIBLE [{"offset":65,"line":4,"column":27}] Field "T.tags" at element 2: pg/int4 has no cast from pg/text; write a number
+=== case 2: v Int @default([1])
+CONTRACT.SOURCE_LOAD_FAILED: Failed to resolve contract source
+  PSL_VALUE_TYPE_INCOMPATIBLE [{"offset":56,"line":4,"column":18}] Field "T.v": pg/int4 has no cast from a list; write a number
+=== case 3: v pgvector.Vector(3) @default([1, "x", 3])
+CONTRACT.SOURCE_LOAD_FAILED: Failed to resolve contract source
+  PSL_VALUE_TYPE_INCOMPATIBLE [{"offset":75,"line":4,"column":37}] Field "T.v" at element 2: pgvector/vector has no cast from a list holding pg/text; write a number
+=== case 4: v pgvector.Vector(3) @default([1, 2, 3])
+ok
+  stored default: ["\"default\":{\"kind\":\"literal\",\"value\":[1,2,3]}"]
+```
