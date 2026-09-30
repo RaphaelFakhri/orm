@@ -307,6 +307,11 @@ Examples on Postgres:
   - Tests: every test that builds `controlMutationDefaults` with `dataTypeEntries` moves the entries to `dataTypes` ([research/rebase-delta.md](research/rebase-delta.md) B.3).
 - The block spec context: section 9.1.
 
+### 7.1 Carried over from the slice 2t review, done in slice 2b
+
+- `ControlDefaultRegistries` is deleted. `AttributeSpecContext` carries `readonly defaultFunctionRegistry: ControlMutationDefaultRegistry` in place of `controlMutationDefaults`. `CreateBinderOptions`, `createSqlBinder`, `createMongoBinder`, `modelSpecContext`, `fieldSpecContext` and the Mongo interpreter input take `defaultFunctionRegistry`; the Mongo provider passes `context.controlMutationDefaults.defaultFunctionRegistry`. The language server passes `source.controlMutationDefaults.defaultFunctionRegistry`.
+- The `@default` literal arms yield a written scalar with its span. `psl-parser` exports `writtenScalar(arm)`, which wraps a literal arm, keeps its kind and metadata, and yields `ParsedWrittenScalar` (`{ ok: true, written, span }`, or `{ ok: false, reason: 'nul' | 'too-large', span }` for a tagged literal that does not canonicalize), and `writtenList(of)`, which yields `ParsedWrittenList` (`{ elements, span }`). `lowerDataTypeDefault` takes `spans: DefaultSpans` (`attribute`, `value`, `elements`) and returns the `span` to report at; `DefaultRefusalPlace`, `writtenScalar`, `defaultValueExpression` and `listElements` in `psl-column-resolution.ts` are gone. Every `@default` diagnostic keeps its code, message and span.
+
 ## 8. The attribute places (slice 2b)
 
 ### 8.1 `@@index` and `@@check`
@@ -319,7 +324,7 @@ In `packages/2-sql/2-authoring/contract-psl/src/sql-attribute-specs.ts`:
 
 In `packages/2-sql/2-authoring/contract-psl/src/interpreter.ts`, in `buildModelNodeFromPsl`:
 
-- Build one context per model: `const specContext = modelSpecContext({ symbols: input.symbolTable, model, controlMutationDefaults: { defaultFunctionRegistry: input.defaultFunctionRegistry }, dataTypes: input.dataTypes, ...ifDefined('parsedBlocks', input.parsedBlocks) })`; `modelSpecContext` gains an optional `parsedBlocks` input it copies.
+- Build one context per model: `const specContext = modelSpecContext({ symbols: input.symbolTable, model, defaultFunctionRegistry: input.defaultFunctionRegistry, dataTypes: input.dataTypes })`. (Corrected in slice 2b: `AttributeSpecContext` has no `parsedBlocks` field on `main`, so there is none to copy; the context carries `defaultFunctionRegistry` directly, see below.)
 - Pass it to `sqlAttributeSpecs.model.index(specContext)`, `sqlAttributeSpecs.model.check(specContext)` and the contributed model attribute factory (replacing the inline object at about line 1154). The other `sqlAttributeSpecs.model.*` factories take no argument.
 - `@@index` node: `...ifDefined('expression', parsed.expression === undefined ? undefined : sqlTextFromCanonical(parsed.expression.value))` and `where: parsed.where === undefined ? undefined : sqlTextFromCanonical(parsed.where.value)`.
 - `@@check` node: `expression: sqlTextFromCanonical(parsed.expression.value)`.
@@ -343,7 +348,7 @@ Serhii, the author of #30381, agreed (2026-09-25) that block specs may receive t
 ### 9.1 The block spec context carries the stack's data types
 
 - `BlockSpecContext` gains `readonly dataTypes: DataTypeSupport`, the same field and value as `AttributeSpecContext.dataTypes` (section 7).
-- `InterpretExtensionBlocksInput` gains a required `readonly dataTypes: DataTypeSupport`, and `interpretExtensionBlocks` passes it into every `BlockSpecContext` it builds, for block specs and block attributes.
+- `InterpretExtensionBlocksInput` gains a required `readonly dataTypes: DataTypeSupport`, and `interpretExtensionBlocks` passes it into every `BlockSpecContext` it builds, for block specs and block attributes. `InterpretExtensionBlockInput` and `InterpretExtensionBlockAttributesInput` take it too. The binder also builds block spec contexts, when it binds block values and block attribute arguments; it puts its own `dataTypes` into them. (Corrected in slice 2b: the design missed the binder and the two single-block inputs.)
 - The SQL interpreter passes its `dataTypes`, which its input carries. The Mongo interpreter passes the same value it puts in its attribute contexts.
 - The language server's block attribute and block key completion contexts (`attribute-spec-resolution.ts`, `completion-provider.ts`) set `dataTypes: source.dataTypes ?? EMPTY_DATA_TYPES`. They build specs and never parse values, so the empty value cannot reach step 0 of section 6.
 
