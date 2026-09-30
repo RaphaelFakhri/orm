@@ -72,7 +72,7 @@ rm -f contract.prisma contract.json contract.d.ts
 | 6 | `PSL_VALUE_TYPE_INCOMPATIBLE`, naming the cast `pg/int4` has |
 | 7 | `PSL_INVALID_LITERAL` with the JSON parser's message |
 | 8 | `PSL_VALUE_TYPE_INCOMPATIBLE` for a number too wide for the column |
-| 9 | `PSL_DEFAULT_TYPE_INCOMPATIBLE`, and the message says to write a list literal |
+| 9 | `PSL_DEFAULT_LIST_EXPECTED`, and the message says to write a list literal |
 
 ### Run on 2026-09-29
 

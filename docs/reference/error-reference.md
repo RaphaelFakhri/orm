@@ -801,7 +801,7 @@ Reported at the `@default` attribute. See [ADR 254](../architecture%20docs/adrs/
 
 A written value that the authoring entry's parse or a cast refused: a magnitude no double holds written on a `Float` column, a body a tag's parse cannot read, such as a `json` body that is not a JSON document, a list holding another list, or a number no data type of the target holds — `no data type of this target holds the number <text>`, which is how SQLite refuses a whole number past 64 bits. The message is `Field "<Model>.<field>": <the message of whatever refused it>`, with ` at element <n>` after the field path when it is one element of a written list. Reported at the `@default` attribute. See [ADR 254](../architecture%20docs/adrs/ADR%20254%20-%20Data%20types%20and%20casts.md).
 
-### PSL_DEFAULT_TYPE_INCOMPATIBLE
+### PSL_DEFAULT_LIST_EXPECTED
 
 A single value is written as the `@default` of a column that holds a list: `Field "<Model>.<field>": this column holds a list, so its default is a list literal, as in [1, 2]`. Every other mismatch between a written value and a column's type is `PSL_VALUE_TYPE_INCOMPATIBLE`. Reported at the `@default` attribute.
 

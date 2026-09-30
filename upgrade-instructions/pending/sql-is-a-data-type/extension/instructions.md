@@ -9,10 +9,7 @@ changes:
         - '\b(pg|sqlite)\.sql\s*[\x60"'']'
   - id: default-diagnostic-codes-changed
     summary: |
-      Four PSL diagnostic codes for written values changed: `PSL_UNKNOWN_DEFAULT_LITERAL_TAG` is
-      now `PSL_UNKNOWN_LITERAL_TAG`, `PSL_INVALID_JSON_LITERAL` is now `PSL_INVALID_LITERAL`, and
-      most cases of `PSL_DEFAULT_TYPE_INCOMPATIBLE` and `PSL_INVALID_DEFAULT_LITERAL` moved to
-      `PSL_VALUE_TYPE_INCOMPATIBLE` and `PSL_INVALID_LITERAL`.
+      Four PSL diagnostic codes for written values changed: `PSL_UNKNOWN_DEFAULT_LITERAL_TAG` is now `PSL_UNKNOWN_LITERAL_TAG`, `PSL_INVALID_JSON_LITERAL` is now `PSL_INVALID_LITERAL`, `PSL_DEFAULT_TYPE_INCOMPATIBLE` is now `PSL_VALUE_TYPE_INCOMPATIBLE`, or `PSL_DEFAULT_LIST_EXPECTED` for a single value on a list column, and most cases of `PSL_INVALID_DEFAULT_LITERAL` moved to `PSL_INVALID_LITERAL`.
     detection:
       glob: "**/*.{ts,mts,cts,js,mjs}"
       matches:
@@ -60,7 +57,7 @@ This matters only to code that reads PSL diagnostic codes, such as a test that a
 | Text an authoring entry or a cast refused | `PSL_INVALID_DEFAULT_LITERAL` | `PSL_INVALID_LITERAL` |
 | A value whose type the column's type has no cast from, including a list written on a column that holds one value | `PSL_DEFAULT_TYPE_INCOMPATIBLE` | `PSL_VALUE_TYPE_INCOMPATIBLE` |
 | A written form the target has no data type for | `PSL_DEFAULT_TYPE_INCOMPATIBLE` | `PSL_VALUE_TYPE_INCOMPATIBLE` |
-| A single value on a list column | `PSL_DEFAULT_TYPE_INCOMPATIBLE` | unchanged |
+| A single value on a list column | `PSL_DEFAULT_TYPE_INCOMPATIBLE` | `PSL_DEFAULT_LIST_EXPECTED` |
 | A value the column's codec refused | `PSL_INVALID_DEFAULT_LITERAL` | unchanged |
 
 `PSL_INVALID_JSON_LITERAL` no longer exists.

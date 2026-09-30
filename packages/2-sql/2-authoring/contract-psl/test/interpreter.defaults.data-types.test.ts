@@ -182,7 +182,7 @@ describe('written defaults a column refuses', () => {
     [
       'a single value on a list column',
       `docs Jsonb[] @default(${tagged('json', '{}')})`,
-      'PSL_DEFAULT_TYPE_INCOMPATIBLE',
+      'PSL_DEFAULT_LIST_EXPECTED',
       'N.docs": this column holds a list, so its default is a list literal',
     ],
     [

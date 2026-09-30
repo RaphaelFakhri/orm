@@ -359,7 +359,7 @@ In `data-type-default.ts`, `lowerDataTypeDefault` keeps its messages and changes
 | `unreadable` (any origin, including a JSON body, a nested list and a throwing list cast) | `PSL_INVALID_LITERAL` |
 | `unknown-tag` | `PSL_UNKNOWN_LITERAL_TAG` |
 | `unwritable`, `no-cast` (any origin, including a list written on a scalar column) | `PSL_VALUE_TYPE_INCOMPATIBLE` |
-| `not-a-list` | `PSL_DEFAULT_TYPE_INCOMPATIBLE` (default-only) |
+| `not-a-list` | `PSL_DEFAULT_LIST_EXPECTED` (default-only; renamed from `PSL_DEFAULT_TYPE_INCOMPATIBLE`, whose name read as a type mismatch) |
 | `undecodable` | `PSL_INVALID_DEFAULT_LITERAL` (default-only) |
 
 `PSL_INVALID_JSON_LITERAL` is retired; `DefaultRefusal.unreadable.json` is deleted. Rename `PSL_UNKNOWN_DEFAULT_LITERAL_TAG` to `PSL_UNKNOWN_LITERAL_TAG` in the `PslDiagnosticCode` union (`psl-extension-block.ts`, doc "A tagged literal whose tag no pack in the stack registered.") and in `psl-column-resolution.ts`. Add `PSL_VALUE_TYPE_INCOMPATIBLE` ("A written value has a data type the receiving position's type neither is nor casts from, or the target has no data type for its syntax.") and `PSL_INVALID_LITERAL` ("A written value that its authoring entry's parse or a cast refused.") to the union.
@@ -425,7 +425,7 @@ In `packages/1-framework/3-tooling/language-server/src/`:
 | `PSL_TAGGED_LITERAL_NUL`, `PSL_TAGGED_LITERAL_TOO_LARGE` | `@default`; `dataTypeValue` | Canonicalization failed |
 | `PSL_INVALID_ATTRIBUTE_SYNTAX` | `dataTypeValue` | The argument is not a literal |
 | `PSL_INVALID_DEFAULT_SQL` (moved to contract-psl) | `@default` | Reserved text or `checkSqlDefaultBody` refusal |
-| `PSL_DEFAULT_TYPE_INCOMPATIBLE`, `PSL_INVALID_DEFAULT_LITERAL` | `@default` | Only `not-a-list` and a codec refusal |
+| `PSL_DEFAULT_LIST_EXPECTED` (renamed from `PSL_DEFAULT_TYPE_INCOMPATIBLE`), `PSL_INVALID_DEFAULT_LITERAL` | `@default` | Only `not-a-list` and a codec refusal |
 | `PSL_INVALID_JSON_LITERAL`, `PSL_UNKNOWN_DEFAULT_LITERAL_TAG` | — | Retired / renamed |
 | `CONTRACT.SQL_EXPRESSION_INTERPOLATION` (renamed from `CONTRACT.DEFAULT_SQL_INTERPOLATION`) | TS `sql` tag | Something other than a `sql` value interpolated |
 | `CONTRACT.SQL_EXPRESSION_INVALID` (new) | `SqlExpression` constructor | Canonicalization failed |

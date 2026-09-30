@@ -23,8 +23,7 @@ export const PSL_INVALID_DEFAULT_LITERAL: ContributedPslDiagnosticCode =
   'PSL_INVALID_DEFAULT_LITERAL';
 
 /** A single value written as the default of a column that holds a list. */
-export const PSL_DEFAULT_TYPE_INCOMPATIBLE: ContributedPslDiagnosticCode =
-  'PSL_DEFAULT_TYPE_INCOMPATIBLE';
+export const PSL_DEFAULT_LIST_EXPECTED: ContributedPslDiagnosticCode = 'PSL_DEFAULT_LIST_EXPECTED';
 
 /** One written value, in the syntax a contract source wrote it in. */
 export type WrittenValue =
@@ -430,7 +429,7 @@ export function lowerDataTypeDefault(input: {
     case 'not-a-list':
       return {
         ok: false,
-        code: PSL_DEFAULT_TYPE_INCOMPATIBLE,
+        code: PSL_DEFAULT_LIST_EXPECTED,
         message: `${where}: this column holds a list, so its default is a list literal, as in [1, 2]`,
       };
     case 'no-cast':
