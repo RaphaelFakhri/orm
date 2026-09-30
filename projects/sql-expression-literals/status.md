@@ -220,6 +220,22 @@ Brief: `dispatches/2b-review-fixes-brief.md`. Reviews: `slice-reviews/2b/`. Comm
 
 Verification at HEAD (F01), logs in `wip/2b-review-fixes/`: `build`, `typecheck`, `lint`, `lint:deps`, `lint:skills`, `check:error-reference`, `lint:framework-vocabulary`, `fixtures:check` (tree clean) pass; `lint:casts` and `lint:throws` delta 0. `test:scripts`: 590 pass. `test:packages`: 1452 files pass, 7 fail; the three tarball tests are the known failures, and the other four pass alone (`rerun-failed.log`). Integration files alone: 60 files, 982 tests pass (`integration.log`). Supabase pack: 18 files pass (`supabase-tests.log`). `check:upgrade-coverage` after committing: pass (`upgrade-coverage.log`).
 
+### Slice 2b review fixes, round 2, 2026-09-30
+
+Brief: `dispatches/2b-round-2-fixes-brief.md`. Reviews: `slice-reviews/2b-round-2/`. Commits `589b2b4913` to the status commit. Not pushed, no pull request.
+
+- **G02**: canonicalization was not idempotent: it dropped one blank first line and one blank last line, so `"\n\n(a > 0)"` became `"\n(a > 0)"`, which does not read back. The canonicalizer changed: it now drops every blank line at the start and end. Canonical text is now its own canonical form and reads back once printed, so `printSqlExpressionLiteral` never throws on it; tests in `framework-components/test/tagged-literal.test.ts` and `sql-contract/test/sql-expression.test.ts`. No re-check was added to `printableIndex`. ADR 129 and ADR 260 state the rule; both fragments say the stored text changes once for a literal with two or more blank lines at an end.
+- **B01, G01**: a planner test with only a `@@map` policy whose text becomes canonical: `migration plan` drops the policy and creates it again. ADR 260 and both fragments say so.
+- **B02**: the skip note, ADR 129 and the app fragment say that a hand-written literal still differs from the database, and give the two ways out: change the SQL in the database, or name the object without `map:` or `@@map`.
+- **B03**: the `@default` arm is `DefaultFunctionCall` with kind `default-function`; the exports stay, with a doc comment.
+- **B04, G03**: ADR 129, design section 11.2, `mapDefault` and the test name say defaults compare with case and whitespace ignored. `plan.md` records the string-constant default under slice 3 and under "Deferred beyond this project", because infer can produce it: Postgres reprints string constants unchanged.
+- **B05**: `TaggedLiteralCanonicalization` is exported from `/authoring` only.
+- **B06**: `mapArg` in `psl-parser`; `writtenScalar`, `writtenList` and the two `@default` arms use it.
+- **B07**: `canonicalSqlText` lives in `@internal/sql-contract/sql-expression`.
+- **G04, G05**: the codemod test finds fragment copies anywhere under `upgrade-instructions/` and fails when there are none; two tests pin `//` inside a string.
+
+Verification, logs in `wip/2b-round-2-fixes/`: `build`, `typecheck`, `lint`, `lint:deps`, `check:error-reference`, `lint:framework-vocabulary`, `lint:skills`, `fixtures:check` (tree clean) pass; `lint:casts` and `lint:throws` delta 0. `test:scripts`: 593 pass. `test:packages`: 1454 files pass, 5 fail: the three known tarball tests and two `cli-telemetry` files, which pass alone (`rerun-cli-telemetry.log`). Integration files: 44 files, 928 tests pass (`integration.log`).
+
 ## Slice 1, 2026-09-30
 
 Built in the linked worktree `wip/wt-1` from `main`, since it depends on no other slice. Briefs: `dispatches/1-implementer-brief.md`, `dispatches/1-review-fixes-brief.md`. Reviews: `slice-reviews/1/` and `slice-reviews/1-round-2/`. Round 1 found a real bug: the SQLite migration-file renderer passed the `OpaqueSql` object to the JSON printer. Round 2 corrected the app fragment: only the wire name changes, not a policy's stored body, and the plan drops and recreates the object. PR https://github.com/prisma/orm/pull/30546.
