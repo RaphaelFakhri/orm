@@ -901,7 +901,7 @@ The include is well-formed but not supported in this position: scalar aggregatio
 
 ### ORM.LOCK_INCOMPATIBLE
 
-A row-locking method (`forUpdate()`, `forNoKeyUpdate()`, `forShare()`, `forKeyShare()`) was combined with something Postgres refuses to lock. Raised by the SQL builder: at `build()` when the projection holds an aggregate or window function, and when a locked select is turned into a subquery through `.as()` or passed where a subquery is expected. Payload: `conflict` (`aggregate` or `subquery`).
+A row-locking method (`forUpdate()`, `forNoKeyUpdate()`, `forShare()`, `forKeyShare()`) was combined with something Postgres refuses to lock. Raised by the SQL builder: at `build()` when the select also has `distinct`, `distinctOn`, `groupBy` or `having`, or an aggregate or window function in the projection; and when a locked select is turned into a subquery through `.as()` or passed where a subquery is expected. Payload: `conflict` (`distinct`, `distinctOn`, `groupBy`, `having`, `aggregate` or `subquery`).
 
 ### ORM.MODEL_UNKNOWN
 
@@ -1086,10 +1086,6 @@ An `AsyncIterableResult` (the return value of `query()`) was iterated a second t
 ### RUNTIME.JSON_SCHEMA_VALIDATION_FAILED
 
 The `arktype-json` codec rejected a JSON value that does not satisfy the column's arktype schema, on encode (writing) or decode (reading). Also thrown when the schema itself cannot be rehydrated from the contract's stored JSON IR. Payload: `codecId`, `issues` (validation) or `jsonIr` (rehydration).
-
-### RUNTIME.LOCK_INCOMPATIBLE
-
-A select AST node was constructed with a row-locking clause (`FOR UPDATE`, `FOR SHARE` and the like) together with `DISTINCT`, `DISTINCT ON`, `GROUP BY` or `HAVING`. Postgres refuses a locking clause on such a query, so the node refuses it at construction. Raised by `SelectAst` in relational-core. Payload: `node` (`select`), `field` (the first conflicting field).
 
 ### RUNTIME.MIDDLEWARE_FAMILY_MISMATCH
 

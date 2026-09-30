@@ -103,14 +103,6 @@ describe('ast/builders', () => {
     const skipLocked = LockingClause.of('forUpdate', { of: ['j'], wait: 'skipLocked' });
     const share = LockingClause.of('forShare');
 
-    const lockIncompatible = (field: string) =>
-      expect.objectContaining({
-        name: 'StructuredError',
-        code: 'RUNTIME.LOCK_INCOMPATIBLE',
-        message: `A locking clause cannot be combined with ${field}`,
-        meta: { node: 'select', field },
-      });
-
     it('keeps locking clauses through the other with... calls', () => {
       const where = BinaryExpr.eq(col('j', 'state'), param(1, 'state'));
       const ast = base
@@ -171,29 +163,6 @@ describe('ast/builders', () => {
 
       expect(clause.of).toEqual(['a', 'b']);
       expect(Object.isFrozen(clause.of)).toBe(true);
-    });
-
-    it('the constructor refuses a lock with distinct', () => {
-      expect(() => base.withDistinct().withLocking([share])).toThrow(lockIncompatible('distinct'));
-      expect(() => base.withLocking([share]).withDistinct()).toThrow(lockIncompatible('distinct'));
-    });
-
-    it('the constructor refuses a lock with distinctOn', () => {
-      expect(() => base.withDistinctOn([col('j', 'id')]).withLocking([share])).toThrow(
-        lockIncompatible('distinctOn'),
-      );
-    });
-
-    it('the constructor refuses a lock with groupBy', () => {
-      expect(() => base.withGroupBy([col('j', 'id')]).withLocking([share])).toThrow(
-        lockIncompatible('groupBy'),
-      );
-    });
-
-    it('the constructor refuses a lock with having', () => {
-      expect(() =>
-        base.withHaving(BinaryExpr.gt(col('j', 'id'), param(1, 'min'))).withLocking([share]),
-      ).toThrow(lockIncompatible('having'));
     });
   });
 });

@@ -163,8 +163,26 @@ const LOCK_INCOMPATIBLE_PROJECTION_KINDS: ReadonlySet<string> = new Set([
   'window-func',
 ]);
 
-function assertLockableProjection(state: BuilderState): void {
+function lockConflictOf(state: BuilderState): string | undefined {
+  const conflicts = {
+    distinct: state.distinct !== undefined,
+    distinctOn: state.distinctOn !== undefined && state.distinctOn.length > 0,
+    groupBy: state.groupBy.length > 0,
+    having: state.having !== undefined,
+  };
+  return Object.entries(conflicts).find(([, present]) => present)?.[0];
+}
+
+function assertLockable(state: BuilderState): void {
   if (state.locking === undefined) return;
+  const conflict = lockConflictOf(state);
+  if (conflict !== undefined) {
+    throw structuredError(
+      'ORM.LOCK_INCOMPATIBLE',
+      `A locking clause cannot be combined with ${conflict}`,
+      { meta: { conflict } },
+    );
+  }
   const item = state.projections.find((projection) =>
     LOCK_INCOMPATIBLE_PROJECTION_KINDS.has(projection.expr.kind),
   );
@@ -186,7 +204,7 @@ export function assertNotLocked(state: BuilderState): void {
 }
 
 export function buildSelectAst(state: BuilderState): SelectAst {
-  assertLockableProjection(state);
+  assertLockable(state);
   const where = combineWhereExprs(state.where);
   return new SelectAst({
     from: state.from,

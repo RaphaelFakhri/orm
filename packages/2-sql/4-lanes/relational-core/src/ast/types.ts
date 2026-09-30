@@ -1612,26 +1612,6 @@ export class LockingClause extends AstNode {
   }
 }
 
-function checkLockCompatible(options: SelectAstOptions): void {
-  if (options.locking === undefined || options.locking.length === 0) {
-    return;
-  }
-  const conflicts = {
-    distinct: options.distinct !== undefined,
-    distinctOn: options.distinctOn !== undefined && options.distinctOn.length > 0,
-    groupBy: options.groupBy !== undefined && options.groupBy.length > 0,
-    having: options.having !== undefined,
-  };
-  const field = Object.entries(conflicts).find(([, present]) => present)?.[0];
-  if (field !== undefined) {
-    throw structuredError(
-      'RUNTIME.LOCK_INCOMPATIBLE',
-      `A locking clause cannot be combined with ${field}`,
-      { meta: { node: 'select', field } },
-    );
-  }
-}
-
 export interface SelectAstOptions {
   readonly from?: AnyFromSource;
   readonly joins: ReadonlyArray<JoinAst> | undefined;
@@ -1668,7 +1648,6 @@ export class SelectAst extends QueryAst {
     super();
     checkLimitOffset('limit', options.limit);
     checkLimitOffset('offset', options.offset);
-    checkLockCompatible(options);
     this.from = options.from;
     this.joins =
       options.joins && options.joins.length > 0 ? frozenArrayCopy(options.joins) : undefined;

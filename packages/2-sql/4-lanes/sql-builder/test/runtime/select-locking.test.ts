@@ -1,10 +1,12 @@
 import { validateSqlContractFully } from '@internal/sql-contract/validators';
 import {
+  BinaryExpr,
   ColumnRef,
   JsonArrayAggExpr,
   LockingClause,
   NativeJsonValueProjection,
   OrderByItem,
+  ParamRef,
   ProjectionItem,
   TableSource,
   WindowFuncExpr,
@@ -170,30 +172,29 @@ describe('row locking', () => {
     it.each([
       ['distinct', (q: ReturnType<typeof lockedUsers>) => q.distinct()],
       ['distinctOn', (q: ReturnType<typeof lockedUsers>) => q.distinctOn('id')],
-    ] as const)('a lock with %s, through the syntax tree', (field, apply) => {
+      ['groupBy', (q: ReturnType<typeof lockedUsers>) => q.groupBy('id')],
+    ] as const)('a lock followed by %s', (conflict, apply) => {
       expect(() => apply(lockedUsers()).build()).toThrow(
-        expect.objectContaining({
-          code: 'RUNTIME.LOCK_INCOMPATIBLE',
-          meta: { node: 'select', field },
-        }),
+        lockIncompatible(conflict, `A locking clause cannot be combined with ${conflict}`),
       );
     });
 
-    it('a lock after groupBy(), through the syntax tree', () => {
-      expect(() => lockedUsers().groupBy('id').build()).toThrow(
-        expect.objectContaining({
-          code: 'RUNTIME.LOCK_INCOMPATIBLE',
-          meta: { node: 'select', field: 'groupBy' },
-        }),
-      );
-    });
-
-    it('distinctOn followed by a lock, through the syntax tree', () => {
+    it('distinctOn followed by a lock', () => {
       expect(() => db().public.users.select('id').distinctOn('id').forShare().build()).toThrow(
-        expect.objectContaining({
-          code: 'RUNTIME.LOCK_INCOMPATIBLE',
-          meta: { node: 'select', field: 'distinctOn' },
-        }),
+        lockIncompatible('distinctOn', 'A locking clause cannot be combined with distinctOn'),
+      );
+    });
+
+    it('a lock with having', () => {
+      const state = {
+        ...emptyState(TableSource.named('users'), usersScope),
+        projections: [ProjectionItem.of('id', ColumnRef.of('users', 'id'))],
+        having: BinaryExpr.gt(ColumnRef.of('users', 'id'), ParamRef.of(1)),
+        locking: [LockingClause.of('forUpdate')],
+      };
+
+      expect(() => buildSelectAst(state)).toThrow(
+        lockIncompatible('having', 'A locking clause cannot be combined with having'),
       );
     });
 
