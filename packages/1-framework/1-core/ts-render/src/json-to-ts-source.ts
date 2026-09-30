@@ -42,14 +42,24 @@ export function jsonToTsSource(value: unknown): string {
     return `[\n${items.map((i) => `  ${i}`).join(',\n')},\n]`;
   }
   if (typeof value === 'object') {
-    const entries = Object.entries(value).filter(([, v]) => v !== undefined);
-    if (entries.length === 0) return '{}';
-    const items = entries.map(([k, v]) => `${renderKey(k)}: ${jsonToTsSource(v)}`);
-    const singleLine = `{ ${items.join(', ')} }`;
-    if (singleLine.length <= 80) return singleLine;
-    return `{\n${items.map((i) => `  ${i}`).join(',\n')},\n}`;
+    return tsObjectSource(
+      Object.entries(value)
+        .filter(([, v]) => v !== undefined)
+        .map(([k, v]) => [k, jsonToTsSource(v)] as const),
+    );
   }
   throw new InternalError(`jsonToTsSource: unsupported value type "${typeof value}"`);
+}
+
+/** An object literal from entries whose values are already TypeScript source, laid out as `jsonToTsSource` lays out objects. */
+export function tsObjectSource(
+  entries: readonly (readonly [key: string, source: string])[],
+): string {
+  if (entries.length === 0) return '{}';
+  const items = entries.map(([key, source]) => `${renderKey(key)}: ${source}`);
+  const singleLine = `{ ${items.join(', ')} }`;
+  if (singleLine.length <= 80 && !singleLine.includes('\n')) return singleLine;
+  return `{\n${items.map((i) => `  ${i}`).join(',\n')},\n}`;
 }
 
 function renderKey(key: string): string {

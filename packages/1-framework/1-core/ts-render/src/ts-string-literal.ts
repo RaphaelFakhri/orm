@@ -15,3 +15,14 @@ export function tsStringLiteral(value: string): string {
     .replace(/\u2028/g, '\\u2028')
     .replace(/\u2029/g, '\\u2029');
 }
+
+/**
+ * TypeScript source for a string: an untagged template literal when the text holds both quote kinds and no line
+ * break, so neither quote is escaped; otherwise `tsStringLiteral(text)`.
+ */
+export function tsQuotedTextSource(text: string): string {
+  const holdsBothQuoteKinds = text.includes("'") && text.includes('"');
+  if (!holdsBothQuoteKinds || /[\n\r\u2028\u2029]/.test(text)) return tsStringLiteral(text);
+  const escaped = text.replace(/\\/g, '\\\\').replace(/`/g, '\\`').replace(/\$\{/g, '\\${');
+  return `\`${escaped}\``;
+}
