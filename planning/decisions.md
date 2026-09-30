@@ -84,6 +84,10 @@ Superseded if the external-column proposal is adopted: when `contract infer` or 
 
 Stopping point for the open upgrade issues: every urgent and high issue is closed before GA. Medium and low issues may remain. The issues are in two Linear projects: "Prisma 7 contract source: gaps and defects" and "Contract print and Prisma 7 source follow-ups".
 
+## Emulator controls in the `prisma` CLI: start now
+
+Will, 2026-09-30: the emulator controls (start, stop, list, reset) are now urgent and start immediately. They were already required for GA; what changed is the order. They move to the top of the editor and tools stream. The VS Code extension work that depends on them (items 2 and 3 of that stream) waits on them. Background from 2026-09-28: several emulators of each type can run, so status is a list; the eval found that stopping `prisma dev` leaves the emulator processes running and no stop or cleanup command exists.
+
 ## Query features: required for GA
 
 Transaction options: isolation levels, timeouts, and transactions inside transactions. None exists today. The runtime docs mark them as deferred. The databases differ here (SQLite has no isolation levels, MongoDB has its own transaction model), so the design lets each database state what it supports.

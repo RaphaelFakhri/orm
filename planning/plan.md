@@ -39,10 +39,10 @@ Test: an existing Prisma 7 database can be signed by Prisma 8.
 
 | # | Project | GA | State | Waiting on |
 | --- | --- | --- | --- | --- |
-| 1 | Multi-file PSL | Must | Done. Last part merged 2026-09-30 (prisma/orm#30456). | |
-| 2 | Emulator controls in the `prisma` CLI: start, stop, list, reset | Must | Not tracked | |
-| 3 | VS Code extension: formatter without the CLI installed, go-to-definition, multi-file PSL, emulator controls | Must | In progress | 1 and 2 |
-| 4 | Review how the VS Code extension handles local and remote Prisma Postgres instances, and make it match the current CLI and its emulators | Must | Not started | 2 |
+| 1 | Emulator controls in the `prisma` CLI: start, stop, list, reset | Must, urgent | Not tracked. Raised to the top of the stream by Will on 2026-09-30: start it now. | |
+| 2 | VS Code extension: formatter without the CLI installed, go-to-definition, multi-file PSL, emulator controls | Must | In progress | 1 |
+| 3 | Review how the VS Code extension handles local and remote Prisma Postgres instances, and make it match the current CLI and its emulators | Must | Not started | 1 |
+| 4 | Multi-file PSL | Must | Done. Last part merged 2026-09-30 (prisma/orm#30456). | |
 
 ## Stream 4: Query features
 
