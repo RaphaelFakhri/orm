@@ -127,7 +127,7 @@ function valueItems(
     ];
   }
   if (syntax === 'functionName') return [];
-  if (type.kind === 'taggedLiteral') {
+  if (type.kind === 'taggedLiteral' || type.kind === 'dataTypeValue') {
     return type.tags.map((tag) => ({
       ...completionItem(
         input,
@@ -153,7 +153,6 @@ function valueItems(
     case 'fieldRef':
     case 'referencedFieldRef':
       return scalarItems(input, input.fieldNames(type.kind));
-    case 'dataTypeValue':
     case 'list':
     case 'record':
     case 'entityRef':

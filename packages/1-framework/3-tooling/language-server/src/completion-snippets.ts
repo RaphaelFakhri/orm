@@ -46,6 +46,9 @@ function argSnippetPlaceholder(
 ): string {
   const placeholder = `\${${tabStop.toString()}:${key}}`;
   if (param.kind === 'str') return `"${placeholder}"`;
+  if (param.kind === 'dataTypeValue' && param.tags[0] !== undefined) {
+    return `${param.tags[0]}\`${placeholder}\``;
+  }
   if (param.kind === 'list') return `[${placeholder}]`;
   if (param.kind === 'record') return `{ ${placeholder} }`;
   return placeholder;

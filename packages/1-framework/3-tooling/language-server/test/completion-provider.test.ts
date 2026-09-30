@@ -46,7 +46,7 @@ import { providePslCompletionItems } from '../src/completion-provider';
 const scalarTypes = ['String', 'Int', 'Boolean', 'DateTime'] as const;
 const nameSnippetPlaceholder = '$' + '{1:Name}';
 const emptySnippetPlaceholder1 = '$' + '{1:}';
-const expressionSnippetPlaceholder = '$' + '{1:expression}';
+const sqlExpressionSnippet = 'sql`$' + '{1:expression}`';
 const packageRoot = dirname(dirname(fileURLToPath(import.meta.url)));
 
 const markerAttribute = fieldAttribute('marker', {
@@ -344,6 +344,13 @@ async function actualMongoStack(): Promise<CompletionTestStack> {
     entityTypes: blocks.mongoFamilyEntityTypes,
     pslBlockDescriptors: blocks.mongoFamilyPslBlockDescriptors,
   };
+}
+
+async function sqlExpressionDataTypes(): Promise<Readonly<Record<string, DataTypeAuthoringEntry>>> {
+  const family = await importFromPackageRoot<ActualSqlExpressionModule>(
+    '../../../2-sql/1-core/contract/src/exports/sql-expression.ts',
+  );
+  return { [family.SQL_EXPRESSION_DATA_TYPE_ID]: family.sqlExpressionAuthoringEntry };
 }
 
 async function importFromPackageRoot<T>(relativePath: string): Promise<T> {
@@ -841,12 +848,12 @@ describe('providePslCompletionItems', () => {
     const checkCompletion = completeWithActualStack(
       ['model Post {', '  id Int', '  @@che| // keep', '}'].join('\n'),
       stack,
-      { clientSupportsSnippets: true },
+      { clientSupportsSnippets: true, dataTypes: await sqlExpressionDataTypes() },
     );
     const checkItem = completionItemByLabel(checkCompletion.items, 'check');
     expect(checkItem).toMatchObject({
       insertTextFormat: InsertTextFormat.Snippet,
-      textEdit: { newText: `check(expression: ${expressionSnippetPlaceholder})` },
+      textEdit: { newText: `check(expression: ${sqlExpressionSnippet})` },
     });
     expect(
       applyCompletionItem({ sourceFile: checkCompletion.sourceFile, item: checkItem }),
@@ -854,10 +861,68 @@ describe('providePslCompletionItems', () => {
       [
         'model Post {',
         '  id Int',
-        `  @@check(expression: ${expressionSnippetPlaceholder}) // keep`,
+        `  @@check(expression: ${sqlExpressionSnippet}) // keep`,
         '}',
       ].join('\n'),
     );
+  }, 5_000);
+
+  it('offers a sql literal where @@index and @@check take SQL', async () => {
+    const stack = await actualSqlStack();
+    const dataTypes = await sqlExpressionDataTypes();
+    const [entry] = Object.values(dataTypes);
+    const valuesAt = (attribute: string) =>
+      completeWithActualStack(
+        ['model Post {', '  id Int', `  ${attribute}`, '}'].join('\n'),
+        stack,
+        {
+          clientSupportsSnippets: true,
+          dataTypes,
+        },
+      ).items.map((item) => ({
+        label: item.label,
+        detail: item.detail,
+        newText: item.textEdit?.newText,
+        insertTextFormat: item.insertTextFormat,
+      }));
+    const sqlItem = {
+      label: 'sql',
+      detail: entry?.documentation,
+      newText: 'sql`$1`',
+      insertTextFormat: InsertTextFormat.Snippet,
+    };
+
+    expect(valuesAt('@@index([id], where: |)')).toEqual([sqlItem]);
+    expect(valuesAt('@@index(expression: |, map: "post_idx")')).toEqual([sqlItem]);
+    expect(valuesAt('@@check(expression: |, name: "post_check")')).toEqual([sqlItem]);
+  }, 5_000);
+
+  it('completes model and field attributes when the source has no data types', async () => {
+    const stack = await actualSqlStack();
+    const labelsAt = (markedSource: string) =>
+      completeWithActualStack(markedSource, stack).items.map((item) => item.label);
+
+    expect(labelsAt(['model Post {', '  id Int', '  @@|', '}'].join('\n'))).toEqual([
+      'base',
+      'check',
+      'control',
+      'discriminator',
+      'id',
+      'index',
+      'map',
+      'unique',
+    ]);
+    expect(labelsAt(['model Post {', '  id Int @|', '}'].join('\n'))).toEqual([
+      'default',
+      'id',
+      'map',
+      'noCheck',
+      'relation',
+      'unique',
+    ]);
+    expect(
+      labelsAt(['model Post {', '  id Int', '  @@check(expression: |)', '}'].join('\n')),
+    ).toEqual([]);
   }, 5_000);
 
   it('uses actual Mongo attribute specs for names and dynamic factory keys', async () => {
