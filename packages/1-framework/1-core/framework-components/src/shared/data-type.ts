@@ -126,11 +126,16 @@ export function objectSchemaKeys(schema: unknown): readonly string[] | undefined
   );
 }
 
-/** The parameters a data type requires. */
-export function requiredParamKeys(type: DataType): readonly string[] {
-  return (objectSchemaProps(type.params) ?? []).flatMap((prop) =>
+/** The required keys an arktype object schema declares, or undefined when `schema` is not one. */
+export function requiredSchemaKeys(schema: unknown): readonly string[] | undefined {
+  return objectSchemaProps(schema)?.flatMap((prop) =>
     prop.kind === 'required' && typeof prop.key === 'string' ? [prop.key] : [],
   );
+}
+
+/** The parameters a data type requires. */
+export function requiredParamKeys(type: DataType): readonly string[] {
+  return requiredSchemaKeys(type.params) ?? [];
 }
 
 export function createDataTypeLookup(types: readonly DataType[]): DataTypeLookup {

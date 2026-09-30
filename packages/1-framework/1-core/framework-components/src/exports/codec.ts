@@ -45,6 +45,7 @@ export {
   dataTypeId,
   objectSchemaKeys,
   requiredParamKeys,
+  requiredSchemaKeys,
 } from '../shared/data-type';
 export { renderTsLiteral } from '../shared/render-ts-literal';
 export {

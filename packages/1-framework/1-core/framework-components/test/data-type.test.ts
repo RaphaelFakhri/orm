@@ -4,7 +4,9 @@ import {
   createDataTypeLookup,
   dataType,
   dataTypeId,
+  objectSchemaKeys,
   requiredParamKeys,
+  requiredSchemaKeys,
 } from '../src/shared/data-type';
 
 describe('dataTypeId', () => {
@@ -114,5 +116,34 @@ describe('requiredParamKeys', () => {
 
   it('is empty for a data type without parameters', () => {
     expect(requiredParamKeys(dataType('t/text', {}))).toEqual([]);
+  });
+});
+
+describe('arktype object schema keys', () => {
+  const shapes = [
+    ['a plain object', type({ length: 'number', 'scale?': 'number' })],
+    [
+      'an object with a narrow',
+      type({ length: 'number', 'scale?': 'number' }).narrow((params) => params.length > 0),
+    ],
+    ['the intersection of two objects', type({ length: 'number' }).and({ 'scale?': 'number' })],
+  ] as const;
+
+  it.each(shapes)('reads every key of %s', (_, schema) => {
+    expect(objectSchemaKeys(schema)).toEqual(['length', 'scale']);
+  });
+
+  it.each(shapes)('reads the required keys of %s', (_, schema) => {
+    expect(requiredSchemaKeys(schema)).toEqual(['length']);
+  });
+
+  it('reads no keys from a schema that does not describe objects', () => {
+    expect(objectSchemaKeys(type('string'))).toBeUndefined();
+    expect(requiredSchemaKeys(type('number.integer >= 1'))).toBeUndefined();
+  });
+
+  it('reads no keys from a value that is not a schema', () => {
+    expect(objectSchemaKeys({ props: [] })).toBeUndefined();
+    expect(requiredSchemaKeys(undefined)).toBeUndefined();
   });
 });
