@@ -173,7 +173,7 @@ export const fixtureDataTypeEntries: Readonly<Record<string, DataTypeAuthoringEn
   [pgJson.id]: {
     written: { kind: 'tag', tag: 'json', parse: parseJson },
     print: (value) => JSON.stringify(value),
-    documentation: 'Reads the body as a JSON document and stores it as the default value.',
+    documentation: 'Reads the text as a JSON document and stores it as the default value.',
   },
 };
 

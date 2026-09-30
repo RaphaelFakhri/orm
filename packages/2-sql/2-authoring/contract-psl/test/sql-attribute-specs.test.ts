@@ -322,7 +322,7 @@ describe('sqlAttributeSpecs.field.default', () => {
       {
         label: 'json`...`',
         tags: ['json'],
-        documentation: 'Reads the body as a JSON document and stores it as the default value.',
+        documentation: 'Reads the text as a JSON document and stores it as the default value.',
       },
     ]);
   });

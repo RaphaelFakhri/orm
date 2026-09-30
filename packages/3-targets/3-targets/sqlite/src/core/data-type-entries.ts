@@ -55,7 +55,7 @@ export function sqliteDataTypeEntries(): Readonly<Record<string, DataTypeAuthori
     [sqliteJson.id]: {
       written: { kind: 'tag', tag: 'json', parse: parseJsonBody },
       print: printJsonBody,
-      documentation: 'Reads the body as a JSON document and stores it as the default value.',
+      documentation: 'Reads the text as a JSON document and stores it as the default value.',
     },
   };
 }
