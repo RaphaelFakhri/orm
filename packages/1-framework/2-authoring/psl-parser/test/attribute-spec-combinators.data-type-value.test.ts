@@ -370,6 +370,80 @@ describe('dataTypeValue', () => {
   });
 });
 
+describe('oneOf given a call to a function one arm names', () => {
+  const nanoid = funcCall('nanoid', {
+    documentation: 'A random identifier.',
+    positional: [
+      {
+        key: 'length',
+        type: dataTypeValue(pgInt4.id, support),
+        documentation: 'The number of characters.',
+      },
+    ],
+  });
+  const value = oneOf(nanoid, str());
+
+  it('reports the refused argument of that function at the written value', () => {
+    const { expr, ctx } = argOf('nanoid("8")');
+    expect(value.parse(expr, ctx)).toEqual(
+      notOk([
+        {
+          code: 'PSL_VALUE_TYPE_INCOMPATIBLE',
+          message: 'pg/int4 has no cast from pg/text; write a number',
+          filename: 'schema.prisma',
+          range: { start: { line: 0, character: 10 }, end: { line: 0, character: 13 } },
+        },
+      ]),
+    );
+  });
+
+  it('returns the typed value of that function', () => {
+    const { expr, ctx } = argOf('nanoid(8)');
+    expect(value.parse(expr, ctx)).toEqual(
+      ok({
+        fn: 'nanoid',
+        span: {
+          start: { offset: 3, line: 1, column: 4 },
+          end: { offset: 12, line: 1, column: 13 },
+        },
+        args: {
+          length: {
+            type: 'pg/int4',
+            value: 8,
+            span: {
+              start: { offset: 10, line: 1, column: 11 },
+              end: { offset: 11, line: 1, column: 12 },
+            },
+          },
+        },
+      }),
+    );
+  });
+
+  it('lists the arms for a call to a function no arm names', () => {
+    const source = 'other(1)';
+    const { expr, ctx } = argOf(source);
+    expect(value.parse(expr, ctx)).toEqual(
+      refusal(source, 'PSL_INVALID_ATTRIBUTE_SYNTAX', 'Expected one of: nanoid() | string'),
+    );
+  });
+
+  it('lists the arms when two arms name the function', () => {
+    const twoNanoids = oneOf(
+      nanoid,
+      funcCall('nanoid', {
+        documentation: 'A random identifier with an alphabet.',
+        positional: [{ key: 'alphabet', type: str(), documentation: 'The alphabet.' }],
+      }),
+    );
+    const source = 'nanoid(true)';
+    const { expr, ctx } = argOf(source);
+    expect(twoNanoids.parse(expr, ctx)).toEqual(
+      refusal(source, 'PSL_INVALID_ATTRIBUTE_SYNTAX', 'Expected one of: nanoid() | nanoid()'),
+    );
+  });
+});
+
 function fail(): never {
   throw new Error('expected the sql/expression entry');
 }
