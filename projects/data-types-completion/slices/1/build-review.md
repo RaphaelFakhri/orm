@@ -19,6 +19,7 @@ Reviewer-maintained. Contract: `projects/data-types-completion/design.md` sectio
 | d | 1 (`7565a8f8f9`, `45fe7b6423`, `28773fa5f1..ecca4f2409`) | ANOTHER ROUND NEEDED: 1 should-fix, 2 low |
 | d | 2 (`22fd1bc9de..bc2479e72f`) | SATISFIED: S1-d-R1-1 to S1-d-R1-3 closed, no new finding |
 | e | 1 (`f8903ee5dc..c7965f6d86`) | ANOTHER ROUND NEEDED: 2 low |
+| e | 2 (`6b28dbff21`, `511e3fd4b1`) | SATISFIED: S1-e-R1-1 and S1-e-R1-2 closed, no new finding |
 
 ## Findings log
 
@@ -147,6 +148,11 @@ Reviewer-maintained. Contract: `projects/data-types-completion/design.md` sectio
 - Where: `test/integration/test/extension-pgvector-scenario-a.e2e.integration.test.ts:29` and `:347`.
 - What is wrong: the apply test no longer has an `embedding` column, because `pgvector/vector` requires `length` (design 2.4) and a PGlite domain takes no type modifier. The header still says the `Doc` table carries a `vector(N)` column in every layer, and the test name says "round-trip OK", which now reads only `id`.
 - Change: say that only the plan test has the `vector(3)` column and that the apply test checks the markers and an `id` row.
+
+### Dispatch e round 2 status of the round 1 findings
+
+- S1-e-R1-1: closed. The `CONTRACT.NATIVE_TYPE_INVALID` entry is deleted, and nothing outside `projects/` names the code. `check:error-reference` lists all 360 codes.
+- S1-e-R1-2: closed. The header now says only the plan test's `Doc` table has the `vector(N)` column, and why the applied table has only `id`. The test name says the markers are written and a `Doc` row round-trips. The Scenario A file passes (6 tests). Both commits carry both sign-offs and no AI attribution.
 
 ## Round notes
 
