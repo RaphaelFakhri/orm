@@ -150,6 +150,7 @@ flowchart LR
 **Carried over from the slice 2b review:**
 
 - Export the SQL family's data type registration (the `sql/expression` declaration and its authoring entry) as one value from `@internal/sql-contract/sql-expression`, use it in `packages/2-sql/9-family/src/core/control-descriptor.ts`, and spread it in the four test fixtures that rebuild it by hand (`postgres/test/fixtures/postgres-data-type-support.ts`, `adapters/postgres/test/helpers/postgres-data-type-support.ts`, `contract-psl/test/fixture-data-types.ts`, `language-server/test/completion-provider.test.ts`).
+- A default expression whose string constant holds a whitespace-only line, a carriage return or indentation shared by every line reads back from its `sql` literal with that constant changed. `mapDefault` prints it without the read-back check, because `resolvedDefaultsEqual` compares default expressions with case and whitespace ignored, so no plan shows the change. After this slice makes every text a TypeScript contract builds canonical, only a contract built before this slice can hold such a default. Decide whether `mapDefault` checks defaults too (ADR 129).
 
 ## Slice 4 — Migration files write template literals
 
@@ -197,6 +198,7 @@ Whichever PR merges second rebases. From [research/review-followups.md](research
 
 - The four DDL sites that render a string wrapped in `opaqueSql(...)` on the spot (`addCheckConstraint`, both targets' `buildColumnDefaultSql`, the `alterColumnType` USING clause) should become DDL nodes, so the type of the field enforces the render rule instead of the doc. Found by the slice 1 architect review (A01); it belongs to the typed-DDL work, not this project.
 - Column defaults refuse `--` at authoring and in `assertSafeDefaultExpression`, so a default cannot carry a line comment. Slice 1 keeps the ban and documents why; lifting it is a separate decision.
+- `contract infer` can also produce such a default from a database. Postgres reprints a default from its parsed form, so whitespace outside string constants is normalized, but a string constant is reprinted with its characters unchanged, including line breaks, carriage returns and whitespace-only lines. An inferred default holding such a constant prints as a `sql` literal that reads back as a different value, and a database created from the inferred schema gets that value. Whether infer should check defaults, or skip such a default with a note, is a separate decision.
 
 ## Close-out
 

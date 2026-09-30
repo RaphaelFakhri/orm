@@ -214,7 +214,7 @@ Brief: `dispatches/2b-review-fixes-brief.md`. Reviews: `slice-reviews/2b/`. Comm
 - **A13**: deferred to slice 3, in `plan.md`.
 - **A15, F02**: the codemod skips `//` and `///` comments; its test checks both fragment copies and compares its printer with the framework's. Rerun on the merge-base schemas, it reproduces every committed rewrite (`wip/2b-review-fixes/codemod-rerun/`).
 - **A16**: `createSqlBinder` requires `defaultFunctionRegistry`.
-- **F04**: `test/migrations/sql-text-canonical-planner.test.ts`. Wire-named objects: no operations. An exact-named index and check: `migration plan` stops with a conflict asking for `migration new`; an exact-named policy plans nothing. The fragments and ADR 260 say so.
+- **F04**: `test/migrations/sql-text-canonical-planner.test.ts`. Wire-named objects: no operations. An exact-named index and check: `migration plan` stops with a conflict asking for `migration new`. An exact-named policy is dropped and created again (corrected in round 2, finding B01). The fragments and ADR 260 say so.
 - **F05, F06**: whole assertions. **F08**: nothing in code; the pull request description says the hook change rode in `0e83ea5e3f`.
 - Build fix: `EnumMemberDefault` and `FunctionDefault` are exported from `@internal/sql-contract-psl/attribute-specs`, so `family-sql` declarations can name them.
 

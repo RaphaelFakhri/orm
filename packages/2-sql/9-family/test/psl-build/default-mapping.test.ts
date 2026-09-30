@@ -180,7 +180,7 @@ describe('mapDefault function defaults', () => {
     });
   });
 
-  it('prints an expression that would not read back unchanged, because defaults compare by parsing', () => {
+  it('prints an expression that would not read back unchanged, because defaults compare with whitespace ignored', () => {
     expect(mapDefault({ kind: 'function', expression: "concat(E'a\n  \nb')" })).toEqual({
       attribute: `@default(sql${BACKTICK}\nconcat(E'a\n  \nb')\n${BACKTICK})`,
     });

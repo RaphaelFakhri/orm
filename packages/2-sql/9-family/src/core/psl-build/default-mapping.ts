@@ -48,8 +48,9 @@ export type DefaultMappingResult = { readonly attribute: string };
 /**
  * The attribute a stored default prints as: a named function, a literal the column takes, or any
  * other expression as a `sql` literal. `undefined` when a literal has no written form. An expression
- * prints even when the literal would read back as different text, because a default is compared by
- * parsing both sides (ADR 129).
+ * prints even when the literal would read back as different text: default expressions are compared
+ * with case and whitespace ignored (`resolvedDefaultsEqual`), and canonicalization changes only
+ * whitespace (ADR 129).
  */
 export function mapDefault(
   columnDefault: ColumnDefault,

@@ -84,7 +84,7 @@ function infer(input: {
 }
 
 const SKIP_NOTE = (kind: string, name: string) =>
-  `// prisma: skipped ${kind} "${name}": its SQL cannot be written as a sql literal that reads back unchanged. It is not in this schema; add it by hand before running migration plan, or the plan will drop it.`;
+  `// prisma: skipped ${kind} "${name}": its SQL cannot be written as a sql literal that reads back unchanged. It is not in this schema, so migration plan will drop it. A sql literal written by hand holds different text, so migration plan then stops with a conflict for an index or check, or drops and recreates a policy. Either change the SQL in the database to the text of the literal, or add the object without map: or @@map so Prisma names it.`;
 
 describe('contract infer prints raw SQL as sql literals', () => {
   it('prints index expression and where as sql literals', () => {
