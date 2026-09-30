@@ -48,7 +48,11 @@ import {
   reportUnknownFieldPreset,
 } from '@internal/psl-parser/interpret';
 import type { PslSources } from '@internal/psl-parser/syntax';
-import { SQL_EXPRESSION_DATA_TYPE_ID } from '@internal/sql-contract/sql-expression';
+import {
+  SQL_EXPRESSION_DATA_TYPE_ID,
+  SQL_EXPRESSION_TAG,
+  sqlTextFromCanonical,
+} from '@internal/sql-contract/sql-expression';
 import { checkSqlDefaultBody, reservedSqlDefaultBody } from '@internal/sql-contract/validators';
 import type { AuthoredColumnDefault } from '@internal/sql-contract-ts/contract-builder';
 import { InternalError } from '@internal/utils/internal-error';
@@ -671,7 +675,7 @@ export function lowerDefaultForField(input: {
     const refusal =
       reserved === undefined
         ? checkSqlDefaultBody(text)
-        : `Write @default(${reserved}()) instead of sql\`${reserved}()\`; ${reserved}() is a Prisma default function, not raw SQL.`;
+        : `Write @default(${reserved}()) instead of ${SQL_EXPRESSION_TAG}\`${reserved}()\`; ${reserved}() is a Prisma default function, not raw SQL.`;
     if (refusal !== undefined) {
       input.diagnostics.push({
         code: PSL_INVALID_DEFAULT_SQL,
@@ -720,7 +724,7 @@ export function lowerDefaultForField(input: {
     }
     const read = readValue(input.dataTypeSupport, lowered.written, undefined);
     if (read.ok && read.typed.type === SQL_EXPRESSION_DATA_TYPE_ID) {
-      return sqlExpressionDefault(lowered.written.text, value.span);
+      return sqlExpressionDefault(sqlTextFromCanonical(read.typed.value), value.span);
     }
     return readAsLiteral(lowered.written);
   }

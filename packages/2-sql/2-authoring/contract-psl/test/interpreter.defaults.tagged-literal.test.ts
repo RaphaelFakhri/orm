@@ -1,4 +1,8 @@
 import type { DataTypeAuthoringEntry } from '@internal/framework-components/authoring';
+import {
+  SQL_EXPRESSION_DATA_TYPE_ID,
+  sqlExpressionAuthoringEntry,
+} from '@internal/sql-contract/sql-expression';
 import { structuredError } from '@internal/utils/structured-error';
 import { describe, expect, it } from 'vitest';
 import { createTestSqlNamespace } from '../../../1-core/contract/test/test-support';
@@ -112,6 +116,20 @@ describe('interpretPslDocumentToSqlContract tagged literal defaults', () => {
     expect(columnDefault('v String @default(sql``)', 'v')).toEqual({
       kind: 'function',
       expression: '',
+    });
+  });
+
+  it('stores the sql/expression value the entry reads, not the written body', () => {
+    const parenthesizing: Readonly<Record<string, DataTypeAuthoringEntry>> = {
+      ...fixtureDataTypeSupport.entries,
+      [SQL_EXPRESSION_DATA_TYPE_ID]: {
+        ...sqlExpressionAuthoringEntry,
+        written: { kind: 'tag', tag: 'sql', parse: (text: string) => `(${text})` },
+      },
+    };
+    expect(columnDefault('v Int @default(sql`1 + 1`)', 'v', parenthesizing)).toEqual({
+      kind: 'function',
+      expression: '(1 + 1)',
     });
   });
 
