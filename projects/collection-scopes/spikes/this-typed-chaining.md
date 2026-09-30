@@ -8,6 +8,8 @@
 
 Yes. `where` now returns `this & HasWhere` and `orderBy` returns `this & HasOrderBy`, where `HasWhere` is `{ readonly [StateType]: { readonly hasWhere: true } }`. `limit`, `offset`, `distinct`, `distinctOn` and `cursor` return `this`. The guards read the flag from `this`, not from the class's `State` type argument. With that, `db.Post.published().recent()`, `db.Post.where(...).published()` and long chains keep the class, repeated flags do not pile up (`PostCollection & HasWhere & HasOrderBy` stays that type), `cond ? db.Post.published() : db.Post` and `cond ? this.where(...) : this` reduce to the class, `let q = db.Post; if (x) q = q.published()` compiles, and writes stay refused until a `where` has run. `select` and `include` still return a plain `Collection`, so custom methods must come before them, and include refinements still get the plain collection. Written naively, with the row-changing methods reading the state as `this[typeof StateType]`, the change costs +11% instantiations in the package and +4% in the demo. Having `select`, `include` and `variant` infer the state from a `this` parameter instead brings it to −0.4% in the package and +0.2% in the demo. All 104 dependent packages typecheck, after exporting five more type names that declaration output needs. I recommend this design, in its own ticket, after the state-subtyping change.
 
+**Update:** a follow-up made `include` keep the class too, and changed how the chaining methods keep it. It is cheaper than both the branch point and the state above. See "include through this" at the end; where it disagrees with the sections before it, it wins.
+
 ## What was changed
 
 All production changes are in `packages/3-extensions/sql-orm-client`.
@@ -189,3 +191,91 @@ It fixes all four cases in the question except the include refinement, fixes the
 - `demo-probe-this-chaining.test-d.ts.txt`: the demo probe; copy it to `examples/prisma-8-demo/test/` to run it.
 - `measure-chain.sh.txt`, `gen-chain-probes.mjs.txt`: the measurement scripts. Run `zsh projects/collection-scopes/spikes/measure-chain.sh.txt <label> <before|after>` from the repository root after building the demo's dependencies.
 - `this-typed-chaining-measurements.tsv.txt`: every count. In its `bisect` rows, `tip` is the first version and `partial-fallbacks-2` is the tip.
+
+## include through this
+
+**Question:** can `include` keep the class the way the flags do, by returning `this` with a wider `[RowType]`?
+
+**Answer:** yes, and it makes the package and the demo cheaper to check, not dearer. `db.Post.include('author').published()` keeps `PostCollection`, and its rows have `author`. Chained includes widen twice, `include` after `where` keeps `HasWhere`, `select` after `include` still narrows, and `update` after `where` and `include` returns the widened row. The package and its 1,117 tests, all 104 dependent packages, and the demo (with the probe, through `dist`) typecheck. The 65 tests that failed in the earlier attempt pass. Against the tip before this change (`d6b061c924`), the package costs 18% fewer instantiations and the demo 9.6% fewer.
+
+### What was changed
+
+`src/collection.ts`:
+
+- `include` (both public overloads) gets a type parameter `Self extends IncludeReceiver = never` and a `this: Self` parameter, and returns `Self & RowSelection<CollectionRowOf<Self> & { [K in RelName]: ... }>`. The new row property holds only the rows so far plus the new relation key, not a `SimplifyDeep` of the whole row.
+- `where`, `orderBy`, `limit`, `offset`, `distinct`, `distinctOn` and `cursor` get overload declarations with a type parameter `Self` and a `this: Self` parameter, and return `Self & HasWhere`, `Self & HasOrderBy` or `Self`. This replaces the polymorphic `this` return from the sections above. The implementations keep the polymorphic `this`, so private fields stay reachable. `cursor` and `distinctOn` read the flag as `CollectionStateOf<Self>`, with `Self extends StateCarrier`.
+- Every public method that returns rows reads them as `CollectionRowOf<this>`: `all`, `first` (three overloads), `create` (two), `createAll`, `upsert`, `update`, `updateAll`, `delete`, `deleteAll`, and `prepared`. Each gets an overload declaration; the implementation keeps the class `Row`. The `select` overload that has a `this` parameter also infers the row, so `select` after `include` keeps the included relations.
+- `declare readonly _row?: CollectionRowOf<this>`, so the framework's `ResultType<typeof q>`, which reads `_row`, sees the widened row.
+- `combine` infers a branch's row from `RowSelection<infer BranchRow>` instead of from `CollectionImpl`'s type argument, and its constraint accepts an include refinement collection.
+
+`src/collection-internal-types.ts`:
+
+- `CollectionRowOf<C>` is `FlatRow<C[typeof RowType]>`. `FlatRow` is a shallow, distributive `{ [K in keyof R]: R[K] }`. The intersection `Row & { author: ... } & { comments: ... }` is flattened when it is read, so rows print and compare as plain objects. The pieces have no key in common, so a shallow flatten gives the same property types as today's rows.
+- `IncludeRefinementValue` flattens a refined nested row the same way.
+- `IncludeReceiver` (`{ readonly [RowType]: unknown }`) and `StateCarrier` (`{ readonly [StateType]: CollectionTypeState }`) are the constraints for `Self`.
+
+`src/exports/index.ts` also exports `CollectionRowOf`, `IncludeReceiver`, `RowSelection` and `RowType`.
+
+### Why a `this` type parameter and not the polymorphic `this`
+
+Inside an include refinement, the collection is `Omit<Collection, terminals>`. `Omit` fixes the `this` type of every method to the plain `Collection`. With the polymorphic `this`, `posts.include('tags').orderBy(...)` inside a refinement returned `Collection & HasOrderBy` and lost `tags`. `examples/prisma7-adoption` does exactly this, and it failed with TS2339. With `this: Self`, `orderBy` keeps whatever type it was called on, so the row survives. It also means `include`, `select` and `where` work on a union of differently flagged collections: `Self` is inferred as the union.
+
+I first tried to keep the polymorphic `this` and change the refinement type from `Omit<...>` to `Collection<...> & { all: never; ... }`. That fixed the row, but the `orm.test.ts` tests that narrow the refinement to a registered class with an `asserts` function failed with TS2589 ("Type instantiation is excessively deep"). I did not find the cause, and dropped it.
+
+### What works and fails
+
+| Case | Result |
+| --- | --- |
+| `db.Post.include('author').published()` | `PostCollection`; `first()` and `all()` return rows with `author`, equal to the plain collection's rows |
+| `Post.include('author').published().include('comments')` | keeps the class; the row has `author` and `comments` |
+| `Post.published().include('author')` | `PostCollection & HasWhere`; `delete`, `update` return the widened row |
+| `Post.where(...).include('author').update(...)` | returns the widened row |
+| `Post.include('author').published().select('id')` | row `{ id: number; author: ... }`; writes allowed |
+| Plain collection rows | unchanged: `first()` on `db.Post` is the model row |
+| `ResultType<typeof db.Post.include('author')>` and the nested and refined forms in `test/model-types.test-d.ts` | equal to the emitted `Shape<...>` types, as before |
+| Inside a refinement: `posts.include('comments').orderBy(...)` | keeps `comments` |
+| `include` on `Base \| Filtered`, `Filtered \| Ordered`, and on the class `published() \| recent()` union | works; it failed with TS2349 or TS2684 before |
+| Include refinement with the registered class | still the plain refinement collection (unchanged, as asked) |
+| Demo through `dist`: `db.User.include('posts').admins().newestFirst()`, `db.Post.include('user').forUser('u1').include('tags')`, `select` after `include`, an exported included chain | all compile |
+
+### Casualties
+
+All were fixed in the tests; each is a change users would see.
+
+| What | Why | Where |
+| --- | --- | --- |
+| `ReturnType<typeof c.where>` and `ReturnType<C['orderBy']>` now give `HasWhere` or `HasOrderBy` alone | `ReturnType` of a method with a type parameter uses the parameter's constraint, `unknown` | the earlier spikes' tests; rewritten as `C & HasWhere`. I found no other use in the repository |
+| Explicit type arguments on `include`, as in `typeof projects.include<'tasks'>` | `Self` is not inferred then, and defaults to `never`, so the result is `never` (a loud failure, not a silently wrong row) | `test/polymorphism.test-d.ts`, rewritten with a value: `const withTasks = projects.include('tasks')` |
+| Reading the row from `Collection`'s third type argument | the row now lives in `[RowType]` | `RowOf` helpers in `test/include-cardinality.test-d.ts` and `test/generated-contract-types.test-d.ts` read `[RowType]` |
+| Reading `[RowType]` directly after an include gives `Row & { author: ... }` | the flatten happens in `CollectionRowOf`, not in the property | the `pipe` spike's `RowOf` helper; its test wraps it in `FlatRow` |
+
+### Measurements
+
+Same method and scripts as above, two runs each, identical. Raw counts are in `this-typed-chaining-measurements.tsv.txt` under `include-this`.
+
+| State | Package | Demo |
+| --- | --- | --- |
+| Branch point `9947eac755` | 1,529,500 | 745,802 |
+| Tip before this change `d6b061c924` | 1,523,198 | 747,191 |
+| include through this `492fa62bb1` | 1,249,149 (−274,049 against `d6b061c924`, −18.0%) | 675,347 (−71,844, −9.6%) |
+
+Ten chained calls, as the increase over the probe with no chain:
+
+| Probe | Package, `d6b061c924` | Package, now | Demo, `d6b061c924` | Demo, now |
+| --- | --- | --- | --- | --- |
+| Plain collection | +70 | +159 | +97 | +107 |
+| Custom class, base methods only | +61 | +119 | +78 | +81 |
+| Custom class, its own methods | +51 | +73 | +62 | +57 |
+
+A single chain costs a little more, about 10 to 90 instantiations, because `Self` is inferred at each call. The whole programs cost much less. My guess is that two things save the most: `include` no longer builds a new `Collection<..., SimplifyDeep<Row & {...}>, S>` type with a deep `SimplifyDeep` at every call, and no method signature is built again for every receiver type. I did not measure the two separately.
+
+### Not tested
+
+- Run-time tests beyond the package's 1,117 and the typechecks; `pnpm test:integration` was not run.
+- Editor display of the widened rows (they print as flat objects in compiler messages).
+- Which part of the change saves the most.
+- The cause of the TS2589 with the intersection-based refinement type.
+
+### Recommendation
+
+Adopt this version instead of the tip before it. Every row-reading method reads the row through `this`, `include` and the state-only methods take `this: Self`, and rows are flattened when read. It keeps the class through `include`, fixes `include` on unions and inside refinements after further chaining, and is cheaper than the branch point. Record upgrade instructions for the `ReturnType<C['where']>` pattern and for explicit type arguments on `include`.
