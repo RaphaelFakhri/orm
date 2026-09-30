@@ -28,12 +28,26 @@ import {
   pgTimestamptz,
   pgTimestamptzCanonical,
 } from './data-types';
+import { encodeDate } from './date-codecs';
 import {
   PG_DATE_NATIVE_TYPE,
   PG_TIME_NATIVE_TYPE,
   PG_TIMESTAMP_NATIVE_TYPE,
   PG_TIMESTAMPTZ_NATIVE_TYPE,
 } from './temporal-codec-helpers';
+
+/**
+ * `@updatedAt` and the `*String` presets set a timestamp through the `timestampNow` generator, which
+ * yields a `Date` rather than text. A `timestamptz` column writes it as its instant in UTC.
+ */
+function timestamptzText(value: string | Date): string {
+  return value instanceof Date ? encodeDate(value) : value;
+}
+
+/** A `timestamp` column writes a generated `Date` as the UTC wall-clock time of its instant. */
+function timestampText(value: string | Date): string {
+  return value instanceof Date ? encodeDate(value).replace('Z', '') : value;
+}
 
 export class PgDateStringCodec extends CodecImpl<
   typeof PG_DATE_STRING_CODEC_ID,
@@ -89,7 +103,7 @@ export class PgTimestampStringCodec extends CodecImpl<
   string
 > {
   async encode(value: string, _ctx: CodecCallContext): Promise<string> {
-    return value;
+    return timestampText(value);
   }
   async decode(wire: string, _ctx: CodecCallContext): Promise<string> {
     return wire;
@@ -148,7 +162,7 @@ export class PgTimestamptzStringCodec extends CodecImpl<
   string
 > {
   async encode(value: string, _ctx: CodecCallContext): Promise<string> {
-    return value;
+    return timestamptzText(value);
   }
   async decode(wire: string, _ctx: CodecCallContext): Promise<string> {
     return wire;
