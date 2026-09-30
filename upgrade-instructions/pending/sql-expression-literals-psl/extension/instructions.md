@@ -11,7 +11,7 @@ changes:
     script: ./scripts/rewrite-sql-strings.mjs
   - id: storage-hash-may-change-once
     summary: |
-      A raw SQL text with indentation shared by every line, a blank first or last line, a whitespace-only line or CRLF line breaks is stored as its canonical text once it is written as a `sql` literal, which changes the contract's storage hash once. For an index or check named with `map:`, `migration plan` then stops with a conflict and asks for a migration written with `migration new`. For a policy named with `@@map`, `migration plan` writes a migration that drops the policy and creates it again.
+      A raw SQL text with indentation shared by every line, blank lines at the start or end, a whitespace-only line or CRLF line breaks is stored as its canonical text once it is written as a `sql` literal, which changes the contract's storage hash once. For an index or check named with `map:`, `migration plan` then stops with a conflict and asks for a migration written with `migration new`. For a policy named with `@@map`, `migration plan` writes a migration that drops the policy and creates it again.
     detection:
       glob: "**/*.prisma"
       matches:
@@ -74,7 +74,7 @@ A place left as a quoted string is refused when the schema is interpreted: ``sql
 
 ## The storage hash may change once
 
-A `sql` literal stores its canonical text: indentation shared by every line, a blank first and last line, whitespace-only lines and carriage returns are removed. A quoted string whose text had any of these is stored differently once it is rewritten, so the contract's storage hash changes once. Wire names of indexes, checks and policies do not change. Emit the contract again, and for a pack with migrations run `prisma migration plan` once and commit the migration, which has no operations for wire-named objects. For an index or check named with `map:` whose text changed, `migration plan` stops with a conflict and asks for a migration written with `migration new`; the database needs no change, so that migration has no operations. For a policy named with `@@map` whose text changed, `migration plan` writes a migration that drops the policy and creates it again with the canonical text.
+A `sql` literal stores its canonical text: indentation shared by every line, blank lines at the start and end, whitespace-only lines and carriage returns are removed. Every blank line at the start and end is now removed, not only the first and the last, so a `sql` literal in PSL or a `sql` template in TypeScript that starts or ends with two or more blank lines also stores a different text once. A quoted string whose text had any of these is stored differently once it is rewritten, so the contract's storage hash changes once. Wire names of indexes, checks and policies do not change. Emit the contract again, and for a pack with migrations run `prisma migration plan` once and commit the migration, which has no operations for wire-named objects. For an index or check named with `map:` whose text changed, `migration plan` stops with a conflict and asks for a migration written with `migration new`; the database needs no change, so that migration has no operations. For a policy named with `@@map` whose text changed, `migration plan` writes a migration that drops the policy and creates it again with the canonical text.
 
 ## Spec contexts carry the stack's data types
 

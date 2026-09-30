@@ -11,7 +11,7 @@ changes:
     script: ./scripts/rewrite-sql-strings.mjs
   - id: storage-hash-may-change-once
     summary: |
-      A raw SQL text with indentation shared by every line, a blank first or last line, a whitespace-only line or CRLF line breaks is stored as its canonical text once it is written as a `sql` literal, which changes the contract's storage hash once. For an index or check named with `map:`, `migration plan` then stops with a conflict and asks for a migration written with `migration new`. For a policy named with `@@map`, `migration plan` writes a migration that drops the policy and creates it again.
+      A raw SQL text with indentation shared by every line, blank lines at the start or end, a whitespace-only line or CRLF line breaks is stored as its canonical text once it is written as a `sql` literal, which changes the contract's storage hash once. For an index or check named with `map:`, `migration plan` then stops with a conflict and asks for a migration written with `migration new`. For a policy named with `@@map`, `migration plan` writes a migration that drops the policy and creates it again.
     detection:
       glob: "**/*.prisma"
       matches:
@@ -63,6 +63,6 @@ This supersedes the PSL `@@index(expression: "to_tsvector(â€¦)", type: "gin", â€
 
 ## The storage hash may change once
 
-A `sql` literal stores its canonical text: indentation shared by every line, a blank first and last line, whitespace-only lines and carriage returns are removed. A quoted string whose text had any of these is stored differently once it is rewritten, so the contract's storage hash changes once. Prisma-generated index, check and policy names do not change, because their hash is computed from text with its whitespace collapsed.
+A `sql` literal stores its canonical text: indentation shared by every line, blank lines at the start and end, whitespace-only lines and carriage returns are removed. Every blank line at the start and end is now removed, not only the first and the last, so a `sql` literal in PSL or a `sql` template in TypeScript that starts or ends with two or more blank lines also stores a different text once. A quoted string whose text had any of these is stored differently once it is rewritten, so the contract's storage hash changes once. Prisma-generated index, check and policy names do not change, because their hash is computed from text with its whitespace collapsed.
 
 After emitting the rewritten schema, run `prisma migration plan` once and commit the migration it writes. For objects with Prisma-generated names that migration has no operations; it records the new storage hash. For an index or check named with `map:` whose text changed, `migration plan` stops with a conflict for that object and says to write a custom migration with `migration new`. The database needs no change, so write that migration with no operations. For a policy named with `@@map` whose text changed, `migration plan` writes a migration that drops the policy and creates it again with the canonical text. A schema whose texts had none of these forms emits the same contract as before, and `migration plan` reports no change.
