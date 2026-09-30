@@ -1,0 +1,61 @@
+#!/bin/zsh
+# usage: zsh measure-chain.sh.txt <label> <state>   (run from the repo root, after building the demo's dependencies)
+# <state> is before or after; it is passed to gen-chain-probes.mjs.txt.
+# Typechecks the ORM client package and the demo twice each with --extendedDiagnostics, then each probe twice.
+# A probe is copied to test/zz-probe.test-d.ts, so it is always checked after the existing tests.
+# The package runs exclude the spike tests (test/fulltext-search*, test/pipe-*, test/this-typed-*).
+# Output goes to wip/spike/out/<label>; the summary is <name>\t<instantiations>\t<error count>.
+set -u
+setopt null_glob
+ROOT=$(pwd)
+LABEL=$1
+STATE=$2
+OUT=$ROOT/wip/spike/out/$LABEL
+PROBES=$ROOT/wip/spike/probes/$LABEL
+mkdir -p $OUT
+PKG=$ROOT/packages/3-extensions/sql-orm-client
+DEMO=$ROOT/examples/prisma-8-demo
+cp $ROOT/projects/collection-scopes/spikes/gen-chain-probes.mjs.txt $ROOT/wip/spike/gen-chain-probes.mjs
+mise exec -- node $ROOT/wip/spike/gen-chain-probes.mjs $PROBES $STATE
+
+pkg_run() {
+  (cd $PKG && mise exec -- pnpm exec tsc --noEmit -p tsconfig.measure.json --extendedDiagnostics > $OUT/$1.txt 2>&1; echo "exit $?" >> $OUT/$1.txt)
+}
+demo_run() {
+  (cd $DEMO && mise exec -- pnpm exec tsc --noEmit -p tsconfig.json --extendedDiagnostics > $OUT/$1.txt 2>&1; echo "exit $?" >> $OUT/$1.txt)
+}
+
+cat > $PKG/tsconfig.measure.json <<EOT
+{ "extends": "./tsconfig.json", "exclude": ["dist", "dist-tsc", "dist-tsc-prod", "node_modules", "test/fulltext-search*", "test/pipe-*", "test/this-typed-*"] }
+EOT
+rm -f $PKG/test/zz-probe.test-d.ts $DEMO/test/zz-probe.test-d.ts
+
+pkg_all() {
+  for r in 1 2; do pkg_run pkg-base-$r; done
+  for p in $PROBES/pkg-*.test-d.ts; do
+    n=${${p:t}%.test-d.ts}
+    cp $p $PKG/test/zz-probe.test-d.ts
+    for r in 1 2; do pkg_run $n-$r; done
+    rm -f $PKG/test/zz-probe.test-d.ts
+  done
+}
+
+demo_all() {
+  for r in 1 2; do demo_run demo-base-$r; done
+  for p in $PROBES/demo-*.test-d.ts; do
+    n=${${p:t}%.test-d.ts}
+    cp $p $DEMO/test/zz-probe.test-d.ts
+    for r in 1 2; do demo_run $n-$r; done
+    rm -f $DEMO/test/zz-probe.test-d.ts
+  done
+}
+
+pkg_all &
+demo_all &
+wait
+rm -f $PKG/tsconfig.measure.json
+
+for f in $OUT/*.txt; do
+  printf '%s\t%s\t%s\n' "${${f:t}%.txt}" "$(grep -E '^Instantiations' $f | awk '{print $2}')" "$(grep -cE 'error TS' $f)"
+done > $OUT/summary.tsv
+cat $OUT/summary.tsv

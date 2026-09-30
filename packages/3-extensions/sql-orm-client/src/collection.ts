@@ -456,15 +456,32 @@ export class CollectionImpl<
    * await db.orm.User.variant('Admin').create({ name: 'Ada', role: 'super' });
    * ```
    */
+  variant<V extends VariantNames<TContract, ModelName>, S extends CollectionTypeState = State>(
+    this: { readonly [StateType]: S },
+    variantName: V,
+  ): Collection<
+    TContract,
+    ModelName,
+    VariantModelRow<TContract, ModelName, V>,
+    WithVariantState<WithWhereState<S>, V>
+  >;
   variant<V extends VariantNames<TContract, ModelName>>(
     variantName: V,
   ): Collection<
     TContract,
     ModelName,
     VariantModelRow<TContract, ModelName, V>,
-    WithVariantState<WithWhereState<CollectionStateOf<this>>, V>
+    WithVariantState<WithWhereState<State>, V>
+  >;
+  variant<V extends VariantNames<TContract, ModelName>>(
+    variantName: V,
+  ): Collection<
+    TContract,
+    ModelName,
+    VariantModelRow<TContract, ModelName, V>,
+    WithVariantState<WithWhereState<State>, V>
   > {
-    type ReturnState = WithVariantState<WithWhereState<CollectionStateOf<this>>, V>;
+    type ReturnState = WithVariantState<WithWhereState<State>, V>;
     const model = modelOf(this.contract, this.namespaceId, this.modelName);
     const discriminator = model?.discriminator;
     const variants = model?.variants;
@@ -564,7 +581,9 @@ export class CollectionImpl<
       RelName,
       State['nsId']
     >,
+    S extends CollectionTypeState = State,
   >(
+    this: { readonly [StateType]: S },
     relationName: RelName,
   ): Collection<
     TContract,
@@ -580,7 +599,7 @@ export class CollectionImpl<
         >;
       }
     >,
-    CollectionStateOf<this>
+    S
   >;
   include<
     RelName extends VariantAwareIncludeRelationNames<
@@ -617,7 +636,9 @@ export class CollectionImpl<
       CollectionTypeState,
       IsToMany
     >,
+    S extends CollectionTypeState = State,
   >(
+    this: { readonly [StateType]: S },
     relationName: RelName,
     refineFn: (
       collection: IncludeRefinementCollection<
@@ -643,7 +664,7 @@ export class CollectionImpl<
         >;
       }
     >,
-    CollectionStateOf<this>
+    S
   >;
   include<
     RelName extends VariantAwareIncludeRelationNames<
@@ -821,6 +842,24 @@ export class CollectionImpl<
       keyof DefaultModelRow<TContract, ModelName> & string,
       ...(keyof DefaultModelRow<TContract, ModelName> & string)[],
     ],
+    S extends CollectionTypeState = State,
+  >(
+    this: { readonly [StateType]: S },
+    ...fields: Fields
+  ): Collection<
+    TContract,
+    ModelName,
+    SimplifyDeep<
+      Pick<DefaultModelRow<TContract, ModelName>, Fields[number]> &
+        IncludedRelationsForRow<TContract, ModelName, Row>
+    >,
+    S
+  >;
+  select<
+    Fields extends readonly [
+      keyof DefaultModelRow<TContract, ModelName> & string,
+      ...(keyof DefaultModelRow<TContract, ModelName> & string)[],
+    ],
   >(
     ...fields: Fields
   ): Collection<
@@ -830,7 +869,23 @@ export class CollectionImpl<
       Pick<DefaultModelRow<TContract, ModelName>, Fields[number]> &
         IncludedRelationsForRow<TContract, ModelName, Row>
     >,
-    CollectionStateOf<this>
+    State
+  >;
+  select<
+    Fields extends readonly [
+      keyof DefaultModelRow<TContract, ModelName> & string,
+      ...(keyof DefaultModelRow<TContract, ModelName> & string)[],
+    ],
+  >(
+    ...fields: Fields
+  ): Collection<
+    TContract,
+    ModelName,
+    SimplifyDeep<
+      Pick<DefaultModelRow<TContract, ModelName>, Fields[number]> &
+        IncludedRelationsForRow<TContract, ModelName, Row>
+    >,
+    State
   > {
     const selectedFields = mapFieldsToColumns(
       this.contract,
@@ -844,7 +899,7 @@ export class CollectionImpl<
         Pick<DefaultModelRow<TContract, ModelName>, Fields[number]> &
           IncludedRelationsForRow<TContract, ModelName, Row>
       >,
-      CollectionStateOf<this>
+      State
     >({
       selectedFields,
     });

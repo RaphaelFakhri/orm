@@ -71,18 +71,16 @@ describe('a: conditional steps inside pipe', () => {
     x.update({ title: 'x' });
   });
 
-  test('a union that is not reduced breaks include only', () => {
+  test('with include inferring the state from this, a union with the root type keeps include', () => {
     const y = Post as Base | Filtered;
     expectTypeOf(y.where({ id: 1 })).not.toBeAny();
     expectTypeOf(y.orderBy((p) => p.id.asc())).not.toBeAny();
     expectTypeOf(y.select('id')).not.toBeAny();
     expectTypeOf(y.limit(1).all()).not.toBeAny();
     expectTypeOf(y.first()).not.toBeAny();
-    // @ts-expect-error TS2349: each member of the union has signatures, but none are compatible
-    y.include('author');
+    expectTypeOf(y.include('author').all()).not.toBeAny();
     const z = Post as Base | Ordered;
-    // @ts-expect-error TS2349 again
-    z.include('author');
+    expectTypeOf(z.include('author').all()).not.toBeAny();
   });
 });
 
