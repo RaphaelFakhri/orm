@@ -787,7 +787,7 @@ A backtick string appears somewhere other than after a tag, for example `` @map(
 
 ### PSL_UNKNOWN_LITERAL_TAG
 
-A tagged literal uses a tag no pack in the stack registered: `Unknown literal tag "<tag>". Known tags: <tags in registration order>.` Every SQL target registers `json` and `sql`. `pg.sql` and `sqlite.sql` are not registered; write `sql`. Reported at the literal.
+A tagged literal uses a tag no pack in the stack registered: `Unknown literal tag "<tag>". Known tags: <tags in registration order>.` The SQL family registers `sql`, and every SQL target registers `json`. `pg.sql` and `sqlite.sql` are not registered; write `sql`. Reported at the literal.
 
 ### PSL_DEPRECATED_SCALAR_NAME
 

@@ -74,7 +74,7 @@ There is no list data type. A list literal is several values, each cast on its o
 
 Where a database's storage classes are shared by several logical types, the target declares the types it distinguishes rather than one per storage class: on SQLite, `sqlite/integer` and `sqlite/bigint` are distinct although both store as INTEGER, and `sqlite/text`, `sqlite/datetime` and `sqlite/json` are distinct although all store as TEXT.
 
-No database type spans targets, and no family registers types. The SQL family exports implementations targets share, such as the digit classifier and the JSON parse and print, and each target declares its own types with them. A family may also define a whole data type that each of its targets registers unchanged. `sql/expression` is the one such type: a SQL expression in the target database's language, whose canonical form is its text. It has no codec and no DDL name, no column has it, it declares no casts, and no type casts from it. The SQL family refuses a stack in which a type casts from it, with `CONTRACT.DATA_TYPE_CASTS_FROM_SQL_EXPRESSION`.
+No database type spans targets. The SQL family exports implementations targets share, such as the digit classifier and the JSON parse and print, and each target declares its own types with them. A family registers only a data type that is the same on every target and that nothing casts from. `sql/expression` is the only one: a SQL expression in the target database's language, whose canonical form is its text. The SQL family registers it and its authoring entry itself, so no target has to remember to. It has no codec and no DDL name, no column has it, it declares no casts, and no type casts from it. The SQL family refuses a stack in which a type casts from it, with `CONTRACT.DATA_TYPE_CASTS_FROM_SQL_EXPRESSION`.
 
 ## Codecs
 
@@ -99,7 +99,7 @@ A **type constructor** is how PSL names a column's type: `Int`, `Numeric(10, 2)`
 
 ## How PSL writes a value
 
-The pack that owns a data type contributes PSL support for it, keyed by the type's id, in its authoring contribution:
+The component that registers a data type contributes PSL support for it, keyed by the type's id, in its authoring contribution:
 
 ```ts
 authoring: {

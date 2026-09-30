@@ -23,7 +23,7 @@ changes:
 
 ## The prefixed `sql` tags are removed
 
-`pg.sql` and `sqlite.sql` were second names for the `sql` tag. They are removed, and a schema that uses one is refused with `PSL_UNKNOWN_LITERAL_TAG`: `Unknown literal tag "pg.sql". Known tags: json, sql.`
+`pg.sql` and `sqlite.sql` were second names for the `sql` tag. They are removed, and a schema that uses one is refused with `PSL_UNKNOWN_LITERAL_TAG`: `Unknown literal tag "pg.sql". Known tags: sql, json.`
 
 Replace the tag with `sql` and leave the text unchanged:
 
@@ -36,7 +36,7 @@ The stored default does not change, so no migration follows.
 
 ## Diagnostic codes for written values changed
 
-This matters only to code that reads PSL diagnostic codes, such as a test that asserts one. The messages did not change, except for a `sql` literal inside a list literal.
+This matters only to code that reads PSL diagnostic codes, such as a test that asserts one. The messages did not change, except for a `sql` literal inside a list literal and the list of known tags, both described below the table.
 
 | Refusal | Old code | New code |
 | --- | --- | --- |
@@ -50,6 +50,8 @@ This matters only to code that reads PSL diagnostic codes, such as a test that a
 | A `sql` literal inside a list literal | `PSL_INVALID_DEFAULT_LITERAL`, at the element | `PSL_VALUE_TYPE_INCOMPATIBLE`, at the `@default` attribute |
 
 `PSL_INVALID_JSON_LITERAL` no longer exists.
+
+The unknown-tag message lists the known tags in the order the stack registers them. The SQL family registers `sql` before the target registers `json`, so a Postgres or SQLite stack lists `sql, json`, where it used to list `json, sql, pg.sql` or `json, sql, sqlite.sql`. The completion list and the `Expected one of` message of `@default` offer `sql` before `json` for the same reason.
 
 A `sql` literal inside a list literal used to report `Literal tag "sql" produces a default of its own and cannot be an element of a list literal.` It is now refused by the cast rule, like any other value the column's type does not take: `Field "Post.tags" at element 1: pg/text has no cast from sql/expression; it casts from nothing`. Write the whole list as one `sql` literal instead, as in `` @default(sql`'{}'::text[]`) ``.
 
