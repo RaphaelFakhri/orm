@@ -987,7 +987,7 @@ A lowered SQL AST is structurally invalid: a subquery projecting other than one 
 
 ### RUNTIME.AST_UNSUPPORTED
 
-The authored SQL AST uses a feature this target cannot render, e.g. DEFAULT as a value in INSERT … VALUES, WITH ORDINALITY on function sources, or returned-column aliases on function sources, all on SQLite. Raised by the target adapters' renderers. Payload: `node` (INSERT DEFAULT site); `target`, `feature` (function-source sites).
+The authored SQL AST uses a feature this target cannot render, e.g. DEFAULT as a value in INSERT … VALUES, WITH ORDINALITY on function sources, or returned-column aliases on function sources, all on SQLite; or a row-locking clause whose strength or option (`of`, `nowait`, `skipLocked`) needs a capability the Postgres adapter did not report. Raised by the target adapters' renderers. Payload: `node` (INSERT DEFAULT site); `target`, `feature` (function-source sites); `target`, `capability` (locking-clause sites).
 
 ### RUNTIME.BINDING_INVALID
 
@@ -1086,6 +1086,10 @@ The `arktype-json` codec rejected a JSON value that does not satisfy the column'
 ### RUNTIME.LOCK_INCOMPATIBLE
 
 A select AST node was constructed with a row-locking clause (`FOR UPDATE`, `FOR SHARE` and the like) together with `DISTINCT`, `DISTINCT ON`, `GROUP BY` or `HAVING`. Postgres refuses a locking clause on such a query, so the node refuses it at construction. Raised by `SelectAst` in relational-core. Payload: `node` (`select`), `field` (the first conflicting field).
+
+### RUNTIME.LOCK_UNSUPPORTED
+
+A select AST carrying a row-locking clause (`FOR UPDATE`, `FOR SHARE` and the like) was lowered for SQLite. SQLite has no row locks: a writer locks the whole database, so use a write transaction instead. The renderer refuses the clause rather than drop it, because dropping it would silently turn a lock into no lock. Raised by the SQLite renderer. Payload: `target` (`sqlite`).
 
 ### RUNTIME.MIDDLEWARE_FAMILY_MISMATCH
 

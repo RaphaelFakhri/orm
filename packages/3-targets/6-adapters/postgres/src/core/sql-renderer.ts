@@ -24,6 +24,9 @@ import {
   type JsonValueProjectionVisitor,
   type ListExpression,
   LiteralExpr,
+  type LockingClause,
+  type LockStrength,
+  type LockWait,
   type LoweredParam,
   type NullCheckExpr,
   type OperationExpr,
@@ -48,6 +51,7 @@ import {
 import { ifDefined } from '@internal/utils/defined';
 import { assertNever, InternalError } from '@internal/utils/internal-error';
 import { adapterError } from './adapter-errors';
+import { postgresAdapterCapabilities } from './capabilities';
 import type { PostgresContract } from './types';
 
 /**
@@ -142,6 +146,7 @@ function unreachableKind(value: never): string {
 interface ParamIndexMap {
   readonly indexMap: Map<AnyParamRef, number>;
   readonly codecDescriptorRegistry: PostgresCodecDescriptorRegistry;
+  readonly capabilities: Record<string, unknown>;
 }
 
 /**
@@ -153,6 +158,7 @@ export function renderLoweredSql(
   ast: AnyQueryAst,
   contract: PostgresContract,
   codecDescriptorRegistry: PostgresCodecDescriptorRegistry,
+  capabilities: Record<string, unknown> = postgresAdapterCapabilities,
 ): { readonly sql: string; readonly params: readonly LoweredParam[] } {
   const orderedRefs = collectOrderedParamRefs(ast);
   const indexMap = new Map<AnyParamRef, number>();
@@ -162,7 +168,7 @@ export function renderLoweredSql(
       ? { kind: 'bind', name: ref.name }
       : { kind: 'literal', value: ref.value };
   });
-  const pim: ParamIndexMap = { indexMap, codecDescriptorRegistry };
+  const pim: ParamIndexMap = { indexMap, codecDescriptorRegistry, capabilities };
 
   const node = ast;
   let sql: string;
@@ -223,6 +229,9 @@ function renderSelect(ast: SelectAst, contract: PostgresContract, pim: ParamInde
     : '';
   const limitClause = renderLimitOffset('LIMIT', ast.limit, contract, pim);
   const offsetClause = renderLimitOffset('OFFSET', ast.offset, contract, pim);
+  const lockingClause = (ast.locking ?? [])
+    .map((clause) => renderLockingClause(clause, pim.capabilities))
+    .join(' ');
 
   const clauses = [
     selectClause,
@@ -234,10 +243,79 @@ function renderSelect(ast: SelectAst, contract: PostgresContract, pim: ParamInde
     orderClause,
     limitClause,
     offsetClause,
+    lockingClause,
   ]
     .filter((part) => part.length > 0)
     .join(' ');
   return clauses.trim();
+}
+
+function lockStrengthSql(strength: LockStrength): {
+  readonly keyword: string;
+  readonly capability: readonly [string, string];
+} {
+  switch (strength) {
+    case 'forUpdate':
+      return { keyword: 'FOR UPDATE', capability: ['sql', 'forUpdate'] };
+    case 'forNoKeyUpdate':
+      return { keyword: 'FOR NO KEY UPDATE', capability: ['postgres', 'forNoKeyUpdate'] };
+    case 'forShare':
+      return { keyword: 'FOR SHARE', capability: ['sql', 'forShare'] };
+    case 'forKeyShare':
+      return { keyword: 'FOR KEY SHARE', capability: ['postgres', 'forKeyShare'] };
+    default:
+      return assertNever(strength, `Unsupported lock strength: ${String(strength)}`);
+  }
+}
+
+function lockWaitSql(wait: LockWait): {
+  readonly keyword: string;
+  readonly capability: readonly [string, string];
+} {
+  switch (wait) {
+    case 'nowait':
+      return { keyword: 'NOWAIT', capability: ['sql', 'lockNowait'] };
+    case 'skipLocked':
+      return { keyword: 'SKIP LOCKED', capability: ['sql', 'lockSkipLocked'] };
+    default:
+      return assertNever(wait, `Unsupported lock wait: ${String(wait)}`);
+  }
+}
+
+function requireCapability(
+  capabilities: Record<string, unknown>,
+  [group, flag]: readonly [string, string],
+): void {
+  const flags = capabilities[group];
+  const reported =
+    typeof flags === 'object' &&
+    flags !== null &&
+    flag in flags &&
+    Reflect.get(flags, flag) === true;
+  if (!reported) {
+    const capability = `${group}.${flag}`;
+    throw adapterError(
+      'RUNTIME.AST_UNSUPPORTED',
+      `Postgres adapter does not report capability ${capability}, which this locking clause needs`,
+      { meta: { target: 'postgres', capability } },
+    );
+  }
+}
+
+function renderLockingClause(clause: LockingClause, capabilities: Record<string, unknown>): string {
+  const strength = lockStrengthSql(clause.strength);
+  requireCapability(capabilities, strength.capability);
+  const parts = [strength.keyword];
+  if (clause.of !== undefined) {
+    requireCapability(capabilities, ['sql', 'lockOf']);
+    parts.push(`OF ${clause.of.map((name) => quoteIdentifier(name)).join(', ')}`);
+  }
+  if (clause.wait !== undefined) {
+    const wait = lockWaitSql(clause.wait);
+    requireCapability(capabilities, wait.capability);
+    parts.push(wait.keyword);
+  }
+  return parts.join(' ');
 }
 
 function renderProjection(
