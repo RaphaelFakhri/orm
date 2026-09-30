@@ -139,6 +139,8 @@ Pack authors never construct it. The runtime synthesizes it at contract-load tim
 
 The split mirrors PR #400's `CodecCallContext` / `SqlCodecCallContext` precedent for the per-call context: SQL-domain vocabulary lives in `sql-relational-core`; framework-components stays family-agnostic.
 
+> **Update — a data type's parameters are an arktype schema** ([ADR 254 — Data types and casts](ADR%20254%20-%20Data%20types%20and%20casts.md)). A data type declares its parameters in `params`, an arktype object schema, which is the one place their bounds are written. A codec's `paramsSchema` is that schema, referenced rather than restated (or `params.and(ownKeys)` for a codec with keys of its own). The runtime still consumes `paramsSchema` through Standard Schema as described below. `DataType.params` is typed as arktype's `Type`, so `framework-components` now depends on arktype.
+
 `paramsSchema` is typed as **Standard Schema** (`StandardSchemaV1<P>`), not arktype-specific. The arktype `Type` already implements Standard Schema via its `~standard` getter, so existing arktype-typed descriptors satisfy the new shape transparently while `framework-components` itself takes no dependency on arktype. The runtime calls `paramsSchema['~standard'].validate(typeParams)` synchronously and rejects Promise-returning validators with `RUNTIME.TYPE_PARAMS_INVALID`.
 
 ## How it composes

@@ -4,7 +4,7 @@ Status: **Accepted**.
 
 Amends: [ADR 170 — Pack-provided type constructors and field presets](ADR%20170%20-%20Pack-provided%20type%20constructors%20and%20field%20presets.md).
 
-Related: [ADR 171 — Parameterized native types in contracts](ADR%20171%20-%20Parameterized%20native%20types%20in%20contracts.md), [ADR 231 — Declarative attribute specifications](ADR%20231%20-%20Declarative%20attribute%20specifications.md).
+Related: [ADR 171 — Parameterized native types in contracts](ADR%20171%20-%20Parameterized%20native%20types%20in%20contracts.md), [ADR 254 — Data types and casts](ADR%20254%20-%20Data%20types%20and%20casts.md), [ADR 231 — Declarative attribute specifications](ADR%20231%20-%20Declarative%20attribute%20specifications.md).
 
 ## At a glance
 
@@ -18,14 +18,13 @@ A target contributes ordinary scalars and parameterized storage types with the s
 const postgresAuthoringTypes = {
   String: {
     kind: 'typeConstructor',
-    output: { codecId: 'pg/text@1', nativeType: 'text' },
+    output: { codecId: 'pg/text@1' },
   },
   VarChar: {
     kind: 'typeConstructor',
-    args: [{ kind: 'number', name: 'length', integer: true, minimum: 1, optional: true }],
+    args: [{ kind: 'number', name: 'length', integer: true, optional: true }],
     output: {
       codecId: 'sql/varchar@1',
-      nativeType: 'character varying',
       typeParams: { length: { kind: 'arg', index: 0 } },
     },
   },
@@ -45,7 +44,7 @@ model User {
 }
 ```
 
-`String`, `Uuid`, and bare `VarChar` are zero-argument instantiations. `VarChar(191)` uses the same contribution with one argument, producing structured `typeParams` while keeping the base `nativeType` separate as required by [ADR 171](ADR%20171%20-%20Parameterized%20native%20types%20in%20contracts.md).
+`String`, `Uuid`, and bare `VarChar` are zero-argument instantiations. `VarChar(191)` uses the same contribution with one argument, producing structured `typeParams`. A constructor names only the codec; the database type, its name and the bounds of its parameters come from the data type the codec represents ([ADR 254](ADR%20254%20-%20Data%20types%20and%20casts.md)), so the `length` argument carries no `minimum` of its own.
 
 ## Context
 
@@ -59,7 +58,7 @@ Every authorable storage type is an `AuthoringTypeConstructorDescriptor` contrib
 
 A bare type name `T` is semantically the zero-argument instantiation `T()`. The framework derives the scalar view with `collectScalarTypeConstructors`: a top-level constructor with no entity-reference argument and no required arguments is a scalar. `ControlStack.scalarTypes`, language-server scalar names, symbol-table classification, and scalar codec validation are derived from that view. They are consumers of the unified namespace, not contribution channels of their own.
 
-Parameterized storage types use the same descriptor and resolver. Their argument declarations validate the authoring call, and their output templates place resolved values in structured `typeParams`. The contract continues to carry the base `nativeType` separately from those parameters; the codec owner remains responsible for target-specific expansion, as decided by ADR 171.
+Parameterized storage types use the same descriptor and resolver. Their argument declarations validate the authoring call, and their output templates place resolved values in structured `typeParams`. The data type the codec represents writes the type's name from those parameters and bounds them, as decided by [ADR 254](ADR%20254%20-%20Data%20types%20and%20casts.md), which supersedes ADR 171's expansion hooks.
 
 Storage-type ownership follows the component boundary. Targets contribute their base and native storage types; extension packs contribute namespaced constructors unless the short-name policy permits otherwise. The SQL family interpreter resolves the assembled namespace generically and contains no PostgreSQL-native mapping table.
 
