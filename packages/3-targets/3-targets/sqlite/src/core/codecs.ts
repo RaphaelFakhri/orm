@@ -235,14 +235,20 @@ const safeIntegerFromBigint = (value: bigint): number => {
   return Number(value);
 };
 
+/**
+ * SQLite does not enforce a character length, and its codec type map declares no `Char` or
+ * `Varchar` type, so the two character codecs render no TypeScript type of their own.
+ */
 export const sqliteSqlCharDescriptor = sqliteCodec(sqlCharDescriptor, {
   dataType: sqliteCharacter,
   jsonProjection: identityJsonProjection,
+  renderTypes: false,
 });
 
 export const sqliteSqlVarcharDescriptor = sqliteCodec(sqlVarcharDescriptor, {
   dataType: sqliteCharacterVarying,
   jsonProjection: identityJsonProjection,
+  renderTypes: false,
 });
 
 export const sqliteSqlIntDescriptor = sqliteCodec(sqlIntDescriptor, {

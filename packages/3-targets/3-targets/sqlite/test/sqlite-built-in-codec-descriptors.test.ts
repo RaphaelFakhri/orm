@@ -174,7 +174,7 @@ describe('SQLite built-in codec descriptors', () => {
     ).toEqual(CastExpr.as(expression, 'TEXT'));
   });
 
-  it('keeps authored registries complete while preserving the control metadata filter boundary', () => {
+  it('keeps authored registries complete, with no codec rendering a named TypeScript type', () => {
     expect(Object.isFrozen(sqliteCodecDescriptorRegistry)).toBe(true);
     expect([...sqliteCodecDescriptorRegistry.values()]).toEqual(codecDescriptors);
 
@@ -183,15 +183,11 @@ describe('SQLite built-in codec descriptors', () => {
       expect(sqliteCodecRegistry.descriptorFor(descriptor.codecId)).toBe(descriptor);
     }
 
-    const filteredControlDescriptors = codecDescriptors.filter(
-      (descriptor) => descriptor.renderOutputType === undefined,
-    );
-    expect(filteredControlDescriptors.map((descriptor) => descriptor.codecId)).toEqual(
-      EXPECTED_CODEC_IDS.filter(
-        (codecId) =>
-          codecId !== sqlCharDescriptor.codecId && codecId !== sqlVarcharDescriptor.codecId,
-      ),
-    );
+    expect(
+      codecDescriptors
+        .filter((descriptor) => descriptor.renderOutputType !== undefined)
+        .map((descriptor) => descriptor.codecId),
+    ).toEqual([]);
     expect(sqliteCodecDescriptorRegistry.descriptorFor(sqlCharDescriptor.codecId)).toBe(
       sqliteSqlCharDescriptor,
     );

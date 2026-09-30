@@ -271,12 +271,11 @@ describe('SQLite adapter codec registry composition', () => {
       (descriptor) => descriptor.codecId,
     );
     const expectedIds = ['app/target@1', ...builtinIds, 'app/first@1', 'app/second@1'];
-    const filteredMetadataIds = sqliteAdapterDescriptorMeta.types.codecTypes.codecDescriptors.map(
+    const metadataIds = sqliteAdapterDescriptorMeta.types.codecTypes.codecDescriptors.map(
       (descriptor) => descriptor.codecId,
     );
 
-    expect(filteredMetadataIds).not.toContain(SQL_CHAR_CODEC_ID);
-    expect(filteredMetadataIds).not.toContain(SQL_VARCHAR_CODEC_ID);
+    expect(metadataIds).toEqual(builtinIds);
     expect(Object.isFrozen(runtimeRegistry)).toBe(true);
     expect(Object.isFrozen(controlRegistry)).toBe(true);
     expect(Array.from(runtimeRegistry.values(), (descriptor) => descriptor.codecId)).toEqual(
@@ -397,7 +396,7 @@ describe('SQLite adapter codec registry composition', () => {
       /Duplicate SQLite codec descriptor id.*sql\/char@1/,
     );
     expect(() => createComposedControlAdapter([duplicate])).toThrow(
-      /Duplicate SQLite codec descriptor id.*sql\/char@1/,
+      /Duplicate codec descriptor for codecId "sql\/char@1"/,
     );
   });
 
