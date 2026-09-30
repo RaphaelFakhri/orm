@@ -109,12 +109,32 @@ Brief: `dispatches/2t-review-fixes-brief.md`. Reviews: `slice-reviews/2t/`. Comm
 
 Verification, logs in `wip/2t-review-fixes/`: `build`, `typecheck`, `lint`, `lint:deps`, `check:error-reference` (361 codes), `fixtures:check` (tree clean) and `check:upgrade-coverage` pass. `lint:casts` delta 0, `lint:throws` delta 0, `lint:framework-vocabulary` 272 of 272. `test:packages` (`test-packages.log`): 1425 files pass, 4 fail; the three tarball tests fail on the registry refusal, and `cli-telemetry` `cli-e2e.test.ts` passes alone (`cli-telemetry-rerun.log`). Integration `test/authoring test/number-defaults`: 30 files, 198 tests pass (`integration-authoring-number-defaults.log`). Manual QA: `manual-qa.log`, recorded in `manual-qa.md`.
 
+### Slice 2t review fixes, round 2, 2026-09-30
+
+Brief: `dispatches/2t-round-2-fixes-brief.md`. Reviews: `slice-reviews/2t-round-2/`. Commits `9f8bd38248` to `9b21e77bf2`.
+
+- **Merge** (`9f8bd38248`): the slice 2a branch merged cleanly. It brings `656249c3d9`, which is G01.
+- **B01 and G06** (`5adf991e77`): `SqlPslBuildContext` and `DefaultMappingOptions` take `dataTypes: DataTypeSupport`. `SqlPslBuildContext.authoringContributions` no longer includes `dataTypes`. `ControlStack.dataTypeLookup` is gone; readers use `stack.dataTypes.lookup`. Inside `default-mapping.ts` the private helpers call the lookup `lookup`. Tests, the extension fragment (new change `print-path-carries-data-types`) and design section 7 are updated.
+- **B02** (`39bb27db90`): new family arm `no-element-cast` (`receivingType`, `valueType`, `elementTypes`). `contract-psl` words it `<type> has no cast from a list holding <value type>; write <forms of the element types>`. Prisma 7 words it `holds a <value type> value at element n, which the list cast of <type> does not take; it takes <element types>.` `ReadDefaultResult.receivingTypes` is now `suggestedTypes`. The Prisma 7 test gives `pg/float8` a list cast in the lookup, because no Prisma 7 column type has one. Before the fix it printed the false `pg/float8 has no cast from; it casts from pg/int2`. Design section 4, `error-reference.md` and both fragments are updated.
+- **B03** (`f1ab5abb9d`): the parameter is `guidance`, and the doc comment says it follows `write `. Design section 4 is updated.
+- **B04** (`6d361db9ef`): the slice 2b carry-over names `@default` and manual QA case 4.
+- **B05** (`6d361db9ef`): the ADR 254 call bullet is in the future tense, and line 181 says a data type declares its list cast and the family's default reader reads a written list through it.
+- **G01**: fixed by the merge.
+- **G02** (`39bb27db90`): two tests on a `pgvector.Vector(3)` column assert the whole diagnostic at element 2: text (`write a number`, which also covers de-duplication of the forms) and an unknown tag.
+- **G03** (`3494a37620`): the extension fragment has `default-refusals-say-what-to-write` with the app fragment's detection patterns and table, and no longer says the messages are unchanged. Both tables have a row for the vector element.
+- **G04** (`39bb27db90`): Prisma 7 tests for `count Int @default([1, 2])` and for the new arm.
+- **G05** (`6d361db9ef`): the contract-psl README says the message ends with what to write.
+- **G07** (`2d788c2342`): `dispatches/2t-findings.md` has an A08 entry with the decision and its reason.
+- Manual QA (`9b21e77bf2`): four cases with the pgvector extension, recorded in `manual-qa.md`.
+
+Verification, logs in `wip/2t-round-2-fixes/`: `build`, `typecheck`, `lint`, `lint:deps`, `check:error-reference` (361 codes), `fixtures:check` (tree clean) and `check:upgrade-coverage` pass. `lint:casts` delta 0, `lint:throws` delta 0, `lint:framework-vocabulary` 272 of 272. `test:packages` (`test-packages.log`): 1438 files pass, 6 fail. The three tarball tests fail on the registry refusal. `cli-telemetry` `cli-e2e.test.ts` and `integration.test.ts` timed out and pass alone (`rerun-cli-telemetry.log`); `cli` `migration-cli.exit-scheme.test.ts` failed once and passes alone (`rerun-cli-exit-scheme.log`). Integration `test/authoring test/number-defaults test/date-time-defaults`: 34 files, 230 tests pass (`integration.log`). Manual QA: `manual-qa.log`.
+
 ## Slice order and tickets
 
 | Order | Plan slice | Ticket | State |
 | --- | --- | --- | --- |
 | 1 | 2a: `sql` is the data type `sql/expression` | TML-3296 | PR #30534 open; two review rounds done, all findings fixed |
-| 2 | 2t: an argument declares the data type it receives | TML-3367 | Implemented on `tml-3367-data-type-value`; both findings fixed; review pending |
+| 2 | 2t: an argument declares the data type it receives | TML-3367 | Implemented on `tml-3367-data-type-value`; two review rounds done, all findings fixed |
 | 3 | 2b: the six places take `sql` literals | TML-3288 | Waiting for 2t |
 | 4 | 3: the TypeScript builder takes `sql` values | TML-3289 | Waiting for 2b |
 | On the side | 1: line comments in raw SQL | TML-3287 | Not started; depends on nothing |
