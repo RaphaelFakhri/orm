@@ -2,7 +2,7 @@
 
 **Status:** Proposed
 **Date:** 2026-09-29
-**Builds on:** [ADR 175 — Shared ORM Collection interface](ADR%20175%20-%20Shared%20ORM%20Collection%20interface.md), [ADR 206 — Operations as TypeScript functions](ADR%20206%20-%20Operations%20as%20TypeScript%20functions.md), [ADR 236 — Target-contributed model attributes](ADR%20236%20-%20Target-contributed%20model%20attributes.md)
+**Builds on:** [ADR 258 — Query fragments are functions](ADR%20258%20-%20Query%20fragments%20are%20functions.md), [ADR 175 — Shared ORM Collection interface](ADR%20175%20-%20Shared%20ORM%20Collection%20interface.md), [ADR 206 — Operations as TypeScript functions](ADR%20206%20-%20Operations%20as%20TypeScript%20functions.md), [ADR 236 — Target-contributed model attributes](ADR%20236%20-%20Target-contributed%20model%20attributes.md)
 
 ---
 
@@ -21,35 +21,43 @@ model Post {
 }
 ```
 
-The application gives posts a `search` method on its collection class:
+The application gets the scopes for that model from the Postgres package and applies one with `pipe`:
 
 ```ts
 import { fulltextSearchScopes } from '@prisma/orm-postgres/orm-client';
 
+const postScopes = fulltextSearchScopes<Contract, 'Post'>();
+
+const posts = await db.Post.pipe(postScopes.post_search(websearchToTsquery('postgres index'))).limit(10).all();
+```
+
+Or it gives posts a `search` method on its collection class:
+
+```ts
 class PostCollection extends Collection<Contract, 'Post'> {
   search(q: TsqueryArgument) {
-    return fulltextSearchScopes(this).post_search(q);
+    return this.pipe(postScopes.post_search(q));
   }
 }
 
 const posts = await db.Post.search(websearchToTsquery('postgres index')).limit(10).all();
 ```
 
-- `fulltextSearchScopes` comes from the Postgres package. It takes a collection of any model.
-- It returns one member for each full-text index on that model. `post_search` is the name the author gave the index.
-- `post_search(q)` returns the same collection, narrowed to posts that match and ordered best match first.
+- `fulltextSearchScopes` comes from the Postgres package. Given the contract and a model, it returns one member for each full-text index on that model. `post_search` is the name the author gave the index.
+- `post_search(q)` is a query fragment: a function that takes a collection of posts and returns it narrowed to posts that match, ordered best match first. `pipe` applies it, as it applies any fragment.
+- The result has the caller's type, so it chains with every collection method, and the class's `search` returns the class.
 
 The query uses the index, because it is built from the index's own definition in the contract.
 
 ## Decision
 
-A **scope** is a named query on a model that takes a collection and returns a collection of the same type. `where` chains and the methods of a custom collection class are scopes that the application writes.
+A **scope** is a named query fragment on a model: a function that takes a collection of the model and returns a collection of the same type. Query fragments and `pipe` are defined in ADR 258. `where` chains and the methods of a custom collection class are scopes that the application writes.
 
-1. **A package that introduces a kind of index can export a scope helper.** A scope helper takes any collection and returns one scope for each index of that kind on the collection's model. Each scope is named after its index.
+1. **A package that introduces a kind of index can export a scope helper.** Given the contract and a model, a scope helper returns one scope for each index of that kind on the model. Each scope is named after its index, and each is a fragment that `pipe` applies.
 2. **A scope is built from the index's definition in the contract.** The query cannot differ from the index.
 3. **The ORM client provides a builder for scope helpers.** The package author writes an ordinary function that returns a filter and an order. The builder derives the helper's types from it.
-4. **The application decides where a scope appears.** It calls the scope helper directly, or wraps it in a method of its custom collection class.
-5. **Nothing is added to the schema language's grammar, to the contract's domain plane, or to the `Collection` type.**
+4. **The application decides where a scope appears.** It applies the scope with `pipe` at the call, or wraps it in a method of its custom collection class.
+5. **Nothing is added to the schema language's grammar, to the contract's domain plane, or to the `Collection` type beyond `pipe`.**
 
 The rest of this document states the problem, then follows one search from the schema to the SQL. Each choice has its reason beside it.
 
@@ -113,41 +121,38 @@ The contract records the index as data, not as a SQL string:
 
 `prefix` is the name the author gave. `name` is the name in the database. One renderer produces the index's expression from `options` for the database, and the same renderer produces the query's expression. That is what keeps them the same.
 
-### 2. The application uses the scope helper
+### 2. The application applies the scope
 
-`fulltextSearchScopes` takes a collection and returns an object with one scope for each full-text index on the collection's model:
+`fulltextSearchScopes` takes the contract and a model as type arguments and returns an object with one scope for each full-text index on that model. Each scope takes the search query and returns a fragment. `pipe` applies the fragment to any collection of the model:
 
 ```ts
+const postScopes = fulltextSearchScopes<Contract, 'Post'>();
+
 // on the root collection
-fulltextSearchScopes(db.Post).post_search(q).limit(10).all();
+db.Post.pipe(postScopes.post_search(q)).limit(10).all();
 
 // after other methods
-fulltextSearchScopes(db.Post.where({ userId })).post_search(q).all();
+db.Post.where({ userId }).pipe(postScopes.post_search(q)).all();
 
 // on the collection of related posts inside an include
-db.User.where({ id: userId }).include('posts', (posts) =>
-  fulltextSearchScopes(posts).post_search(q).limit(3),
-);
+db.User.where({ id: userId }).include('posts', (posts) => posts.pipe(postScopes.post_search(q)).limit(3));
+
+// in a method of a custom collection class
+class PostCollection extends Collection<Contract, 'Post'> {
+  search(q: TsqueryArgument) {
+    return this.pipe(postScopes.post_search(q));
+  }
+}
 ```
 
-- **The scope returns the collection's own type.** A row type chosen with `select` before the call is kept, and every collection method still works after it.
-- **Only full-text indexes of that model are offered.** `fulltextSearchScopes(db.User)` has no members. A wrong index name does not compile.
+- **The scope returns the collection's own type, and records the filter.** A row type chosen with `select` before the call is kept, a custom class stays the class, and every collection method still works after it. The result counts as filtered, so `update` and `delete` can follow it.
+- **Only full-text indexes of that model are offered.** `fulltextSearchScopes<Contract, 'User'>()` has no members. A wrong index name does not compile, and the index names are offered as completions, because the contract and model are known when the name is typed.
+- **A scope is a value.** It can be kept in a constant, passed to a function, and applied to more than one collection. It is rejected for a collection of another model.
 - **The application names the scope in its own terms** by writing a method on its custom collection class, as in "At a glance". Custom collection classes are where an application already keeps its own scopes (ADR 175).
-- **The helper's result can be kept in a private field** of the collection class. Each chained call builds a new collection through the class's constructor, so each collection gets its own result, bound to itself:
 
-  ```ts
-  class PostCollection extends Collection<Contract, 'Post'> {
-    #searchScopes = fulltextSearchScopes(this);
+**Why one member for each index.** A single function that takes the index name, as `fullTextSearch<Contract, 'Post'>('post_search')(q)`, gives the same completions, but a scope helper with one member per index reads as a name and gives the reader every scope of the model in one place.
 
-    search(q: TsqueryArgument) {
-      return this.#searchScopes.post_search(q);
-    }
-  }
-  ```
-
-**Why one member for each index.** A single function that takes the index name, as `searchFullText(collection, 'post_search', q, options)`, gives four positional arguments that a reader cannot tell apart. A member reads as a name, and the object can be kept and reused.
-
-**Why a function, not a member of every collection.** A package cannot add a typed member to every collection without a type registry that the `Collection` type reads. Every application would pay for that in type checking, whether or not it uses the member, and the member's name could collide with a collection method. A function costs nothing until it is called.
+**Why a fragment, not a member of every collection.** A package cannot add a typed member to every collection without a type registry that the `Collection` type reads. Every application would pay for that in type checking, whether or not it uses the member, and the member's name could collide with a collection method. A fragment costs nothing until it is applied, and it is applied the way every other fragment is.
 
 ### 3. What a scope does to the query
 
@@ -196,14 +201,14 @@ export const fulltextSearchScopes = defineIndexScopes({ match: isFullTextIndex, 
 
 - **`match` recognises the package's kind of index.** It is a type guard, so it also tells the builder the index's type.
 - **`fulltext` is the scope operation.** It receives the index and the table's name, then the caller's arguments. It returns a scope refinement, a filter and an optional default order.
-- **The builder derives everything else.** It reads the caller's arguments from the operation's parameters, and it types each scope as returning the collection it was given.
+- **The builder derives everything else.** It reads the caller's arguments from the operation's parameters, and it types each scope as a fragment that returns the collection it is applied to, with the filter recorded in the type state.
 - **The author writes no type-level code.**
 - **The builder checks the operation against the types.** An operation that returns something other than a scope refinement does not compile.
 - **The operation uses the same query operations an application can call.** `fullTextMatches` and `fullTextRank` are the SQL builder's operations, which take the fields in weight groups. An application that writes the query itself, as in "The problem", gets the same SQL, and keeping it equal to the index is then its own responsibility.
 
 The type guard must be a named function or have an annotated parameter. With an inline guard and no annotation, the builder still types the helper correctly, but the operation sees a plain index and the author gets type errors.
 
-**Several operations for one index.** A kind of index that offers more than one operation passes `operations` instead of `operation`. Each scope is then an object with one member for each operation, for example `periodScopes(db.Booking).booking_during.overlapping(from, to)`.
+**Several operations for one index.** A kind of index that offers more than one operation passes `operations` instead of `operation`. Each scope is then an object with one member for each operation, for example `db.Booking.pipe(bookingScopes.booking_during.overlapping(from, to))`.
 
 **When an argument's type depends on the index.** Some operations need an argument whose type comes from the index itself, for example one of its field names. TypeScript cannot work that out inside the builder, because the builder cannot apply a generic function's type to one particular index. The author writes the operation as a generic function and adds a three-line interface that names it:
 
@@ -223,19 +228,19 @@ The builder sets `this['index']` to each index of the model in turn, so every sc
 
 ### 5. How the builder finds a model's indexes
 
-The builder reads the contract type, the model's name and its namespace from the type of the collection it is given. It reads them as three separate type parameters.
+The builder reads the model's indexes from the contract type and the model's name, which the application gives as type arguments: `fulltextSearchScopes<Contract, 'Post'>()`. Naming them once, where the scopes are made, is what lets the index names be completed and checked.
 
-This matters inside a custom collection class. There, `this` has a type that TypeScript has not resolved. Reading the model's name through `this` gives no members, or accepts any name without an error. Reading the three from the class's declared base type works.
+The fragment a scope returns is generic over the collection it receives. It reads the contract, the model's name and its namespace from that collection's type, as three separate type parameters, and refuses a collection of another model. Reading them separately is what makes the fragment work on `this` inside a custom collection class, whose type TypeScript has not resolved: reading the model's name through `this` gives no members, and reading the three from the class's declared base type works.
 
-**Cost.** An application that does not call a scope helper pays nothing. Each call adds a few hundred type instantiations to type checking. On the demo application, whose type checking takes about 745,000 instantiations, ten calls add about 700.
+**Cost.** An application that does not use a scope pays nothing beyond `pipe`, which every collection has (ADR 258).
 
 ## Responsibilities
 
 | Party | Owns |
 | --- | --- |
 | Target or extension that introduces a kind of index | The schema attribute, the index as data in the contract, the index's DDL, the query operations over it, and the scope helper |
-| ORM client | The builder, the scope refinement, applying a refinement to a collection, and finding a model's indexes from a collection's type |
-| Application | Calling scope helpers, and naming scopes in its custom collection classes |
+| ORM client | `pipe`, the builder, the scope refinement, applying a refinement to a collection, and finding a model's indexes from the contract type |
+| Application | Making a model's scopes from a helper, applying them with `pipe`, and naming them in its custom collection classes |
 | Adapter | Turning the finished query into SQL, as for any other query |
 
 ## Generality
@@ -273,8 +278,8 @@ The design is meant for any database and for more than text search. Two appendic
 
 **For applications**
 
-- **An application writes one line to get a scope**, either at the call or in a method of its custom collection class.
-- **A private field that keeps a helper's result is created again for every chained call.** Creating a helper's result must therefore be cheap, for example by reading a model's indexes once for each contract.
+- **An application writes one line to get a model's scopes**, and applies one with `pipe` at the call or in a method of its custom collection class.
+- **A scope composes with other fragments.** A conditional search, `posts.pipe((c) => (q ? c.pipe(postScopes.post_search(q)) : c))`, is sound for the reasons ADR 258 gives: its type is the unfiltered collection.
 
 **For queries**
 
@@ -285,12 +290,12 @@ The design is meant for any database and for more than text search. Two appendic
 **For packages**
 
 - **A package's scope helper depends on the ORM client package**, because it uses the builder.
-- **The builder reads collection members that are marked internal today**: the collection's context, model name, namespace and table name. They become part of what the ORM client promises to package authors.
+- **The scope's fragment reads collection members that are marked internal today**: the collection's context, model name, namespace and table name. They become part of what the ORM client promises to package authors.
 - **MongoDB indexes have no name in the contract.** A MongoDB builder must name its scopes some other way, or the contract must record index names.
 
 ## Possible later step: scopes declared in the schema
 
-A later design could let the schema declare a scope, and have the ORM client offer it on every collection, so the application writes no method. Such a scope would be built from the same scope helpers. It needs a way to declare scopes in the schema, a place for them in the contract's domain plane, and a type registry that the `Collection` type reads. Those costs are why this decision stops at helpers.
+A later design could let the schema declare a scope, and have the ORM client offer it on every collection, so the application writes no method. Such a scope would be built from the same fragments. It needs a way to declare scopes in the schema, a place for them in the contract's domain plane, and a type registry that the `Collection` type reads. Those costs are why this decision stops at helpers.
 
 ## Alternatives considered
 
@@ -298,14 +303,14 @@ A later design could let the schema declare a scope, and have the ORM client off
 
 - **Declared in the schema, recorded in the contract's domain plane, and offered on every collection through a type registry.** It needs a new block in the schema language, a new member in the domain plane, and a registry that every collection's type reads. See "Possible later step".
 - **A member that a package adds to every collection, as `db.Post.search`.** It needs the same registry. A member of the same name as a collection method or a custom class's method collides with it.
-- **A function that combines a package's additions into a collection class, as `fulltextSearchScopes.mixin(PostCollection)`.** A scope helper already works on any collection, including `this` in a class. Combining classes adds nothing more.
+- **A function that combines a package's additions into a collection class, as `fulltextSearchScopes.mixin(PostCollection)`.** A fragment already applies to any collection, including `this` in a class. Combining classes adds nothing more.
 - **Only the query operations, with the fields and weights written in each query.** Any difference from the index disables it without an error. The operations remain, as what a scope is built from.
 
 ### The form of a scope helper
 
+- **A helper that takes the collection and returns scopes bound to it, as `fulltextSearchScopes(this).post_search(q)`.** It needs no `pipe` and no type arguments, because it reads the contract and model from the collection. But each scope is then bound to one collection: it is not a value that can be kept, passed around, or composed with other fragments, and an application that keeps the helper's result in a field of its collection class makes it again for every chained call.
 - **One function that takes the index's name, as `searchFullText(collection, 'post_search', q)`.** It gives the clearest error for a wrong name, because the error lists the valid names. It takes four positional arguments, and its result cannot be kept and reused.
-- **A curried function, as `fullTextSearch('post_search', q)(collection)`.** The index name cannot be offered as a completion, because the collection is not known when it is typed. It costs the most in type checking.
-- **A `pipe` method on every collection, as `collection.pipe(fullTextSearch('post_search', q))`.** It adds a member to every collection's type, which every application pays for, and its type errors are the hardest to read of these forms. It can be added later without changing scope helpers.
+- **A curried function that reads the index name before the model is known, as `fullTextSearch('post_search', q)(collection)`.** The index name cannot be offered as a completion, because the model is not known when it is typed.
 
 ### How a package types its scope helper
 
@@ -335,8 +340,9 @@ ORDER BY MATCH(title, body) AGAINST (? IN NATURAL LANGUAGE MODE) DESC;
 ```
 
 ```ts
-mysqlFullTextScopes(db.Post).post_search.natural('postgres index');
-mysqlFullTextScopes(db.Post).post_search.boolean('+postgres -mysql');
+const postScopes = mysqlFullTextScopes<Contract, 'Post'>();
+db.Post.pipe(postScopes.post_search.natural('postgres index'));
+db.Post.pipe(postScopes.post_search.boolean('+postgres -mysql'));
 ```
 
 **What the database requires**
@@ -448,8 +454,9 @@ WHERE room_id = $1 AND tstzrange(starts_at, ends_at) && tstzrange($2, $3);
 ```
 
 ```ts
-periodScopes(db.Booking.where({ roomId })).booking_during.overlapping(from, to).all();
-periodScopes(db.Booking).booking_during.containing(instant).all();
+const bookingScopes = periodScopes<Contract, 'Booking'>();
+db.Booking.where({ roomId }).pipe(bookingScopes.booking_during.overlapping(from, to)).all();
+db.Booking.pipe(bookingScopes.booking_during.containing(instant)).all();
 ```
 
 **What it shows**
@@ -467,8 +474,9 @@ SELECT ... FROM post WHERE JSON_OVERLAPS(tags->'$[*]', CAST('["postgres","mysql"
 ```
 
 ```ts
-tagScopes(db.Post).post_tagged.with('postgres').all();
-tagScopes(db.Post).post_tagged.withAny(['postgres', 'mysql']).all();
+const postScopes = tagScopes<Contract, 'Post'>();
+db.Post.pipe(postScopes.post_tagged.with('postgres')).all();
+db.Post.pipe(postScopes.post_tagged.withAny(['postgres', 'mysql'])).all();
 ```
 
 **What it shows**
@@ -490,7 +498,8 @@ db.place.aggregate([
 ```
 
 ```ts
-geoScopes(db.Place.where({ open: true })).location.near({ lng, lat }, { maxMetres: 2000 }).all();
+const placeScopes = geoScopes<Contract, 'Place'>();
+db.Place.where({ open: true }).pipe(placeScopes.location.near({ lng, lat }, { maxMetres: 2000 })).all();
 ```
 
 **What it shows**
