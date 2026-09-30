@@ -40,7 +40,13 @@ import {
   opaqueSql,
 } from '@internal/sql-relational-core/ast';
 import { namingOf } from '@internal/sql-schema-ir/naming';
-import { type ImportRequirement, jsonToTsSource, TsExpression } from '@internal/ts-render';
+import {
+  type ImportRequirement,
+  jsonToTsSource,
+  TsExpression,
+  tsObjectSource,
+  tsQuotedTextSource,
+} from '@internal/ts-render';
 import { blindCast } from '@internal/utils/casts';
 import { ifDefined } from '@internal/utils/defined';
 import { assertNever } from '@internal/utils/internal-error';
@@ -167,7 +173,7 @@ function renderDdlColumnDefault(def: AnyDdlColumnDefault | undefined): string {
   if (def.kind === 'literal') {
     return `lit(${jsonToTsSource(def.value)})`;
   }
-  return `fn(${jsonToTsSource(def.expression.text)})`;
+  return `fn(${tsQuotedTextSource(def.expression.text)})`;
 }
 
 function renderDdlColumnAsTsCall(col: DdlColumn): string {
@@ -199,7 +205,7 @@ function renderDdlConstraintAsTsCall(constraint: DdlTableConstraint): string {
       return `unique(${jsonToTsSource(constraint.columns)}${nameOpt})`;
     }
     case 'check-expression':
-      return `checkExpression(${jsonToTsSource(constraint.name)}, ${jsonToTsSource(constraint.expression.text)})`;
+      return `checkExpression(${jsonToTsSource(constraint.name)}, ${tsQuotedTextSource(constraint.expression.text)})`;
   }
 }
 
@@ -1145,7 +1151,7 @@ export class AddCheckConstraintCall extends PostgresOpFactoryCallNode {
   }
 
   renderTypeScript(): string {
-    return `this.addCheckConstraint({ ${constraintCallOptions(this.schemaName, this.tableName, this.constraintName)}, expression: ${jsonToTsSource(this.expression)} })`;
+    return `this.addCheckConstraint({ ${constraintCallOptions(this.schemaName, this.tableName, this.constraintName)}, expression: ${tsQuotedTextSource(this.expression)} })`;
   }
 
   override importRequirements(): readonly ImportRequirement[] {
@@ -1273,7 +1279,7 @@ export class CreateIndexCall extends PostgresOpFactoryCallNode {
     if (this.columns !== undefined) {
       opts.push(`columns: ${jsonToTsSource(this.columns)}`);
     } else {
-      opts.push(`expression: ${jsonToTsSource(this.expression ?? '')}`);
+      opts.push(`expression: ${tsQuotedTextSource(this.expression ?? '')}`);
     }
     if (
       this.indexType !== undefined ||
@@ -1284,7 +1290,7 @@ export class CreateIndexCall extends PostgresOpFactoryCallNode {
       const extrasParts: string[] = [];
       if (this.indexType !== undefined) extrasParts.push(`type: ${jsonToTsSource(this.indexType)}`);
       if (this.options !== undefined) extrasParts.push(`options: ${jsonToTsSource(this.options)}`);
-      if (this.where !== undefined) extrasParts.push(`where: ${jsonToTsSource(this.where)}`);
+      if (this.where !== undefined) extrasParts.push(`where: ${tsQuotedTextSource(this.where)}`);
       if (this.unique) extrasParts.push('unique: true');
       opts.push(`extras: { ${extrasParts.join(', ')} }`);
     }
@@ -1791,7 +1797,18 @@ export class CreatePostgresRlsPolicyCall extends PostgresOpFactoryCallNode {
       ...ifDefined('withCheck', p.withCheck),
       permissive: p.permissive,
     };
-    return `this.createRlsPolicy({ schema: ${jsonToTsSource(this.schemaName)}, table: ${jsonToTsSource(this.tableName)}, policy: ${jsonToTsSource(input)} })`;
+    const entries = Object.entries(input)
+      .filter(([, value]) => value !== undefined)
+      .map(
+        ([key, value]) =>
+          [
+            key,
+            (key === 'using' || key === 'withCheck') && typeof value === 'string'
+              ? tsQuotedTextSource(value)
+              : jsonToTsSource(value),
+          ] as const,
+      );
+    return `this.createRlsPolicy({ schema: ${jsonToTsSource(this.schemaName)}, table: ${jsonToTsSource(this.tableName)}, policy: ${tsObjectSource(entries)} })`;
   }
 
   override importRequirements(): readonly ImportRequirement[] {

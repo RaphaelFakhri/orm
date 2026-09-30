@@ -21,7 +21,12 @@ import type {
   DdlColumn,
   DdlTableConstraint,
 } from '@internal/sql-relational-core/ast';
-import { type ImportRequirement, jsonToTsSource, TsExpression } from '@internal/ts-render';
+import {
+  type ImportRequirement,
+  jsonToTsSource,
+  TsExpression,
+  tsQuotedTextSource,
+} from '@internal/ts-render';
 import { ifDefined } from '@internal/utils/defined';
 import { columnExistsAst, indexExistsAst, tableExistsAst } from '../../contract-free/checks';
 import * as contractFreeDdl from '../../contract-free/ddl';
@@ -70,7 +75,7 @@ function renderDdlColumnDefault(def: AnyDdlColumnDefault | undefined): string {
   if (def.kind === 'literal') {
     return `lit(${jsonToTsSource(def.value)})`;
   }
-  return `fn(${jsonToTsSource(def.expression.text)})`;
+  return `fn(${tsQuotedTextSource(def.expression.text)})`;
 }
 
 function renderDdlColumnAsTsCall(column: DdlColumn): string {

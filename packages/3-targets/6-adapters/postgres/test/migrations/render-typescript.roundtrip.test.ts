@@ -18,7 +18,7 @@ import { pathToFileURL } from 'node:url';
 import { promisify } from 'node:util';
 import { APP_SPACE_ID, storageHashHex } from '@internal/framework-components/control';
 import { keepInternalSpecifiers } from '@internal/framework-components/emission';
-import { col, primaryKey } from '@internal/sql-relational-core/contract-free';
+import { checkExpression, col, primaryKey } from '@internal/sql-relational-core/contract-free';
 import { createPostgresBuiltinCodecLookup } from '@internal/target-postgres/codecs';
 import {
   AddColumnCall,
@@ -229,7 +229,7 @@ describe('TypeScriptRenderablePostgresMigration round-trip', () => {
         'public',
         'user',
         [col('id', 'text', { notNull: true }), col('email', 'text', { notNull: true })],
-        [primaryKey(['id'])],
+        [primaryKey(['id']), checkExpression('user_email_check', `"email" <> ''`)],
       ),
       new AddColumnCall('public', 'user', col('nickname', 'text')),
       new CreateIndexCall('public', 'user', 'user_email_idx', { columns: ['email'] }),
@@ -238,7 +238,7 @@ describe('TypeScriptRenderablePostgresMigration round-trip', () => {
         'user',
         'user_email_eq',
         { expression: 'lower(email)' },
-        { unique: true, where: 'nickname IS NOT NULL' },
+        { unique: true, where: `"nickname" <> 'anonymous'` },
       ),
       new RenameIndexCall('public', 'user', 'user_email_idx', 'user_email_lookup_ab12cd34'),
       new EnableRowLevelSecurityCall('public', 'user'),
@@ -251,8 +251,8 @@ describe('TypeScriptRenderablePostgresMigration round-trip', () => {
           namespaceId: 'public',
           operation: 'select',
           roles: ['authenticated'],
-          using: '(id = auth.uid())',
-          withCheck: '(id = auth.uid())',
+          using: `("id" = auth.uid() AND "email" <> '')`,
+          withCheck: `("id" = auth.uid())`,
           permissive: true,
         }),
       ),
@@ -270,6 +270,9 @@ describe('TypeScriptRenderablePostgresMigration round-trip', () => {
     );
 
     const tsSource = rewriteImports(migration.renderTypeScript(keepInternalSpecifiers));
+    expect(tsSource).toContain('checkExpression("user_email_check", `"email" <> \'\'`)');
+    expect(tsSource).toContain('where: `"nickname" <> \'anonymous\'`');
+    expect(tsSource).toContain('using: `("id" = auth.uid() AND "email" <> \'\')`');
     await writeFile(join(tmpDir, 'migration.ts'), tsSource);
 
     const { stdout, stderr } = await execFileAsync(tsxPath, [join(tmpDir, 'migration.ts')], {

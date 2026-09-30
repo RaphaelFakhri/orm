@@ -16,7 +16,7 @@ import { pathToFileURL } from 'node:url';
 import { promisify } from 'node:util';
 import { APP_SPACE_ID, storageHashHex } from '@internal/framework-components/control';
 import { keepInternalSpecifiers } from '@internal/framework-components/emission';
-import { col, primaryKey } from '@internal/sql-relational-core/contract-free';
+import { col, fn, primaryKey } from '@internal/sql-relational-core/contract-free';
 import { createSqliteBuiltinCodecLookup } from '@internal/target-sqlite/codecs';
 import {
   AddColumnCall,
@@ -156,7 +156,11 @@ describe('TypeScriptRenderableSqliteMigration round-trip', () => {
     const calls = [
       new CreateTableCall(
         'user',
-        [col('id', 'INTEGER', { primaryKey: true }), col('email', 'TEXT', { notNull: true })],
+        [
+          col('id', 'INTEGER', { primaryKey: true }),
+          col('email', 'TEXT', { notNull: true }),
+          col('label', 'TEXT', { default: fn(`printf("%s", 'user')`) }),
+        ],
         [primaryKey(['id'])],
       ),
       new AddColumnCall('user', {
@@ -176,6 +180,7 @@ describe('TypeScriptRenderableSqliteMigration round-trip', () => {
     );
 
     const tsSource = rewriteImports(migration.renderTypeScript(keepInternalSpecifiers));
+    expect(tsSource).toContain('default: fn(`printf("%s", \'user\')`)');
     await writeFile(join(tmpDir, 'migration.ts'), tsSource);
 
     const { stdout, stderr } = await execFileAsync(tsxPath, [join(tmpDir, 'migration.ts')], {
