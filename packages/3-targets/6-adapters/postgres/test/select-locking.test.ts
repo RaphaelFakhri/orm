@@ -96,10 +96,10 @@ describe('Postgres adapter row locking', () => {
   });
 
   it('renders nowait and skipLocked', () => {
-    expect(lower([LockingClause.of('forUpdate', { wait: 'nowait' })])).toBe(
+    expect(lower([LockingClause.of('forUpdate', { waitPolicy: 'nowait' })])).toBe(
       `${baseSql} FOR UPDATE NOWAIT`,
     );
-    expect(lower([LockingClause.of('forUpdate', { wait: 'skipLocked' })])).toBe(
+    expect(lower([LockingClause.of('forUpdate', { waitPolicy: 'skipLocked' })])).toBe(
       `${baseSql} FOR UPDATE SKIP LOCKED`,
     );
   });
@@ -112,7 +112,7 @@ describe('Postgres adapter row locking', () => {
       ),
     ]);
 
-    expect(lower([LockingClause.of('forUpdate', { of: ['j'], wait: 'nowait' })])).toBe(
+    expect(lower([LockingClause.of('forUpdate', { of: ['j'], waitPolicy: 'nowait' })])).toBe(
       `${baseSql} FOR UPDATE OF "j" NOWAIT`,
     );
     expect(lower([LockingClause.of('forShare', { of: ['j', 'w'] })], joined)).toBe(
@@ -124,7 +124,7 @@ describe('Postgres adapter row locking', () => {
     expect(
       lower([
         LockingClause.of('forUpdate', { of: ['j'] }),
-        LockingClause.of('forKeyShare', { of: ['w'], wait: 'skipLocked' }),
+        LockingClause.of('forKeyShare', { of: ['w'], waitPolicy: 'skipLocked' }),
       ]),
     ).toBe(`${baseSql} FOR UPDATE OF "j" FOR KEY SHARE OF "w" SKIP LOCKED`);
   });
@@ -150,12 +150,12 @@ describe('Postgres adapter row locking', () => {
       {
         group: 'sql',
         flag: 'lockNowait',
-        clause: LockingClause.of('forUpdate', { wait: 'nowait' }),
+        clause: LockingClause.of('forUpdate', { waitPolicy: 'nowait' }),
       },
       {
         group: 'sql',
         flag: 'lockSkipLocked',
-        clause: LockingClause.of('forUpdate', { wait: 'skipLocked' }),
+        clause: LockingClause.of('forUpdate', { waitPolicy: 'skipLocked' }),
       },
     ] as const)('without $group.$flag', ({ group, flag, clause }) => {
       const capability = `${group}.${flag}`;

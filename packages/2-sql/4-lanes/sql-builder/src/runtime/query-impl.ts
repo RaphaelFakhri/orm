@@ -8,7 +8,7 @@ import {
   DerivedTableSource,
   LockingClause,
   type LockStrength,
-  type LockWait,
+  type LockWaitPolicy,
   type SelectAst,
 } from '@internal/sql-relational-core/ast';
 import { toExpr } from '@internal/sql-relational-core/expression';
@@ -289,16 +289,16 @@ export class SelectQueryImpl<
     if (of !== undefined) {
       assertCapability(this.ctx, { sql: { lockOf: true } }, strength);
     }
-    const wait = lockWaitOf(strength, options);
-    if (wait === 'nowait') {
+    const waitPolicy = lockWaitPolicyOf(strength, options);
+    if (waitPolicy === 'nowait') {
       assertCapability(this.ctx, { sql: { lockNowait: true } }, strength);
     }
-    if (wait === 'skipLocked') {
+    if (waitPolicy === 'skipLocked') {
       assertCapability(this.ctx, { sql: { lockSkipLocked: true } }, strength);
     }
     const clause = LockingClause.of(strength, {
       ...ifDefined('of', of),
-      ...ifDefined('wait', wait),
+      ...ifDefined('waitPolicy', waitPolicy),
     });
     return this.clone(cloneState(this.state, { locking: [...(this.state.locking ?? []), clause] }));
   }
@@ -310,7 +310,10 @@ interface LockRequest {
   readonly skipLocked?: true;
 }
 
-function lockWaitOf(methodName: string, options: LockRequest | undefined): LockWait | undefined {
+function lockWaitPolicyOf(
+  methodName: string,
+  options: LockRequest | undefined,
+): LockWaitPolicy | undefined {
   if (options?.nowait && options.skipLocked) {
     throw structuredError(
       'ORM.ARGUMENT_INVALID',

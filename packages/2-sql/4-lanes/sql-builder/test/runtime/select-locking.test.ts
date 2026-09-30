@@ -101,10 +101,10 @@ describe('row locking', () => {
         .forUpdate({ of: ['users'], nowait: true })
         .build().ast,
     ).toMatchObject({
-      locking: [LockingClause.of('forUpdate', { of: ['users'], wait: 'nowait' })],
+      locking: [LockingClause.of('forUpdate', { of: ['users'], waitPolicy: 'nowait' })],
     });
     expect(users.select('id').forShare({ skipLocked: true }).build().ast).toMatchObject({
-      locking: [LockingClause.of('forShare', { wait: 'skipLocked' })],
+      locking: [LockingClause.of('forShare', { waitPolicy: 'skipLocked' })],
     });
   });
 
@@ -120,7 +120,7 @@ describe('row locking', () => {
     expect(plan.ast).toMatchObject({
       locking: [
         LockingClause.of('forUpdate', { of: ['users'] }),
-        LockingClause.of('forKeyShare', { of: ['posts'], wait: 'skipLocked' }),
+        LockingClause.of('forKeyShare', { of: ['posts'], waitPolicy: 'skipLocked' }),
       ],
     });
   });

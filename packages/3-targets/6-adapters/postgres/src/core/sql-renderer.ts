@@ -27,7 +27,7 @@ import {
   LiteralExpr,
   type LockingClause,
   type LockStrength,
-  type LockWait,
+  type LockWaitPolicy,
   type LoweredParam,
   type NullCheckExpr,
   type OperationExpr,
@@ -268,17 +268,17 @@ function lockStrengthSql(strength: LockStrength): {
   }
 }
 
-function lockWaitSql(wait: LockWait): {
+function lockWaitPolicySql(waitPolicy: LockWaitPolicy): {
   readonly keyword: string;
   readonly capability: readonly [string, string];
 } {
-  switch (wait) {
+  switch (waitPolicy) {
     case 'nowait':
       return { keyword: 'NOWAIT', capability: ['sql', 'lockNowait'] };
     case 'skipLocked':
       return { keyword: 'SKIP LOCKED', capability: ['sql', 'lockSkipLocked'] };
     default:
-      return assertNever(wait, `Unsupported lock wait: ${String(wait)}`);
+      return assertNever(waitPolicy, `Unsupported lock wait policy: ${String(waitPolicy)}`);
   }
 }
 
@@ -304,10 +304,10 @@ function renderLockingClause(clause: LockingClause, capabilities: CapabilityMatr
     requireCapability(capabilities, ['sql', 'lockOf']);
     parts.push(`OF ${clause.of.map((name) => quoteIdentifier(name)).join(', ')}`);
   }
-  if (clause.wait !== undefined) {
-    const wait = lockWaitSql(clause.wait);
-    requireCapability(capabilities, wait.capability);
-    parts.push(wait.keyword);
+  if (clause.waitPolicy !== undefined) {
+    const waitPolicy = lockWaitPolicySql(clause.waitPolicy);
+    requireCapability(capabilities, waitPolicy.capability);
+    parts.push(waitPolicy.keyword);
   }
   return parts.join(' ');
 }

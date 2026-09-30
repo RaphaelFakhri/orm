@@ -100,7 +100,7 @@ describe('ast/builders', () => {
 
   describe('select locking', () => {
     const base = SelectAst.from(table('job', 'j')).addProjection('id', col('j', 'id'));
-    const skipLocked = LockingClause.of('forUpdate', { of: ['j'], wait: 'skipLocked' });
+    const skipLocked = LockingClause.of('forUpdate', { of: ['j'], waitPolicy: 'skipLocked' });
     const share = LockingClause.of('forShare');
 
     it('keeps locking clauses through the other with... calls', () => {
@@ -122,8 +122,8 @@ describe('ast/builders', () => {
         limit: 1,
         offset: 2,
         locking: [
-          { strength: 'forUpdate', of: ['j'], wait: 'skipLocked' },
-          { strength: 'forShare', of: undefined, wait: undefined },
+          { strength: 'forUpdate', of: ['j'], waitPolicy: 'skipLocked' },
+          { strength: 'forShare', of: undefined, waitPolicy: undefined },
         ],
       });
       expect(Object.isFrozen(ast.locking)).toBe(true);
@@ -147,12 +147,16 @@ describe('ast/builders', () => {
     });
 
     it('LockingClause.of normalises an empty of to undefined and freezes the instance', () => {
-      const clause = LockingClause.of('forNoKeyUpdate', { of: [], wait: 'nowait' });
+      const clause = LockingClause.of('forNoKeyUpdate', { of: [], waitPolicy: 'nowait' });
 
       expect(clause).toEqual(
-        new LockingClause({ strength: 'forNoKeyUpdate', of: undefined, wait: 'nowait' }),
+        new LockingClause({ strength: 'forNoKeyUpdate', of: undefined, waitPolicy: 'nowait' }),
       );
-      expect(clause).toMatchObject({ strength: 'forNoKeyUpdate', of: undefined, wait: 'nowait' });
+      expect(clause).toMatchObject({
+        strength: 'forNoKeyUpdate',
+        of: undefined,
+        waitPolicy: 'nowait',
+      });
       expect(Object.isFrozen(clause)).toBe(true);
     });
 

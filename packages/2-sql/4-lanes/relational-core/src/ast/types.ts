@@ -1581,12 +1581,12 @@ function checkLimitOffset(argument: 'limit' | 'offset', value: LimitOffsetValue 
 }
 
 export type LockStrength = 'forUpdate' | 'forNoKeyUpdate' | 'forShare' | 'forKeyShare';
-export type LockWait = 'nowait' | 'skipLocked';
+export type LockWaitPolicy = 'nowait' | 'skipLocked';
 
 export interface LockingClauseOptions {
   readonly strength: LockStrength;
   readonly of: ReadonlyArray<string> | undefined;
-  readonly wait: LockWait | undefined;
+  readonly waitPolicy: LockWaitPolicy | undefined;
 }
 
 /** A row-locking clause on a select. `of` holds unqualified table names or aliases as written in FROM. */
@@ -1594,21 +1594,21 @@ export class LockingClause extends AstNode {
   readonly kind = 'locking-clause' as const;
   readonly strength: LockStrength;
   readonly of: ReadonlyArray<string> | undefined;
-  readonly wait: LockWait | undefined;
+  readonly waitPolicy: LockWaitPolicy | undefined;
 
   constructor(options: LockingClauseOptions) {
     super();
     this.strength = options.strength;
     this.of = options.of && options.of.length > 0 ? frozenArrayCopy(options.of) : undefined;
-    this.wait = options.wait;
+    this.waitPolicy = options.waitPolicy;
     this.freeze();
   }
 
   static of(
     strength: LockStrength,
-    options?: { readonly of?: ReadonlyArray<string>; readonly wait?: LockWait },
+    options?: { readonly of?: ReadonlyArray<string>; readonly waitPolicy?: LockWaitPolicy },
   ): LockingClause {
-    return new LockingClause({ strength, of: options?.of, wait: options?.wait });
+    return new LockingClause({ strength, of: options?.of, waitPolicy: options?.waitPolicy });
   }
 }
 
