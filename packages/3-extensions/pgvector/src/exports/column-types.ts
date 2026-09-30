@@ -17,7 +17,7 @@ import { pgvectorVector } from '../core/data-types';
  * ```
  * @param length - The dimension of the vector (e.g., 1536 for OpenAI embeddings)
  * @returns A column type descriptor with `typeParams.length` set
- * @throws `CONTRACT.TYPE_PARAMS_INVALID` if the `pgvector/vector` data type does not accept the length
+ * @throws `CONTRACT.TYPE_PARAMS_INVALID` if the `pgvector/vector` data type does not accept `length`
  */
 export function vector<N extends number>(
   length: N,
