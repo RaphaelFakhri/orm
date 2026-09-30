@@ -1,4 +1,3 @@
-import type { JsonValue } from '@internal/contract/types';
 import type { StandardSchemaV1 } from '@standard-schema/spec';
 import { describe, expect, it } from 'vitest';
 import type { CreateControlStackInput } from '../src/control/control-stack';
@@ -11,12 +10,10 @@ import {
   extractCodecTypeImports,
   extractComponentIds,
   extractQueryOperationTypeImports,
-  validateScalarTypeCodecIds,
 } from '../src/control/control-stack';
 import type { Codec } from '../src/shared/codec';
 import type { AnyCodecDescriptor } from '../src/shared/codec-descriptor';
-import type { CodecLookup } from '../src/shared/codec-types';
-import { dataTypeId } from '../src/shared/data-type';
+import { dataType, dataTypeId } from '../src/shared/data-type';
 import type { ComponentDescriptor } from '../src/shared/framework-components';
 import { isRuntimeError } from '../src/shared/runtime-error';
 
@@ -31,6 +28,27 @@ function createDescriptor<K extends string = 'target'>(
     version: '0.0.1',
     ...overrides,
   } as ComponentDescriptor<K>;
+}
+
+const stubDataType = dataType('demo/stub', {});
+
+function registeredCodec(codecId: string): AnyCodecDescriptor {
+  return {
+    codecId,
+    dataType: stubDataType.id,
+    traits: [],
+    targetTypes: [],
+    paramsSchema: undefined,
+    isParameterized: false,
+    factory: () => () =>
+      ({
+        id: codecId,
+        encode: async (v: unknown) => v,
+        decode: async (v: unknown) => v,
+        encodeJson: (v: unknown) => v,
+        decodeJson: (j: unknown) => j,
+      }) as unknown as Codec,
+  };
 }
 
 // Tests only exercise metadata extraction; stub shapes satisfy the runtime paths
@@ -1342,9 +1360,11 @@ describe('createControlStack', () => {
         adapter: createDescriptor({
           kind: 'adapter',
           id: 'adapter',
+          dataTypes: [stubDataType],
           types: {
             codecTypes: {
               typeImports: [{ package: '@test/param', named: 'P', alias: 'TP' }],
+              codecDescriptors: [registeredCodec('a@1')],
             },
             queryOperationTypes: {
               import: { package: '@test/qops', named: 'Q', alias: 'TQ' },
@@ -1448,7 +1468,16 @@ describe('createControlStack', () => {
             },
           },
         }),
-        target: createDescriptor({ kind: 'target', id: 'tgt' }),
+        target: createDescriptor({
+          kind: 'target',
+          id: 'tgt',
+          dataTypes: [stubDataType],
+          types: {
+            codecTypes: {
+              codecDescriptors: ['sql/varchar@1', 'pg/text@1', 'pg/int4@1'].map(registeredCodec),
+            },
+          },
+        }),
         adapter: createDescriptor({
           kind: 'adapter',
           id: 'adp',
@@ -1468,68 +1497,6 @@ describe('createControlStack', () => {
       }),
     );
     expect(state.scalarTypes).toEqual(['String', 'Int']);
-  });
-});
-
-describe('validateScalarTypeCodecIds', () => {
-  it('returns errors naming type and codec for unregistered codec IDs on zero-arg constructors', () => {
-    const namespace = {
-      String: {
-        kind: 'typeConstructor' as const,
-        output: { codecId: 'missing/codec@1' },
-      },
-    };
-    const lookup: CodecLookup = {
-      get: () => undefined,
-      targetTypesFor: () => undefined,
-      renderOutputTypeFor: () => undefined,
-    };
-    const errors = validateScalarTypeCodecIds(namespace, lookup);
-    expect(errors).toHaveLength(1);
-    expect(errors[0]).toMatch(
-      /Scalar type "String" references codec "missing\/codec@1" which is not registered/,
-    );
-  });
-
-  it('returns empty array when all codec IDs are registered', () => {
-    const namespace = {
-      String: {
-        kind: 'typeConstructor' as const,
-        output: { codecId: 'test/text@1' },
-      },
-    };
-    const lookup: CodecLookup = {
-      get: (id: string) =>
-        id === 'test/text@1'
-          ? {
-              id,
-              encode: async (v: unknown) => v,
-              decode: async (v: unknown) => v,
-              encodeJson: (v: unknown) => v as JsonValue,
-              decodeJson: (v: JsonValue) => v,
-            }
-          : undefined,
-      targetTypesFor: (id: string) => (id === 'test/text@1' ? ['text'] : undefined),
-      renderOutputTypeFor: () => undefined,
-    };
-    const errors = validateScalarTypeCodecIds(namespace, lookup);
-    expect(errors).toEqual([]);
-  });
-
-  it('ignores parameterized constructors — only top-level zero-arg scalars are checked', () => {
-    const namespace = {
-      Vector: {
-        kind: 'typeConstructor' as const,
-        args: [{ kind: 'number' as const, name: 'dimensions' }],
-        output: { codecId: 'missing/vector@1' },
-      },
-    };
-    const lookup: CodecLookup = {
-      get: () => undefined,
-      targetTypesFor: () => undefined,
-      renderOutputTypeFor: () => undefined,
-    };
-    expect(validateScalarTypeCodecIds(namespace, lookup)).toEqual([]);
   });
 });
 

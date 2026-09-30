@@ -12,6 +12,7 @@ import { invariant } from '@internal/utils/assertions';
 import { blindCast } from '@internal/utils/casts';
 import { ifDefined } from '@internal/utils/defined';
 import { InternalError } from '@internal/utils/internal-error';
+import type { StandardSchemaV1 } from '@standard-schema/spec';
 import type { Type } from 'arktype';
 import type { CodecLookup } from './codec-types';
 import type { DataTypeId } from './data-type';
@@ -1740,6 +1741,49 @@ export function validateAuthoringHelperArguments(
   expected.forEach((descriptor, index) => {
     validateAuthoringArgument(descriptor, args[index], `${helperPath}[${index}]`);
   });
+}
+
+function argumentIndexOf(template: AuthoringTemplateValue | undefined): number | undefined {
+  let index: number | undefined;
+  visitTemplateArgRefs(template, (ref) => {
+    index ??= ref.index;
+  });
+  return index;
+}
+
+function issueKey(issue: StandardSchemaV1.Issue): string | undefined {
+  const [first] = issue.path ?? [];
+  const key = typeof first === 'object' && first !== null ? first.key : first;
+  return typeof key === 'string' ? key : undefined;
+}
+
+/**
+ * Checks the type parameters a constructor or preset produced against its codec's parameter schema, which is where the bounds of a data type's parameters are written. A failure names the argument the failing parameter came from.
+ */
+export function validateAuthoringTypeParams(
+  helperPath: string,
+  template: AuthoringStorageTypeTemplate,
+  typeParams: Record<string, unknown> | undefined,
+  paramsSchema: StandardSchemaV1<unknown> | undefined,
+): void {
+  if (template.typeParams === undefined || paramsSchema === undefined) return;
+  const result = paramsSchema['~standard'].validate(typeParams ?? {});
+  if (result instanceof Promise) {
+    throw new InternalError(
+      `The parameter schema of codec "${template.codecId}" is asynchronous; authoring requires a synchronous schema.`,
+    );
+  }
+  const [issue] = result.issues ?? [];
+  if (issue === undefined) return;
+  const key = issueKey(issue);
+  const argumentIndex = key === undefined ? undefined : argumentIndexOf(template.typeParams[key]);
+  throw runtimeError(
+    'CONTRACT.ARGUMENT_INVALID',
+    argumentIndex === undefined
+      ? `The type parameters of ${helperPath} are invalid: ${issue.message}`
+      : `Authoring helper argument at ${helperPath}[${argumentIndex}] is invalid: ${issue.message}`,
+    { helperPath, ...ifDefined('argumentIndex', argumentIndex) },
+  );
 }
 
 function resolveAuthoringStorageTypeTemplate(

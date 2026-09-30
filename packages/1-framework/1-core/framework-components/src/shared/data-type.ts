@@ -93,6 +93,28 @@ export function dataType(id: string, spec: DataTypeSpec): DataType {
   };
 }
 
+type SchemaProp = { readonly key: PropertyKey };
+
+function isSchemaPropList(value: unknown): value is readonly SchemaProp[] {
+  return (
+    Array.isArray(value) &&
+    value.every(
+      (prop) =>
+        prop !== null && (typeof prop === 'object' || typeof prop === 'function') && 'key' in prop,
+    )
+  );
+}
+
+/** The keys an arktype object schema declares, or undefined when `schema` is not one. */
+export function objectSchemaKeys(schema: unknown): readonly string[] | undefined {
+  if (schema === null || (typeof schema !== 'object' && typeof schema !== 'function')) {
+    return undefined;
+  }
+  const props = 'props' in schema ? schema.props : undefined;
+  if (!isSchemaPropList(props)) return undefined;
+  return props.flatMap((prop) => (typeof prop.key === 'string' ? [prop.key] : []));
+}
+
 export function createDataTypeLookup(types: readonly DataType[]): DataTypeLookup {
   const byId = new Map<string, DataType>(types.map((type) => [type.id, type]));
   const inOrder = [...types];

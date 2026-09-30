@@ -43,6 +43,7 @@ export {
   createDataTypeLookup,
   dataType,
   dataTypeId,
+  objectSchemaKeys,
 } from '../shared/data-type';
 export { renderTsLiteral } from '../shared/render-ts-literal';
 export {
