@@ -8,7 +8,7 @@
  * see `StorageColumn` or `storageTypes`.
  */
 
-import { checkSqlDefaultBody } from '@internal/family-sql/control';
+import { checkSqlDefaultText } from '@internal/family-sql/control';
 import type {
   StorageColumn,
   StorageTable,
@@ -33,7 +33,7 @@ function assertSafeNativeType(nativeType: string): void {
 }
 
 function assertSafeDefaultExpression(expression: string): void {
-  if (checkSqlDefaultBody(expression) !== undefined) {
+  if (checkSqlDefaultText(expression) !== undefined) {
     throw sqliteError(
       'CONTRACT.DEFAULT_INVALID',
       `Unsafe default expression in contract: "${expression}". ` +

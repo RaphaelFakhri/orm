@@ -4,7 +4,7 @@ import {
   describeTaggedLiteralFailure,
   resolveTemplateTagEscapes,
 } from '@internal/framework-components/control';
-import { checkSqlDefaultBody, reservedSqlDefaultBody } from '@internal/sql-contract/validators';
+import { checkSqlDefaultText, reservedSqlDefaultText } from '@internal/sql-contract/validators';
 import { contractError } from './contract-errors';
 
 /**
@@ -31,7 +31,7 @@ export function sql(strings: TemplateStringsArray, ...values: readonly never[]):
       },
     );
   }
-  const reserved = reservedSqlDefaultBody(canonical.text);
+  const reserved = reservedSqlDefaultText(canonical.text);
   if (reserved !== undefined) {
     throw contractError(
       'CONTRACT.DEFAULT_INVALID',
@@ -39,7 +39,7 @@ export function sql(strings: TemplateStringsArray, ...values: readonly never[]):
       { meta: { reason: 'reserved-function', expression: canonical.text } },
     );
   }
-  const rejected = checkSqlDefaultBody(canonical.text);
+  const rejected = checkSqlDefaultText(canonical.text);
   if (rejected !== undefined) {
     throw contractError('CONTRACT.DEFAULT_INVALID', rejected, {
       meta: { reason: 'unsafe-sql', expression: canonical.text },

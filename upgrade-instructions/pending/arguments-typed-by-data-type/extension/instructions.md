@@ -27,12 +27,13 @@ changes:
         - 'import\s*(type\s*)?\{[^}]*\b(entryForTag|WrittenValue|DataTypeSupport)\b[^}]*\}\s*from\s*[''"]@internal/sql-contract-psl/resolution[''"]'
   - id: tagged-literal-text-renames
     summary: |
-      The canonical value of a tagged literal is its text: `TaggedLiteralCanonicalization` carries `text`, not `body`; `TaggedLiteralExprAst.body()` is `text()`; `parseJsonBody` and `printJsonBody` are `parseJsonText` and `printJsonText`.
+      The canonical value of a tagged literal is its text: `TaggedLiteralCanonicalization` carries `text`, not `body`; `TaggedLiteralExprAst.body()` is `text()`; `parseJsonBody` and `printJsonBody` are `parseJsonText` and `printJsonText`; `checkSqlDefaultBody` and `reservedSqlDefaultBody` are `checkSqlDefaultText` and `reservedSqlDefaultText`.
     detection:
       glob: "**/*.{ts,mts,cts}"
       matches:
         - '\b(parseJsonBody|printJsonBody)\b'
         - '\b(canonicalizeTaggedLiteralBody|TaggedLiteralCanonicalization|TaggedLiteralExprAst)\b'
+        - '\b(checkSqlDefaultBody|reservedSqlDefaultBody)\b'
   - id: default-refusals-point-at-the-written-value
     summary: |
       `@default` reports `PSL_VALUE_TYPE_INCOMPATIBLE` and `PSL_INVALID_LITERAL` at the written value, or at the list element they are about, not at the whole attribute. The `@default` list no longer offers `sql` as an element.
@@ -114,13 +115,14 @@ A test that passed a lookup without entries passes `{ entries: {}, lookup }`. Co
 
 ## The canonical value of a tagged literal is its text
 
-The body is what is written between the quotes; the text is the canonical value. Three names change:
+The body is what is written between the quotes; the text is the canonical value. These names change:
 
 | Old | New |
 | --- | --- |
 | `TaggedLiteralCanonicalization` `{ ok: true, body }`, from `canonicalizeTaggedLiteralBody` | `{ ok: true, text }` |
 | `TaggedLiteralExprAst.body()` | `TaggedLiteralExprAst.text()` |
 | `parseJsonBody`, `printJsonBody` from `@internal/sql-relational-core/ast` | `parseJsonText`, `printJsonText` |
+| `checkSqlDefaultBody`, `reservedSqlDefaultBody` from `@internal/sql-contract/validators` (and `checkSqlDefaultBody` from `@internal/family-sql/control`) | `checkSqlDefaultText`, `reservedSqlDefaultText` |
 
 An entry that registers the `json` tag changes its imports:
 

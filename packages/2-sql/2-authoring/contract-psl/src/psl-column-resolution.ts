@@ -63,7 +63,7 @@ import {
   SQL_EXPRESSION_TAG,
   sqlTextFromCanonical,
 } from '@internal/sql-contract/sql-expression';
-import { checkSqlDefaultBody, reservedSqlDefaultBody } from '@internal/sql-contract/validators';
+import { checkSqlDefaultText, reservedSqlDefaultText } from '@internal/sql-contract/validators';
 import type { AuthoredColumnDefault } from '@internal/sql-contract-ts/contract-builder';
 import { InternalError } from '@internal/utils/internal-error';
 import { contractError } from './contract-errors';
@@ -667,10 +667,10 @@ export function lowerDefaultForField(input: {
   };
 
   const sqlExpressionDefault = (text: string, span: PslSpan) => {
-    const reserved = reservedSqlDefaultBody(text);
+    const reserved = reservedSqlDefaultText(text);
     const refusal =
       reserved === undefined
-        ? checkSqlDefaultBody(text)
+        ? checkSqlDefaultText(text)
         : `Write @default(${reserved}()) instead of ${SQL_EXPRESSION_TAG}\`${reserved}()\`; ${reserved}() is a Prisma default function, not raw SQL.`;
     if (refusal !== undefined) {
       input.diagnostics.push({

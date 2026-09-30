@@ -150,8 +150,8 @@ function admitted(
   }
 }
 
-/** The body of the literal: what the entry prints, before the syntax that fences it. */
-function printedBody(entry: DataTypeAuthoringEntry, value: JsonValue): string | undefined {
+/** The text of the literal: what the entry prints, before the syntax that fences it. */
+function printedText(entry: DataTypeAuthoringEntry, value: JsonValue): string | undefined {
   try {
     return entry.print(value);
   } catch {
@@ -159,26 +159,26 @@ function printedBody(entry: DataTypeAuthoringEntry, value: JsonValue): string | 
   }
 }
 
-/** What the entry reads the printed body back as, which for a number is the classifier's answer. */
+/** What the entry reads the printed text back as, which for a number is the classifier's answer. */
 function readBack(
   entry: DataTypeAuthoringEntry,
   type: DataTypeId,
-  body: string,
+  text: string,
 ): TypedValue | undefined {
   const written = entry.written;
   try {
     return written.kind === 'plain' && written.syntax === 'number'
-      ? written.classify(body)
-      : { type, value: written.parse(body) };
+      ? written.classify(text)
+      : { type, value: written.parse(text) };
   } catch {
     return undefined;
   }
 }
 
-function literalText(entry: DataTypeAuthoringEntry, body: string): string {
+function literalText(entry: DataTypeAuthoringEntry, text: string): string {
   const written = entry.written;
-  if (written.kind === 'tag') return printTaggedLiteral(written.tag, body);
-  return written.syntax === 'string' ? `"${escapePslString(body)}"` : body;
+  if (written.kind === 'tag') return printTaggedLiteral(written.tag, text);
+  return written.syntax === 'string' ? `"${escapePslString(text)}"` : text;
 }
 
 /** One element of a written list: its source text and the canonical form the list cast receives. */
@@ -202,13 +202,13 @@ function writeScalar(
     if (entry === undefined) continue;
     const stored = admitted(candidate, columnDataType, dataTypes);
     if (stored === undefined || !sameForm(stored, value)) continue;
-    const body = printedBody(entry, candidate.value);
-    if (body === undefined) continue;
-    const reread = readBack(entry, candidate.type, body);
+    const text = printedText(entry, candidate.value);
+    if (text === undefined) continue;
+    const reread = readBack(entry, candidate.type, text);
     if (reread === undefined) continue;
     const restored = admitted(reread, columnDataType, dataTypes);
     if (restored === undefined || !sameForm(restored, value)) continue;
-    return literalText(entry, body);
+    return literalText(entry, text);
   }
   return undefined;
 }
@@ -223,11 +223,11 @@ function writeElement(
     if (!of.includes(candidate.type)) continue;
     const entry = surface.entryOf.get(candidate.type);
     if (entry === undefined) continue;
-    const body = printedBody(entry, candidate.value);
-    if (body === undefined) continue;
-    const reread = readBack(entry, candidate.type, body);
+    const text = printedText(entry, candidate.value);
+    if (text === undefined) continue;
+    const reread = readBack(entry, candidate.type, text);
     if (reread === undefined || !of.includes(reread.type)) continue;
-    return { text: literalText(entry, body), value: reread.value };
+    return { text: literalText(entry, text), value: reread.value };
   }
   return undefined;
 }
