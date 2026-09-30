@@ -37,7 +37,7 @@ writes the same contract as Prisma 8 PSL. The user switches `contract:` to that 
 
 ## Non-goals
 
-- Filling capability gaps. Views, opaque Postgres columns (`Unsupported(...)` and native types with no codec), referential-action emulation on Mongo, and `relationMode = "prisma"` are hard errors in this project. See § Deferred gaps. Mongo defaults and automatic timestamps, and Mongo `Json`/`Bytes`/`Decimal`/`BigInt`, were gaps here too; `projects/mongo-defaults-codecs-prisma6-source/` filled them.
+- Filling capability gaps. Views, opaque Postgres columns (`Unsupported(...)` and native types with no codec), referential-action emulation on Mongo, and `relationMode = "prisma"` are hard errors in this project. See § Deferred gaps. Mongo defaults and automatic timestamps, and Mongo `Json`/`Bytes`/`Decimal`/`BigInt`, were gaps here too; PRs [#30396](https://github.com/prisma/orm/pull/30396), [#30403](https://github.com/prisma/orm/pull/30403), [#30405](https://github.com/prisma/orm/pull/30405), [#30406](https://github.com/prisma/orm/pull/30406) and [#30439](https://github.com/prisma/orm/pull/30439) filled them.
 - Query-code rewriting.
 - Migration history and `_prisma_migrations`.
 - Prisma 6 SQL schemas that are not valid Prisma 7 schemas. The Mongo slice is the exception it has to be: Prisma 7 has no MongoDB connector, so that slice reads the Prisma 6 MongoDB dialect through `prisma6Schema`.
@@ -62,7 +62,7 @@ writes the same contract as Prisma 8 PSL. The user switches `contract:` to that 
 
 ## Transitional-shape constraints
 
-None. Each slice lands a complete, usable surface: slice 1 ships the Postgres source end to end, slice 3 the converter. The Mongo source moved to `projects/mongo-defaults-codecs-prisma6-source/slices/05-prisma6-mongo-source/spec.md`.
+None. Each slice lands a complete, usable surface: slice 1 ships the Postgres source end to end, slice 3 the converter. The Mongo source moved to the Prisma 6 MongoDB reader (`prisma6Schema`, PR [#30405](https://github.com/prisma/orm/pull/30405)).
 
 ## Contract impact
 
@@ -95,7 +95,7 @@ Each is resolved by a test inside the slice that depends on it, before the depen
 2. `now()` default equality against Prisma 7's `CURRENT_TIMESTAMP` (slice 1).
 3. Contract validator acceptance of a column default together with execution generators, and of generators on nullable columns (slice 1).
 4. The version at which the implicit junction gained a primary key (slice 1). Resolved: Prisma 6.0.0; 7.10.0 emits `_AToB_AB_pkey`.
-5. Whether Mongo verify compares index names (resolved by `projects/mongo-defaults-codecs-prisma6-source/slices/05-prisma6-mongo-source/spec.md`: it does not).
+5. Whether Mongo verify compares index names. Resolved by the Prisma 6 MongoDB reader, `prisma6Schema` ([#30405](https://github.com/prisma/orm/pull/30405)): it does not.
 6. The exact Prisma 7 Postgres native type table (slice 1). Resolved: `test/integration/test/fixtures/prisma7-source/reference/migration.sql`.
 7. Whether lenient `db verify` tolerates an extra table, an extra column, and an extra foreign key, which `@ignore` and `@@ignore` rely on because Prisma 7 still creates that schema (slice 1).
 
@@ -104,8 +104,8 @@ Each is resolved by a test inside the slice that depends on it, before the depen
 Recorded so they are not lost; each becomes its own project when scheduled.
 
 - Views: no schema node, introspection selects `BASE TABLE` only (`control-adapter.ts:750-756`), verify reports a missing table.
-- Mongo execution defaults: filled by `projects/mongo-defaults-codecs-prisma6-source/` (PRs #30396, #30403, and its Prisma 6 MongoDB source PR).
-- Mongo codecs for BSON binary, Decimal128 and Int64, plus a `Json` codec. Embedded documents need no codec: they are value objects, and the Prisma 6 MongoDB source reads Prisma 6 `type` blocks into them. Filled by `projects/mongo-defaults-codecs-prisma6-source/` (PRs #30396, #30403, and its Prisma 6 MongoDB source PR).
+- Mongo execution defaults: filled by PRs [#30403](https://github.com/prisma/orm/pull/30403) and [#30406](https://github.com/prisma/orm/pull/30406); the Prisma 6 MongoDB reader, `prisma6Schema` ([#30405](https://github.com/prisma/orm/pull/30405)), maps Prisma 6 schemas onto them.
+- Mongo codecs for BSON binary, Decimal128 and Int64, plus `Json` and `Bson` codecs: filled by PRs [#30396](https://github.com/prisma/orm/pull/30396) and [#30439](https://github.com/prisma/orm/pull/30439). Embedded documents need no codec: they are value objects, and the Prisma 6 MongoDB reader, `prisma6Schema` ([#30405](https://github.com/prisma/orm/pull/30405)), reads Prisma 6 `type` blocks into them.
 - `contract infer` prints `Unsupported(...)` for a column type with no codec, and nothing reads that back. It should fail and name the column and the missing codec. Prisma 8 will not add an opaque column type, because a column the contract cannot describe cannot be verified.
 - A cuid v1 generator, if mapping `cuid()` to cuid2 turns out to matter.
 - Referential-action emulation on Mongo.
@@ -181,4 +181,4 @@ Found by the adoption example (slice 4). Each is outside this project's scope an
 
 - The public upgrade guides: [PostgreSQL, 7 to 8](https://www.prisma.io/docs/guides/upgrade-prisma-orm/postgresql) and [MongoDB, 6 to 8](https://www.prisma.io/docs/guides/upgrade-prisma-orm/mongodb). The Postgres guide's phase 2 (`contract infer` plus hand edits) is what the Prisma 7 source replaces; its phase 4 is the cutover routine slice 3 must fit.
 - `design-notes.md` for alternatives considered.
-- `slices/01-postgres-source/spec.md`, `slices/03-contract-to-psl-and-print/spec.md`, and for the Mongo source `projects/mongo-defaults-codecs-prisma6-source/slices/05-prisma6-mongo-source/spec.md`.
+- `slices/01-postgres-source/spec.md`, `slices/03-contract-to-psl-and-print/spec.md`, and for the Mongo source the Prisma 6 MongoDB reader (`prisma6Schema`, PR [#30405](https://github.com/prisma/orm/pull/30405)).

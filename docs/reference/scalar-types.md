@@ -1,6 +1,6 @@
 # Scalar types
 
-Each target names its scalar types after what the database stores. This page lists every scalar type per target, then maps the types across targets by concept, with the Prisma 6/7 name for readers migrating a schema. Other docs link here rather than repeat the lists.
+Each target names its scalar types after what the database stores ([ADR 257](../architecture%20docs/adrs/ADR%20257%20-%20Scalar%20types%20are%20named%20after%20the%20target%20on%20every%20surface.md)). This page lists every scalar type per target, then maps the types across targets by concept, with the Prisma 6/7 name for readers migrating a schema. Other docs link here rather than repeat the lists.
 
 Columns: the PSL name, the TypeScript builder helper (inside the `defineContract` callback), the codec id recorded in `contract.json`, the storage type, and the application type a query reads and writes.
 
@@ -12,7 +12,7 @@ Columns: the PSL name, the TypeScript builder helper (inside the `defineContract
 | `Int32` | `field.int32()` | `mongo/int32@1` | `int` | `number` |
 | `Int64` | `field.int64()` | `mongo/int64@1` | `long` | `bigint` |
 | `Double` | `field.double()` | `mongo/double@1` | `double` | `number` |
-| `Decimal128` | `field.decimal128()` | `mongo/decimal128@1` | `decimal` | `string` (decimal text without an exponent) |
+| `Decimal128` | `field.decimal128()` | `mongo/decimal128@1` | `decimal` | `string` (decimal text without an exponent; a stored value with an extreme exponent such as `1E-6176` reads back as a digit string of about 6,100 characters) |
 | `Bool` | `field.bool()` | `mongo/bool@1` | `bool` | `boolean` |
 | `Date` | `field.date()` | `mongo/date@1` | `date` | `Date` |
 | `ObjectId` | `field.objectId()` | `mongo/objectId@1` | `objectId` | `string` (hex) |
@@ -26,6 +26,11 @@ Columns: the PSL name, the TypeScript builder helper (inside the `defineContract
 The collection validator is derived from the contract only when the contract is written in Prisma 8 PSL. A contract built with the TypeScript builder or read from a Prisma 6 schema (`prisma6Schema`) gets no validator, so there the codecs' checks on read and write are the only ones.
 
 The PSL names `Int`, `Float`, `Boolean` and `DateTime` are deprecated aliases of `Int32`, `Double`, `Bool` and `Date`; they report `PSL_DEPRECATED_SCALAR_NAME` as a warning and will be removed.
+
+Two limitations to know about:
+
+- `Binary` reads every binData subtype back as its bytes and writes subtype 0, so a UUID stored as subtype 4 round-trips as subtype 0. Use `Bson` to keep the subtype.
+- `field.temporal.timestamp(undefined, 'now')` sets an update default only, and TypeScript infers both phases as optional, so its update default is typed as possibly absent. `field.temporal.timestamp()` and `field.temporal.timestamp('now', 'now')` are typed exactly.
 
 ### Values through the Mongo ORM
 

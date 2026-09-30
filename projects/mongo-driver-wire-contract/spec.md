@@ -1,6 +1,6 @@
-# Design: the Mongo driver interface owns the wire-type contract
+# Spec: the Mongo driver interface owns the wire-type contract
 
-Settled with Will on 2026-09-25. Project candidate `mongo-driver-wire-contract`; not part of the current slices. Facts checked on branch `mongo-generator-runtime-hoist`.
+Settled with Will on 2026-09-25. Facts checked against the code as of that date.
 
 ## The principle
 
@@ -16,7 +16,7 @@ A driver is replaceable by another driver that exchanges the same wire types as 
 
 ## The design
 
-1. **`@internal/mongo-lowering` (the transport layer) declares the wire value vocabulary** as types: `BsonWireValue` (the structural union in `design/scalar-naming.md` § 6, `BsonValue`, minus nothing) and `BsonWireDocument`. `MongoDriver.execute` returns `AsyncIterable<BsonWireDocument>`; `AnyMongoDmlWireCommand` payloads are typed with `BsonWireValue` instead of `unknown`.
+1. **`@internal/mongo-lowering` (the transport layer) declares the wire value vocabulary** as types: `BsonWireValue` (the structural `BsonValue` union exported from `@internal/target-mongo/codec-types`, minus nothing) and `BsonWireDocument`. `MongoDriver.execute` returns `AsyncIterable<BsonWireDocument>`; `AnyMongoDmlWireCommand` payloads are typed with `BsonWireValue` instead of `unknown`.
 2. **Codecs declare `Wire` in that vocabulary.** `mongo/objectId@1` wire is the `ObjectId` structural member, `mongo/int64@1` wire is the `Long` member or `number` or `bigint`, and so on. Decoders keep the tag checks and call only the methods the structural members declare; encoders keep constructing `bson` objects (the one place the library is a dependency, and the target package owns it).
 3. **Driver options are the driver's.** The `promoteLongs`/`useBigInt64` behaviour is part of the wire contract and is stated in the `MongoDriver` interface documentation: a driver hands a `long` back as a `number` when it fits in 53 bits, otherwise as the `Long` member. A replacement driver must match this or configure its library to.
 4. **`mongodb` types stop leaking.** `MongoControlDriverInstance.db: Db` becomes an opaque handle typed by the transport layer, and the control adapter reaches `Db` through the driver package only; the four option types re-exported from `mongo-value` are re-declared as structural types in `mongo-value` (they are plain data); `MongoServerError` is replaced by a driver-mapped error the adapter reads through the transport layer.
