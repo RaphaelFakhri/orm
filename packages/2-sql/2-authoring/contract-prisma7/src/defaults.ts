@@ -320,10 +320,16 @@ function refusalReason(refusal: DefaultRefusal): string {
     case 'not-a-list':
       return 'holds a single value on a list column, which takes a list literal.';
     case 'no-cast':
-      return `holds a ${refusal.valueType} value${at}, which ${refusal.columnType} has no cast from; ${refusal.casts.length === 0 ? 'it casts from nothing' : `it casts from ${refusal.casts.join(', ')}`}.`;
+      return `holds a ${refusal.valueType} value${at}, which ${refusal.receivingType} has no cast from; ${describeCasts(refusal.casts)}.`;
+    case 'no-list-cast':
+      return `holds a list, which ${refusal.receivingType} has no cast from; ${describeCasts(refusal.casts)}.`;
     case 'undecodable':
       return `holds a value${at} that ${refusal.codecId} does not read: ${refusal.message}`;
   }
+}
+
+function describeCasts(casts: readonly string[]): string {
+  return casts.length === 0 ? 'it casts from nothing' : `it casts from ${casts.join(', ')}`;
 }
 
 function lowerFunction(

@@ -155,7 +155,7 @@ describe('interpretPslDocumentToSqlContract tagged literal defaults', () => {
     expect(diagnostics('v String @default(pg.sql`x`)')).toEqual([
       {
         code: 'PSL_UNKNOWN_LITERAL_TAG',
-        message: 'Unknown literal tag "pg.sql". Known tags: sql, json.',
+        message: 'Field "Lit.v": Unknown literal tag "pg.sql". Known tags: sql, json.',
         sourceId: 'schema.prisma',
         span: lineThreeSpan(21, 'pg.sql`x`'.length),
       },
@@ -166,7 +166,8 @@ describe('interpretPslDocumentToSqlContract tagged literal defaults', () => {
     expect(diagnostics('v Jsonb[] @default([json`{}`, pg.json`[1]`])')).toEqual([
       {
         code: 'PSL_UNKNOWN_LITERAL_TAG',
-        message: 'Unknown literal tag "pg.json". Known tags: sql, json.',
+        message:
+          'Field "Lit.v" at element 2: Unknown literal tag "pg.json". Known tags: sql, json.',
         sourceId: 'schema.prisma',
         span: lineThreeSpan(33, 'pg.json`[1]`'.length),
       },
@@ -277,7 +278,7 @@ describe('interpretPslDocumentToSqlContract tagged literal defaults', () => {
       expect(diagnostics('v Int @default(json`1`)')).toEqual([
         {
           code: 'PSL_VALUE_TYPE_INCOMPATIBLE',
-          message: 'Field "Lit.v": pg/int4 has no cast from pg/json; it casts from pg/int2',
+          message: 'Field "Lit.v": pg/int4 has no cast from pg/json; write a number',
           sourceId: 'schema.prisma',
           span: lineThreeSpan(18, 'json`1`'.length),
         },
@@ -290,7 +291,7 @@ describe('interpretPslDocumentToSqlContract tagged literal defaults', () => {
       {
         code: 'PSL_VALUE_TYPE_INCOMPATIBLE',
         message:
-          'Field "Lit.tags" at element 1: pg/text has no cast from sql/expression; it casts from nothing',
+          'Field "Lit.tags" at element 1: pg/text has no cast from sql/expression; write a quoted string',
         sourceId: 'schema.prisma',
         span: lineThreeSpan(27, 'sql`md5(x)`'.length),
       },
@@ -301,7 +302,7 @@ describe('interpretPslDocumentToSqlContract tagged literal defaults', () => {
     expect(diagnostics('v Int @default("x")')).toEqual([
       {
         code: 'PSL_VALUE_TYPE_INCOMPATIBLE',
-        message: 'Field "Lit.v": pg/int4 has no cast from pg/text; it casts from pg/int2',
+        message: 'Field "Lit.v": pg/int4 has no cast from pg/text; write a number',
         sourceId: 'schema.prisma',
         span: lineThreeSpan(18, '"x"'.length),
       },
@@ -312,8 +313,7 @@ describe('interpretPslDocumentToSqlContract tagged literal defaults', () => {
     expect(diagnostics('tags Int[] @default([1, "x"])')).toEqual([
       {
         code: 'PSL_VALUE_TYPE_INCOMPATIBLE',
-        message:
-          'Field "Lit.tags" at element 2: pg/int4 has no cast from pg/text; it casts from pg/int2',
+        message: 'Field "Lit.tags" at element 2: pg/int4 has no cast from pg/text; write a number',
         sourceId: 'schema.prisma',
         span: lineThreeSpan(27, '"x"'.length),
       },
