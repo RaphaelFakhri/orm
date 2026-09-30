@@ -83,6 +83,7 @@ import {
   type ResolvedPslModelRefs,
 } from '@internal/sql-contract/entity-handle-lowering-hook';
 import { isAuthoredIndexInput } from '@internal/sql-contract/index-naming';
+import { sqlTextFromCanonical } from '@internal/sql-contract/sql-expression';
 import type {
   SqlModelStorage,
   SqlNamespaceBase,
@@ -143,6 +144,7 @@ import {
   interpretFieldAttribute,
   interpretModelAttribute,
   modelAttributeSpecsFrom,
+  modelSpecContext,
   PSL_CHECK_ON_STI_VARIANT,
   sqlAttributeSpecs,
 } from './sql-attribute-specs';
@@ -677,6 +679,12 @@ function buildModelNodeFromPsl(input: BuildModelNodeInput): BuildModelNodeResult
   const { model, diagnostics } = input;
   const source = diagnosticSource(input.sources, model.node.syntax);
   const tableName = storageName(model, input.physicalNames);
+  const specContext = modelSpecContext({
+    symbols: input.symbolTable,
+    model,
+    defaultFunctionRegistry: input.defaultFunctionRegistry,
+    dataTypes: input.dataTypes,
+  });
   const modelNamespaceId = input.namespaceId;
   const namespaceExtensionEntitiesForModel =
     modelNamespaceId !== undefined
@@ -975,7 +983,7 @@ function buildModelNodeFromPsl(input: BuildModelNodeInput): BuildModelNodeResult
       }
       const parsed = interpretModelAttribute({
         node,
-        spec: sqlAttributeSpecs.model.index(),
+        spec: sqlAttributeSpecs.model.index(specContext),
         model,
         symbols: input.symbolTable,
         sources: input.sources,
@@ -1010,8 +1018,13 @@ function buildModelNodeFromPsl(input: BuildModelNodeInput): BuildModelNodeResult
           'dynamically assembled from PSL arguments; the interpreter diagnoses both invalid shapes and lowerAuthoredIndex re-checks'
         >({
           ...ifDefined('columns', columnNames),
-          ...ifDefined('expression', parsed.expression),
-          where: parsed.where,
+          ...ifDefined(
+            'expression',
+            parsed.expression === undefined
+              ? undefined
+              : sqlTextFromCanonical(parsed.expression.value),
+          ),
+          where: parsed.where === undefined ? undefined : sqlTextFromCanonical(parsed.where.value),
           unique: parsed.unique,
           name: parsed.name,
           map: parsed.map,
@@ -1036,7 +1049,7 @@ function buildModelNodeFromPsl(input: BuildModelNodeInput): BuildModelNodeResult
       }
       const parsed = interpretModelAttribute({
         node,
-        spec: sqlAttributeSpecs.model.check(),
+        spec: sqlAttributeSpecs.model.check(specContext),
         model,
         symbols: input.symbolTable,
         sources: input.sources,
@@ -1047,7 +1060,7 @@ function buildModelNodeFromPsl(input: BuildModelNodeInput): BuildModelNodeResult
         continue;
       }
       checkNodes.push({
-        expression: parsed.expression,
+        expression: sqlTextFromCanonical(parsed.expression.value),
         name: parsed.name,
         map: parsed.map,
       });
@@ -1080,12 +1093,7 @@ function buildModelNodeFromPsl(input: BuildModelNodeInput): BuildModelNodeResult
       }
       const parsed = interpretModelAttribute({
         node,
-        spec: specFactory({
-          symbols: input.symbolTable,
-          model,
-          defaultFunctionRegistry: input.defaultFunctionRegistry,
-          dataTypes: input.dataTypes,
-        }),
+        spec: specFactory(specContext),
         model,
         symbols: input.symbolTable,
         sources: input.sources,

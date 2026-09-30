@@ -231,7 +231,7 @@ describe('sqlAttributeSpecs', () => {
     expect(idFields).toMatchObject({ kind: 'list', allowEmpty: false, unique: true });
     expect(idFields.of).toMatchObject({ kind: 'fieldRef' });
 
-    const options = recordMetadata(namedType(sqlAttributeSpecs.model.index(), 'options'));
+    const options = recordMetadata(namedType(sqlAttributeSpecs.model.index(modelCtx), 'options'));
     expect(options).toMatchObject({ kind: 'record', optional: true });
     expect(options.of).toMatchObject({ kind: 'str', value: undefined });
   });

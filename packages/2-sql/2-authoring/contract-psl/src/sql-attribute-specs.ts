@@ -37,6 +37,7 @@ import type {
 import {
   bool,
   createBinder,
+  dataTypeValue,
   diagnosticSource,
   entityRef,
   fieldAttribute,
@@ -64,7 +65,10 @@ import type {
   PslSources,
 } from '@internal/psl-parser/syntax';
 import { FunctionCallAst } from '@internal/psl-parser/syntax';
-import { SQL_EXPRESSION_DATA_TYPE_ID } from '@internal/sql-contract/sql-expression';
+import {
+  SQL_EXPRESSION_DATA_TYPE_ID,
+  sqlTextFromCanonical,
+} from '@internal/sql-contract/sql-expression';
 import { blindCast } from '@internal/utils/casts';
 import { notOk } from '@internal/utils/result';
 import { removedDbgeneratedMessage } from './default-function-registry';
@@ -468,82 +472,84 @@ export const PSL_INDEX_EXPRESSION_REQUIRES_NAME: ContributedPslDiagnosticCode =
   'PSL_INDEX_EXPRESSION_REQUIRES_NAME';
 export const PSL_INDEX_NAME_XOR_MAP: ContributedPslDiagnosticCode = 'PSL_INDEX_NAME_XOR_MAP';
 
-const indexModelSpec = modelAttribute('index', {
-  documentation:
-    'Declares a database index over fields or a SQL expression, optionally restricted by a predicate.',
-  positional: [
-    {
-      key: 'fields',
-      type: optional(list(fieldRef(), { allowEmpty: false, unique: true })),
-      documentation:
-        'The ordered list of distinct indexed fields. Mutually exclusive with `expression`.',
+function indexModelSpec(ctx: AttributeSpecContext) {
+  return modelAttribute('index', {
+    documentation:
+      'Declares a database index over fields or a SQL expression, optionally restricted by a predicate.',
+    positional: [
+      {
+        key: 'fields',
+        type: optional(list(fieldRef(), { allowEmpty: false, unique: true })),
+        documentation:
+          'The ordered list of distinct indexed fields. Mutually exclusive with `expression`.',
+      },
+    ],
+    named: {
+      expression: {
+        type: optional(dataTypeValue(SQL_EXPRESSION_DATA_TYPE_ID, ctx.dataTypes)),
+        documentation:
+          'The SQL index expression. Requires `name` or `map` and cannot be combined with a fields list.',
+      },
+      where: {
+        type: optional(dataTypeValue(SQL_EXPRESSION_DATA_TYPE_ID, ctx.dataTypes)),
+        documentation: 'The SQL predicate restricting rows included in a partial index.',
+      },
+      unique: { type: optional(bool()), documentation: 'Whether the index enforces uniqueness.' },
+      name: {
+        type: optional(str()),
+        documentation: 'The index name. Mutually exclusive with `map`.',
+      },
+      map: {
+        type: optional(str()),
+        documentation: 'The database index name. Mutually exclusive with `name`.',
+      },
+      type: { type: optional(str()), documentation: 'The target-specific index access method.' },
+      options: {
+        type: optional(record(str())),
+        documentation: 'Target-specific index options. Requires an explicit `type`.',
+      },
     },
-  ],
-  named: {
-    expression: {
-      type: optional(str()),
-      documentation:
-        'The SQL index expression. Requires `name` or `map` and cannot be combined with a fields list.',
+    refine: (value, ctx, attributeNode) => {
+      const diagnostics: PslDiagnostic[] = [];
+      if ((value.fields === undefined) === (value.expression === undefined)) {
+        diagnostics.push(
+          leafDiagnostic(
+            ctx,
+            attributeNode,
+            '`@@index` requires exactly one of a fields list or an `expression` argument',
+            PSL_INDEX_FIELDS_XOR_EXPRESSION,
+          ),
+        );
+      }
+      if (value.expression !== undefined && value.name === undefined && value.map === undefined) {
+        diagnostics.push(
+          leafDiagnostic(
+            ctx,
+            attributeNode,
+            '`@@index` with an `expression` argument requires a `name` or `map` argument (a default name cannot be derived from an expression)',
+            PSL_INDEX_EXPRESSION_REQUIRES_NAME,
+          ),
+        );
+      }
+      if (value.name !== undefined && value.map !== undefined) {
+        diagnostics.push(
+          leafDiagnostic(
+            ctx,
+            attributeNode,
+            '`@@index` takes at most one of `name` and `map`',
+            PSL_INDEX_NAME_XOR_MAP,
+          ),
+        );
+      }
+      if (value.options !== undefined && value.type === undefined) {
+        diagnostics.push(
+          leafDiagnostic(ctx, attributeNode, '`@@index` options argument requires a type argument'),
+        );
+      }
+      return diagnostics;
     },
-    where: {
-      type: optional(str()),
-      documentation: 'The SQL predicate restricting rows included in a partial index.',
-    },
-    unique: { type: optional(bool()), documentation: 'Whether the index enforces uniqueness.' },
-    name: {
-      type: optional(str()),
-      documentation: 'The index name. Mutually exclusive with `map`.',
-    },
-    map: {
-      type: optional(str()),
-      documentation: 'The database index name. Mutually exclusive with `name`.',
-    },
-    type: { type: optional(str()), documentation: 'The target-specific index access method.' },
-    options: {
-      type: optional(record(str())),
-      documentation: 'Target-specific index options. Requires an explicit `type`.',
-    },
-  },
-  refine: (value, ctx, attributeNode) => {
-    const diagnostics: PslDiagnostic[] = [];
-    if ((value.fields === undefined) === (value.expression === undefined)) {
-      diagnostics.push(
-        leafDiagnostic(
-          ctx,
-          attributeNode,
-          '`@@index` requires exactly one of a fields list or an `expression` argument',
-          PSL_INDEX_FIELDS_XOR_EXPRESSION,
-        ),
-      );
-    }
-    if (value.expression !== undefined && value.name === undefined && value.map === undefined) {
-      diagnostics.push(
-        leafDiagnostic(
-          ctx,
-          attributeNode,
-          '`@@index` with an `expression` argument requires a `name` or `map` argument (a default name cannot be derived from an expression)',
-          PSL_INDEX_EXPRESSION_REQUIRES_NAME,
-        ),
-      );
-    }
-    if (value.name !== undefined && value.map !== undefined) {
-      diagnostics.push(
-        leafDiagnostic(
-          ctx,
-          attributeNode,
-          '`@@index` takes at most one of `name` and `map`',
-          PSL_INDEX_NAME_XOR_MAP,
-        ),
-      );
-    }
-    if (value.options !== undefined && value.type === undefined) {
-      diagnostics.push(
-        leafDiagnostic(ctx, attributeNode, '`@@index` options argument requires a type argument'),
-      );
-    }
-    return diagnostics;
-  },
-});
+  });
+}
 
 // `@@check` cross-argument diagnostic codes — contributed by this package
 // through the family-neutral `ContributedPslDiagnosticCode` seam; the
@@ -562,54 +568,59 @@ export const PSL_CHECK_EXPRESSION_EMPTY: ContributedPslDiagnosticCode =
  */
 export const PSL_CHECK_ON_STI_VARIANT: ContributedPslDiagnosticCode = 'PSL_CHECK_ON_STI_VARIANT';
 
-const checkModelSpec = modelAttribute('check', {
-  documentation: 'Declares a named database CHECK constraint on this table.',
-  named: {
-    expression: { type: str(), documentation: 'The nonempty SQL predicate checked for each row.' },
-    name: {
-      type: optional(str()),
-      documentation: 'The constraint name. Exactly one of `name` and `map` is required.',
+function checkModelSpec(ctx: AttributeSpecContext) {
+  return modelAttribute('check', {
+    documentation: 'Declares a named database CHECK constraint on this table.',
+    named: {
+      expression: {
+        type: dataTypeValue(SQL_EXPRESSION_DATA_TYPE_ID, ctx.dataTypes),
+        documentation: 'The nonempty SQL predicate checked for each row.',
+      },
+      name: {
+        type: optional(str()),
+        documentation: 'The constraint name. Exactly one of `name` and `map` is required.',
+      },
+      map: {
+        type: optional(str()),
+        documentation: 'The database constraint name. Exactly one of `name` and `map` is required.',
+      },
     },
-    map: {
-      type: optional(str()),
-      documentation: 'The database constraint name. Exactly one of `name` and `map` is required.',
+    refine: (value, ctx, attributeNode) => {
+      const diagnostics: PslDiagnostic[] = [];
+      if (sqlTextFromCanonical(value.expression.value).trim().length === 0) {
+        diagnostics.push(
+          leafDiagnostic(
+            ctx,
+            attributeNode,
+            '`@@check` expression must not be empty — an empty predicate is not a constraint',
+            PSL_CHECK_EXPRESSION_EMPTY,
+          ),
+        );
+      }
+      if (value.name === undefined && value.map === undefined) {
+        diagnostics.push(
+          leafDiagnostic(
+            ctx,
+            attributeNode,
+            '`@@check` requires a `name` or `map` argument (a default name cannot be derived — a check has no column tuple to name itself after)',
+            PSL_CHECK_REQUIRES_NAME_OR_MAP,
+          ),
+        );
+      }
+      if (value.name !== undefined && value.map !== undefined) {
+        diagnostics.push(
+          leafDiagnostic(
+            ctx,
+            attributeNode,
+            '`@@check` takes at most one of `name` and `map`',
+            PSL_CHECK_NAME_XOR_MAP,
+          ),
+        );
+      }
+      return diagnostics;
     },
-  },
-  refine: (value, ctx, attributeNode) => {
-    const diagnostics: PslDiagnostic[] = [];
-    if (value.expression.trim().length === 0) {
-      diagnostics.push(
-        leafDiagnostic(
-          ctx,
-          attributeNode,
-          '`@@check` expression must not be empty — an empty predicate is not a constraint',
-          PSL_CHECK_EXPRESSION_EMPTY,
-        ),
-      );
-    }
-    if (value.name === undefined && value.map === undefined) {
-      diagnostics.push(
-        leafDiagnostic(
-          ctx,
-          attributeNode,
-          '`@@check` requires a `name` or `map` argument (a default name cannot be derived — a check has no column tuple to name itself after)',
-          PSL_CHECK_REQUIRES_NAME_OR_MAP,
-        ),
-      );
-    }
-    if (value.name !== undefined && value.map !== undefined) {
-      diagnostics.push(
-        leafDiagnostic(
-          ctx,
-          attributeNode,
-          '`@@check` takes at most one of `name` and `map`',
-          PSL_CHECK_NAME_XOR_MAP,
-        ),
-      );
-    }
-    return diagnostics;
-  },
-});
+  });
+}
 
 const controlModelSpec = modelAttribute('control', {
   documentation: 'Sets how schema management treats this model’s storage.',
@@ -793,8 +804,8 @@ export const sqlAttributeSpecs = {
     map: () => mapModelSpec,
     id: () => idModelSpec,
     unique: () => uniqueModelSpec,
-    index: () => indexModelSpec,
-    check: () => checkModelSpec,
+    index: (ctx) => indexModelSpec(ctx),
+    check: (ctx) => checkModelSpec(ctx),
     control: () => controlModelSpec,
     discriminator: () => discriminatorModelSpec,
     base: baseModelSpec,

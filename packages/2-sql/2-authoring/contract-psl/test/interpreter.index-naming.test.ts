@@ -92,7 +92,7 @@ describe('@@index matrix threading at PSL lowering', () => {
     const result = interpretMatrix(`model User {
   id    Int    @id
   email String
-  @@index(expression: "lower(email)", name: "users_email_eq")
+  @@index(expression: sql\`lower(email)\`, name: "users_email_eq")
 }`);
     expect(result.ok).toBe(true);
     if (!result.ok) return;
@@ -111,7 +111,7 @@ describe('@@index matrix threading at PSL lowering', () => {
     const result = interpretMatrix(`model User {
   id    Int    @id
   email String
-  @@index([email], where: "(deleted_at IS NULL)", unique: true, name: "users_email_active")
+  @@index([email], where: sql\`(deleted_at IS NULL)\`, unique: true, name: "users_email_active")
 }`);
     expect(result.ok).toBe(true);
     if (!result.ok) return;
@@ -129,7 +129,7 @@ describe('@@index matrix threading at PSL lowering', () => {
     const result = interpretMatrix(`model User {
   id    Int    @id
   email String
-  @@index(expression: "eql_v3.eq_term(email)", name: "users_email_eq")
+  @@index(expression: sql\`eql_v3.eq_term(email)\`, name: "users_email_eq")
 }`);
     expect(result.ok).toBe(true);
     if (!result.ok) return;
@@ -148,7 +148,7 @@ describe('@@index matrix threading at PSL lowering', () => {
       const result = interpretMatrix(`model User {
   id    Int    @id
   email String
-  @@index(expression: "lower(email)", map: "users_email_adopted")
+  @@index(expression: sql\`lower(email)\`, map: "users_email_adopted")
 }`);
       expect(result.ok).toBe(true);
       if (!result.ok) return;
