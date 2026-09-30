@@ -13,7 +13,7 @@ GA is the last chance to make breaking changes, so this stream decides the date.
 | # | Project | GA | State | Waiting on |
 | --- | --- | --- | --- | --- |
 | 1 | Finish ADR 254: data types own column types | Must | Design finished 2026-09-29 (spec, design and plan on branch `data-types-completion`). Implementation under way. | |
-| 2 | One CLI and one config file: merge Composer's config into `prisma.config.ts`, remove the `prisma-composer` CLI, add `destroy` to `prisma` | Must | Only the docs fix is tracked (TML-3340) | |
+| 2 | One CLI and one config file: merge Composer's config into `prisma.config.ts`, remove the `prisma-composer` CLI, add `destroy` to `prisma` | Must | Design finished by Will 2026-09-30. Implementation to be delegated; brief in [briefs/one-cli-one-config-file.md](briefs/one-cli-one-config-file.md). Docs fix tracked as TML-3340. | |
 | 3 | Early MySQL attempt, to find shared code that assumes PostgreSQL | Must | Not started | |
 | 4 | SQL expression literals | Must | Designed. Unblocked: prisma/orm#30381 merged 2026-09-29. | |
 | 5 | PSL mixins, then remove type aliases and field presets (TML-3055) | Must | No spec | Spec |
@@ -39,7 +39,7 @@ Test: an existing Prisma 7 database can be signed by Prisma 8.
 
 | # | Project | GA | State | Waiting on |
 | --- | --- | --- | --- | --- |
-| 1 | Multi-file PSL | Must | 2 of 3 parts merged. Last part in prisma/orm#30456. | Review |
+| 1 | Multi-file PSL | Must | Done. Last part merged 2026-09-30 (prisma/orm#30456). | |
 | 2 | Emulator controls in the `prisma` CLI: start, stop, list, reset | Must | Not tracked | |
 | 3 | VS Code extension: formatter without the CLI installed, go-to-definition, multi-file PSL, emulator controls | Must | In progress | 1 and 2 |
 | 4 | Review how the VS Code extension handles local and remote Prisma Postgres instances, and make it match the current CLI and its emulators | Must | Not started | 2 |
