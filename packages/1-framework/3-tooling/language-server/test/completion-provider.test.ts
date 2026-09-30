@@ -254,8 +254,9 @@ interface ActualSqliteDataTypesModule {
 }
 
 interface ActualSqlExpressionModule {
-  readonly SQL_EXPRESSION_DATA_TYPE_ID: string;
-  readonly sqlExpressionAuthoringEntry: DataTypeAuthoringEntry;
+  readonly sqlExpressionRegistration: {
+    readonly authoring: Readonly<Record<string, DataTypeAuthoringEntry>>;
+  };
 }
 
 interface ActualMongoAttributeModule {
@@ -350,7 +351,7 @@ async function sqlExpressionDataTypes(): Promise<Readonly<Record<string, DataTyp
   const family = await importFromPackageRoot<ActualSqlExpressionModule>(
     '../../../2-sql/1-core/contract/src/exports/sql-expression.ts',
   );
-  return { [family.SQL_EXPRESSION_DATA_TYPE_ID]: family.sqlExpressionAuthoringEntry };
+  return family.sqlExpressionRegistration.authoring;
 }
 
 async function importFromPackageRoot<T>(relativePath: string): Promise<T> {
@@ -1440,7 +1441,7 @@ describe('providePslCompletionItems', () => {
     const withFamilyEntry = (
       targetEntries: Readonly<Record<string, DataTypeAuthoringEntry>>,
     ): Readonly<Record<string, DataTypeAuthoringEntry>> => ({
-      [family.SQL_EXPRESSION_DATA_TYPE_ID]: family.sqlExpressionAuthoringEntry,
+      ...family.sqlExpressionRegistration.authoring,
       ...targetEntries,
     });
     const complete = (
