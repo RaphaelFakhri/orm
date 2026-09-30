@@ -549,6 +549,68 @@ export type ModelAccessor<
 > = ScalarModelAccessor<TContract, ModelName, NsId> &
   RelationModelAccessor<TContract, ModelName, NsId>;
 
+type CodecOperations<TContract extends Contract<SqlStorage>, CodecId extends string> =
+  ExtractQueryOperationTypes<TContract> extends infer AllOps
+    ? {
+        [OpName in keyof AllOps & string as OpMatchesField<
+          AllOps[OpName],
+          CodecId,
+          ExtractCodecTypes<TContract>
+        > extends true
+          ? OpName
+          : never]: QueryOperationMethod<AllOps[OpName], ExtractCodecTypes<TContract>>;
+      }
+    : unknown;
+
+type CodecOutput<
+  TContract extends Contract<SqlStorage>,
+  CodecId extends string,
+> = CodecId extends keyof ExtractCodecTypes<TContract>
+  ? ExtractCodecTypes<TContract>[CodecId] extends { readonly output: infer O }
+    ? O
+    : unknown
+  : unknown;
+
+type CodecTraitSet<
+  TContract extends Contract<SqlStorage>,
+  CodecId extends string,
+> = CodecId extends keyof ExtractCodecTypes<TContract>
+  ? ExtractCodecTypes<TContract>[CodecId] extends { readonly traits: infer T }
+    ? T
+    : never
+  : never;
+
+/**
+ * A field of the row accessor, named by its codec and nullability instead of by model.
+ */
+export type FieldExpression<
+  TContract extends Contract<SqlStorage>,
+  CodecId extends string,
+  Nullable extends boolean = false,
+> = Expression<{ codecId: CodecId; nullable: Nullable }> &
+  ComparisonMethods<
+    CodecOutput<TContract, CodecId> | (Nullable extends true ? null : never),
+    CodecTraitSet<TContract, CodecId>,
+    CodecId
+  > &
+  CodecOperations<TContract, CodecId>;
+
+export type ModelFieldCodec<
+  TContract extends Contract<SqlStorage>,
+  ModelName extends string,
+  FieldName extends string,
+  NsId extends string = never,
+> = {
+  readonly codecId: FieldCodecId<TContract, ModelName, FieldName, NsId>;
+  readonly nullable: FieldNullable<TContract, ModelName, FieldName, NsId>;
+};
+
+export type SortableFieldName<
+  TContract extends Contract<SqlStorage>,
+  ModelName extends string,
+  NsId extends string = never,
+> = keyof OrderableFields<TContract, ModelName, NsId> & string;
+
 /**
  * The predicate accessor for a collection narrowed to a variant. When a real
  * variant is selected its (possibly MTI) fields and relations are merged onto

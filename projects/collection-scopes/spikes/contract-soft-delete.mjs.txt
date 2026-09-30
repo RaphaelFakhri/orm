@@ -1,0 +1,71 @@
+// usage: node contract-soft-delete.mjs <contract.d.ts> <out.d.ts> <codecId> <Model:table:column>...
+// Adds a nullable `deletedAt` field to each named model of an emitted contract.d.ts:
+// the domain field, the model's storage field, the table column, and the four type maps.
+import { readFileSync, writeFileSync } from 'node:fs';
+
+const [input, output, codecId, ...targets] = process.argv.slice(2);
+let source = readFileSync(input, 'utf8');
+
+function section(name) {
+  const start = source.indexOf(`export type ${name} = {`);
+  if (start < 0) throw new Error(`section ${name} not found`);
+  const end = source.indexOf('\nexport type ', start + 1);
+  return [start, end];
+}
+
+function insertInSection(name, key, line) {
+  const [start, end] = section(name);
+  const body = source.slice(start, end);
+  const anchor = `\n    readonly ${key}: {\n`;
+  const at = body.indexOf(anchor);
+  if (at < 0 || body.indexOf(anchor, at + 1) >= 0) {
+    throw new Error(`${name}.${key}: expected one match`);
+  }
+  const pos = start + at + anchor.length;
+  source = `${source.slice(0, pos)}      ${line}\n${source.slice(pos)}`;
+}
+
+function insertAfterOne(regex, make) {
+  const matches = [...source.matchAll(regex)];
+  if (matches.length !== 1) {
+    throw new Error(`${regex}: expected one match, found ${matches.length}`);
+  }
+  const m = matches[0];
+  const pos = m.index + m[0].length;
+  source = `${source.slice(0, pos)}${make(m)}${source.slice(pos)}`;
+}
+
+const out = `CodecTypes['${codecId}']['output'] | null`;
+const inp = `CodecTypes['${codecId}']['input'] | null`;
+for (const target of targets) {
+  const [model, table, column] = target.split(':');
+  insertInSection('FieldOutputTypes', model, `readonly deletedAt: ${out};`);
+  insertInSection('FieldInputTypes', model, `readonly deletedAt: ${inp};`);
+  insertInSection('StorageColumnTypes', table, `readonly ${column}: ${out};`);
+  insertInSection('StorageColumnInputTypes', table, `readonly ${column}: ${inp};`);
+  insertAfterOne(
+    new RegExp(`\\n( +)readonly ${table}: \\{\\n +columns: \\{\\n`, 'g'),
+    (m) =>
+      `${m[1]}    readonly ${column}: {\n` +
+      `${m[1]}      readonly nativeType: 'timestamptz';\n` +
+      `${m[1]}      readonly codecId: '${codecId}';\n` +
+      `${m[1]}      readonly nullable: true;\n` +
+      `${m[1]}    };\n`,
+  );
+  insertAfterOne(
+    new RegExp(`\\n( +)readonly ${model}: \\{\\n +readonly fields: \\{\\n`, 'g'),
+    (m) =>
+      `${m[1]}    readonly deletedAt: {\n` +
+      `${m[1]}      readonly nullable: true;\n` +
+      `${m[1]}      readonly type: { readonly kind: 'scalar'; readonly codecId: '${codecId}' };\n` +
+      `${m[1]}    };\n`,
+  );
+  insertAfterOne(
+    new RegExp(
+      `\\n( +)readonly table: '${table}';\\n +readonly namespaceId: 'public';\\n +readonly fields: \\{\\n`,
+      'g',
+    ),
+    (m) => `${m[1]}  readonly deletedAt: { readonly column: '${column}' };\n`,
+  );
+}
+writeFileSync(output, source);

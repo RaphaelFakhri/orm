@@ -22,6 +22,21 @@ export { GroupedCollection } from '../grouped-collection';
 export { createModelAccessor } from '../model-accessor';
 export type { OrmOptions } from '../orm';
 export { orm } from '../orm';
+export {
+  type CollectionFragment,
+  type FragmentFields,
+  type FragmentQuery,
+  type FragmentRow,
+  fragment,
+  type RowFragment,
+  type RowOf,
+  rowFragment,
+  type SortDirection,
+  type StateFragment,
+  sortField,
+  stateFragment,
+  when,
+} from '../pipe-fragments';
 export type { PreparedCollection } from '../prepared-collection';
 export {
   createPreparedRowQuery,
@@ -41,8 +56,10 @@ export type {
   CreateInput,
   DefaultCollectionTypeState,
   DefaultModelRow,
+  FieldExpression,
   IncludeExpr,
   ModelAccessor,
+  ModelFieldCodec,
   NumericFieldNames,
   Orderable,
   OrderOptions,
@@ -55,6 +72,7 @@ export type {
   RelationsOf,
   RuntimeQueryable,
   ShorthandWhereFilter,
+  SortableFieldName,
   ToManyRelationAccessor,
   ToOneRelationAccessor,
   UniqueConstraintCriterion,

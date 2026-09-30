@@ -1,0 +1,173 @@
+// usage: node gen-pipe-probes.mjs <out-dir>
+// Writes one probe per (target, case, use count). A probe has ten call sites.
+// With N uses, the first N sites use the case's form; the rest use the case's plain form.
+// The definitions a case needs are written only when N > 0, so "1 use" includes the definition.
+import { mkdirSync, writeFileSync } from 'node:fs';
+
+const out = process.argv[2];
+mkdirSync(out, { recursive: true });
+
+const targets = {
+  pkg: {
+    header: `import { Collection } from '../src/collection';
+import { fragment, rowFragment, sortField, when } from '../src/pipe-fragments';
+import type { FieldExpression } from '../src/types';
+import { type SoftDeleteContract, softDeleteSetup } from './pipe-fragments-fixture';
+
+const { db } = softDeleteSetup();
+const Post = db.public.Post;
+const User = db.public.User;
+type ProbeContract = SoftDeleteContract;
+type DeletedAtCodec = 'pg/timestamptz-date@1';
+`,
+    userId: '1',
+    order: 'id',
+    relation: 'author',
+  },
+  demo: {
+    header: `import { Collection, type FieldExpression, fragment, rowFragment, sortField, when } from '@prisma/orm-postgres/orm-client';
+import type { Contract } from '../src/prisma/contract.d';
+import { db } from '../src/prisma/db';
+
+const Post = db.orm.public.Post;
+const User = db.orm.public.User;
+type ProbeContract = Contract;
+type DeletedAtCodec = 'pg/timestamptz-temporal@1';
+`,
+    userId: "'u1'",
+    order: 'createdAt',
+    relation: 'user',
+  },
+};
+
+const plainChain = (t, o) => `${t}.where((p) => p.title.eq('x')).orderBy((p) => p.${o}.desc())`;
+
+// Each case: defs (written when uses > 0), use(t, src, ctx) and plain(t, src, ctx).
+const cases = {
+  q1a: {
+    use: (t, _s, { order }) =>
+      `${t}.pipe((c) => (search ? c.where((p) => p.title.eq(search)) : c)).pipe((c) => (sort ? c.orderBy((p) => p.${order}[sort]()) : c))`,
+    plain: (t, _s, { order }) => plainChain(t, order),
+  },
+  q1b: {
+    use: (t, _s, { order, isThis }) =>
+      `(() => { let q${isThis ? ': Collection<ProbeContract, "Post">' : ''} = ${t}; if (search) q = q.where((p) => p.title.eq(search)); if (sort) q = q.orderBy((p) => p.${order}[sort]()); return q; })()`,
+    plain: (t, _s, { order }) => plainChain(t, order),
+  },
+  q1d: {
+    use: (t, _s, { order }) =>
+      `${t}.pipe(when(search, (c, s) => c.where((p) => p.title.eq(s)))).pipe(when(sort, (c, dir) => c.orderBy((p) => p.${order}[dir]())))`,
+    plain: (t, _s, { order }) => plainChain(t, order),
+  },
+  q2a: {
+    defs: `type DeletedAt = FieldExpression<ProbeContract, DeletedAtCodec, true>;
+const notDeleted = (p: { readonly deletedAt: DeletedAt }) => p.deletedAt.isNull();
+`,
+    use: (t) => `${t}.where(notDeleted)`,
+    plain: (t) => `${t}.where((p) => p.deletedAt.isNull())`,
+  },
+  q2b: {
+    defs: `const notDeleted = fragment<ProbeContract>()(
+  { deletedAt: { codecId: 'pg/timestamptz-date@1', nullable: true } },
+  (c) => c.where((p) => p.deletedAt.isNull()).orderBy((p) => p.deletedAt.desc()),
+);
+`,
+    use: (t) => `${t}.pipe(notDeleted)`,
+    plain: (t) => `${t}.where((p) => p.deletedAt.isNull()).orderBy((p) => p.deletedAt.desc())`,
+  },
+  q3: {
+    defs: (ctx) => `const summary = rowFragment<ProbeContract, 'Post'>()((c) => c.select('id', 'title').include('${ctx.relation}'));
+`,
+    use: (t) => `${t}.pipe(summary)`,
+    plain: (t, _s, { relation }) => `${t}.select('id', 'title').include('${relation}')`,
+  },
+  q3pick: {
+    defs: (ctx) => `const summary = (c: Pick<typeof Post, 'select'>) => c.select('id', 'title').include('${ctx.relation}');
+`,
+    use: (t) => `${t}.pipe(summary)`,
+    plain: (t, _s, { relation }) => `${t}.select('id', 'title').include('${relation}')`,
+  },
+  q5: {
+    use: (t, src) => `${t}.orderBy(sortField(${src}, input.sort, input.direction))`,
+    plain: (t) => `${t}.orderBy((p) => p.title.desc())`,
+  },
+};
+
+function probe(target, name, uses) {
+  const ctx = targets[target];
+  const c = cases[name];
+  const defs = typeof c.defs === 'function' ? c.defs(ctx) : (c.defs ?? '');
+  const site = (i, t, src, isThis = false) => {
+    const form = i <= uses ? c.use : c.plain;
+    const text = form(t, src, { ...ctx, isThis });
+    return target === 'demo' && name === 'q2b' ? text.replace('pg/timestamptz-date@1', 'pg/timestamptz-temporal@1') : text;
+  };
+  const u = ctx.userId;
+  return `${ctx.header}
+export declare const search: string | undefined;
+export declare const sort: 'asc' | 'desc' | undefined;
+export declare const input: { sort: string; direction: 'asc' | 'desc' };
+export { fragment, rowFragment, sortField, when };
+export type { FieldExpression, DeletedAtCodec };
+${uses > 0 ? defs.replace('pg/timestamptz-date@1', target === 'demo' ? 'pg/timestamptz-temporal@1' : 'pg/timestamptz-date@1') : ''}
+export class ProbePosts extends Collection<ProbeContract, 'Post'> {
+  a() {
+    return ${site(5, 'this', 'this', true)};
+  }
+  b() {
+    return ${site(8, 'this', 'this', true)}.limit(2);
+  }
+}
+
+export const s1 = ${site(1, 'Post', 'Post')}.limit(10).all();
+export const s2 = ${site(2, `Post.where({ userId: ${u} })`, 'Post')}.limit(5).all();
+export const s3 = ${site(3, "Post.select('id', 'title')", 'Post')}.first();
+export const s4 = User.include('posts', (posts) => ${site(4, 'posts', 'posts')}.limit(3)).all();
+export const s6 = ${site(6, `Post.orderBy((p) => p.${ctx.order}.asc())`, 'Post')}.limit(1).all();
+export const s7 = User.where({ id: ${u} }).include('posts', (posts) => ${site(7, "posts.where({ title: 'x' })", 'posts')}).first();
+export const s9 = ${site(9, 'Post', 'Post')}.first();
+export const s10 = ${site(10, `Post.where({ userId: ${u} }).limit(5)`, 'Post')}.all();
+`;
+}
+
+function chainProbe(target, kind) {
+  const ctx = targets[target];
+  const u = ctx.userId;
+  const steps = [
+    `where({ userId: ${u} })`,
+    `orderBy((p) => p.${ctx.order}.asc())`,
+    'limit(10)',
+    'offset(1)',
+    "where((p) => p.title.eq('x'))",
+    `orderBy((p) => p.${ctx.order}.desc())`,
+    'limit(5)',
+    'offset(2)',
+    "where({ title: 'y' })",
+    'limit(3)',
+  ];
+  const chain =
+    kind === 'none'
+      ? 'Post'
+      : kind === 'direct'
+        ? `Post${steps.map((s) => `.${s}`).join('')}`
+        : `Post${steps.map((s) => `.pipe((c) => c.${s})`).join('')}`;
+  return `${ctx.header}
+export const chain = ${chain}.all();
+export { Collection, fragment, rowFragment, sortField, when };
+export type { FieldExpression, ProbeContract, DeletedAtCodec };
+export type ProbeUser = typeof User;
+`;
+}
+
+for (const target of Object.keys(targets)) {
+  for (const name of Object.keys(cases)) {
+    for (const uses of [0, 1, 10]) {
+      if (uses === 0 && name.startsWith('q1') && name !== 'q1a') continue;
+      if (uses === 0 && name === 'q3pick') continue;
+      writeFileSync(`${out}/${target}-${name}-${uses}.test-d.ts`, probe(target, name, uses));
+    }
+  }
+  for (const kind of ['none', 'direct', 'pipe']) {
+    writeFileSync(`${out}/${target}-q4-${kind}.test-d.ts`, chainProbe(target, kind));
+  }
+}

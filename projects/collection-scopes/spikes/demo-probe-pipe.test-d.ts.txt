@@ -1,0 +1,102 @@
+import {
+  Collection,
+  type FieldExpression,
+  fragment,
+  rowFragment,
+  sortField,
+  when,
+} from '@prisma/orm-postgres/orm-client';
+import { describe, expectTypeOf, test } from 'vitest';
+import type { createOrmClient } from '../src/orm-client/client';
+import type { PostCollection } from '../src/orm-client/collections';
+import type { Contract } from '../src/prisma/contract.d';
+import { db } from '../src/prisma/db';
+
+declare const custom: ReturnType<typeof createOrmClient>;
+declare const input: { search?: string; sort: string; direction: 'asc' | 'desc' };
+
+const Post = db.orm.public.Post;
+type Base = typeof Post;
+
+type DeletedAt = FieldExpression<Contract, 'pg/timestamptz-temporal@1', true>;
+const rowNotDeleted = (p: { readonly deletedAt: DeletedAt }) => p.deletedAt.isNull();
+const notDeleted = fragment<Contract>()(
+  { deletedAt: { codecId: 'pg/timestamptz-temporal@1', nullable: true } },
+  (c) => c.where((p) => p.deletedAt.isNull()).orderBy((p) => p.deletedAt.desc()),
+);
+const summary = rowFragment<Contract, 'Post'>()((c) => c.select('id', 'title').include('user'));
+const summaryPick = (c: Pick<Base, 'select'>) => c.select('id', 'title').include('user');
+
+class ProbePosts extends Collection<Contract, 'Post'> {
+  search(term: string | undefined) {
+    return this.pipe(when(term, (c, t) => c.where((p) => p.title.ilike(`%${t}%`))));
+  }
+  live() {
+    return this.pipe(notDeleted);
+  }
+  summary() {
+    return this.pipe(summary);
+  }
+  sorted(name: string) {
+    return this.orderBy(sortField(this, name, 'desc', ['title', 'createdAt']));
+  }
+}
+
+describe('demo through dist', () => {
+  test('conditional steps collapse; when keeps the input type', () => {
+    const a = Post.pipe((c) => (input.search ? c.where({ title: input.search }) : c)).limit(10);
+    expectTypeOf(a).toEqualTypeOf<ReturnType<Base['limit']>>();
+    // @ts-expect-error update stays locked
+    a.update({ title: 'x' });
+    const d = Post.pipe(when(input.search, (c, t) => c.where((p) => p.title.ilike(`%${t}%`))));
+    expectTypeOf(d).toEqualTypeOf<Base>();
+    const withCustom = custom.Post.pipe(when(input.search, (c, t) => c.where({ title: t })));
+    expectTypeOf(withCustom).toEqualTypeOf<PostCollection>();
+    expectTypeOf(withCustom.newestFirst()).not.toBeAny();
+    const bare = custom.Post.pipe((c) => (input.search ? c.where({ title: input.search }) : c));
+    expectTypeOf<Parameters<typeof bare.update>[0]>().not.toBeNever();
+    // @ts-expect-error a step that changes the row
+    Post.pipe(when(input.search, (c) => c.select('id')));
+    expectTypeOf(null as unknown as ProbePosts).toHaveProperty('search');
+    expectTypeOf((null as unknown as ProbePosts).search('x')).toEqualTypeOf<ProbePosts>();
+  });
+
+  test('field fragments', () => {
+    expectTypeOf(Post.where(rowNotDeleted).all()).not.toBeAny();
+    // @ts-expect-error User has no deletedAt
+    db.orm.public.User.where(rowNotDeleted);
+    // @ts-expect-error Tag has no deletedAt
+    db.orm.public.Tag.where(rowNotDeleted);
+    expectTypeOf(Post.pipe(notDeleted)).toEqualTypeOf<Base>();
+    expectTypeOf(custom.Post.pipe(notDeleted)).toEqualTypeOf<PostCollection>();
+    expectTypeOf((null as unknown as ProbePosts).live()).toEqualTypeOf<ProbePosts>();
+    const users = db.orm.public.User.include('posts', (posts) => posts.pipe(notDeleted).limit(3));
+    expectTypeOf(users.all()).not.toBeAny();
+    // @ts-expect-error Tag has no deletedAt
+    db.orm.public.Tag.pipe(notDeleted);
+  });
+
+  test('row-changing fragments', () => {
+    const root = Post.pipe(summary);
+    expectTypeOf(root.first()).toEqualTypeOf(Post.select('id', 'title').include('user').first());
+    expectTypeOf(Post.where({ title: 'x' }).pipe(summary)).toEqualTypeOf(root);
+    expectTypeOf((null as unknown as ProbePosts).summary()).toEqualTypeOf(root);
+    const users = db.orm.public.User.include('posts', (posts) => posts.pipe(summary));
+    expectTypeOf(users.first()).not.toBeAny();
+    expectTypeOf(Post.select('title').pipe(summaryPick).first()).toEqualTypeOf(
+      Post.select('id', 'title').include('user').first(),
+    );
+    expectTypeOf(custom.Post.pipe(summaryPick)).not.toBeAny();
+    // @ts-expect-error summary is for Post
+    db.orm.public.Tag.pipe(summary);
+  });
+
+  test('sort field', () => {
+    expectTypeOf(Post.orderBy(sortField(Post, input.sort, input.direction)).cursor({})).not.toBeAny();
+    expectTypeOf((null as unknown as ProbePosts).sorted('title')).not.toBeAny();
+    // @ts-expect-error not a sortable field
+    sortField(Post, input.sort, 'asc', ['nope']);
+    // @ts-expect-error Tag has no title
+    db.orm.public.Tag.orderBy(sortField(Post, input.sort, 'asc', ['title']));
+  });
+});
