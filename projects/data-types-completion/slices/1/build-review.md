@@ -18,6 +18,7 @@ Reviewer-maintained. Contract: `projects/data-types-completion/design.md` sectio
 | c | 1 (`707b4c86af..806c08cfc4`, design `bf9ebd9d60` excluded) | SATISFIED: no finding |
 | d | 1 (`7565a8f8f9`, `45fe7b6423`, `28773fa5f1..ecca4f2409`) | ANOTHER ROUND NEEDED: 1 should-fix, 2 low |
 | d | 2 (`22fd1bc9de..bc2479e72f`) | SATISFIED: S1-d-R1-1 to S1-d-R1-3 closed, no new finding |
+| e | 1 (`f8903ee5dc..c7965f6d86`) | ANOTHER ROUND NEEDED: 2 low |
 
 ## Findings log
 
@@ -135,7 +136,34 @@ Reviewer-maintained. Contract: `projects/data-types-completion/design.md` sectio
 - S1-d-R1-2: closed. `createControlStack` is tested to refuse a constructor naming an unregistered codec, and `createSqlFamilyInstance` to refuse colliding SQL data types. Each test fails when its call or input is removed (I checked). The one `blindCast` is in a test file.
 - S1-d-R1-3: closed. Both error reference entries name the authoring source, how to fix it, and its payload (`codecId`; `codecId`, `dataType`).
 
+### S1-e-R1-1 (low): the error reference keeps an entry for a code nothing raises
+
+- Where: `docs/reference/error-reference.md:514` (`CONTRACT.NATIVE_TYPE_INVALID`).
+- What is wrong: the dispatch removed the code from both targets' `errors.ts` and its raising sites, so `check:error-reference` now counts 360 codes, but the entry still says the planners raise it. `check:error-reference` checks only that every known code is listed, not the reverse (`.agents/rules/doc-maintenance.mdc`).
+- Change: delete the entry.
+
+### S1-e-R1-2 (low): the Scenario A test still says it writes and reads a vector
+
+- Where: `test/integration/test/extension-pgvector-scenario-a.e2e.integration.test.ts:29` and `:347`.
+- What is wrong: the apply test no longer has an `embedding` column, because `pgvector/vector` requires `length` (design 2.4) and a PGlite domain takes no type modifier. The header still says the `Doc` table carries a `vector(N)` column in every layer, and the test name says "round-trip OK", which now reads only `id`.
+- Change: say that only the plan test has the `vector(3)` column and that the apply test checks the markers and an `id` row.
+
 ## Round notes
+
+### Dispatch e, round 1
+
+Scope: `f8903ee5dc..c7965f6d86`. Every brief item is built, with the three rulings in the slice plan applied. The slice's grep check over `packages` (tests included) is empty. The only goldens changed are the three allowed: `codec-instance.json` (now `CONTRACT.CODEC_DESCRIPTOR_MISSING`, a structured planner error), and the unquoted typeRef columns in the Postgres fixture (`"character"`, `"uuid"`) and core-surface (`"text"`). Every other golden is byte-identical. No `contract.json` or `contract.d.ts` changed.
+
+The coordinator's questions:
+1. Marker `invariants`: right. The table DDL comes from the literal `text[]` in `control-bootstrap.ts`, which is unchanged. The ledger table has no list column. The old codec cast the parameter as `$N::text[]` and passed the array through. `pg/text@1` with `many: true` renders the same `$N::text[]`, and the runtime encodes each element with the text codec, which is the identity. So the row written is the same. `extension-pgvector-scenario-a` writes and reads a marker's `invariants` in PGlite and passes. `pg/text-array@1` is still registered, with its data type, in `codecs.ts` and `aggregates.ts`.
+2. List identity value: right, and it is a fix. Before, a contract list column reached `resolveIdentityValue` with its element's native type (`codecBaseNativeType`, for example `text`), so a NOT NULL `text[]` column added to a non-empty table got `DEFAULT ('')`, which Postgres refuses as a malformed array literal. Only the old `pg/text-array@1` test column, whose native type was `text[]`, got `'{}'`. No golden could show this: the goldens plan from an empty schema, and the temporary default is used only when a NOT NULL column is added to an existing table. The pull request should mention it as a behaviour change. `tsvector` lost its built-in identity value, but no stack registers `pg/tsvector@1`.
+3. `SAFE_WIDENINGS`: right. `typeChangeCallStrategy` returns early unless `fromContract` is set, and the only caller that sets it is offline `migration plan`, which builds the prior schema with `contractToSchema(fromContract)`. That schema carries `codecRef` on every column. Reconciliation (`db init`, `db update`, aggregate plan) passes `fromContract: null`. Verify never reaches the strategy.
+4. Scenario A: acceptable. Design 2.4 makes `length` required, and a PGlite domain cannot take `vector(3)`. The plan test still has the `vector(3)` column and still asserts that the extension install comes before the app table, which is the point of the scenario. The apply test lost only the vector value round trip. The wording is stale: S1-e-R1-2.
+5. Cast tests: the `$1::int4` test fails against the base renderer, which wrote `$1::integer` (the old `adapter.test.ts` expectation shows it). The `varchar(255)` list test passes against the base too, because the old `pg/varchar` hook ignored its parameters. It is still a real guard: with `sqlBaseName` swapped for `renderSqlTypeName`, it fails (I checked). Not a finding.
+6. Goldens and fixtures: as above. `fixtures:check:agent` exits 0 with a clean tree.
+7. Grep: empty.
+
+Checks I ran at `c7965f6d86`: root typecheck, `lint:deps`, `lint:agent`, `check:error-reference` (360 codes) and `lint:framework-vocabulary` (262 = 262) exit 0. Tests of all 34 touched packages pass. Integration: the golden planner test plus `test/integration/test/authoring/` (26 files, 832 tests) and the 13 touched integration files (174 tests) pass. I did not run the full integration or e2e suites, as Will ruled. Every commit carries both sign-offs and no AI attribution. There is no `any` and no bare cast in production code. The planners' native type identifier check is gone with the code. That is safe: every written name now comes from a declaration whose literal characters `sqlDataType` restricts, or from an enum name that `render` quotes.
 
 ### Dispatch d, round 2
 
