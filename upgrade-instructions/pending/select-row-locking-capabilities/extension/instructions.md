@@ -22,7 +22,7 @@ changes:
 
 ## `select-ast-options-carry-locking`
 
-`SelectAstOptions` now has a required `locking: ReadonlyArray<LockingClause> | undefined`. Where you construct `new SelectAst({ ... })` from an existing select's fields, add `locking: ast.locking`, or spread `ast.toOptions()` and override only what you change. Pass `locking: undefined` only for a select you build from nothing. Setting it to `undefined` while rebuilding an existing select removes the caller's `FOR UPDATE` without an error.
+`SelectAstOptions` now has a required `locking: ReadonlyArray<LockingClause> | undefined`. Where you construct `new SelectAst({ ... })` from an existing select's fields, add `locking: ast.locking` when you rebuild an existing select. Pass `locking: undefined` only for a select you build from nothing. Setting it to `undefined` while rebuilding an existing select removes the caller's `FOR UPDATE` without an error.
 
 ## `render-lowered-sql-takes-capabilities`
 
