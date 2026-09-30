@@ -1,33 +1,30 @@
 import { Collection } from '@internal/sql-orm-client';
+import type { RuntimeScope } from '@internal/sql-relational-core/types';
 import { describe, expect, it } from 'vitest';
 import { getPolyTestContext, getTestContext } from './helpers';
 import { timeouts, withCollectionRuntime } from './integration-helpers';
 import { type PgIntegrationRuntime, seedPosts, seedUsers } from './runtime-helpers';
 
-type Transaction = Awaited<
-  ReturnType<Awaited<ReturnType<PgIntegrationRuntime['connection']>>['transaction']>
->;
-
 async function inTransaction<T>(
   runtime: PgIntegrationRuntime,
-  fn: (tx: Transaction) => Promise<T>,
+  fn: (tx: RuntimeScope) => Promise<T>,
 ): Promise<T> {
-  const connection = await runtime.connection();
+  const connection = await runtime.connection?.();
+  const tx = await connection?.transaction?.();
+  if (connection === undefined || tx === undefined) {
+    throw new Error('the integration runtime opens no transaction');
+  }
   try {
-    const tx = await connection.transaction();
-    try {
-      return await fn(tx);
-    } finally {
-      await tx.rollback();
-    }
+    return await fn(tx);
   } finally {
-    await connection.release();
+    await tx.rollback?.();
+    await connection.release?.();
   }
 }
 
-const usersIn = (tx: Transaction) =>
+const usersIn = (tx: RuntimeScope) =>
   new Collection({ runtime: tx, context: getTestContext() }, 'User', { namespaceId: 'public' });
-const postsIn = (tx: Transaction) =>
+const postsIn = (tx: RuntimeScope) =>
   new Collection({ runtime: tx, context: getTestContext() }, 'Post', { namespaceId: 'public' });
 
 const alice = {
