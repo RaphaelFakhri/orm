@@ -163,6 +163,8 @@ v Jsonb[] @default([json`{}`, pg.json`[1]`])
 v String @default(uuid(5))
 v String @default(nanoid(1))
 v String @default(other(1))
+v Json @default("{}")
+v Int @default([1])
 ```
 
 ### What to check
@@ -181,6 +183,10 @@ v String @default(other(1))
 | 10 | `PSL_INVALID_ATTRIBUTE_SYNTAX`, `Expected one of: 4 \| 7`, starting at `5` (column 26) |
 | 11 | `PSL_INVALID_ATTRIBUTE_SYNTAX`, `Expected an integer between 2 and 255`, starting at `1` (column 28) |
 | 12 | `PSL_INVALID_ATTRIBUTE_SYNTAX`, `Expected one of: …` for every default form, starting at `other(1)` (column 21) |
+| 13 | `PSL_VALUE_TYPE_INCOMPATIBLE`, ``pg/json has no cast from pg/text; write json`...` ``, starting at `"{}"` (column 19) |
+| 14 | `PSL_VALUE_TYPE_INCOMPATIBLE`, `pg/int4 has no cast from a list; write a number`, starting at `[1]` (column 18) |
+
+After the review fixes, every cast-rule refusal ends with what to write (`write a number`, ``write json`...` ``, `write a quoted string`), not `it casts from …`, and `Unknown literal tag` starts with the field it is about.
 
 ### Run on 2026-09-30
 
@@ -255,4 +261,53 @@ CONTRACT.SOURCE_LOAD_FAILED: Failed to resolve contract source
 === case 12: v String @default(other(1))
 CONTRACT.SOURCE_LOAD_FAILED: Failed to resolve contract source
   PSL_INVALID_ATTRIBUTE_SYNTAX [{"offset":59,"line":4,"column":21}] Expected one of: string | number | boolean | autoincrement() | now() | uuid() | cuid() | ulid() | nanoid() | sql`...` | json`...` | list of (string | number | boolean | json`...`)
+```
+
+### Run on 2026-09-30, after the review fixes
+
+Run on commit `b1c449985b`, after `pnpm build`. Result: every case gave the expected code, start and message. The starts are unchanged from the earlier run. Every cast-rule message now ends with what to write; cases 7 and 9 start with the field; cases 13 and 14 are new.
+
+```text
+=== case 1: tags String[] @default([sql`md5(x)`])
+CONTRACT.SOURCE_LOAD_FAILED: Failed to resolve contract source
+  PSL_VALUE_TYPE_INCOMPATIBLE [{"offset":65,"line":4,"column":27}] Field "T.tags" at element 1: pg/text has no cast from sql/expression; write a quoted string
+=== case 2: v Int @default(json`1`)
+CONTRACT.SOURCE_LOAD_FAILED: Failed to resolve contract source
+  PSL_VALUE_TYPE_INCOMPATIBLE [{"offset":56,"line":4,"column":18}] Field "T.v": pg/int4 has no cast from pg/json; write a number
+=== case 3: v Jsonb @default(json`{ plan }`)
+CONTRACT.SOURCE_LOAD_FAILED: Failed to resolve contract source
+  PSL_INVALID_LITERAL [{"offset":58,"line":4,"column":20}] Field "T.v": Expected property name or '}' in JSON at position 2 (line 1 column 3)
+=== case 4: v Int @default(100000000000000099)
+CONTRACT.SOURCE_LOAD_FAILED: Failed to resolve contract source
+  PSL_VALUE_TYPE_INCOMPATIBLE [{"offset":56,"line":4,"column":18}] Field "T.v": pg/int4 has no cast from pg/int8; write a number
+=== case 5: tags Int[] @default([1, "x"])
+CONTRACT.SOURCE_LOAD_FAILED: Failed to resolve contract source
+  PSL_VALUE_TYPE_INCOMPATIBLE [{"offset":65,"line":4,"column":27}] Field "T.tags" at element 2: pg/int4 has no cast from pg/text; write a number
+=== case 6: v Jsonb[] @default(json`{}`)
+CONTRACT.SOURCE_LOAD_FAILED: Failed to resolve contract source
+  PSL_DEFAULT_LIST_EXPECTED [{"offset":51,"line":4,"column":13}] Field "T.v": this column holds a list, so its default is a list literal, as in [1, 2]
+=== case 7: v String @default(pg.sql`gen_random_uuid()`)
+CONTRACT.SOURCE_LOAD_FAILED: Failed to resolve contract source
+  PSL_UNKNOWN_LITERAL_TAG [{"offset":59,"line":4,"column":21}] Field "T.v": Unknown literal tag "pg.sql". Known tags: sql, json.
+=== case 8: v String @default(archived)
+CONTRACT.SOURCE_LOAD_FAILED: Failed to resolve contract source
+  PSL_INVALID_ATTRIBUTE_SYNTAX [{"offset":59,"line":4,"column":21}] Expected one of: string | number | boolean | autoincrement() | now() | uuid() | cuid() | ulid() | nanoid() | sql`...` | json`...` | list of (string | number | boolean | json`...`)
+=== case 9: v Jsonb[] @default([json`{}`, pg.json`[1]`])
+CONTRACT.SOURCE_LOAD_FAILED: Failed to resolve contract source
+  PSL_UNKNOWN_LITERAL_TAG [{"offset":71,"line":4,"column":33}] Field "T.v" at element 2: Unknown literal tag "pg.json". Known tags: sql, json.
+=== case 10: v String @default(uuid(5))
+CONTRACT.SOURCE_LOAD_FAILED: Failed to resolve contract source
+  PSL_INVALID_ATTRIBUTE_SYNTAX [{"offset":64,"line":4,"column":26}] Expected one of: 4 | 7
+=== case 11: v String @default(nanoid(1))
+CONTRACT.SOURCE_LOAD_FAILED: Failed to resolve contract source
+  PSL_INVALID_ATTRIBUTE_SYNTAX [{"offset":66,"line":4,"column":28}] Expected an integer between 2 and 255
+=== case 12: v String @default(other(1))
+CONTRACT.SOURCE_LOAD_FAILED: Failed to resolve contract source
+  PSL_INVALID_ATTRIBUTE_SYNTAX [{"offset":59,"line":4,"column":21}] Expected one of: string | number | boolean | autoincrement() | now() | uuid() | cuid() | ulid() | nanoid() | sql`...` | json`...` | list of (string | number | boolean | json`...`)
+=== case 13: v Json @default("{}")
+CONTRACT.SOURCE_LOAD_FAILED: Failed to resolve contract source
+  PSL_VALUE_TYPE_INCOMPATIBLE [{"offset":57,"line":4,"column":19}] Field "T.v": pg/json has no cast from pg/text; write json`...`
+=== case 14: v Int @default([1])
+CONTRACT.SOURCE_LOAD_FAILED: Failed to resolve contract source
+  PSL_VALUE_TYPE_INCOMPATIBLE [{"offset":56,"line":4,"column":18}] Field "T.v": pg/int4 has no cast from a list; write a number
 ```

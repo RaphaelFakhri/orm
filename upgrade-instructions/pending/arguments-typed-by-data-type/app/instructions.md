@@ -50,9 +50,9 @@ Update an assertion on the span or range of one of these diagnostics to the writ
 | Written | Message before | Message now |
 | --- | --- | --- |
 | `count Int @default(100000000000000099)` | `Field "N.count": pg/int4 has no cast from pg/int8; it casts from pg/int2` | `Field "N.count": pg/int4 has no cast from pg/int8; write a number` |
-| `meta Json @default("{}")` | `Field "N.meta": pg/jsonb has no cast from pg/text; it casts from pg/json` | ``Field "N.meta": pg/jsonb has no cast from pg/text; write json`...` `` |
+| `meta Jsonb @default("{}")` | `Field "N.meta": pg/jsonb has no cast from pg/text; it casts from pg/json` | ``Field "N.meta": pg/jsonb has no cast from pg/text; write json`...` `` |
 | `count Int @default([1])` | `Field "N.count": pg/int4 has no cast from a list; it casts from pg/int2` | `Field "N.count": pg/int4 has no cast from a list; write a number` |
-| `active Boolean @default(true)` on SQLite | `Field "N.active": this target has no data type for a boolean value` | `Field "N.active": This target has no data type for a boolean value; write a number` |
+| `active Int @default(true)` on SQLite | `Field "N.active": this target has no data type for a boolean value` | `Field "N.active": This target has no data type for a boolean value; write a number` |
 | ``v String @default(pg.sql`x`)`` | `Unknown literal tag "pg.sql". Known tags: sql, json.` | `Field "N.v": Unknown literal tag "pg.sql". Known tags: sql, json.` |
 
 Update an assertion on one of these messages to the new text.
