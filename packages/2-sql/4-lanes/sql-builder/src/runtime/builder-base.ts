@@ -13,6 +13,7 @@ import {
   type AnyExpression as AstExpression,
   collectOrderedParamRefs,
   IdentifierRef,
+  isAggregateProjection,
   isOrderByDirection,
   isOrderByNulls,
   type LimitOffsetValue,
@@ -157,12 +158,6 @@ export function combineWhereExprs(exprs: readonly AstExpression[]): AstExpressio
   return AndExpr.of(exprs);
 }
 
-const LOCK_INCOMPATIBLE_PROJECTION_KINDS: ReadonlySet<string> = new Set([
-  'aggregate',
-  'json-array-agg',
-  'window-func',
-]);
-
 function lockConflictOf(state: BuilderState): string | undefined {
   const conflicts = {
     distinct: state.distinct !== undefined,
@@ -183,9 +178,7 @@ function assertLockable(state: BuilderState): void {
       { meta: { conflict } },
     );
   }
-  const item = state.projections.find((projection) =>
-    LOCK_INCOMPATIBLE_PROJECTION_KINDS.has(projection.expr.kind),
-  );
+  const item = state.projections.find(isAggregateProjection);
   if (item !== undefined) {
     throw structuredError(
       'ORM.LOCK_INCOMPATIBLE',
