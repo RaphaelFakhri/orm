@@ -245,8 +245,8 @@ Future renderers map the same node to their own syntax: MariaDB writes `LOCK IN 
 | A lock with an aggregate projection, or a locked subquery | builder `build()` | a structured error, `SQL_BUILDER.LOCK_INCOMPATIBLE` |
 | A lock with `include`, `aggregate`, `distinct` or `distinctOn`, ORM | compile | a structured error, `ORM.LOCK_INCOMPATIBLE` |
 | A mutation terminal (`update`, `updateAll`, `updateAndCount`, `delete`, `deleteAll`, `deleteAndCount`, `create`, `upsert`) on a locked collection | the terminal | `ORM.LOCK_INCOMPATIBLE`; a mutation already locks the rows it changes, and dropping the requested lock silently would hide a mistake |
-| A strength or option the adapter did not report, in a tree | renderer | an adapter error naming the flag |
-| Any lock, SQLite | renderer | a structured error |
+| A strength or option the adapter did not report, in a tree | Postgres renderer | `RUNTIME.AST_UNSUPPORTED` with `meta: { target, capability }`, the code the renderers already use for a feature a target cannot render |
+| Any lock, SQLite | renderer | `RUNTIME.AST_UNSUPPORTED` with `meta: { target: 'sqlite', feature: 'locking-clause' }` |
 | A row is locked and `nowait` was set | the database | SQLSTATE `55P03`, `lock_not_available`, surfaced as the driver error |
 
 The namespace of each code is the one the neighbouring errors in that package use, from the closed list in ADR 239, so `SQL_BUILDER.` and `ORM.` above stand only if those namespaces exist; the suffix is always `LOCK_INCOMPATIBLE`, and every new code gets an entry in `docs/reference/error-reference.md`. Mapping `55P03` to a structured code is a follow-up.
