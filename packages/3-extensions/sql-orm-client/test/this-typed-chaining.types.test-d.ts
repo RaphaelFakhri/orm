@@ -173,7 +173,7 @@ describe('conditionals reduce to the class', () => {
     expectTypeOf(r.limit(1).all()).not.toBeAny();
     expectTypeOf(r.published().recent()).toExtend<PostCollection>();
     expectTypeOf(r.select('id').all()).not.toBeAny();
-    // @ts-expect-error TS2349: include is not callable on a union of differently flagged collections
+    // @ts-expect-error TS2684: include cannot infer one state from a union of differently flagged collections
     r.include('author');
     // @ts-expect-error cursor needs an orderBy on every branch
     r.cursor({ id: 1 });
