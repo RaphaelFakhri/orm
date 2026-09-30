@@ -84,6 +84,14 @@ flowchart LR
 - The same combinator test file: `dataTypeValue` for `pg/int4`, a type without a tag; and as a parameter of a `funcCall` that is an arm of `oneOf`.
 - The existing `@default` tests pass unchanged.
 
+**Carried over from the slice 2a review** (do these in this slice):
+
+- ADR 254: add "Only the scalar cast rule moves to the framework; list casts stay in the family's default reader."
+- Rename `TaggedLiteralCanonicalization.body` to `text` (the body is what is written between the quotes; the text is the canonical value).
+- `@default` reports its cast-rule refusals (`PSL_VALUE_TYPE_INCOMPATIBLE`, `PSL_INVALID_LITERAL`, `PSL_UNKNOWN_LITERAL_TAG`) at the written value, as `dataTypeValue` does, not at the whole attribute. Update ADR 254 and `error-reference.md` to match.
+- The `unknown-tag` arm of `lowerDataTypeDefault` cannot be reached from PSL; the framework's `readWrittenValue` replaces it.
+- The `@default` list arm offers `` sql`...` `` as a list element, which the cast rule always refuses. Remove `sql` from the list-element tags, so completion and "Expected one of" stop offering it.
+
 ## Slice 2b — The six places take `sql` literals
 
 **Linear:** TML-3288. **Design:** 8, 9, 11.2, 12, 13, 18.1, 18.3 (2b items), 19 (2b rows, ADR 256), 20 (2b row).
@@ -105,6 +113,11 @@ flowchart LR
 - `language-server/test/semantic-tokens.test.ts`: a `sql` literal gives a `keyword` token for `sql` and a `string` token per line of its literal.
 - `test/integration/test/cli-journeys/sql-expression-literals.e2e.test.ts` (new): author a partial index, an expression index, a CHECK and a policy with `using` and `withCheck`; one text spans several lines, one ends in a `--` comment, one policy has an `EXISTS (SELECT … FROM … WHERE …)` predicate. Emit, plan, apply, verify clean. Infer, and assert every text prints as a `sql` literal. Emit the inferred schema and verify it clean against the same database. Infer again and assert the PSL equals the first inference.
 - `test/integration/test/cli-journeys/infer-roundtrip-fidelity*.e2e.test.ts` and `sign-the-database.e2e.test.ts` (update): assertions expect `sql` literals and the round trips still verify clean.
+
+**Carried over from the slice 2a review:**
+
+- `sqlTextReadsBack` and its tests move here from slice 2a, next to their only caller (design section 11.2).
+- Before writing ADR 256, check the ADR numbering: three files are already numbered 255.
 
 ## Slice 3 — The TypeScript builder takes `sql` values
 
