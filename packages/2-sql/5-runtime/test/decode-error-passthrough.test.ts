@@ -42,7 +42,6 @@ describe('decodeRow — runtime-envelope passthrough', () => {
     const registry = [
       defineTestCodec({
         typeId: 'test/passthrough@1',
-        targetTypes: ['text'],
         encode: (v: string) => v,
         decode: () => {
           throw original;
@@ -65,7 +64,6 @@ describe('decodeRow — runtime-envelope passthrough', () => {
     const registry = [
       defineTestCodec({
         typeId: 'test/passthrough@1',
-        targetTypes: ['text'],
         encode: (v: string) => v,
         decode: () => {
           throw original;
@@ -90,7 +88,6 @@ describe('decodeRow — runtime-envelope passthrough', () => {
     const registry = [
       defineTestCodec({
         typeId: 'test/passthrough@1',
-        targetTypes: ['text'],
         encode: (v: string) => v,
         decode: () => {
           throw original;
@@ -119,7 +116,6 @@ describe('decodeRow — runtime-envelope passthrough', () => {
     const registry = [
       defineTestCodec({
         typeId: 'test/passthrough@1',
-        targetTypes: ['text'],
         encode: (v: string) => v,
         decode: () => {
           throw original;
@@ -142,7 +138,6 @@ describe('decodeRow — runtime-envelope passthrough', () => {
     const registry = [
       defineTestCodec({
         typeId: 'test/passthrough@1',
-        targetTypes: ['text'],
         encode: (v: string) => v,
         decode: () => {
           throw original;

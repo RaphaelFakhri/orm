@@ -64,7 +64,6 @@ class GenericVectorDescriptor extends CodecDescriptorImpl<VectorParams> {
   override readonly dataType = dataTypeId('demo/fixture');
   override readonly codecId = 'demo/vector@1' as const;
   override readonly traits = ['equality'] as const;
-  override readonly targetTypes = ['vector'] as const;
   override readonly paramsSchema = vectorParamsSchema;
   readonly extensionOnly = 'wrapped-only' as const;
 
@@ -83,7 +82,6 @@ class DirectVectorDescriptor extends PostgresCodecDescriptor<VectorParams> {
   override readonly dataType = dataTypeId('demo/fixture');
   override readonly codecId = 'demo/direct-vector@1' as const;
   override readonly traits = ['equality'] as const;
-  override readonly targetTypes = ['vector'] as const;
   override readonly paramsSchema = vectorParamsSchema;
 
   protected override nativeType(params: VectorParams): string {
@@ -167,7 +165,6 @@ class MissingJsonProjection extends PostgresCodecDescriptor<VectorParams> {
   override readonly dataType = dataTypeId('demo/fixture');
   override readonly codecId = 'demo/missing-json@1' as const;
   override readonly traits: readonly CodecTrait[] = [];
-  override readonly targetTypes: readonly string[] = [];
   override readonly paramsSchema = vectorParamsSchema;
   protected override nativeType(): string {
     return 'vector';
@@ -182,7 +179,6 @@ class MissingNativeType extends PostgresCodecDescriptor<VectorParams> {
   override readonly dataType = dataTypeId('demo/fixture');
   override readonly codecId = 'demo/missing-native@1' as const;
   override readonly traits: readonly CodecTrait[] = [];
-  override readonly targetTypes: readonly string[] = [];
   override readonly paramsSchema = vectorParamsSchema;
   protected override jsonProjection(expression: ProjectionExpr): ProjectionExpr {
     return expression;

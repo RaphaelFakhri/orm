@@ -41,7 +41,6 @@ function createVectorExtensionDescriptor(): SqlRuntimeExtensionDescriptor<'postg
     codecId: 'pg/vector@1',
     dataType: dataTypeId('pg/vector'),
     traits: ['equality'],
-    targetTypes: ['vector'],
     paramsSchema: {
       '~standard': {
         version: 1,
@@ -74,7 +73,6 @@ function createNonParameterizedExtensionDescriptor(): SqlRuntimeExtensionDescrip
   // Custom codec id avoids colliding with the default test target descriptor's pre-registered codecs (`pg/text@1`, etc.).
   const scalarCodec = defineTestCodec({
     typeId: 'test/scalar@1',
-    targetTypes: ['scalar'],
     encode: (v: string) => v,
     decode: (w: string) => w,
   });
@@ -83,7 +81,6 @@ function createNonParameterizedExtensionDescriptor(): SqlRuntimeExtensionDescrip
     codecId: 'test/scalar@1',
     dataType: dataTypeId('test/scalar'),
     traits: [],
-    targetTypes: ['scalar'],
     paramsSchema: undefined,
     isParameterized: false,
     factory: () => () => scalarCodec,

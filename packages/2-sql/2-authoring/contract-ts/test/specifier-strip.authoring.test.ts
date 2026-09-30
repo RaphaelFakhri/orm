@@ -108,7 +108,6 @@ const stubContext: ContractSourceContext = {
   dataTypeLookup: createDataTypeLookup([]),
   codecLookup: {
     get: () => undefined,
-    targetTypesFor: () => undefined,
     renderOutputTypeFor: () => undefined,
   },
   controlMutationDefaults: {

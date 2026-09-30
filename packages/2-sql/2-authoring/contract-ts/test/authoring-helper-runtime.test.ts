@@ -333,7 +333,6 @@ describe('createComposedAuthoringHelpers', () => {
           codecId,
           dataType: varchar.id,
           traits: [],
-          targetTypes: [],
           paramsSchema: varchar.params,
           isParameterized: true,
           factory: () => () => {

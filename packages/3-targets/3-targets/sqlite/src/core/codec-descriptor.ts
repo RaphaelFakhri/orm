@@ -88,7 +88,6 @@ class SqliteCodecDescriptorAdapter<
   override readonly dataType: DataTypeId;
   override readonly codecId: string;
   override readonly traits: readonly CodecTrait[];
-  override readonly targetTypes: readonly string[];
   override readonly paramsSchema: StandardSchemaV1<DescriptorParams<D>> | undefined;
   override readonly renderOutputType?: (params: DescriptorParams<D>) => string | undefined;
   override readonly renderInputType?: (params: DescriptorParams<D>) => string | undefined;
@@ -105,7 +104,6 @@ class SqliteCodecDescriptorAdapter<
     this.dataType = options.dataType.id;
     this.codecId = descriptor.codecId;
     this.traits = descriptor.traits;
-    this.targetTypes = descriptor.targetTypes;
     this.paramsSchema = blindCast<
       StandardSchemaV1<DescriptorParams<D>> | undefined,
       'the data type the codec represents declares the parameters the codec takes'
@@ -166,9 +164,6 @@ export function isSqliteCodecDescriptor(value: unknown): value is AnySqliteCodec
     typeof value.codecId === 'string' &&
     'traits' in value &&
     Array.isArray(value.traits) &&
-    'targetTypes' in value &&
-    Array.isArray(value.targetTypes) &&
-    value.targetTypes.every((targetType) => typeof targetType === 'string') &&
     'paramsSchema' in value &&
     (value.paramsSchema === undefined ||
       (isObjectLike(value.paramsSchema) &&

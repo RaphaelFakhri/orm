@@ -1,3 +1,4 @@
+import type { SqlTypeLookups } from '@internal/sql-contract/data-type';
 import type { StorageColumn } from '@internal/sql-contract/types';
 import {
   DdlColumn,
@@ -20,12 +21,10 @@ import { buildColumnDefaultSql, buildColumnTypeSql } from './planner-ddl-builder
  * Reconstructs the `StorageColumn`-shaped fields `buildColumnTypeSql` /
  * `buildColumnDefaultSql` expect, from a column node's own stamped codec
  * identity (`codecRef` / `codecBaseNativeType`, Decision 5) — never the
- * contract. SQLite's type renderer only uppercases the resolved base type
- * (no parameterized expansion, no named-type quoting), so `typeRef` is
- * deliberately left unset here: setting it would send `buildColumnTypeSql`
- * back through a live `storageTypes` lookup the node's fields have already
- * resolved past, which throws for an unrecognized reference (unlike
- * Postgres's lenient fallback).
+ * contract. `typeRef` is deliberately left unset here: setting it would send
+ * `buildColumnTypeSql` back through a live `storageTypes` lookup the node's
+ * fields have already resolved past, which throws for an unrecognized
+ * reference.
  */
 function columnLike(
   column: SqlColumnIR,
@@ -106,9 +105,13 @@ export function isInlineAutoincrementPrimaryKeyNode(
  * the pre-`plan(start, end)` op-path called, so the output is
  * byte-identical.
  */
-export function columnSpecFromNode(column: SqlColumnIR, inline: boolean): SqliteColumnSpec {
+export function columnSpecFromNode(
+  column: SqlColumnIR,
+  inline: boolean,
+  types: SqlTypeLookups,
+): SqliteColumnSpec {
   const like = columnLike(column);
-  const typeSql = buildColumnTypeSql(like, {});
+  const typeSql = buildColumnTypeSql(like, types);
   const defaultSql = buildColumnDefaultSql(like.default);
   return {
     name: column.name,
@@ -123,9 +126,13 @@ export function columnSpecFromNode(column: SqlColumnIR, inline: boolean): Sqlite
  * Builds the `DdlColumn` the `CreateTableCall` path needs, resolved from the
  * column node's codec identity.
  */
-export function ddlColumnFromNode(column: SqlColumnIR, inline: boolean): DdlColumn {
+export function ddlColumnFromNode(
+  column: SqlColumnIR,
+  inline: boolean,
+  types: SqlTypeLookups,
+): DdlColumn {
   const like = columnLike(column);
-  const typeSql = buildColumnTypeSql(like, {});
+  const typeSql = buildColumnTypeSql(like, types);
   if (inline) {
     // `DdlColumn` has no SQLite-specific autoincrement flag, so the full
     // `PRIMARY KEY AUTOINCREMENT` clause is embedded in the `type` string.

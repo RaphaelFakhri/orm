@@ -13,7 +13,6 @@ import { postgresCodecDescriptorRegistry } from '../../src/core/registry';
 const citextTemplate: CodecDescriptorTemplate = {
   codecId: 'ext/citext@1',
   traits: [],
-  targetTypes: ['citext'],
   paramsSchema: undefined,
   isParameterized: false,
   factory: () => () => {
@@ -46,7 +45,6 @@ export function testBuildContext(
     },
     codecLookup: {
       get: () => undefined,
-      targetTypesFor: () => undefined,
       renderOutputTypeFor: () => undefined,
       descriptorFor: (codecId) =>
         extraCodecs.get(codecId) ?? postgresCodecDescriptorRegistry.descriptorFor(codecId),

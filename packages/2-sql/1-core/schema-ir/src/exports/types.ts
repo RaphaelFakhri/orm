@@ -9,8 +9,6 @@ export type {
   SqlReferentialAction,
   SqlSchemaIRInput,
   SqlTableIRInput,
-  SqlTypeMetadata,
-  SqlTypeMetadataRegistry,
   SqlUniqueIRInput,
 } from '../types';
 

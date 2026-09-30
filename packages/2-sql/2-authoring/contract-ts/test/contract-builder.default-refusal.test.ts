@@ -28,7 +28,6 @@ const refusingJsonb: CodecLookup = {
           decodeJson: (json: unknown) => json,
         }
       : undefined,
-  targetTypesFor: () => undefined,
   renderOutputTypeFor: () => undefined,
 };
 
@@ -46,7 +45,6 @@ function lookupOf(codecs: Record<string, Pick<Codec, 'encodeJson'>>): CodecLooku
             ...codec,
           };
     },
-    targetTypesFor: () => undefined,
     renderOutputTypeFor: () => undefined,
   };
 }

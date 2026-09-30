@@ -40,7 +40,7 @@ import type {
   SourceFile,
 } from '@internal/psl-parser/syntax';
 import { StringLiteralExprAst } from '@internal/psl-parser/syntax';
-import { storedSqlTypeNameOfCodec } from '@internal/sql-contract/data-type';
+import { sqlDataTypeOfCodec, storedSqlTypeNameOfCodec } from '@internal/sql-contract/data-type';
 import type { SqlNamespaceBase, SqlNamespaceInput } from '@internal/sql-contract/types';
 import { deriveValueSetFromEntity } from '@internal/sql-contract/value-set-derivation-hook';
 import {
@@ -752,6 +752,7 @@ function lowerNativeEnums(
       family: input.binding.target.familyId,
       target: input.binding.target.targetId,
       codecLookup: input.codecLookup,
+      dataTypes: input.dataTypeLookup,
       sourceId: declaration.sourceId,
       diagnostics: {
         push: (diagnostic) => {
@@ -1136,8 +1137,9 @@ function readField(args: ReadFieldArgs): void {
             lookup: input.dataTypeLookup,
           },
           literalForm: binding.literalDefaultForm({
-            ...resolved.descriptor,
-            nativeType: columnTypeName,
+            codecId: resolved.descriptor.codecId,
+            dataType: sqlDataTypeOfCodec(resolved.descriptor.codecId, input).id,
+            typeParams: resolved.descriptor.typeParams,
           }),
           enumMembers:
             enumDeclaration === undefined

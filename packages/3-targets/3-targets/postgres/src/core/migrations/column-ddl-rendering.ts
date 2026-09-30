@@ -1,4 +1,5 @@
 import type { CodecControlHooks } from '@internal/family-sql/control';
+import { type SqlTypeLookups, sqlDataTypeOfCodec } from '@internal/sql-contract/data-type';
 import type { StorageColumn } from '@internal/sql-contract/types';
 import type { DdlColumn } from '@internal/sql-relational-core/ast';
 import * as contractFree from '@internal/sql-relational-core/contract-free';
@@ -15,19 +16,15 @@ import { buildExpectedFormatType } from './planner-sql-checks';
  * Reconstructs the `StorageColumn`-shaped fields the DDL builder functions
  * (`buildColumnTypeSql`, `buildExpectedFormatType`, `resolveIdentityValue`)
  * expect, from a column node's own stamped codec identity (`codecRef` /
- * `codecBaseNativeType` / `codecNamedType`, Decision 5) — never the
- * contract. The builders were written against `StorageColumn` and are
- * unchanged here; only the shape feeding them moves from the contract to
- * the node. An empty `storageTypes` catalog is passed alongside: the
- * node's fields are already resolved past any `typeRef` indirection, so no
- * live lookup is needed, and passing a non-empty catalog would risk a
- * false `typeRef` hit against an unrelated storage type.
+ * `codecBaseNativeType`, Decision 5) — never the contract. The node's fields
+ * are already resolved past any `typeRef` indirection, so the builders get
+ * no `storageTypes` catalog.
  */
 function columnLike(
   column: SqlColumnIR,
 ): Pick<
   StorageColumn,
-  'nativeType' | 'codecId' | 'nullable' | 'many' | 'typeParams' | 'typeRef' | 'default'
+  'nativeType' | 'codecId' | 'nullable' | 'many' | 'typeParams' | 'default'
 > {
   return {
     ...columnTypeLike(`column "${column.name}"`, column),
@@ -36,15 +33,12 @@ function columnLike(
   };
 }
 
-type ColumnCodecIdentity = Pick<
-  SqlColumnIR,
-  'codecRef' | 'codecBaseNativeType' | 'codecNamedType' | 'many'
->;
+type ColumnCodecIdentity = Pick<SqlColumnIR, 'codecRef' | 'codecBaseNativeType' | 'many'>;
 
 function columnTypeLike(
   owner: string,
   identity: ColumnCodecIdentity,
-): Pick<StorageColumn, 'nativeType' | 'codecId' | 'many' | 'typeParams' | 'typeRef'> {
+): Pick<StorageColumn, 'nativeType' | 'codecId' | 'many' | 'typeParams'> {
   if (identity.codecRef === undefined || identity.codecBaseNativeType === undefined) {
     throw new InternalError(
       `columnTypeLike: expected ${owner} carries no codec identity — the expected tree must be derived via contractToSchemaIR for planning`,
@@ -66,23 +60,16 @@ function columnTypeLike(
           >(identity.codecRef.typeParams)
         : undefined,
     ),
-    ...(identity.codecNamedType ? { typeRef: '<resolved>' } : {}),
   };
 }
 
 /**
  * Builds the `CREATE TABLE` / `ADD COLUMN` DDL column for an expected column
- * node, resolving type rendering from the node's codec identity against the
- * codec hooks the caller holds — the same builder the pre-`plan(start, end)`
- * op-path called, so the output is byte-identical.
+ * node, writing its type from the data type the node's codec represents.
  */
-export function renderColumnDdl(
-  name: string,
-  column: SqlColumnIR,
-  codecHooks: ReadonlyMap<string, CodecControlHooks>,
-): DdlColumn {
+export function renderColumnDdl(name: string, column: SqlColumnIR, types: SqlTypeLookups): DdlColumn {
   const like = columnLike(column);
-  const typeSql = buildColumnTypeSql(like, codecHooks, {});
+  const typeSql = buildColumnTypeSql(like, types);
   const ddlDefault = postgresDefaultToDdlColumnDefault(like.default);
   return contractFree.col(name, typeSql, {
     ...(!column.nullable ? { notNull: true } : {}),
@@ -96,12 +83,12 @@ export function renderColumnDdl(
  */
 export function renderColumnAlterType(
   column: SqlColumnIR,
-  codecHooks: ReadonlyMap<string, CodecControlHooks>,
+  types: SqlTypeLookups,
 ): { readonly qualifiedTargetType: string; readonly formatTypeExpected: string } {
   const like = columnLike(column);
   return {
-    qualifiedTargetType: buildColumnTypeSql(like, codecHooks, {}, false),
-    formatTypeExpected: buildExpectedFormatType(like, codecHooks, {}),
+    qualifiedTargetType: buildColumnTypeSql(like, types, {}, false),
+    formatTypeExpected: buildExpectedFormatType(like, types),
   };
 }
 
@@ -115,22 +102,21 @@ export function renderColumnAlterType(
 export function resolveColumnTemporaryDefault(
   column: SqlColumnIR,
   codecHooks: ReadonlyMap<string, CodecControlHooks>,
+  types: SqlTypeLookups,
 ): string | null {
-  return resolveIdentityValue(columnLike(column), codecHooks, {});
+  return resolveIdentityValue(columnLike(column), codecHooks, types);
 }
 
 /**
  * The column's `SET DEFAULT` clause SQL, from a column-default diff node's authored default, or its resolved one when nothing was authored. `''` when the node carries neither. A list default is cast to the column type as the column's DDL writes it.
  */
-export function renderColumnDefaultSql(
-  defaultNode: SqlColumnDefaultIR,
-  codecHooks: ReadonlyMap<string, CodecControlHooks>,
-): string {
+export function renderColumnDefaultSql(defaultNode: SqlColumnDefaultIR, types: SqlTypeLookups): string {
   const columnDefault = defaultNode.authored ?? defaultNode.resolved;
   if (columnDefault === undefined) return '';
   const typeLike = columnTypeLike('column default', defaultNode);
   return buildColumnDefaultSql(columnDefault, {
-    nativeType: buildColumnTypeSql(typeLike, codecHooks, {}, false),
+    nativeType: buildColumnTypeSql(typeLike, types, {}, false),
+    dataType: sqlDataTypeOfCodec(typeLike.codecId, types).id,
     ...ifDefined('many', typeLike.many),
   });
 }

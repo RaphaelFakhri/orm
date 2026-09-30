@@ -93,7 +93,7 @@ export function dataType(id: string, spec: DataTypeSpec): DataType {
   };
 }
 
-type SchemaProp = { readonly key: PropertyKey };
+type SchemaProp = { readonly key: PropertyKey; readonly kind?: unknown };
 
 function isSchemaPropList(value: unknown): value is readonly SchemaProp[] {
   return (
@@ -105,14 +105,26 @@ function isSchemaPropList(value: unknown): value is readonly SchemaProp[] {
   );
 }
 
-/** The keys an arktype object schema declares, or undefined when `schema` is not one. */
-export function objectSchemaKeys(schema: unknown): readonly string[] | undefined {
+function objectSchemaProps(schema: unknown): readonly SchemaProp[] | undefined {
   if (schema === null || (typeof schema !== 'object' && typeof schema !== 'function')) {
     return undefined;
   }
   const props = 'props' in schema ? schema.props : undefined;
-  if (!isSchemaPropList(props)) return undefined;
-  return props.flatMap((prop) => (typeof prop.key === 'string' ? [prop.key] : []));
+  return isSchemaPropList(props) ? props : undefined;
+}
+
+/** The keys an arktype object schema declares, or undefined when `schema` is not one. */
+export function objectSchemaKeys(schema: unknown): readonly string[] | undefined {
+  return objectSchemaProps(schema)?.flatMap((prop) =>
+    typeof prop.key === 'string' ? [prop.key] : [],
+  );
+}
+
+/** The parameters a data type requires. */
+export function requiredParamKeys(type: DataType): readonly string[] {
+  return (objectSchemaProps(type.params) ?? []).flatMap((prop) =>
+    prop.kind === 'required' && typeof prop.key === 'string' ? [prop.key] : [],
+  );
 }
 
 export function createDataTypeLookup(types: readonly DataType[]): DataTypeLookup {

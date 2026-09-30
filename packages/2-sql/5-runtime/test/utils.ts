@@ -317,7 +317,6 @@ export function descriptorsFromCodecs(
       codecId: instance.id,
       dataType: dataTypeId('demo/fixture'),
       traits: legacy.traits ?? [],
-      targetTypes: legacy.targetTypes ?? [],
       paramsSchema: acceptAnyParamsSchema,
       isParameterized: true,
       factory: () => () => instance,
@@ -425,7 +424,6 @@ export function createStubAdapter(): StubAdapter {
   const passthroughCodec = (typeId: string, targetType: string): Codec<string> =>
     defineTestCodec({
       typeId,
-      targetTypes: [targetType],
       encode: (value: string | number | boolean | null) => value,
       decode: (wire: string | number | boolean | null) => wire,
     });
@@ -438,7 +436,6 @@ export function createStubAdapter(): StubAdapter {
     passthroughCodec('pg/int2@1', 'int2'),
     defineTestCodec({
       typeId: 'pg/int4@1',
-      targetTypes: ['int4'],
       encode: (value: number) => value,
       decode: (wire: number) => wire,
     }),
@@ -449,14 +446,12 @@ export function createStubAdapter(): StubAdapter {
     passthroughCodec('pg/numeric@1', 'numeric'),
     defineTestCodec({
       typeId: 'pg/text@1',
-      targetTypes: ['text'],
       encode: (value: string) => value,
       decode: (wire: string) => wire,
     }),
     passthroughCodec('pg/time-temporal@1', 'time'),
     defineTestCodec({
       typeId: 'pg/timestamp-temporal@1',
-      targetTypes: ['timestamp'],
       encode: (value: Date) => value,
       decode: (wire: Date) => wire,
       encodeJson: (value: Date) => value.toISOString(),
@@ -467,7 +462,6 @@ export function createStubAdapter(): StubAdapter {
     }),
     defineTestCodec({
       typeId: 'pg/timestamptz-temporal@1',
-      targetTypes: ['timestamptz'],
       encode: (value: Date) => value,
       decode: (wire: Date) => wire,
       // Date is not assignable to JsonValue, so the JSON round-trip pair must be supplied explicitly.

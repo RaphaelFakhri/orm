@@ -1,6 +1,11 @@
 import { type } from 'arktype';
 import { describe, expect, it } from 'vitest';
-import { createDataTypeLookup, dataType, dataTypeId } from '../src/shared/data-type';
+import {
+  createDataTypeLookup,
+  dataType,
+  dataTypeId,
+  requiredParamKeys,
+} from '../src/shared/data-type';
 
 describe('dataTypeId', () => {
   it.each(['pg/int8', 'sqlite/integer', 'postgis/geometry', 'pg/text-array', 'arktype/json'])(
@@ -92,5 +97,22 @@ describe('createDataTypeLookup', () => {
   it('lists every type in the order it was given', () => {
     expect(lookup.all()).toEqual([int2, int8]);
     expect(createDataTypeLookup([int8, int2]).all()).toEqual([int8, int2]);
+  });
+});
+
+describe('requiredParamKeys', () => {
+  it('lists the parameters a data type requires', () => {
+    const vector = dataType('t/vector', { params: type({ length: 'number', 'scale?': 'number' }) });
+    expect(requiredParamKeys(vector)).toEqual(['length']);
+  });
+
+  it('is empty for a data type whose parameters are optional', () => {
+    expect(requiredParamKeys(dataType('t/char', { params: type({ 'length?': 'number' }) }))).toEqual(
+      [],
+    );
+  });
+
+  it('is empty for a data type without parameters', () => {
+    expect(requiredParamKeys(dataType('t/text', {}))).toEqual([]);
   });
 });

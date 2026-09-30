@@ -9,6 +9,12 @@
  */
 
 import { checkSqlDefaultBody } from '@internal/family-sql/control';
+import {
+  dataTypeParams,
+  renderSqlTypeName,
+  type SqlTypeLookups,
+  sqlDataTypeOfCodec,
+} from '@internal/sql-contract/data-type';
 import type {
   StorageColumn,
   StorageTable,
@@ -18,19 +24,6 @@ import { sqliteError } from '../errors';
 import { escapeLiteral, quoteIdentifier } from '../sql-utils';
 
 type SqliteColumnDefault = StorageColumn['default'];
-
-const SAFE_NATIVE_TYPE_PATTERN = /^[a-zA-Z][a-zA-Z0-9_ ]*$/;
-
-function assertSafeNativeType(nativeType: string): void {
-  if (!SAFE_NATIVE_TYPE_PATTERN.test(nativeType)) {
-    throw sqliteError(
-      'CONTRACT.NATIVE_TYPE_INVALID',
-      `Unsafe native type name in contract: "${nativeType}". ` +
-        'Native type names must match /^[a-zA-Z][a-zA-Z0-9_ ]*$/',
-      { meta: { nativeType } },
-    );
-  }
-}
 
 function assertSafeDefaultExpression(expression: string): void {
   if (checkSqlDefaultBody(expression) !== undefined) {
@@ -44,17 +37,17 @@ function assertSafeDefaultExpression(expression: string): void {
 }
 
 /**
- * Renders the column's DDL type token (e.g. `"INTEGER"`, `"TEXT"`).
- * Resolves `typeRef` against `storageTypes` and validates the resulting
- * native type against a safe-identifier pattern.
+ * Renders the column's DDL type token (e.g. `"INTEGER"`, `"TEXT"`): the name the data type of its
+ * codec is written with, in upper case. Resolves `typeRef` against `storageTypes`.
  */
 export function buildColumnTypeSql(
   column: StorageColumn,
+  types: SqlTypeLookups,
   storageTypes: Record<string, StorageTypeInstance> = {},
 ): string {
   const resolved = resolveColumnTypeMetadata(column, storageTypes);
-  assertSafeNativeType(resolved.nativeType);
-  return resolved.nativeType.toUpperCase();
+  const dataType = sqlDataTypeOfCodec(resolved.codecId, types);
+  return renderSqlTypeName(dataType, dataTypeParams(dataType, resolved.typeParams)).toUpperCase();
 }
 
 /**

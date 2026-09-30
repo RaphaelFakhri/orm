@@ -1,9 +1,17 @@
 import type { ColumnDefault, Contract, JsonValue } from '@internal/contract/types';
-import type { CodecRef } from '@internal/framework-components/codec';
+import type { CodecLookup, CodecRef, DataTypeLookup } from '@internal/framework-components/codec';
 import type {
   MigrationPlannerConflict,
   SchemaNodeRef,
 } from '@internal/framework-components/control';
+import {
+  dataTypeParams,
+  renderSqlTypeName,
+  type SqlDataType,
+  type SqlTypeLookups,
+  sqlDataTypeOfCodec,
+  storedSqlTypeName,
+} from '@internal/sql-contract/data-type';
 import {
   type CheckConstraint,
   type ForeignKey,
@@ -18,7 +26,6 @@ import {
 import { namingOf } from '@internal/sql-schema-ir/naming';
 import {
   RelationalSchemaNodeKind,
-  type SqlAnnotations,
   type SqlCheckConstraintIRInput,
   type SqlColumnIRInput,
   type SqlForeignKeyIRInput,
@@ -33,34 +40,22 @@ import { InternalError } from '@internal/utils/internal-error';
 import { sqlFamilyError } from '../errors';
 
 /**
- * Target-specific callback that expands a column's base `nativeType` and optional
- * `typeParams` into the fully-qualified type string used by the database
- * (e.g. `character` + `{ length: 36 }` → `character(36)`).
- *
- * This lives in the family layer as a callback rather than importing a concrete
- * implementation because each target (Postgres, MySQL, SQLite, …) has its own
- * parameterization syntax. The target wires its expander when calling
- * `contractToSchemaIR`, keeping the family layer target-agnostic.
- */
-export type NativeTypeExpander = (input: {
-  readonly nativeType: string;
-  readonly codecId?: string;
-  readonly typeParams?: Record<string, unknown>;
-}) => string;
-
-/**
  * Target-specific callback that renders a `ColumnDefault` into the raw SQL literal
  * string stored in `SqlColumnIR.default`.
  *
  * Default value serialization is target-specific (quoting, casting, type syntax vary
- * between Postgres, MySQL, SQLite, …). This callback follows the same IoC pattern as
- * `NativeTypeExpander`: the target provides its renderer when calling
- * `contractToSchemaIR`, keeping the family layer target-agnostic.
+ * between Postgres, MySQL, SQLite, …). The target provides its renderer when calling
+ * `contractToSchemaIR`, keeping the family layer target-agnostic. `dataType` is the id of the
+ * data type the column's codec represents.
  */
-export type DefaultRenderer = (def: ColumnDefault, column: StorageColumn) => string;
+export type DefaultRenderer = (
+  def: ColumnDefault,
+  column: StorageColumn,
+  dataType: string,
+) => string;
 
 /**
- * Target-supplied hook (same IoC seam as `NativeTypeExpander`/`DefaultRenderer`)
+ * Target-supplied hook (same IoC seam as `DefaultRenderer`)
  * that normalizes a contract-declared `ColumnDefault` into the resolved shape
  * the target's introspection parses from the live database — e.g. a
  * sql`'{}'::jsonb` raw default and the literal Postgres reports
@@ -70,45 +65,19 @@ export type DefaultRenderer = (def: ColumnDefault, column: StorageColumn) => str
  */
 export type DefaultResolver = (def: ColumnDefault, resolvedNativeType: string) => ColumnDefault;
 
-/**
- * Target-supplied callback that resolves a contract namespace to the live
- * database schema its enums are stored under.
- *
- * The projected enum annotations are nested by schema
- * (`storageTypes[schema][nativeType]`) so two namespaces holding an enum with
- * the same native type resolve to distinct live-database types. Mapping a
- * namespace to its DDL schema is target-specific (Postgres schemas;
- * SQLite/MySQL differ), so the target injects it here rather than the family
- * importing a concrete `ddlSchemaName`. This keeps the family layer
- * target-agnostic while the projection nests under the same schema the
- * target's read side (`readExistingEnumValues`) looks up.
- */
-export type EnumNamespaceSchemaResolver = (storage: SqlStorage, namespaceId: string) => string;
-
 function convertColumn(
   name: string,
   column: StorageColumn,
   storageTypes: ResolvedStorageTypes,
-  expandNativeType: NativeTypeExpander | undefined,
+  types: SqlTypeLookups,
   renderDefault: DefaultRenderer | undefined,
   resolveDefault: DefaultResolver | undefined,
 ): SqlColumnIRInput {
-  // Resolve `typeRef` so columns that delegate their `nativeType`/`codecId`/
-  // `typeParams` to a named `storage.types` entry expand the same way as
-  // columns that inline those fields. Without this resolution, a
-  // `typeRef`-based column like `post.embedding → Embedding1536` would
-  // render as the bare `"vector"` (dropping the `length` parameter), while
-  // `verify-sql-schema.ts`'s `renderExpectedNativeType` resolves the
-  // typeRef and produces `"vector(1536)"` — making diffs on the same
-  // contract falsely report a `type_mismatch`.
+  // A `typeRef` column is written exactly as a column of the referenced
+  // `storage.types` entry's codec and parameters.
   const resolved = resolveColumnTypeMetadata(column, storageTypes);
-  const baseNativeType = expandNativeType
-    ? expandNativeType({
-        nativeType: resolved.nativeType,
-        codecId: resolved.codecId,
-        ...ifDefined('typeParams', resolved.typeParams),
-      })
-    : resolved.nativeType;
+  const dataType = sqlDataTypeOfCodec(resolved.codecId, types);
+  const baseNativeType = schemaTypeText(dataType, resolved.typeParams);
   // `many: true` columns keep `nativeType` as the bare element type (matching
   // how the introspected/"actual" side reports it — see the postgres control
   // adapter's own `many`-stripping normalization) and carry the array-ness in
@@ -134,7 +103,9 @@ function convertColumn(
     ...ifDefined('many', column.many),
     ...ifDefined(
       'default',
-      column.default != null && renderDefault ? renderDefault(column.default, column) : undefined,
+      column.default != null && renderDefault
+        ? renderDefault(column.default, column, dataType.id)
+        : undefined,
     ),
     // Contract-derived columns are resolved by construction: the computed
     // full native type doubles as the resolved value. The contract's raw
@@ -152,8 +123,17 @@ function convertColumn(
     // reading a derivation-precomputed render payload.
     codecRef: buildColumnCodecRef(resolved, column.many),
     codecBaseNativeType: resolved.nativeType,
-    ...(column.typeRef !== undefined ? { codecNamedType: true } : {}),
   };
+}
+
+/**
+ * The column's type as the database reports it: the written name with its parameters, or for a
+ * type that claims a kind (an enum), its type name as stored.
+ */
+function schemaTypeText(type: SqlDataType, typeParams: Record<string, unknown> | undefined): string {
+  return type.sql.claimsKind === undefined
+    ? renderSqlTypeName(type, dataTypeParams(type, typeParams))
+    : storedSqlTypeName(type, typeParams);
 }
 
 /**
@@ -329,7 +309,7 @@ function convertTable(
   name: string,
   table: StorageTable,
   storageTypes: ResolvedStorageTypes,
-  expandNativeType: NativeTypeExpander | undefined,
+  types: SqlTypeLookups,
   renderDefault: DefaultRenderer | undefined,
   resolveDefault: DefaultResolver | undefined,
   storage: SqlStorage,
@@ -340,7 +320,7 @@ function convertTable(
       colName,
       colDef,
       storageTypes,
-      expandNativeType,
+      types,
       renderDefault,
       resolveDefault,
     );
@@ -436,30 +416,27 @@ export function detectDestructiveChanges(
 
 export interface ContractToSchemaIROptions {
   readonly annotationNamespace: string;
-  readonly expandNativeType?: NativeTypeExpander;
+  /** The stack's data types; each column's type is written from the data type its codec represents. */
+  readonly dataTypes: DataTypeLookup;
+  readonly codecLookup: CodecLookup;
   readonly renderDefault?: DefaultRenderer;
   readonly resolveDefault?: DefaultResolver;
-  /**
-   * Target-supplied resolver mapping a namespace to the live database schema
-   * its enums are stored under. When provided (Postgres), namespace-scoped
-   * enums are nested by that schema in `enumTypes` so the projection matches
-   * the target's `readExistingEnumValues` lookup. Targets without
-   * schema-scoped enum storage (SQLite) omit it; enums are absent there.
-   */
-  readonly resolveEnumNamespaceSchema?: EnumNamespaceSchemaResolver;
+}
+
+function typeLookupsOf(options: ContractToSchemaIROptions): SqlTypeLookups {
+  return { codecLookup: options.codecLookup, dataTypeLookup: options.dataTypes };
 }
 
 /**
  * Converts a `Contract` to `SqlSchemaIR`.
  *
- * Reads `contract.storage` for tables and `contract.storage.types` for type
- * annotations. Storage-type annotations are written under
- * `options.annotationNamespace`.
+ * Reads `contract.storage` for tables, and `contract.storage.types` for the
+ * types `typeRef` columns name.
  *
  * Drops codec metadata (`codecId`, `typeRef`) since the schema IR only represents
- * structural information. When `expandNativeType` is provided, parameterized types
- * are expanded (e.g. `character` + `{ length: 36 }` → `character(36)`) so the
- * resulting IR compares correctly against the "to" contract during planning.
+ * structural information. Each column's type is written from the data type its codec
+ * represents, with its parameters (e.g. `character` + `{ length: 36 }` → `character(36)`),
+ * so the resulting IR compares correctly against the "to" contract during planning.
  *
  * Returns an empty schema IR when `contract` is `null` (new project).
  */
@@ -505,7 +482,7 @@ export function contractNamespaceToSchemaIR(
       tableName,
       tableDefRaw,
       storageTypes,
-      options.expandNativeType,
+      typeLookupsOf(options),
       options.renderDefault,
       options.resolveDefault,
       storage,
@@ -556,7 +533,7 @@ export function contractToSchemaIR(
         tableName,
         tableDef,
         storageTypes,
-        options.expandNativeType,
+        typeLookupsOf(options),
         options.renderDefault,
         options.resolveDefault,
         storage,
@@ -564,34 +541,5 @@ export function contractToSchemaIR(
     }
   }
 
-  const annotations = deriveAnnotations(
-    storage,
-    options.annotationNamespace,
-    options.resolveEnumNamespaceSchema,
-  );
-
-  return new SqlSchemaIR({
-    tables,
-    ...ifDefined('annotations', annotations),
-  });
-}
-
-function deriveAnnotations(
-  storage: SqlStorage,
-  annotationNamespace: string,
-  _resolveEnumNamespaceSchema: EnumNamespaceSchemaResolver | undefined,
-): SqlAnnotations | undefined {
-  const storageTypes: Record<string, StorageTypeInstance> = {};
-
-  for (const typeInstance of Object.values(storage.types ?? {})) {
-    if (isStorageTypeInstance(typeInstance)) {
-      storageTypes[typeInstance.nativeType] = typeInstance;
-    }
-  }
-
-  const envelope = {
-    ...(Object.keys(storageTypes).length > 0 ? { storageTypes } : {}),
-  };
-  if (Object.keys(envelope).length === 0) return undefined;
-  return { [annotationNamespace]: envelope };
+  return new SqlSchemaIR({ tables });
 }

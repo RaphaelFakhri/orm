@@ -64,7 +64,6 @@ class GenericVectorDescriptor extends CodecDescriptorImpl<VectorParams> {
   override readonly dataType = dataTypeId('demo/fixture');
   override readonly codecId = 'demo/vector@1' as const;
   override readonly traits = ['equality'] as const;
-  override readonly targetTypes = ['vector'] as const;
   override readonly paramsSchema = vectorParamsSchema;
   readonly extensionOnly = 'wrapped-only' as const;
 
@@ -83,7 +82,6 @@ class DirectVectorDescriptor extends SqliteCodecDescriptor<VectorParams> {
   override readonly dataType = dataTypeId('demo/fixture');
   override readonly codecId = 'demo/direct-vector@1' as const;
   override readonly traits = ['equality'] as const;
-  override readonly targetTypes = ['vector'] as const;
   override readonly paramsSchema = vectorParamsSchema;
 
   protected override jsonProjection(
@@ -162,7 +160,6 @@ class MissingJsonProjection extends SqliteCodecDescriptor<VectorParams> {
   override readonly dataType = dataTypeId('demo/fixture');
   override readonly codecId = 'demo/missing-json@1' as const;
   override readonly traits: readonly CodecTrait[] = [];
-  override readonly targetTypes: readonly string[] = [];
   override readonly paramsSchema = vectorParamsSchema;
   override factory(): (ctx: CodecInstanceContext) => VectorCodec<number> {
     return () => new VectorCodec(this, 1);

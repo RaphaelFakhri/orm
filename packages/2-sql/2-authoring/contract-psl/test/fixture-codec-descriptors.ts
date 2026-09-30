@@ -193,7 +193,6 @@ function fixtureDescriptor(codecId: string): AnyCodecDescriptor | undefined {
     codecId,
     dataType,
     traits: codec.traits,
-    targetTypes: targetTypesByCodecId[codecId] ?? [],
     paramsSchema,
     isParameterized: paramsSchema !== undefined,
     factory: (params: unknown) => () => ({
@@ -220,7 +219,6 @@ export const postgresCodecLookup: CodecLookup = {
   // A representative instance, built with no params — the same shape the control stack builds.
   get: (id: string) => fixtureDescriptor(id)?.factory({})({ name: id }),
   descriptorFor: fixtureDescriptor,
-  targetTypesFor: (id: string) => targetTypesByCodecId[id],
   renderOutputTypeFor: () => undefined,
 };
 

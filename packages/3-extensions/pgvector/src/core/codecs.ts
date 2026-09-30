@@ -4,8 +4,8 @@
  * Mirrors the patterns in `postgres/codecs-class.ts` and `sqlite/codecs-class.ts` for the single `pg/vector@1` codec. Three artifacts:
  *
  * 1. `PgVectorCodec` extends {@link CodecImpl} with the runtime encode/decode/encodeJson/decodeJson conversions inline. Conversions are simple enough (PostgreSQL `[1,2,3]` text format) that no shared helper module is warranted; the class body is the source of truth.
- * 2. `PgVectorDescriptor` extends {@link PostgresCodecDescriptor} with the codec id, traits, target types, params schema (the `pgvector/vector` data type's: an integer `length` from 1 to `VECTOR_MAX_DIM`), the postgres native type `vector`, explicit target behavior, and the emit-path `renderOutputType` producing `Vector<${length}>`.
- * 3. `pgVectorColumn(length)` per-codec column helper invoking `descriptor.factory({ length })` directly + passing the bare `nativeType: 'vector'`. The family-layer {@link expandNativeType} hook renders the parameterized form (`vector(1536)`) at emit/verify time from `nativeType` + `typeParams`.
+ * 2. `PgVectorDescriptor` extends {@link PostgresCodecDescriptor} with the codec id, traits, params schema (the `pgvector/vector` data type's: an integer `length` from 1 to `VECTOR_MAX_DIM`), explicit target behavior, and the emit-path `renderOutputType` producing `Vector<${length}>`.
+ * 3. `pgVectorColumn(length)` per-codec column helper invoking `descriptor.factory({ length })` directly. The `pgvector/vector` data type writes the column type (`vector(1536)`) from `typeParams`.
  *
  * `length` threads into the runtime codec via the constructor so encode/decode/encodeJson/decodeJson enforce the declared dimension at every ingress path. Without this, `vector(3)` and `vector(1536)` would produce codecs with identical behaviour and a dimension-mismatched value would round-trip undetected.
  */
@@ -34,8 +34,6 @@ import { pgVectorError } from './errors';
 type VectorConversionCode = 'RUNTIME.ENCODE_FAILED' | 'RUNTIME.DECODE_FAILED';
 
 type VectorParams = { readonly length: number };
-
-const PG_VECTOR_NATIVE_TYPE = 'vector';
 
 function parseVector(value: string): number[] {
   if (!value.startsWith('[') || !value.endsWith(']')) {
@@ -159,16 +157,12 @@ const jsonArrayFromVectorElements = (expression: ProjectionExpr): ProjectionExpr
   ]);
 
 export class PgVectorDescriptor extends PostgresCodecDescriptor<VectorParams> {
-  protected override nativeType(): string {
-    return PG_VECTOR_NATIVE_TYPE;
-  }
   protected override jsonProjection(expression: ProjectionExpr): ProjectionExpr {
     return jsonArrayFromVectorElements(expression);
   }
   override readonly dataType = pgvectorVector.id;
   override readonly codecId = VECTOR_CODEC_ID;
   override readonly traits = ['equality'] as const;
-  override readonly targetTypes = ['vector'] as const;
   override readonly paramsSchema: StandardSchemaV1<VectorParams> = pgvectorVectorParams;
   override renderOutputType(params: VectorParams): string {
     return `Vector<${params.length}>`;
@@ -182,8 +176,6 @@ export const pgVectorDescriptor = new PgVectorDescriptor();
 
 /**
  * Per-codec column helper for `pg/vector@1`. Generic over `N extends number` so the column site preserves the dimension literal in `typeParams` (e.g. `pgVectorColumn(1536)` packs `typeParams: { length: 1536 }`).
- *
- * Passes the bare `nativeType: 'vector'`; the family-layer `expandNativeType` hook renders the parameterized form (`vector(1536)`) at emit/verify time from `nativeType` + `typeParams`.
  */
 export const pgVectorColumn = <N extends number>(length: N) =>
   column(pgVectorDescriptor.factory({ length }), pgVectorDescriptor.codecId, { length }, 'vector');

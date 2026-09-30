@@ -84,7 +84,6 @@ class GenericVectorDescriptor extends CodecDescriptorImpl<VectorParams> {
   override readonly dataType = dataTypeId('demo/fixture');
   override readonly codecId = 'demo/vector@1' as const;
   override readonly traits = ['equality'] as const;
-  override readonly targetTypes = ['vector'] as const;
   override readonly paramsSchema = vectorParamsSchema;
   readonly extensionOnly = 'wrapped-only' as const;
 
@@ -115,7 +114,6 @@ class DirectVectorDescriptor extends SqliteCodecDescriptor<VectorParams> {
   override readonly dataType = dataTypeId('demo/fixture');
   override readonly codecId = 'demo/direct-vector@1' as const;
   override readonly traits = ['equality'] as const;
-  override readonly targetTypes = ['vector'] as const;
   override readonly paramsSchema = vectorParamsSchema;
   readonly jsonProjectionParams: VectorParams[] = [];
 
@@ -255,7 +253,6 @@ describe('SQLite codec descriptor registry', () => {
       descriptorKind: descriptor.descriptorKind,
       codecId: descriptor.codecId,
       traits: descriptor.traits,
-      targetTypes: descriptor.targetTypes,
       paramsSchema: descriptor.paramsSchema,
       isParameterized: descriptor.isParameterized,
       factory: descriptor.factory.bind(descriptor),
@@ -277,7 +274,6 @@ describe('SQLite codec descriptor registry', () => {
       descriptorKind: descriptor.descriptorKind,
       codecId: descriptor.codecId,
       traits: descriptor.traits,
-      targetTypes: descriptor.targetTypes,
       paramsSchema: descriptor.paramsSchema,
       isParameterized: descriptor.isParameterized,
       factory: descriptor.factory.bind(descriptor),

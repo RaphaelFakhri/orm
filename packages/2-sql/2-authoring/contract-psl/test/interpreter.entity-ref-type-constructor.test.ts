@@ -124,7 +124,6 @@ function makeCodecDescriptor(options: {
     codecId: options.codecId,
     dataType: dataTypeId(options.dataType ?? 'demo/fixture'),
     traits: ['equality'],
-    targetTypes: ['text'],
     paramsSchema: {
       '~standard': { version: 1, vendor: 'test', validate: (input: unknown) => ({ value: input }) },
     },
@@ -172,7 +171,6 @@ const codecLookup: CodecLookup = testSqlTypeLookups(
   {},
   {
     get: () => undefined,
-    targetTypesFor: () => undefined,
     renderOutputTypeFor: () => undefined,
     descriptorFor: (id) => codecsById.get(id),
   },

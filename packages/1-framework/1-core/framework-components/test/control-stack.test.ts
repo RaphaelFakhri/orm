@@ -37,7 +37,6 @@ function registeredCodec(codecId: string): AnyCodecDescriptor {
     codecId,
     dataType: stubDataType.id,
     traits: [],
-    targetTypes: [],
     paramsSchema: undefined,
     isParameterized: false,
     factory: () => () =>
@@ -1183,7 +1182,6 @@ describe('extractCodecLookup', () => {
     codecId: id,
     dataType: dataTypeId('demo/stub'),
     traits: [],
-    targetTypes: [],
     paramsSchema: {
       '~standard': {
         version: 1,

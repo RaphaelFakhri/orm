@@ -1,4 +1,9 @@
-import type { CodecControlHooks } from '@internal/family-sql/control';
+import {
+  dataTypeParams,
+  renderSqlTypeName,
+  type SqlTypeLookups,
+  sqlDataTypeOfCodec,
+} from '@internal/sql-contract/data-type';
 import type { StorageColumn, StorageTypeInstance } from '@internal/sql-contract/types';
 import { postgresCreateNamespace } from '../postgres-schema';
 import { quoteIdentifier } from '../sql-utils';
@@ -145,20 +150,15 @@ function formatUserDefinedTypeName(identifier: string): string {
 
 export function buildExpectedFormatType(
   column: StorageColumn,
-  codecHooks: ReadonlyMap<string, CodecControlHooks>,
+  types: SqlTypeLookups,
   storageTypes: Record<string, StorageTypeInstance> = {},
 ): string {
   const resolved = resolveColumnTypeMetadata(column, storageTypes);
 
-  if (resolved.typeParams && resolved.codecId) {
-    const hooks = codecHooks.get(resolved.codecId);
-    if (hooks?.expandNativeType) {
-      return hooks.expandNativeType({
-        nativeType: resolved.nativeType,
-        codecId: resolved.codecId,
-        typeParams: resolved.typeParams,
-      });
-    }
+  const dataType = sqlDataTypeOfCodec(resolved.codecId, types);
+  const params = dataTypeParams(dataType, resolved.typeParams);
+  if (dataType.sql.claimsKind === undefined && Object.keys(params).length > 0) {
+    return renderSqlTypeName(dataType, params);
   }
 
   if (column.typeRef) {

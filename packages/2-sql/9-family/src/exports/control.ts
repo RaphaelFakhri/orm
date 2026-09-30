@@ -24,8 +24,6 @@ export type {
   ContractToSchemaIROptions,
   DefaultRenderer,
   DefaultResolver,
-  EnumNamespaceSchemaResolver,
-  NativeTypeExpander,
 } from '../core/migrations/contract-to-schema-ir';
 // Contract → SchemaIR conversion for offline migration planning
 export {
@@ -41,7 +39,6 @@ export {
 } from '../core/migrations/control-policy';
 export type { PlanFieldEventOperationsOptions } from '../core/migrations/field-event-planner';
 export { planFieldEventOperations } from '../core/migrations/field-event-planner';
-export { buildNativeTypeExpander } from '../core/migrations/native-type-expander';
 export {
   createMigrationPlan,
   plannerFailure,
@@ -50,6 +47,8 @@ export {
   runnerSuccess,
 } from '../core/migrations/plan-helpers';
 export { INIT_ADDITIVE_POLICY } from '../core/migrations/policies';
+export type { SqlComponentTypes } from '../core/migrations/sql-type-lookups';
+export { sqlComponentTypes } from '../core/migrations/sql-type-lookups';
 export type {
   SqlSchemaDiffFn,
   SqlSchemaDiffInput,
@@ -63,7 +62,6 @@ export {
 export type {
   CodecControlHooks,
   CreateSqlMigrationPlanOptions,
-  ExpandNativeTypeInput,
   FieldEvent,
   FieldEventContext,
   ResolveIdentityValueInput,

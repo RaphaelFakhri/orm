@@ -698,7 +698,6 @@ export function extractCodecLookup(
 ): CodecRegistry {
   const byId = new Map<string, Codec>();
   const descriptorsById = new Map<string, AnyCodecDescriptor>();
-  const targetTypesById = new Map<string, readonly string[]>();
   const renderersById = new Map<string, (params: Record<string, unknown>) => string | undefined>();
   const inputRenderersById = new Map<
     string,
@@ -712,7 +711,7 @@ export function extractCodecLookup(
   for (const descriptor of descriptors) {
     const codecTypes = descriptor.types?.codecTypes;
     const descriptorId = descriptor.id;
-    // Descriptor-side metadata is the single source of truth for `targetTypes` / `renderOutputType`. A component contributes its codecs by listing `codecDescriptors` on `types.codecTypes`; each codecId has exactly one contributor across the stack.
+    // Descriptor-side metadata is the single source of truth for `renderOutputType`. A component contributes its codecs by listing `codecDescriptors` on `types.codecTypes`; each codecId has exactly one contributor across the stack.
     for (const codecDescriptor of codecTypes?.codecDescriptors ?? []) {
       assertUniqueCodecOwner({
         codecId: codecDescriptor.codecId,
@@ -723,9 +722,6 @@ export function extractCodecLookup(
       });
       owners.set(codecDescriptor.codecId, descriptorId);
       descriptorsById.set(codecDescriptor.codecId, codecDescriptor);
-      if (Array.isArray(codecDescriptor.targetTypes)) {
-        targetTypesById.set(codecDescriptor.codecId, codecDescriptor.targetTypes);
-      }
       if (typeof codecDescriptor.renderOutputType === 'function') {
         renderersById.set(codecDescriptor.codecId, codecDescriptor.renderOutputType);
       }
@@ -770,7 +766,6 @@ export function extractCodecLookup(
       return materializeCodec(d, ref, { name: `<ref:${ref.codecId}>` });
     },
     forColumn: () => undefined,
-    targetTypesFor: (id) => targetTypesById.get(id),
     renderOutputTypeFor: (id, params) => renderersById.get(id)?.(params),
     renderInputTypeFor: (id, params) => inputRenderersById.get(id)?.(params),
     renderValueLiteralFor: (id, value, side) => valueLiteralRenderersById.get(id)?.(value, side),

@@ -15,7 +15,7 @@ import { InternalError } from '@internal/utils/internal-error';
 import type { StandardSchemaV1 } from '@standard-schema/spec';
 import type { Type } from 'arktype';
 import type { CodecLookup } from './codec-types';
-import type { DataTypeId } from './data-type';
+import type { DataTypeId, DataTypeLookup } from './data-type';
 import type {
   DefaultFunctionLoweringContext,
   LoweredDefaultResult,
@@ -268,6 +268,8 @@ export interface AuthoringEntityContext {
   readonly target: string;
   /** Codec registry available to factories that need to validate or decode values. */
   readonly codecLookup?: CodecLookup;
+  /** The stack's data types, for factories that read the data type a codec represents. */
+  readonly dataTypes?: DataTypeLookup;
   /** Source file identifier threaded into diagnostics emitted by the factory. */
   readonly sourceId?: string;
   /** Push channel for authoring-time diagnostics emitted by the factory. */

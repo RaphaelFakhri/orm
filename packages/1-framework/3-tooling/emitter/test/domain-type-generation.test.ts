@@ -43,7 +43,6 @@ function literalCodecLookup(): CodecLookup {
   };
   return {
     get: () => undefined,
-    targetTypesFor: () => undefined,
     renderOutputTypeFor: () => undefined,
     renderValueLiteralFor: (_id, value) => renderPrimitiveLiteral(value),
   };
@@ -940,7 +939,6 @@ type CodecStub = Codec & {
 
 function stubCodec(overrides: Partial<CodecStub> & { id: string }): CodecStub {
   return {
-    targetTypes: [],
     decode: (w: unknown) => w,
     encodeJson: (v: unknown) => v,
     decodeJson: (j: unknown) => j,
@@ -951,7 +949,6 @@ function stubCodec(overrides: Partial<CodecStub> & { id: string }): CodecStub {
 function stubCodecLookup(codecs: Record<string, CodecStub>): CodecLookup {
   return {
     get: (id) => codecs[id],
-    targetTypesFor: (id) => codecs[id]?.targetTypes,
     renderOutputTypeFor: (id, params) => codecs[id]?.renderOutputType?.(params),
   };
 }
@@ -1176,7 +1173,6 @@ describe('resolveFieldType', () => {
     const union = "'a' | 'b'";
     const lookup: CodecLookup = {
       get: () => undefined,
-      targetTypesFor: () => undefined,
       renderOutputTypeFor: () => union,
       renderInputTypeFor: () => union,
     };
@@ -1192,7 +1188,6 @@ describe('resolveFieldType', () => {
   it('falls back to the codec input type when the lookup renders no custom input', () => {
     const lookup: CodecLookup = {
       get: () => undefined,
-      targetTypesFor: () => undefined,
       renderOutputTypeFor: () => '"a" | "b"',
     };
     const field: ContractField = {
@@ -1451,7 +1446,6 @@ describe('renderValueSetType', () => {
   it('returns undefined when the lookup has no renderValueLiteralFor', () => {
     const lookup: CodecLookup = {
       get: () => undefined,
-      targetTypesFor: () => undefined,
       renderOutputTypeFor: () => undefined,
     };
     expect(renderValueSetType(['low'], 'pg/text@1', 'output', lookup)).toBeUndefined();

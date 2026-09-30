@@ -5,6 +5,7 @@ import { isStructuredError } from '@internal/utils/structured-error';
 import { applicationDomainOf } from '@repo/test-utils';
 import { describe, expect, it } from 'vitest';
 import { createTestSqlNamespace } from '../../1-core/contract/test/test-support';
+import { testTypeLookups } from '../../1-core/contract/test/test-type-lookups';
 import { contractToSchemaIR } from '../src/core/migrations/contract-to-schema-ir';
 
 function captureError(fn: () => void): unknown {
@@ -34,6 +35,11 @@ function table(columns: Record<string, StorageColumn>): StorageTable {
   return { columns, uniques: [], indexes: [], foreignKeys: [] };
 }
 
+const types = {
+  dataTypes: testTypeLookups.dataTypeLookup,
+  codecLookup: testTypeLookups.codecLookup,
+};
+
 const intColumn: StorageColumn = { codecId: 'pg/int4@1', nativeType: 'integer', nullable: false };
 
 describe('contract-to-schema-ir structured error codes', () => {
@@ -51,7 +57,7 @@ describe('contract-to-schema-ir structured error codes', () => {
     });
 
     const error = captureError(() =>
-      contractToSchemaIR(wrap(storage), { annotationNamespace: 'pg' }),
+      contractToSchemaIR(wrap(storage), { annotationNamespace: 'pg', ...types }),
     );
     expect(isStructuredError(error)).toBe(true);
     expect(error).toMatchObject({
@@ -76,7 +82,7 @@ describe('contract-to-schema-ir structured error codes', () => {
     });
 
     const error = captureError(() =>
-      contractToSchemaIR(wrap(storage), { annotationNamespace: 'pg' }),
+      contractToSchemaIR(wrap(storage), { annotationNamespace: 'pg', ...types }),
     );
     expect(isStructuredError(error)).toBe(true);
     expect(error).toMatchObject({
@@ -86,7 +92,7 @@ describe('contract-to-schema-ir structured error codes', () => {
   });
 
   it('raises CONTRACT.PACK_CONTRIBUTION_INVALID for an empty annotationNamespace', () => {
-    const error = captureError(() => contractToSchemaIR(null, { annotationNamespace: '' }));
+    const error = captureError(() => contractToSchemaIR(null, { annotationNamespace: '', ...types }));
     expect(isStructuredError(error)).toBe(true);
     expect(error).toMatchObject({
       code: 'CONTRACT.PACK_CONTRIBUTION_INVALID',

@@ -206,7 +206,6 @@ describe('shared contract definition lowering', () => {
           decodeJson: (json: unknown) => new Date(json as string),
         };
       },
-      targetTypesFor: (id) => (id === 'pg/timestamptz-temporal@1' ? ['timestamptz'] : undefined),
       renderOutputTypeFor: () => undefined,
     };
 
@@ -252,7 +251,6 @@ describe('shared contract definition lowering', () => {
     const descriptor = {
       codecId: 'test/vector@1',
       traits: ['equality'],
-      targetTypes: ['vector'],
       isParameterized: true,
       paramsSchema: {
         '~standard': { version: 1, vendor: 'test', validate: (value: unknown) => ({ value }) },
@@ -277,7 +275,6 @@ describe('shared contract definition lowering', () => {
       get: (id) =>
         id === 'test/vector@1' ? descriptor.factory({ length: 0 })({ name: id }) : undefined,
       descriptorFor: (id) => (id === 'test/vector@1' ? descriptor : undefined),
-      targetTypesFor: (id) => (id === 'test/vector@1' ? ['vector'] : undefined),
       renderOutputTypeFor: () => undefined,
     };
 

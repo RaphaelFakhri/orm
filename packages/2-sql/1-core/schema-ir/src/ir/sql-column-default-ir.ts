@@ -34,8 +34,6 @@ export interface SqlColumnDefaultIRInput {
   readonly codecRef?: CodecRef;
   /** See {@link import('./sql-column-ir').SqlColumnIRInput.codecBaseNativeType}. */
   readonly codecBaseNativeType?: string;
-  /** See {@link import('./sql-column-ir').SqlColumnIRInput.codecNamedType}. */
-  readonly codecNamedType?: boolean;
 }
 
 /**
@@ -65,8 +63,6 @@ export class SqlColumnDefaultIR extends SqlSchemaIRNode implements DiffableNode 
   declare readonly codecRef?: CodecRef;
   /** See {@link SqlColumnDefaultIRInput.codecBaseNativeType}. Non-enumerable, same reason as {@link many}. */
   declare readonly codecBaseNativeType?: string;
-  /** See {@link SqlColumnDefaultIRInput.codecNamedType}. Non-enumerable, same reason as {@link many}. */
-  declare readonly codecNamedType?: boolean;
 
   constructor(input: SqlColumnDefaultIRInput) {
     super();
@@ -77,7 +73,6 @@ export class SqlColumnDefaultIR extends SqlSchemaIRNode implements DiffableNode 
     defineNonEnumerable(this, 'many', input.many);
     defineNonEnumerable(this, 'codecRef', input.codecRef);
     defineNonEnumerable(this, 'codecBaseNativeType', input.codecBaseNativeType);
-    defineNonEnumerable(this, 'codecNamedType', input.codecNamedType);
     freezeNode(this);
   }
 

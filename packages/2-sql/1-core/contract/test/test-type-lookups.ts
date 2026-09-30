@@ -139,7 +139,6 @@ export function testSqlTypeLookups(
       codecId,
       dataType: dataType(),
       traits: [],
-      targetTypes: [],
       paramsSchema: acceptAnything,
       isParameterized: true,
       factory: () => () =>
@@ -152,7 +151,6 @@ export function testSqlTypeLookups(
 
   return {
     codecLookup: {
-      targetTypesFor: () => undefined,
       renderOutputTypeFor: () => undefined,
       ...codecs,
       get: codecOf,

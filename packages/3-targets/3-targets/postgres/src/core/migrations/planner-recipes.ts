@@ -1,5 +1,6 @@
-import type { CodecControlHooks, SqlMigrationPlanOperation } from '@internal/family-sql/control';
+import type { SqlMigrationPlanOperation } from '@internal/family-sql/control';
 import type { ExecuteRequestLowerer } from '@internal/family-sql/control-adapter';
+import type { SqlTypeLookups } from '@internal/sql-contract/data-type';
 import type { StorageColumn, StorageTypeInstance } from '@internal/sql-contract/types';
 import { FunctionColumnDefault } from '@internal/sql-relational-core/ast';
 import { col } from '@internal/sql-relational-core/contract-free';
@@ -39,7 +40,7 @@ export async function buildAddNotNullColumnWithTemporaryDefaultOperation(options
   readonly tableName: string;
   readonly columnName: string;
   readonly column: StorageColumn;
-  readonly codecHooks: Map<string, CodecControlHooks>;
+  readonly types: SqlTypeLookups;
   readonly storageTypes: Record<string, StorageTypeInstance>;
   readonly temporaryDefault: string;
   readonly lowerer: ExecuteRequestLowerer;
@@ -49,7 +50,7 @@ export async function buildAddNotNullColumnWithTemporaryDefaultOperation(options
     tableName,
     columnName,
     column,
-    codecHooks,
+    types,
     storageTypes,
     temporaryDefault,
     lowerer,
@@ -59,7 +60,7 @@ export async function buildAddNotNullColumnWithTemporaryDefaultOperation(options
   // temporary backfill value is the only default. It is a pre-rendered SQL
   // fragment (e.g. `''`, `0`, `'{}'::jsonb`), carried verbatim as a
   // `FunctionColumnDefault` so the adapter emits it as a `DEFAULT (...)` clause.
-  const ddlColumn = col(columnName, buildColumnTypeSql(column, codecHooks, storageTypes), {
+  const ddlColumn = col(columnName, buildColumnTypeSql(column, types, storageTypes), {
     notNull: true,
     default: new FunctionColumnDefault(temporaryDefault),
   });

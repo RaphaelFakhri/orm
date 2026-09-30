@@ -1,30 +1,23 @@
-import type { CodecControlHooks } from '@internal/family-sql/control';
 import { checkSqlDefaultBody } from '@internal/family-sql/control';
+import {
+  dataTypeParams,
+  renderSqlTypeName,
+  type SqlTypeLookups,
+  sqlDataTypeOfCodec,
+} from '@internal/sql-contract/data-type';
 import type { StorageColumn, StorageTypeInstance } from '@internal/sql-contract/types';
-import { ifDefined } from '@internal/utils/defined';
-import { isPgEnumParams } from '../codecs';
+import { pgInt2, pgInt4, pgInt8, pgJson, pgJsonb } from '../data-types';
 import { postgresError } from '../errors';
-import { escapeLiteral, quoteIdentifier, quoteQualifiedName } from '../sql-utils';
+import { escapeLiteral, quoteIdentifier } from '../sql-utils';
 import type { PostgresColumnDefault } from '../types';
-import { resolveColumnTypeMetadata } from './planner-type-resolution';
 
-/**
- * Pattern for safe PostgreSQL type names.
- * Allows letters, digits, underscores, spaces (for "double precision", "character varying"),
- * and trailing [] for array types.
- */
-const SAFE_NATIVE_TYPE_PATTERN = /^[a-zA-Z][a-zA-Z0-9_ ]*(\[\])?$/;
+const SERIAL_TYPES: ReadonlyMap<string, string> = new Map([
+  [pgInt4.id, 'SERIAL'],
+  [pgInt8.id, 'BIGSERIAL'],
+  [pgInt2.id, 'SMALLSERIAL'],
+]);
 
-function assertSafeNativeType(nativeType: string): void {
-  if (!SAFE_NATIVE_TYPE_PATTERN.test(nativeType)) {
-    throw postgresError(
-      'CONTRACT.NATIVE_TYPE_INVALID',
-      `Unsafe native type name in contract: "${nativeType}". ` +
-        'Native type names must match /^[a-zA-Z][a-zA-Z0-9_ ]*(\\[\\])?$/',
-      { meta: { nativeType } },
-    );
-  }
-}
+const JSON_DATA_TYPES: ReadonlySet<string> = new Set([pgJson.id, pgJsonb.id]);
 
 /**
  * Sanity check against accidental SQL injection from malformed contract files.
@@ -43,106 +36,50 @@ function assertSafeDefaultExpression(expression: string): void {
 }
 
 /**
- * Renders the SQL type for a column in DDL context.
+ * Renders the SQL type for a column in DDL context: the name its codec's data type is written
+ * with, and its parameters. A `typeRef` column is written as a column of the referenced type.
  *
  * @param allowPseudoTypes - When true (default), autoincrement integer columns
  *   produce SERIAL/BIGSERIAL/SMALLSERIAL pseudo-types. Set to false for contexts
  *   like ALTER COLUMN TYPE where pseudo-types are invalid.
  */
 export function buildColumnTypeSql(
-  column: Pick<
-    StorageColumn,
-    'nativeType' | 'codecId' | 'many' | 'typeParams' | 'typeRef' | 'default'
-  >,
-  codecHooks: ReadonlyMap<string, CodecControlHooks>,
+  column: Pick<StorageColumn, 'codecId' | 'many' | 'typeParams' | 'typeRef' | 'default'>,
+  types: SqlTypeLookups,
   storageTypes: Record<string, StorageTypeInstance> = {},
   allowPseudoTypes = true,
 ): string {
-  const resolved = resolveColumnTypeMetadata(column, storageTypes);
+  const referenced = column.typeRef === undefined ? undefined : storageTypes[column.typeRef];
+  const resolved = referenced ?? column;
+  const dataType = sqlDataTypeOfCodec(resolved.codecId, types);
 
   if (allowPseudoTypes) {
     const columnDefault = column.default;
-    if (columnDefault?.kind === 'function' && columnDefault.expression === 'autoincrement()') {
-      if (resolved.nativeType === 'int4' || resolved.nativeType === 'integer') {
-        return 'SERIAL';
-      }
-      if (resolved.nativeType === 'int8' || resolved.nativeType === 'bigint') {
-        return 'BIGSERIAL';
-      }
-      if (resolved.nativeType === 'int2' || resolved.nativeType === 'smallint') {
-        return 'SMALLSERIAL';
-      }
+    const serial = SERIAL_TYPES.get(dataType.id);
+    if (
+      serial !== undefined &&
+      columnDefault?.kind === 'function' &&
+      columnDefault.expression === 'autoincrement()'
+    ) {
+      return serial;
     }
   }
 
-  // A column whose codec supplied a `typeParams.typeName` references a named
-  // database type (e.g. a native enum), not a parameterized builtin: render it
-  // as its quoted, schema-qualified type-name identifier. DDL-render only — the
-  // verify comparison value (`resolvedNativeType`) stays the bare name the
-  // family expander produces, matching introspection.
-  if (isPgEnumParams(resolved.typeParams)) {
-    const quoted = quoteQualifiedName(resolved.nativeType);
-    return column.many ? `${quoted}[]` : quoted;
-  }
-
-  const expanded = expandParameterizedTypeSql(resolved, codecHooks);
-  if (expanded !== null) {
-    return column.many ? `${expanded}[]` : expanded;
-  }
-
-  if (column.typeRef) {
-    const base = quoteQualifiedName(resolved.nativeType);
-    return column.many ? `${base}[]` : base;
-  }
-
-  assertSafeNativeType(resolved.nativeType);
-  return column.many ? `${resolved.nativeType}[]` : resolved.nativeType;
+  const typeSql = renderSqlTypeName(dataType, dataTypeParams(dataType, resolved.typeParams));
+  return column.many ? `${typeSql}[]` : typeSql;
 }
 
-function expandParameterizedTypeSql(
-  column: Pick<StorageColumn, 'nativeType' | 'codecId' | 'typeParams'>,
-  codecHooks: ReadonlyMap<string, CodecControlHooks>,
-): string | null {
-  if (!column.typeParams || Object.keys(column.typeParams).length === 0) {
-    return null;
-  }
-
-  if (!column.codecId) {
-    throw postgresError(
-      'CONTRACT.CODEC_DESCRIPTOR_MISSING',
-      `Column declares typeParams for nativeType "${column.nativeType}" but has no codecId. ` +
-        'Ensure the column is associated with a codec.',
-      { meta: { nativeType: column.nativeType } },
-    );
-  }
-
-  const hooks = codecHooks.get(column.codecId);
-  if (!hooks?.expandNativeType) {
-    if (hooks?.planTypeOperations) {
-      return null;
-    }
-    throw postgresError(
-      'CONTRACT.PACK_CONTRIBUTION_INVALID',
-      `Column declares typeParams for nativeType "${column.nativeType}" ` +
-        `but no expandNativeType hook is registered for codecId "${column.codecId}". ` +
-        'Ensure the extension providing this codec is included in extensions.',
-      { meta: { codecId: column.codecId, nativeType: column.nativeType } },
-    );
-  }
-
-  const expanded = hooks.expandNativeType({
-    nativeType: column.nativeType,
-    codecId: column.codecId,
-    ...ifDefined('typeParams', column.typeParams),
-  });
-
-  return expanded !== column.nativeType ? expanded : null;
+/** The column shape a literal default is rendered for: its type as SQL, and its data type. */
+export interface DefaultLiteralColumn {
+  readonly many?: boolean | undefined;
+  readonly nativeType: string;
+  readonly dataType?: string;
 }
 
 /** Autoincrement columns use SERIAL types, so this returns empty for them. */
 export function buildColumnDefaultSql(
   columnDefault: PostgresColumnDefault | undefined,
-  column?: Pick<StorageColumn, 'many' | 'nativeType'>,
+  column?: DefaultLiteralColumn,
 ): string {
   if (!columnDefault) {
     return '';
@@ -163,11 +100,8 @@ export function buildColumnDefaultSql(
   }
 }
 
-export function renderDefaultLiteral(
-  value: unknown,
-  column?: Pick<StorageColumn, 'many' | 'nativeType'>,
-): string {
-  const isJsonColumn = column?.nativeType === 'json' || column?.nativeType === 'jsonb';
+export function renderDefaultLiteral(value: unknown, column?: DefaultLiteralColumn): string {
+  const isJsonColumn = column?.dataType !== undefined && JSON_DATA_TYPES.has(column.dataType);
 
   if (column?.many && Array.isArray(value)) {
     return renderArrayLiteralDefault(value, column.nativeType);

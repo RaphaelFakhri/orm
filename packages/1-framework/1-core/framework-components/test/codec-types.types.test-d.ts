@@ -1,7 +1,8 @@
 import type { JsonValue } from '@internal/contract/types';
 import { expectTypeOf, test } from 'vitest';
 import type { Codec } from '../src/shared/codec';
-import type { CodecTrait } from '../src/shared/codec-types';
+import type { CodecDescriptorTemplate } from '../src/shared/codec-descriptor';
+import type { CodecLookup, CodecTrait } from '../src/shared/codec-types';
 
 test('encode is required and Promise-returning', () => {
   expectTypeOf<Codec>().toHaveProperty('encode');
@@ -33,7 +34,7 @@ test('decodeJson is required and synchronous', () => {
 });
 
 test('Codec instance carries only id + the four conversion methods (plus phantom)', () => {
-  // The runtime instance is narrowed to id + behavior (TML-2357); codec-id-keyed static metadata (`traits`, `targetTypes`, `renderOutputType`) lives on `CodecDescriptor` keyed by codecId. The `__codecTraits` slot is a type-only phantom carrier (always `undefined` at runtime) and double-underscored to signal that it is not part of the consumer-facing API surface.
+  // The runtime instance is narrowed to id + behavior (TML-2357); codec-id-keyed static metadata (`traits`, `renderOutputType`) lives on `CodecDescriptor` keyed by codecId. The `__codecTraits` slot is a type-only phantom carrier (always `undefined` at runtime) and double-underscored to signal that it is not part of the consumer-facing API surface.
   type CodecStringKeys = Extract<keyof Codec, string>;
   const expectedKeys = [
     'id',
@@ -47,10 +48,9 @@ test('Codec instance carries only id + the four conversion methods (plus phantom
   expectTypeOf<CodecStringKeys>().toEqualTypeOf<ExpectedKeys>();
 });
 
-test('Codec instance does not carry traits / targetTypes / meta / renderOutputType', () => {
+test('Codec instance does not carry traits / meta / renderOutputType', () => {
   type C = Codec;
   expectTypeOf<C>().not.toHaveProperty('traits');
-  expectTypeOf<C>().not.toHaveProperty('targetTypes');
   expectTypeOf<C>().not.toHaveProperty('meta');
   expectTypeOf<C>().not.toHaveProperty('renderOutputType');
 });
@@ -71,4 +71,9 @@ test('TInput drives both write input and read output (no asymmetric output)', ()
   expectTypeOf<ReturnType<WireSeparateFromInput['encode']>>().toExtend<Promise<number>>();
   expectTypeOf<Parameters<WireSeparateFromInput['decode']>[0]>().toEqualTypeOf<number>();
   expectTypeOf<ReturnType<WireSeparateFromInput['decode']>>().toExtend<Promise<string>>();
+});
+
+test('a codec descriptor names no database type; its data type does', () => {
+  expectTypeOf<CodecDescriptorTemplate>().not.toHaveProperty('targetTypes');
+  expectTypeOf<CodecLookup>().not.toHaveProperty('targetTypesFor');
 });

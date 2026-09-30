@@ -4,7 +4,15 @@ import type {
   AuthoringEntityContext,
   ParsedPslExtensionBlock,
 } from '@internal/framework-components/authoring';
-import type { Codec, CodecLookup } from '@internal/framework-components/codec';
+import type {
+  AnyCodecDescriptor,
+  Codec,
+  CodecLookup,
+  DataType,
+} from '@internal/framework-components/codec';
+import { createDataTypeLookup } from '@internal/framework-components/codec';
+import { sqlDataType } from '@internal/sql-contract/data-type';
+import { type } from 'arktype';
 import { describe, expect, it } from 'vitest';
 import { sqlFamilyEnumEntityDescriptor } from '../src/core/authoring-entity-types';
 
@@ -81,25 +89,46 @@ const foldingCodec: Codec = {
   },
 };
 
+const VECTOR_CODEC_ID = 'test/vector@1';
+const vectorCodec: Codec = { ...textCodec, id: VECTOR_CODEC_ID };
+
+const textType = sqlDataType('test/text', { texts: [{ text: 'text', written: true }] });
+const intType = sqlDataType('test/int', { texts: [{ text: 'int', written: true }] });
+const jsonType = sqlDataType('test/json', { texts: [{ text: 'json', written: true }] });
+const vectorType = sqlDataType('test/vector', {
+  params: type({ length: 'number.integer >= 1' }),
+  texts: [{ text: 'vector({length})', written: true }],
+});
+
+const dataTypeOfCodec: Readonly<Record<string, DataType>> = {
+  [TEXT_CODEC_ID]: textType,
+  [INT_CODEC_ID]: intType,
+  [JSON_CODEC_ID]: jsonType,
+  [FOLDING_CODEC_ID]: textType,
+  [VECTOR_CODEC_ID]: vectorType,
+};
+
 const testCodecLookup: CodecLookup = {
   get(id: string): Codec | undefined {
     if (id === TEXT_CODEC_ID) return textCodec;
     if (id === INT_CODEC_ID) return intCodec;
     if (id === JSON_CODEC_ID) return jsonCodec;
     if (id === FOLDING_CODEC_ID) return foldingCodec;
+    if (id === VECTOR_CODEC_ID) return vectorCodec;
     return undefined;
   },
-  targetTypesFor(id: string): readonly string[] | undefined {
-    if (id === TEXT_CODEC_ID) return ['text'];
-    if (id === INT_CODEC_ID) return ['int'];
-    if (id === JSON_CODEC_ID) return ['json'];
-    if (id === FOLDING_CODEC_ID) return ['text'];
-    return undefined;
+  descriptorFor(id: string): AnyCodecDescriptor | undefined {
+    const dataType = dataTypeOfCodec[id];
+    return dataType === undefined
+      ? undefined
+      : ({ codecId: id, dataType: dataType.id } as AnyCodecDescriptor);
   },
   renderOutputTypeFor: () => undefined,
 };
 
-function makeContext(diagnostics: unknown[]): AuthoringEntityContext {
+const testDataTypes = createDataTypeLookup([textType, intType, jsonType, vectorType]);
+
+function makeContext(diagnostics: unknown[], withDataTypes = true): AuthoringEntityContext {
   const sink: AuthoringDiagnosticSink = {
     push: (d) => diagnostics.push(d),
   };
@@ -107,6 +136,7 @@ function makeContext(diagnostics: unknown[]): AuthoringEntityContext {
     family: 'sql',
     target: 'postgres',
     codecLookup: testCodecLookup,
+    ...(withDataTypes ? { dataTypes: testDataTypes } : {}),
     sourceId: 'schema.prisma',
     diagnostics: sink,
     enumInferenceCodecs: { text: TEXT_CODEC_ID, int: INT_CODEC_ID },
@@ -126,7 +156,6 @@ describe('sqlFamilyEnumEntityDescriptor: @@type omitted, inferred from members',
     expect(diagnostics).toEqual([]);
     expect(handle).toMatchObject({
       codecId: TEXT_CODEC_ID,
-      nativeType: 'text',
       members: { admin: 'admin', user: 'user' },
     });
   });
@@ -141,7 +170,6 @@ describe('sqlFamilyEnumEntityDescriptor: @@type omitted, inferred from members',
     expect(diagnostics).toEqual([]);
     expect(handle).toMatchObject({
       codecId: TEXT_CODEC_ID,
-      nativeType: 'text',
       members: { admin: 'admin', user: 'user' },
     });
   });
@@ -154,7 +182,7 @@ describe('sqlFamilyEnumEntityDescriptor: @@type omitted, inferred from members',
     );
 
     expect(diagnostics).toEqual([]);
-    expect(handle).toMatchObject({ codecId: TEXT_CODEC_ID, nativeType: 'text' });
+    expect(handle).toMatchObject({ codecId: TEXT_CODEC_ID });
   });
 
   it('integer members infer the int codec', () => {
@@ -167,7 +195,6 @@ describe('sqlFamilyEnumEntityDescriptor: @@type omitted, inferred from members',
     expect(diagnostics).toEqual([]);
     expect(handle).toMatchObject({
       codecId: INT_CODEC_ID,
-      nativeType: 'int',
       members: { low: 1, high: 2 },
     });
   });
@@ -258,7 +285,7 @@ describe('sqlFamilyEnumEntityDescriptor: explicit @@type bypasses inference, nev
     );
 
     expect(diagnostics).toEqual([]);
-    expect(handle).toMatchObject({ codecId: TEXT_CODEC_ID, nativeType: 'text' });
+    expect(handle).toMatchObject({ codecId: TEXT_CODEC_ID });
   });
 
   it('an explicit codec receives structured JSON media through the shared grammar', () => {
@@ -305,6 +332,41 @@ describe('sqlFamilyEnumEntityDescriptor: explicit @@type bypasses inference, nev
     expect(handle).toBeUndefined();
     expect(diagnostics).toEqual([
       expect.objectContaining({ code: 'PSL_ENUM_BARE_MEMBER_NON_STRING_CODEC' }),
+    ]);
+  });
+
+  it('refuses a codec whose data type requires a parameter, naming it', () => {
+    const diagnostics: unknown[] = [];
+    const handle = factory(
+      enumBlock({ name: 'Axis', values: { x: 'x' }, typeCodecId: VECTOR_CODEC_ID }),
+      makeContext(diagnostics),
+    );
+
+    expect(handle).toBeUndefined();
+    expect(diagnostics).toEqual([
+      {
+        code: 'PSL_ENUM_TYPE_NEEDS_PARAMETERS',
+        message:
+          'enum "Axis" @@type codec "test/vector@1" represents data type "test/vector", which requires the parameter "length"; an enum block gives it none',
+        sourceId: 'schema.prisma',
+        span: SPAN,
+      },
+    ]);
+  });
+
+  it('builds no enum when the context has no data types', () => {
+    const diagnostics: unknown[] = [];
+    const handle = factory(
+      enumBlock({ name: 'Role', values: { admin: 'admin' } }),
+      makeContext(diagnostics, false),
+    );
+
+    expect(handle).toBeUndefined();
+    expect(diagnostics).toEqual([
+      expect.objectContaining({
+        code: 'PSL_EXTENSION_INVALID_VALUE',
+        message: expect.stringContaining('unknown codec'),
+      }),
     ]);
   });
 

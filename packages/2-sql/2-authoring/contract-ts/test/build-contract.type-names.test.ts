@@ -47,7 +47,6 @@ const codecLookup: CodecLookup = {
       codecId,
       dataType,
       traits: [],
-      targetTypes: [],
       paramsSchema: undefined,
       isParameterized: false,
       factory: () => () => {
@@ -55,7 +54,6 @@ const codecLookup: CodecLookup = {
       },
     };
   },
-  targetTypesFor: () => undefined,
   renderOutputTypeFor: () => undefined,
 };
 

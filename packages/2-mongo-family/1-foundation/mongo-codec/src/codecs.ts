@@ -10,7 +10,7 @@ export type MongoCodecTrait = CodecTrait;
 /**
  * A codec for the Mongo target. Translates between an application value and the BSON-shaped wire form the Mongo driver exchanges, and between an application value and the JSON form stored in contract artifacts.
  *
- * Same shape as the framework codec base — see `Codec` in `@internal/framework-components/codec` for the contract — except that `decode` returns `TOutput`, which defaults to `TInput`, so a codec can read back a narrower type than it accepts on write. Codec-id-keyed static metadata (`traits`, `targetTypes`, `renderOutputType`) lives on the unified {@link import('@internal/framework-components/codec').CodecDescriptor}; Mongo's full migration to descriptor-side registration is tracked under TML-2324.
+ * Same shape as the framework codec base — see `Codec` in `@internal/framework-components/codec` for the contract — except that `decode` returns `TOutput`, which defaults to `TInput`, so a codec can read back a narrower type than it accepts on write. Codec-id-keyed static metadata (`traits`, `renderOutputType`) lives on the unified {@link import('@internal/framework-components/codec').CodecDescriptor}; Mongo's full migration to descriptor-side registration is tracked under TML-2324.
  */
 export interface MongoCodec<
   Id extends string = string,
@@ -42,7 +42,7 @@ type JsonRoundTripConfig<TInput> = [TInput] extends [JsonValue]
  *
  * Both `encode` and `decode` are required so `TInput` and `TWire` are always covered by an explicit author function — the factory installs no identity fallback. `encodeJson` and `decodeJson` default to identity **only when `TInput` is assignable to `JsonValue`**; otherwise both are required so the contract artifact stays JSON-safe.
  *
- * Codec-id-keyed static metadata (`traits`, `targetTypes`, `renderOutputType`) lives on the unified `CodecDescriptor` rather than on the codec instance itself (TML-2357).
+ * Codec-id-keyed static metadata (`traits`, `renderOutputType`) lives on the unified `CodecDescriptor` rather than on the codec instance itself (TML-2357).
  */
 export function mongoCodec<
   Id extends string,

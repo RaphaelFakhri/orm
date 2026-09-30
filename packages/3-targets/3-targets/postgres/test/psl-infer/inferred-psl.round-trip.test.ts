@@ -86,7 +86,6 @@ const target = {
 const codecLookup: CodecLookup = {
   get: (id) => postgresCodecRegistry.descriptorFor(id)?.factory({})({ name: id }),
   descriptorFor: (id) => postgresCodecRegistry.descriptorFor(id),
-  targetTypesFor: (id) => postgresCodecRegistry.descriptorFor(id)?.targetTypes,
   renderOutputTypeFor: () => undefined,
 };
 

@@ -13,16 +13,14 @@
  *      GeoJSON-shaped object so callers see structured data, not
  *      opaque hex.
  * 2. `PostgisGeometryDescriptor` extends {@link PostgresCodecDescriptor}
- *    with the codec id, traits, target types, params schema
+ *    with the codec id, traits, params schema
  *    (the `postgis/geometry` data type's: an optional integer `srid` of 1 or more), explicit target behavior, and
  *    the emit-path `renderOutputType` producing `Geometry<${srid}>` /
  *    `Geometry` when no SRID is supplied.
  * 3. `pgGeometryColumn({ srid })` per-codec column helper invoking
- *    `descriptor.factory({ srid })` and passing the bare
- *    `nativeType: 'geometry'`. The family-layer `expandNativeType`
- *    hook renders the parameterised form
- *    (`geometry(Geometry,${srid})`) at emit/verify time from
- *    `nativeType` + `typeParams`.
+ *    `descriptor.factory({ srid })`. The `postgis/geometry` data type
+ *    writes the column type (`geometry(Geometry,${srid})`) from
+ *    `typeParams`.
  *
  * The geometry codec's encode/decode is parameter-independent — the
  * wire format already carries SRID inside the EWKT/EWKB payload, so the
@@ -54,8 +52,6 @@ import { decodeEWKBHex, encodeEWKBHex, encodeEWKT } from './ewkb';
 import type { Geometry } from './geojson';
 
 type GeometryParams = { readonly srid?: number };
-
-const POSTGIS_GEOMETRY_NATIVE_TYPE = 'geometry';
 
 const allowedGeometryTypes = new Set([
   'Point',
@@ -129,16 +125,12 @@ export class PostgisGeometryCodec extends CodecImpl<
 }
 
 export class PostgisGeometryDescriptor extends PostgresCodecDescriptor<GeometryParams> {
-  protected override nativeType(): string {
-    return POSTGIS_GEOMETRY_NATIVE_TYPE;
-  }
   protected override jsonProjection(expression: ProjectionExpr): ProjectionExpr {
     return expression;
   }
   override readonly dataType = postgisGeometry.id;
   override readonly codecId = POSTGIS_GEOMETRY_CODEC_ID;
   override readonly traits = ['equality'] as const;
-  override readonly targetTypes = ['geometry'] as const;
   override readonly paramsSchema: StandardSchemaV1<GeometryParams> = postgisGeometryParams;
   override renderOutputType(params: GeometryParams): string {
     const { srid } = params;
@@ -165,11 +157,7 @@ export const postgisGeometryDescriptor = new PostgisGeometryDescriptor();
  * Generic over `S extends number` so the column site preserves the
  * SRID literal in `typeParams` (e.g. `pgGeometryColumn({ srid: 4326 })`
  * packs `typeParams: { srid: 4326 }`).
- *
- * Passes the bare `nativeType: 'geometry'`; the family-layer
- * `expandNativeType` hook renders the parameterised form
- * (`geometry(Geometry,${srid})`) at emit/verify time from `nativeType`
- * + `typeParams`.
+
  *
  * @throws If `srid` is not a non-negative integer
  * (structured `CONTRACT.ARGUMENT_INVALID`).

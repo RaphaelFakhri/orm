@@ -1,6 +1,6 @@
 import type { ColumnDefault } from '@internal/contract/types';
 import type { SqlControlTargetDescriptor } from '@internal/family-sql/control';
-import { buildNativeTypeExpander } from '@internal/family-sql/control';
+import { sqlComponentTypes } from '@internal/family-sql/control';
 import type { SqlControlAdapter } from '@internal/family-sql/control-adapter';
 import type {
   ControlTargetInstance,
@@ -8,7 +8,6 @@ import type {
 } from '@internal/framework-components/control';
 import type { StorageColumn } from '@internal/sql-contract/types';
 import { blindCast } from '@internal/utils/casts';
-import { ifDefined } from '@internal/utils/defined';
 import { postgresResolveDefault } from '../core/default-normalizer';
 import { postgresTargetDescriptorMeta } from '../core/descriptor-meta';
 import { contractToPostgresDatabaseSchemaNode } from '../core/migrations/contract-to-postgres-database-schema-node';
@@ -28,11 +27,15 @@ import {
   postgresDiffSubjectGranularity,
 } from '../core/schema-ir/schema-node-kinds';
 
-export function postgresRenderDefault(def: ColumnDefault, column: StorageColumn): string {
+export function postgresRenderDefault(
+  def: ColumnDefault,
+  column: StorageColumn,
+  dataType: string,
+): string {
   if (def.kind === 'function') {
     return def.expression;
   }
-  return renderDefaultLiteral(def.value, column);
+  return renderDefaultLiteral(def.value, { ...column, dataType });
 }
 
 const postgresTargetDescriptor: SqlControlTargetDescriptor<'postgres', PostgresPlanTargetDetails> =
@@ -63,14 +66,15 @@ const postgresTargetDescriptor: SqlControlTargetDescriptor<'postgres', PostgresP
         >(createPostgresMigrationRunner(family));
       },
       contractToSchema(contract, frameworkComponents) {
-        const expander = buildNativeTypeExpander(frameworkComponents);
+        const types = sqlComponentTypes(frameworkComponents);
         const postgresContract = blindCast<
           PostgresContract | null,
           'the family resolver only binds this hook for a Postgres-target contract'
         >(contract);
         return contractToPostgresDatabaseSchemaNode(postgresContract, {
           annotationNamespace: 'pg',
-          ...ifDefined('expandNativeType', expander),
+          dataTypes: types.dataTypeLookup,
+          codecLookup: types.codecLookup,
           renderDefault: postgresRenderDefault,
           resolveDefault: postgresResolveDefault,
         });

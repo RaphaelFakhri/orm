@@ -33,7 +33,6 @@ interface Representation {
   readonly descriptor: {
     readonly codecId: string;
     readonly traits: readonly string[];
-    readonly targetTypes: readonly string[];
     readonly renderOutputType?: (params: never) => string | undefined;
     readonly factory: (params: never) => (ctx: { name: string }) => { id: string };
     readonly nativeTypeFor: (ref: { codecId: string }) => string;

@@ -7,10 +7,11 @@ import type {
   PslNamedTypeDeclaration,
   PslTypesBlock,
 } from '@internal/framework-components/psl-ast';
+import { requiredParamKeys } from '@internal/framework-components/codec';
+import { isSqlDataType, storedSqlTypeName } from '@internal/sql-contract/data-type';
 import type { SqlStorage } from '@internal/sql-contract/types';
 import { StorageColumn } from '@internal/sql-contract/types';
 import { ifDefined } from '@internal/utils/defined';
-import { isPostgresCodecDescriptor } from '../codec-descriptor';
 import { SYNTHETIC_SPAN } from '../psl-build/psl-literals';
 import { buildColumnType, type PslColumnType } from './column-types';
 import {
@@ -23,8 +24,8 @@ import {
 } from './refusals';
 
 /**
- * The native type the stack's codec names for a value-object field. The field has no column of its
- * own, and no type parameters, which the PSL source would not keep.
+ * The type name a value-object field's codec stores, from the data type the codec represents. The
+ * field has no column of its own, and no type parameters, which the PSL source would not keep.
  */
 function nativeTypeOfValueObjectField(
   field: ContractField & { readonly type: ScalarFieldType },
@@ -33,14 +34,15 @@ function nativeTypeOfValueObjectField(
 ): string {
   const { codecId } = field.type;
   const descriptor = context.codecLookup.descriptorFor?.(codecId);
-  if (!isPostgresCodecDescriptor(descriptor)) {
+  const dataType =
+    descriptor === undefined ? undefined : context.dataTypeLookup.get(descriptor.dataType);
+  if (dataType === undefined || !isSqlDataType(dataType)) {
     refuseValueObjectFieldCodecWithoutNativeType(codecId, coordinate);
   }
-  try {
-    return descriptor.nativeTypeFor({ codecId });
-  } catch {
+  if (requiredParamKeys(dataType).length > 0) {
     refuseValueObjectFieldCodecNeedingTypeParameters(codecId, coordinate);
   }
+  return storedSqlTypeName(dataType, undefined);
 }
 
 /** The PSL type position of a domain field: a value object by name, or a scalar as a column would print. */

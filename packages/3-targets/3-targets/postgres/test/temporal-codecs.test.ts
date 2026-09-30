@@ -257,7 +257,6 @@ describe('Temporal-backed temporal codecs', () => {
         expect({
           codecId: descriptor.codecId,
           traits: descriptor.traits,
-          targetTypes: descriptor.targetTypes,
           nativeType: descriptor.nativeTypeFor({ codecId: id }),
         }).toEqual({ codecId: id, traits: ['equality', 'order'], targetTypes, nativeType });
       },

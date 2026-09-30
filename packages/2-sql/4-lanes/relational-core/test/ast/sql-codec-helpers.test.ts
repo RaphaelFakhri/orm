@@ -43,14 +43,12 @@ describe('sql-codec-helpers', () => {
   const codecDefinitionCases: ReadonlyArray<{
     scalar: keyof typeof descriptorsByScalar;
     id: string;
-    targetTypes: readonly string[];
     hasParamsSchema: boolean;
   }> = [
     { scalar: 'char', id: SQL_CHAR_CODEC_ID, targetTypes: ['char'], hasParamsSchema: true },
     {
       scalar: 'varchar',
       id: SQL_VARCHAR_CODEC_ID,
-      targetTypes: ['varchar'],
       hasParamsSchema: true,
     },
     { scalar: 'int', id: SQL_INT_CODEC_ID, targetTypes: ['int'], hasParamsSchema: false },

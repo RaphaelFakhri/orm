@@ -71,14 +71,6 @@ export interface SqlColumnIRInput {
    * Stamped alongside {@link codecRef}.
    */
   readonly codecBaseNativeType?: string;
-  /**
-   * True when the contract column declared its type via a named
-   * `storage.types` reference (`typeRef`) rather than inline fields — the
-   * migration planner quotes the base native type as an identifier in this
-   * case (e.g. a native enum's type name), matching the pre-`plan(start,
-   * end)` rendering exactly.
-   */
-  readonly codecNamedType?: boolean;
 }
 
 /**
@@ -115,8 +107,6 @@ export class SqlColumnIR extends SqlSchemaIRNode implements DiffableNode {
   declare readonly codecRef?: CodecRef;
   /** See {@link SqlColumnIRInput.codecBaseNativeType}. Non-enumerable, same reason as {@link codecRef}. */
   declare readonly codecBaseNativeType?: string;
-  /** See {@link SqlColumnIRInput.codecNamedType}. Non-enumerable, same reason as {@link codecRef}. */
-  declare readonly codecNamedType?: boolean;
 
   constructor(input: SqlColumnIRInput) {
     super();
@@ -131,7 +121,6 @@ export class SqlColumnIR extends SqlSchemaIRNode implements DiffableNode {
     defineNonEnumerable(this, 'authoredDefault', input.authoredDefault);
     defineNonEnumerable(this, 'codecRef', input.codecRef);
     defineNonEnumerable(this, 'codecBaseNativeType', input.codecBaseNativeType);
-    defineNonEnumerable(this, 'codecNamedType', input.codecNamedType);
     freezeNode(this);
   }
 
@@ -164,7 +153,6 @@ export class SqlColumnIR extends SqlSchemaIRNode implements DiffableNode {
         ...ifDefined('many', this.many ?? this.codecRef?.many),
         ...ifDefined('codecRef', this.codecRef),
         ...ifDefined('codecBaseNativeType', this.codecBaseNativeType),
-        ...ifDefined('codecNamedType', this.codecNamedType),
       }),
     ];
   }
