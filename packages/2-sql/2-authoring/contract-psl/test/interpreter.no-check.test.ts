@@ -86,7 +86,7 @@ enum Role {
 }
 `;
 
-const pgText = { codecId: 'pg/text@1' as const, nativeType: 'text' as const };
+const pgText = { codecId: 'pg/text@1' as const };
 const RoleHandle = enumType('Role', pgText, member('User', 'user'), member('Admin', 'admin'));
 
 const sqlFamilyPack = {
@@ -130,14 +130,11 @@ model Post {
       models: {
         Post: model('Post', {
           fields: {
-            id: field.column({ codecId: 'pg/int4@1', nativeType: 'int4' }).id(),
+            id: field.column({ codecId: 'pg/int4@1' }).id(),
             role: field.namedType(RoleHandle),
             kind: field.namedType(RoleHandle).noCheck(),
             roles: field.namedType(RoleHandle).many().noCheck('membership'),
-            tags: field
-              .column({ codecId: 'pg/text@1', nativeType: 'text' })
-              .many()
-              .noCheck('elementNotNull'),
+            tags: field.column({ codecId: 'pg/text@1' }).many().noCheck('elementNotNull'),
           },
         }).sql({ table: 'Post' }),
       },
@@ -225,8 +222,8 @@ model Post {
       models: {
         Post: model('Post', {
           fields: {
-            id: field.column({ codecId: 'pg/int4@1', nativeType: 'int4' }).id(),
-            name: field.column({ codecId: 'pg/text@1', nativeType: 'text' }).noCheck('membership'),
+            id: field.column({ codecId: 'pg/int4@1' }).id(),
+            name: field.column({ codecId: 'pg/text@1' }).noCheck('membership'),
           },
         }).sql({ table: 'Post', control: 'external' }),
       },

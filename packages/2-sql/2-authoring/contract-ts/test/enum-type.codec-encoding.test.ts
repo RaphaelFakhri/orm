@@ -22,8 +22,8 @@ const postgresTargetPack: TargetPackRef<'sql', 'postgres'> = {
   defaultNamespaceId: 'public',
 };
 
-const pgText = { codecId: 'pg/text@1' as const, nativeType: 'text' } as const;
-const pgInt = { codecId: 'pg/int4@1' as const, nativeType: 'int4' } as const;
+const pgText = { codecId: 'pg/text@1' as const } as const;
+const pgInt = { codecId: 'pg/int4@1' as const } as const;
 
 function stubCodec(id: string, encodeJson: (value: unknown) => JsonValue): Codec {
   return {

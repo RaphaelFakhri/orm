@@ -154,7 +154,7 @@ model User {
               User: {
                 columns: {
                   homeAddress: {
-                    nativeType: 'jsonb',
+                    dataType: 'pg/jsonb',
                     codecId: 'pg/jsonb@1',
                     nullable: true,
                   },
@@ -204,7 +204,7 @@ model User {
               User: {
                 columns: {
                   tags: {
-                    nativeType: 'text',
+                    dataType: 'pg/text',
                     codecId: 'pg/text@1',
                     many: true,
                     nullable: false,
@@ -255,7 +255,7 @@ model User {
               User: {
                 columns: {
                   tags: {
-                    nativeType: 'text',
+                    dataType: 'pg/text',
                     codecId: 'pg/text@1',
                     many: true,
                     nullable: true,
@@ -311,7 +311,7 @@ model User {
               User: {
                 columns: {
                   addresses: {
-                    nativeType: 'jsonb',
+                    dataType: 'pg/jsonb',
                     codecId: 'pg/jsonb@1',
                     nullable: false,
                   },
@@ -439,7 +439,7 @@ model User {
             columns: {
               homeAddress: {
                 codecId: 'sqlite/json@1',
-                nativeType: 'text',
+                dataType: 'sqlite/json',
                 nullable: true,
               },
             },

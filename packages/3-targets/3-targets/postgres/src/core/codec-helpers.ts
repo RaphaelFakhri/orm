@@ -26,7 +26,7 @@ export function renderLength(
     throw postgresError(
       'RUNTIME.TYPE_PARAMS_INVALID',
       `renderOutputType: expected integer "length" in typeParams for ${typeName}, got ${String(length)}`,
-      { meta: { nativeType: typeName, param: 'length', received: String(length) } },
+      { meta: { typeName: typeName, param: 'length', received: String(length) } },
     );
   }
   return `${typeName}<${length}>`;
@@ -48,7 +48,7 @@ export function renderPrecision(
     throw postgresError(
       'RUNTIME.TYPE_PARAMS_INVALID',
       `renderOutputType: expected integer "precision" in typeParams for ${typeName}, got ${String(precision)}`,
-      { meta: { nativeType: typeName, param: 'precision', received: String(precision) } },
+      { meta: { typeName: typeName, param: 'precision', received: String(precision) } },
     );
   }
   return `${typeName}<${precision}>`;
@@ -252,7 +252,7 @@ export const pgNumericRenderOutputType = (typeParams: {
     throw postgresError(
       'RUNTIME.TYPE_PARAMS_INVALID',
       `renderOutputType: expected integer "precision" in typeParams for Numeric, got ${String(precision)}`,
-      { meta: { nativeType: 'Numeric', param: 'precision', received: String(precision) } },
+      { meta: { typeName: 'Numeric', param: 'precision', received: String(precision) } },
     );
   }
   const scale = typeParams.scale;
@@ -261,7 +261,7 @@ export const pgNumericRenderOutputType = (typeParams: {
     throw postgresError(
       'RUNTIME.TYPE_PARAMS_INVALID',
       `renderOutputType: expected integer "scale" in typeParams for Numeric, got ${String(scale)}`,
-      { meta: { nativeType: 'Numeric', param: 'scale', received: String(scale) } },
+      { meta: { typeName: 'Numeric', param: 'scale', received: String(scale) } },
     );
   }
   return `Numeric<${precision}, ${scale}>`;

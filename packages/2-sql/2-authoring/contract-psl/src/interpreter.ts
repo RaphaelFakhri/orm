@@ -2415,7 +2415,6 @@ export function interpretPslDocumentToSqlContract(
     targetId: input.target.targetId,
     authoringContributions: input.authoringContributions,
     codecLookup: input.codecLookup,
-    dataTypeLookup: input.dataTypeLookup,
     diagnostics,
   });
 

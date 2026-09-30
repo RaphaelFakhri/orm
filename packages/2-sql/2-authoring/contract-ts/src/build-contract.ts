@@ -48,8 +48,6 @@ import {
   dataTypeParams,
   type SqlDataType,
   sqlDataTypeOfCodec,
-  unquotedSqlBaseName,
-  unquotedSqlBaseNameOfCodec,
   validateSqlTypeParams,
 } from '@internal/sql-contract/data-type';
 import { tableEntityKind, valueSetEntityKind } from '@internal/sql-contract/entity-kinds';
@@ -65,6 +63,7 @@ import {
   type IndexTypeRegistration,
 } from '@internal/sql-contract/index-types';
 import {
+  type AuthoredStorageType,
   applyFkDefaults,
   CheckConstraint,
   Index,
@@ -138,7 +137,7 @@ function columnCodec(
 
 function columnTypeParams(
   descriptor: ColumnTypeDescriptor,
-  storageTypes: Record<string, StorageTypeInstance>,
+  storageTypes: Record<string, AuthoredStorageType>,
 ): Record<string, unknown> | undefined {
   if (descriptor.typeParams !== undefined) return descriptor.typeParams;
   if (descriptor.typeRef === undefined) return undefined;
@@ -733,7 +732,6 @@ function mergeColumnAndAttachedEntities(
 }
 
 const JSONB_CODEC_ID = 'pg/jsonb@1';
-const JSONB_NATIVE_TYPE = 'jsonb';
 
 function resolveModelNamespaceId(
   model: ModelNode,
@@ -859,7 +857,7 @@ function buildStorageColumn(
   field: FieldNode | ValueObjectFieldNode,
   storageValueSetRef: ValueSetRef | undefined,
   modelName: string,
-  storageTypes: Record<string, StorageTypeInstance>,
+  storageTypes: Record<string, AuthoredStorageType>,
   lookups: TypeLookups,
 ): StorageColumn {
   const { codecLookup } = lookups;
@@ -874,7 +872,7 @@ function buildStorageColumn(
         : undefined;
 
     return {
-      nativeType: JSONB_NATIVE_TYPE,
+      dataType: sqlDataTypeOfCodec(JSONB_CODEC_ID, lookups).id,
       codecId: JSONB_CODEC_ID,
       nullable: field.nullable,
       ...ifDefined('default', encodedDefault),
@@ -904,7 +902,7 @@ function buildStorageColumn(
   const valueSet = storageValueSetRef ?? field.descriptor.valueSet;
 
   return {
-    nativeType: unquotedSqlBaseName(dataType, dataTypeParams(dataType, typeParams)),
+    dataType: dataType.id,
     codecId,
     nullable: field.nullable,
     ...(field.many ? { many: true as const } : {}),
@@ -1659,21 +1657,18 @@ export function buildSqlContractFromDefinition(
   // Normalise raw codec-triple inputs to the `kind: 'codec-instance'`
   // discriminator shape before hashing so the storageHash matches the
   // persisted JSON envelope produced from the SqlStorage class instance
-  // (which always carries the discriminator). Each entry's type name is its
-  // codec's data type's.
+  // (which always carries the discriminator). Each entry stores the data type
+  // its codec represents.
   const rawStorageTypes = definition.storageTypes ?? {};
   const documentTypes: Record<string, StorageTypeInstance> = Object.fromEntries(
-    Object.entries(rawStorageTypes).map(([name, entry]) => {
-      const typeParams = ('typeParams' in entry ? entry.typeParams : undefined) ?? {};
-      return [
-        name,
-        toStorageTypeInstance({
-          codecId: entry.codecId,
-          nativeType: unquotedSqlBaseNameOfCodec(entry.codecId, typeParams, lookups),
-          typeParams,
-        }),
-      ];
-    }),
+    Object.entries(rawStorageTypes).map(([name, entry]) => [
+      name,
+      toStorageTypeInstance({
+        codecId: entry.codecId,
+        dataType: sqlDataTypeOfCodec(entry.codecId, lookups).id,
+        typeParams: entry.typeParams,
+      }),
+    ]),
   );
   const namespaceCoordinateIds = collectStorageNamespaceCoordinateIds(definition);
 

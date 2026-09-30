@@ -172,7 +172,7 @@ model Post {
     expect(pslResult.ok).toBe(true);
     if (!pslResult.ok) return;
 
-    const pgText = { codecId: 'pg/text@1' as const, nativeType: 'text' as const };
+    const pgText = { codecId: 'pg/text@1' as const };
     const PriorityHandle = enumType(
       'Priority',
       pgText,
@@ -208,7 +208,7 @@ model Post {
       models: {
         Post: model('Post', {
           fields: {
-            id: field.column({ codecId: 'pg/int4@1', nativeType: 'int4' }).id(),
+            id: field.column({ codecId: 'pg/int4@1' }).id(),
             priority: field.namedType(PriorityHandle),
           },
         }).sql({ table: 'Post' }),
@@ -261,7 +261,7 @@ model Post {
     expect(pslResult.ok).toBe(true);
     if (!pslResult.ok) return;
 
-    const pgText = { codecId: 'pg/text@1' as const, nativeType: 'text' as const };
+    const pgText = { codecId: 'pg/text@1' as const };
     const PriorityHandle = enumType(
       'Priority',
       pgText,
@@ -297,7 +297,7 @@ model Post {
       models: {
         Post: model('Post', {
           fields: {
-            id: field.column({ codecId: 'pg/int4@1', nativeType: 'int4' }).id(),
+            id: field.column({ codecId: 'pg/int4@1' }).id(),
             priority: field.namedType(PriorityHandle).default(PriorityHandle.members.Low),
           },
         }).sql({ table: 'Post' }),

@@ -263,7 +263,7 @@ namespace docs {
                 columns: {
                   aal: {
                     codecId: 'test/native-enum@1',
-                    nativeType: 'AalLevel',
+                    dataType: 'pg/enum',
                     typeParams: { typeName: 'AalLevel' },
                     nullable: false,
                     valueSet: {
@@ -334,7 +334,7 @@ namespace docs {
             table: {
               Thing: {
                 columns: {
-                  ref: { codecId: 'test/plain-ref@1', nativeType: 'fixture' },
+                  ref: { codecId: 'test/plain-ref@1' },
                 },
               },
             },

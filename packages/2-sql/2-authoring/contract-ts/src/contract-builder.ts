@@ -8,9 +8,9 @@ import type {
 } from '@internal/framework-components/components';
 import type { PackEntityHandle } from '@internal/sql-contract/entity-handle-lowering-hook';
 import type {
+  AuthoredStorageType,
   SqlNamespaceBase,
   SqlNamespaceInput,
-  StorageTypeInstance,
 } from '@internal/sql-contract/types';
 import { blindCast } from '@internal/utils/casts';
 import { ifDefined } from '@internal/utils/defined';
@@ -58,7 +58,7 @@ type ModelLike = {
 type ContractDefinition<
   Family extends FamilyPackRef<string>,
   Target extends TargetPackRef<'sql', string>,
-  Types extends Record<string, StorageTypeInstance>,
+  Types extends Record<string, AuthoredStorageType>,
   Models extends Record<string, ModelLike>,
   Extensions extends Record<string, ExtensionPackRef<'sql', string>> | undefined,
   Naming extends ContractInput['naming'] | undefined,
@@ -114,7 +114,7 @@ type ContractScaffold<
 type ContractFactory<
   Family extends FamilyPackRef<string>,
   Target extends TargetPackRef<'sql', string>,
-  Types extends Record<string, StorageTypeInstance>,
+  Types extends Record<string, AuthoredStorageType>,
   Models extends Record<string, ModelLike>,
   Extensions extends Record<string, ExtensionPackRef<'sql', string>> | undefined,
   Enums extends Record<string, EnumTypeHandle> = Record<string, EnumTypeHandle>,
@@ -372,7 +372,7 @@ function buildContractFromDsl<Definition extends ContractInput>(
 // Input for buildBoundContract — all fields from ContractInput except family/target
 // (those are injected by the builder, pre-bound at the call site).
 type BoundDefinitionInput<
-  Types extends Record<string, StorageTypeInstance> = Record<never, never>,
+  Types extends Record<string, AuthoredStorageType> = Record<never, never>,
   Models extends Record<string, ModelLike> = Record<never, never>,
   Extensions extends Record<string, ExtensionPackRef<'sql', string>> | undefined = undefined,
   Naming extends ContractInput['naming'] | undefined = undefined,
@@ -428,7 +428,7 @@ export function buildBoundContract<
   const F extends FamilyPackRef<string>,
   const T extends TargetPackRef<'sql', string>,
   const Definition extends BoundDefinitionInput<
-    Record<string, StorageTypeInstance>,
+    Record<string, AuthoredStorageType>,
     Record<string, ModelLike>,
     Record<string, ExtensionPackRef<'sql', string>> | undefined,
     ContractInput['naming'] | undefined,
@@ -449,7 +449,7 @@ export function buildBoundContract<
   const F extends FamilyPackRef<string>,
   const T extends TargetPackRef<'sql', string>,
   const Definition extends BoundDefinitionInput<
-    Record<string, StorageTypeInstance>,
+    Record<string, AuthoredStorageType>,
     Record<string, ModelLike>,
     Record<string, ExtensionPackRef<'sql', string>> | undefined,
     ContractInput['naming'] | undefined,
@@ -458,7 +458,7 @@ export function buildBoundContract<
     readonly string[] | undefined
   >,
   const Built extends {
-    readonly types?: Record<string, StorageTypeInstance>;
+    readonly types?: Record<string, AuthoredStorageType>;
     readonly models?: Record<string, ModelLike>;
     readonly enums?: Record<string, EnumTypeHandle>;
     readonly entities?: readonly PackEntityHandle[];
@@ -484,7 +484,7 @@ export function buildBoundContract(
           Record<string, ExtensionPackRef<'sql', string>> | undefined
         >,
       ) => {
-        readonly types?: Record<string, StorageTypeInstance>;
+        readonly types?: Record<string, AuthoredStorageType>;
         readonly models?: Record<string, ModelLike>;
         readonly enums?: Record<string, EnumTypeHandle>;
         readonly entities?: readonly PackEntityHandle[];
@@ -520,7 +520,7 @@ export function buildBoundContract(
 export function defineContract<
   const Family extends FamilyPackRef<string>,
   const Target extends TargetPackRef<'sql', string>,
-  const Types extends Record<string, StorageTypeInstance> = Record<never, never>,
+  const Types extends Record<string, AuthoredStorageType> = Record<never, never>,
   const Models extends Record<string, ModelLike> = Record<never, never>,
   const Extensions extends Record<string, ExtensionPackRef<'sql', string>> | undefined = undefined,
   const Naming extends ContractInput['naming'] | undefined = undefined,
@@ -558,7 +558,7 @@ export function defineContract<
 export function defineContract<
   const Family extends FamilyPackRef<string>,
   const Target extends TargetPackRef<'sql', string>,
-  const Types extends Record<string, StorageTypeInstance> = Record<never, never>,
+  const Types extends Record<string, AuthoredStorageType> = Record<never, never>,
   const Models extends Record<string, ModelLike> = Record<never, never>,
   const Extensions extends Record<string, ExtensionPackRef<'sql', string>> | undefined = undefined,
   const Naming extends ContractInput['naming'] | undefined = undefined,
@@ -598,7 +598,7 @@ export function defineContract(
   factory?: ContractFactory<
     FamilyPackRef<string>,
     TargetPackRef<'sql', string>,
-    Record<string, StorageTypeInstance>,
+    Record<string, AuthoredStorageType>,
     Record<string, ModelLike>,
     Record<string, ExtensionPackRef<'sql', string>> | undefined
   >,

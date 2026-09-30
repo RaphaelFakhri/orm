@@ -66,13 +66,13 @@ function buildWithDefault(
             {
               fieldName: 'id',
               columnName: 'id',
-              descriptor: { codecId: 'pg/int4@1', nativeType: 'int4' },
+              descriptor: { codecId: 'pg/int4@1' },
               nullable: false,
             },
             {
               fieldName: 'count',
               columnName: 'count',
-              descriptor: { codecId: field.codecId, nativeType: 'int8' },
+              descriptor: { codecId: field.codecId },
               nullable: false,
               default: { kind: 'literal', value: field.value },
               ...(field.many === true ? { many: true } : {}),
@@ -173,7 +173,7 @@ describe('a literal default the codec refuses', () => {
                 {
                   fieldName: 'id',
                   columnName: 'id',
-                  descriptor: { codecId: 'pg/int4@1', nativeType: 'int4' },
+                  descriptor: { codecId: 'pg/int4@1' },
                   nullable: false,
                 },
                 {
@@ -194,7 +194,7 @@ describe('a literal default the codec refuses', () => {
                 {
                   fieldName: 'amount',
                   columnName: 'amount',
-                  descriptor: { codecId: 'pg/int8@1', nativeType: 'int8' },
+                  descriptor: { codecId: 'pg/int8@1' },
                   nullable: false,
                 },
               ],

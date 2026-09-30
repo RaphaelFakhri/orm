@@ -17,10 +17,16 @@ export const CODEC_INSTANCE_KIND = 'codec-instance' as const;
  * key that distinguishes codec-typed entries from any class-instance
  * kinds a target pack contributes to the polymorphic slot.
  */
-export interface StorageTypeInstance extends StorageType {
+export interface StorageTypeInstance extends AuthoredStorageType {
+  readonly dataType: string;
+}
+
+/**
+ * A codec-typed `storage.types` entry as authored, by a `type.*` helper or a PSL `types {}` alias. The contract build adds the id of the data type its codec represents.
+ */
+export interface AuthoredStorageType extends StorageType {
   readonly kind: typeof CODEC_INSTANCE_KIND;
   readonly codecId: string;
-  readonly dataType: string;
   readonly typeParams: Record<string, unknown>;
 }
 

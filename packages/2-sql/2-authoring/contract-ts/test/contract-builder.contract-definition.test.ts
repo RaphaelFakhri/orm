@@ -28,7 +28,6 @@ describe('shared contract definition lowering', () => {
           Role: {
             kind: 'codec-instance',
             codecId: 'app/test-enum@1',
-            nativeType: 'role',
             typeParams: { values: ['USER', 'ADMIN'] },
           },
         },
@@ -42,7 +41,6 @@ describe('shared contract definition lowering', () => {
                 columnName: 'id',
                 descriptor: {
                   codecId: 'sql/char@1',
-                  nativeType: 'character',
                   typeParams: { length: 36 },
                 },
                 nullable: false,
@@ -53,7 +51,6 @@ describe('shared contract definition lowering', () => {
                 columnName: 'role',
                 descriptor: {
                   codecId: 'app/test-enum@1',
-                  nativeType: 'role',
                   typeRef: 'Role',
                 },
                 nullable: false,
@@ -87,7 +84,6 @@ describe('shared contract definition lowering', () => {
                 columnName: 'id',
                 descriptor: {
                   codecId: 'pg/int4@1',
-                  nativeType: 'int4',
                 },
                 nullable: false,
               },
@@ -96,7 +92,6 @@ describe('shared contract definition lowering', () => {
                 columnName: 'author_id',
                 descriptor: {
                   codecId: 'sql/char@1',
-                  nativeType: 'character',
                   typeParams: { length: 36 },
                 },
                 nullable: false,
@@ -151,7 +146,7 @@ describe('shared contract definition lowering', () => {
     expect(documentScopedTypes(contract)?.['Role']).toEqual({
       kind: 'codec-instance',
       codecId: 'app/test-enum@1',
-      nativeType: 'role',
+      dataType: 'app/test-enum',
       typeParams: { values: ['USER', 'ADMIN'] },
     });
     expect(unboundTables(contract.storage)['app_user']?.primaryKey).toEqual({
@@ -224,7 +219,6 @@ describe('shared contract definition lowering', () => {
                 columnName: 'scheduled_at',
                 descriptor: {
                   codecId: 'pg/timestamptz-temporal@1',
-                  nativeType: 'timestamptz',
                 },
                 nullable: false,
                 default: {
@@ -293,7 +287,6 @@ describe('shared contract definition lowering', () => {
                 columnName: 'embedding',
                 descriptor: {
                   codecId: 'test/vector@1',
-                  nativeType: 'vector',
                   typeParams: { length: 3 },
                 },
                 nullable: false,
@@ -328,7 +321,6 @@ describe('shared contract definition lowering', () => {
                 columnName: 'updated_at',
                 descriptor: {
                   codecId: 'pg/timestamptz-temporal@1',
-                  nativeType: 'timestamptz',
                 },
                 nullable: false,
                 executionDefaults: {
@@ -370,7 +362,6 @@ describe('shared contract definition lowering', () => {
                   columnName: 'id',
                   descriptor: {
                     codecId: 'pg/text@1',
-                    nativeType: 'text',
                   },
                   nullable: false,
                   default: {
@@ -411,7 +402,6 @@ describe('shared contract definition lowering', () => {
                   columnName: 'id',
                   descriptor: {
                     codecId: 'pg/text@1',
-                    nativeType: 'text',
                   },
                   nullable: false,
                   default: {
@@ -452,7 +442,6 @@ describe('shared contract definition lowering', () => {
                   columnName: 'id',
                   descriptor: {
                     codecId: 'pg/int4@1',
-                    nativeType: 'int4',
                   },
                   nullable: false,
                 },
@@ -468,7 +457,6 @@ describe('shared contract definition lowering', () => {
                   columnName: 'id',
                   descriptor: {
                     codecId: 'pg/int4@1',
-                    nativeType: 'int4',
                   },
                   nullable: false,
                 },
@@ -477,7 +465,6 @@ describe('shared contract definition lowering', () => {
                   columnName: 'author_id',
                   descriptor: {
                     codecId: 'pg/int4@1',
-                    nativeType: 'int4',
                   },
                   nullable: false,
                 },
@@ -523,7 +510,6 @@ describe('shared contract definition lowering', () => {
                   columnName: 'id',
                   descriptor: {
                     codecId: 'pg/text@1',
-                    nativeType: 'text',
                   },
                   nullable: true,
                   executionDefaults: {
@@ -560,7 +546,6 @@ describe('shared contract definition lowering', () => {
                   columnName: 'id',
                   descriptor: {
                     codecId: 'pg/int4@1',
-                    nativeType: 'int4',
                   },
                   nullable: true,
                 },
@@ -595,7 +580,7 @@ describe('shared contract definition lowering', () => {
                 {
                   fieldName: 'severity',
                   columnName: 'severity',
-                  descriptor: { codecId: 'pg/text@1', nativeType: 'text' },
+                  descriptor: { codecId: 'pg/text@1' },
                   nullable: true,
                 },
               ],
@@ -628,13 +613,13 @@ describe('M:N through descriptor lowering', () => {
       {
         fieldName: 'id',
         columnName: 'id',
-        descriptor: { codecId: 'pg/int4@1', nativeType: 'int4' },
+        descriptor: { codecId: 'pg/int4@1' },
         nullable: false,
       },
       {
         fieldName: 'slug',
         columnName: 'slug',
-        descriptor: { codecId: 'pg/text@1', nativeType: 'text' },
+        descriptor: { codecId: 'pg/text@1' },
         nullable: false,
       },
     ],
@@ -655,7 +640,7 @@ describe('M:N through descriptor lowering', () => {
               {
                 fieldName: 'id',
                 columnName: 'id',
-                descriptor: { codecId: 'pg/int4@1', nativeType: 'int4' },
+                descriptor: { codecId: 'pg/int4@1' },
                 nullable: false,
               },
             ],
@@ -688,13 +673,13 @@ describe('M:N through descriptor lowering', () => {
               {
                 fieldName: 'postId',
                 columnName: 'post_id',
-                descriptor: { codecId: 'pg/int4@1', nativeType: 'int4' },
+                descriptor: { codecId: 'pg/int4@1' },
                 nullable: false,
               },
               {
                 fieldName: 'tagId',
                 columnName: 'tag_id',
-                descriptor: { codecId: 'pg/int4@1', nativeType: 'int4' },
+                descriptor: { codecId: 'pg/int4@1' },
                 nullable: false,
               },
             ],
