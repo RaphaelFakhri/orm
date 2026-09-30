@@ -180,3 +180,5 @@ export type {
 } from '../symbol-table';
 export { buildSymbolTable } from '../symbol-table';
 export { isPslIdentifier } from '../tokenizer';
+export type { WrittenLiteralResult } from '../written-literal';
+export { readWrittenLiteral } from '../written-literal';
