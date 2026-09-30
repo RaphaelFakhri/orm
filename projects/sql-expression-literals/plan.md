@@ -56,7 +56,7 @@ flowchart LR
 
 **Tests:**
 
-- `2-sql/1-core/contract/test/sql-expression.test.ts`: `sqlExpressionDataType` has the id `sql/expression`, declares no casts and no list cast; the entry's tag is `sql` and its `parse`/`print` round-trip; `sqlTextFromCanonical` throws for a non-string; `sqlTextReadsBack` for canonical and non-canonical text.
+- `2-sql/1-core/contract/test/sql-expression.test.ts`: `sqlExpressionDataType` has the id `sql/expression`, declares no casts and no list cast; the entry's tag is `sql` and its `parse`/`print` round-trip; `sqlTextFromCanonical` throws for a non-string. (`sqlTextReadsBack` and its tests moved to slice 2b.)
 - `framework-components/test/data-type-assembly.test.ts` (update): lowering keys are gone; an entry keyed by an unregistered id fails.
 - `3-targets/3-targets/postgres/test/data-types.test.ts` and the SQLite twin (extend): no element of `postgresDataTypes` (`sqliteDataTypes`) names `sql/expression` in `casts` or `listCast.of`.
 - Target `data-types.test.ts` and adapter `control-mutation-defaults.test.ts` (update): section 18.3.
@@ -117,7 +117,7 @@ flowchart LR
 
 **Carried over from the slice 2a review:**
 
-- `sqlTextReadsBack` and its tests move here from slice 2a, next to their only caller (design section 11.2).
+- `sqlTextReadsBack` and its tests move here from slice 2a, next to their only caller (design section 11.2). Its test: true for canonical text (a single line, several lines, an empty text); false for indented text, a blank first or last line, a carriage return and a NUL character. Add `canonicalizeTaggedLiteralBody` to the framework's `authoring` export with it.
 - Before writing ADR 256, check the ADR numbering: three files are already numbered 255.
 
 ## Slice 3 — The TypeScript builder takes `sql` values

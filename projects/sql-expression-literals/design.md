@@ -27,7 +27,7 @@ This package is the lowest one that the authoring packages, the family, both tar
 export const SQL_EXPRESSION_DATA_TYPE_ID: DataTypeId = dataTypeId('sql/expression');
 export const SQL_EXPRESSION_TAG = 'sql';
 
-/** The data type of SQL text in the target's language. It declares no casts. Each SQL target registers it unchanged. ADR 256. */
+/** The data type of SQL text in the target's language. It declares no casts. Each SQL target registers it unchanged. ADR 254. */
 export const sqlExpressionDataType: DataType = dataType(SQL_EXPRESSION_DATA_TYPE_ID, {});
 
 /** PSL support for `sql/expression`. Each SQL target registers it unchanged under `SQL_EXPRESSION_DATA_TYPE_ID`. */
@@ -46,6 +46,7 @@ export function sqlTextFromCanonical(value: JsonValue): string;
 export function printSqlExpressionLiteral(text: string): string;
 // Returns `printTaggedLiteral(SQL_EXPRESSION_TAG, text)` (section 11.1).
 
+// Slice 2b, next to its only caller (section 11.2)
 /** Whether `text` reads back unchanged when printed as a `sql` literal. */
 export function sqlTextReadsBack(text: string): boolean;
 // `const canonical = canonicalizeTaggedLiteralBody(text); return canonical.ok && canonical.body === text;`
@@ -95,7 +96,7 @@ It performs no other check. An empty text is allowed.
 
 In slice 3, add `'SQL_EXPRESSION_INTERPOLATION'` and `'SQL_EXPRESSION_INVALID'` to `ContractSubcode` in `packages/2-sql/1-core/contract/src/contract-errors.ts`.
 
-Imports: `dataType`, `dataTypeId`, `DataType`, `DataTypeId` from `@internal/framework-components/codec`; `DataTypeAuthoringEntry`, `canonicalizeTaggedLiteralBody`, `describeTaggedLiteralFailure`, `resolveTemplateTagEscapes`, `printTaggedLiteral` from `@internal/framework-components/authoring`; `JsonValue` from `@internal/contract/types`; `InternalError` from `@internal/utils/internal-error`; `contractError` from `./contract-errors`. In slice 2a, add `canonicalizeTaggedLiteralBody`, `describeTaggedLiteralFailure`, `resolveTemplateTagEscapes` and `printTaggedLiteral` to `packages/1-framework/1-core/framework-components/src/exports/authoring.ts` (shared plane). The first three keep their existing exports from `control.ts`; `printTaggedLiteral` is exported from `authoring.ts` only.
+Imports: `dataType`, `dataTypeId`, `DataType`, `DataTypeId` from `@internal/framework-components/codec`; `DataTypeAuthoringEntry`, `canonicalizeTaggedLiteralBody`, `describeTaggedLiteralFailure`, `resolveTemplateTagEscapes`, `printTaggedLiteral` from `@internal/framework-components/authoring`; `JsonValue` from `@internal/contract/types`; `InternalError` from `@internal/utils/internal-error`; `contractError` from `./contract-errors`. Each function is added to `packages/1-framework/1-core/framework-components/src/exports/authoring.ts` (shared plane) in the slice that first imports it from there: `printTaggedLiteral` in slice 2a, `canonicalizeTaggedLiteralBody` in slice 2b (for `sqlTextReadsBack`), and `describeTaggedLiteralFailure` and `resolveTemplateTagEscapes` in slice 3. The last three keep their existing exports from `control.ts`; `printTaggedLiteral` is exported from `authoring.ts` only.
 
 ## 3. Registration and the removal of lowering entries (slice 2a)
 

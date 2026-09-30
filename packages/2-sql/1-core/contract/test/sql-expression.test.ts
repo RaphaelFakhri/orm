@@ -6,7 +6,6 @@ import {
   sqlExpressionAuthoringEntry,
   sqlExpressionDataType,
   sqlTextFromCanonical,
-  sqlTextReadsBack,
 } from '../src/sql-expression';
 
 describe('sqlExpressionDataType', () => {
@@ -63,25 +62,5 @@ describe('sqlTextFromCanonical', () => {
 describe('printSqlExpressionLiteral', () => {
   it('prints a sql literal', () => {
     expect(printSqlExpressionLiteral('gen_random_uuid()')).toBe('sql`gen_random_uuid()`');
-  });
-});
-
-describe('sqlTextReadsBack', () => {
-  it.each([
-    ['a single line', 'now()'],
-    ['several lines', "(now()\n  + '1 day'::interval)"],
-    ['an empty text', ''],
-  ])('holds for canonical text: %s', (_name, text) => {
-    expect(sqlTextReadsBack(text)).toBe(true);
-  });
-
-  it.each([
-    ['indented text', '  now()'],
-    ['a blank first line', '\nnow()'],
-    ['a blank last line', 'now()\n'],
-    ['a carriage return', "E'a\r\nb'"],
-    ['a NUL character', 'a\0b'],
-  ])('fails for non-canonical text: %s', (_name, text) => {
-    expect(sqlTextReadsBack(text)).toBe(false);
   });
 });
