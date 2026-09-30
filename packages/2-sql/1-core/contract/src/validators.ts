@@ -537,7 +537,7 @@ function validateSqlContractStructure<T extends Contract<SqlStorage>>(
   }
 
   const storedTypeNames = storedTypeNameProblems(
-    (value as { storage?: unknown }).storage,
+    isPlainRecord(value) ? value['storage'] : undefined,
     'storage',
   );
   if (storedTypeNames.length > 0) {
