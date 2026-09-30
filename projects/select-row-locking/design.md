@@ -18,7 +18,7 @@ At Postgres's default isolation level both transactions read `stock = 1`, both d
 The fix every database offers is to lock the row when you read it, so the second transaction waits for the first to commit and then reads what the first left behind:
 
 ```sql
-SELECT "id", "stock" FROM "product" WHERE "id" = $1 FOR UPDATE
+SELECT "id" AS "id", "stock" AS "stock" FROM "public"."product" WHERE "id" = $1 FOR UPDATE
 ```
 
 Prisma 8 cannot write that statement today. Neither the ORM client nor the typed SQL builder has a method for it, and the select syntax tree they both produce has no field that could hold it. The only way is the raw SQL lane, which throws away the typed columns, the typed `where` and the table names the contract knows about. This design adds the missing piece so the example becomes:
@@ -224,7 +224,7 @@ The Postgres renderer appends one rendered clause per entry after `offsetClause`
 
 ```sql
 SELECT "id" AS "id" FROM "public"."contact" WHERE "id" = $1 FOR NO KEY UPDATE
-SELECT "id" AS "id" FROM "public"."job" WHERE "state" = $1 ORDER BY "createdAt" ASC LIMIT $2 FOR UPDATE SKIP LOCKED
+SELECT "id" AS "id" FROM "public"."job" WHERE "state" = $1 ORDER BY "createdAt" ASC LIMIT 1 FOR UPDATE SKIP LOCKED
 SELECT "c"."id" AS "id" FROM "public"."contact" AS "c" INNER JOIN "public"."identity" AS "i" ON ... FOR UPDATE OF "c" NOWAIT
 ```
 

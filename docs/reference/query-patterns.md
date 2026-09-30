@@ -198,7 +198,7 @@ await db.transaction(async (tx) => {
   );
   // ... process the job and mark it done through tx
 });
-// ... ORDER BY "createdAt" ASC LIMIT $2 FOR UPDATE SKIP LOCKED
+// ... ORDER BY "createdAt" ASC LIMIT 1 FOR UPDATE SKIP LOCKED
 ```
 
 The four methods are named after the SQL they render:

@@ -14,7 +14,7 @@ db.sql.public.job
   .limit(1)
   .forUpdate({ skipLocked: true })
   .build();
-// SELECT "id" AS "id" FROM "public"."job" WHERE "state" = $1 ORDER BY "createdAt" ASC LIMIT $2 FOR UPDATE SKIP LOCKED
+// SELECT "id" AS "id" FROM "public"."job" WHERE "state" = $1 ORDER BY "createdAt" ASC LIMIT 1 FOR UPDATE SKIP LOCKED
 ```
 
 On a SQLite contract none of the four methods exists in the types, and a hand-built `SelectAst` carrying a lock is refused by the SQLite renderer.

@@ -43,7 +43,7 @@ describe('integration: row locking', { timeout: timeouts.databaseOperation }, ()
     ).toEqual([{ id: 1, name: 'Alice' }]);
   });
 
-  it('forUpdate of an alias on a joined select locks that table only', async () => {
+  it('forUpdate of an alias on a joined select returns the joined row', async () => {
     const d = db();
     const plan = d.public.users
       .as('u')
