@@ -1,6 +1,6 @@
 import type { ColumnDefault } from '@internal/contract/types';
 import type { SqlControlTargetDescriptor } from '@internal/family-sql/control';
-import { buildNativeTypeExpander } from '@internal/family-sql/control';
+import { buildDataTypeResolver, buildNativeTypeExpander } from '@internal/family-sql/control';
 import type { SqlControlAdapter } from '@internal/family-sql/control-adapter';
 import type {
   ControlTargetInstance,
@@ -79,6 +79,7 @@ function createPostgresTargetDescriptor(): SqlControlTargetDescriptor<
           ...ifDefined('expandNativeType', expander),
           renderDefault: postgresRenderDefault,
           resolveDefault: postgresResolveDefault,
+          ...ifDefined('dataTypeOf', buildDataTypeResolver(frameworkComponents)),
         });
       },
     },
