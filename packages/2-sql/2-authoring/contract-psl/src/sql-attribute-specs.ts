@@ -26,8 +26,7 @@ import type {
   ModelAttributeCtx,
   ModelAttributeSpecFactory,
   ModelSymbol,
-  NumLiteral,
-  ParsedTaggedLiteral,
+  ParsedWrittenScalar,
   PslDiagnostic,
   PslSpan,
   RejectingArgType,
@@ -57,6 +56,7 @@ import {
   referencedFieldRef,
   str,
   taggedLiteral,
+  writtenScalar,
 } from '@internal/psl-parser';
 import type {
   AstNode,
@@ -70,7 +70,7 @@ import {
   sqlTextFromCanonical,
 } from '@internal/sql-contract/sql-expression';
 import { blindCast } from '@internal/utils/casts';
-import { notOk } from '@internal/utils/result';
+import { notOk, ok } from '@internal/utils/result';
 import { removedDbgeneratedMessage } from './default-function-registry';
 import { getAttribute } from './psl-attribute-parsing';
 
@@ -253,9 +253,32 @@ const mapFieldSpec = fieldAttribute('map', {
   refine: validateMappedName,
 });
 
-type DefaultLiteralElement = string | NumLiteral | boolean | ParsedTaggedLiteral;
+/** A written list with its span, so a refusal about the whole list is reported at it. */
+export interface ParsedWrittenList {
+  readonly elements: readonly ParsedWrittenScalar[];
+  readonly span: PslSpan;
+}
 
-type DefaultArgValue = DefaultLiteralElement | DefaultLiteralElement[] | TypedFuncCall;
+type DefaultArgValue = ParsedWrittenScalar | ParsedWrittenList | TypedFuncCall | string;
+
+function writtenList(
+  of: ArgType<ParsedWrittenScalar, AttributeCtx>,
+): ArgType<ParsedWrittenList, AttributeCtx> {
+  const arm = list(of, { label: `list of (${of.label})` });
+  return {
+    kind: 'list',
+    label: arm.label,
+    of: arm.of,
+    allowEmpty: arm.allowEmpty,
+    unique: arm.unique,
+    parse: (arg, ctx) => {
+      const parsed = arm.parse(arg, ctx);
+      return parsed.ok
+        ? ok({ elements: parsed.value, span: nodePslSpan(arg.syntax, ctx.sources) })
+        : parsed;
+    },
+  };
+}
 
 function scalarDefaultArms(
   isList: boolean,
@@ -273,7 +296,7 @@ function scalarDefaultArms(
       else tags.push(entry.written.tag);
     }
     return [...tagsByDocumentation].map(([documentation, tags]) =>
-      taggedLiteral(tags, { documentation }),
+      writtenScalar(taggedLiteral(tags, { documentation })),
     );
   };
   const anyTag = () => tagArms(() => true);
@@ -281,12 +304,12 @@ function scalarDefaultArms(
   // SQL expression is never a list element, so the list does not offer its tag.
   const literal = () =>
     oneOf(
-      str(),
-      numLiteral(),
-      bool(),
+      writtenScalar(str()),
+      writtenScalar(numLiteral()),
+      writtenScalar(bool()),
       ...tagArms((dataType) => dataType !== SQL_EXPRESSION_DATA_TYPE_ID),
     );
-  const listArm = () => list(literal(), { label: `list of (${literal().label})` });
+  const listArm = () => writtenList(literal());
   const funcArms = [...defaultFunctionRegistry.entries()].map(([name, entry]) =>
     funcCall(
       name,
@@ -300,7 +323,14 @@ function scalarDefaultArms(
   // element types, and its value is written as a PSL list on a column that is not a list.
   return isList
     ? [listArm(), ...funcArms, ...anyTag()]
-    : [str(), numLiteral(), bool(), ...funcArms, ...anyTag(), listArm()];
+    : [
+        writtenScalar(str()),
+        writtenScalar(numLiteral()),
+        writtenScalar(bool()),
+        ...funcArms,
+        ...anyTag(),
+        listArm(),
+      ];
 }
 
 /**

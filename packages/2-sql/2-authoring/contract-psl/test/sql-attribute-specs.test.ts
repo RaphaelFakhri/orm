@@ -447,21 +447,36 @@ model Post {
     ]);
   });
 
-  it('accepts scalar literals on a scalar field, keeping a number as written', () => {
+  it('accepts scalar literals on a scalar field as written scalars with their spans', () => {
     const schema = 'model Post {\n  id Int @id\n  price Decimal @default(1.50)\n}\n';
     expect(interpretDefault(schema, 'price')).toEqual({
-      value: { value: { text: '1.50' } },
+      value: {
+        value: {
+          ok: true,
+          written: { kind: 'number', text: '1.50' },
+          span: spanOf(schema, '1.50'),
+        },
+      },
       diagnostics: [],
     });
   });
 
   it('accepts a list literal on a list field and on a scalar field, where the codec decides', () => {
-    expect(
-      interpretDefault('model Post {\n  id Int @id\n  tags String[] @default(["a"])\n}\n', 'tags'),
-    ).toEqual({ value: { value: ['a'] }, diagnostics: [] });
-    expect(
-      interpretDefault('model Post {\n  id Int @id\n  tag String @default(["a"])\n}\n', 'tag'),
-    ).toEqual({ value: { value: ['a'] }, diagnostics: [] });
+    const element = (schema: string) => ({
+      ok: true,
+      written: { kind: 'string', text: 'a' },
+      span: spanOf(schema, '"a"'),
+    });
+    const listSchema = 'model Post {\n  id Int @id\n  tags String[] @default(["a"])\n}\n';
+    const scalarSchema = 'model Post {\n  id Int @id\n  tag String @default(["a"])\n}\n';
+    expect(interpretDefault(listSchema, 'tags')).toEqual({
+      value: { value: { elements: [element(listSchema)], span: spanOf(listSchema, '["a"]') } },
+      diagnostics: [],
+    });
+    expect(interpretDefault(scalarSchema, 'tag')).toEqual({
+      value: { value: { elements: [element(scalarSchema)], span: spanOf(scalarSchema, '["a"]') } },
+      diagnostics: [],
+    });
   });
 
   it('accepts a registered default function and rejects an unregistered one', () => {
@@ -473,3 +488,12 @@ model Post {
     expect(rejected.diagnostics).toHaveLength(1);
   });
 });
+
+function spanOf(text: string, needle: string) {
+  const position = (offset: number) => {
+    const before = text.slice(0, offset);
+    return { offset, line: before.split('\n').length, column: offset - before.lastIndexOf('\n') };
+  };
+  const start = text.indexOf(needle);
+  return { start: position(start), end: position(start + needle.length) };
+}

@@ -797,7 +797,7 @@ describe('providePslCompletionItems', () => {
     ).toEqual(['type']);
 
     const { items, sourceFile, cursorOffset } = completeWithActualStack(
-      ['model Post {', '  id Int', '  @@index(expression: "lower(name)", ma|)', '}'].join('\n'),
+      ['model Post {', '  id Int', '  @@index(expression: sql`lower(name)`, ma|)', '}'].join('\n'),
       stack,
     );
     expect(items.map((item) => item.label)).toEqual([
@@ -845,12 +845,12 @@ describe('providePslCompletionItems', () => {
     const checkItem = completionItemByLabel(checkCompletion.items, 'check');
     expect(checkItem).toMatchObject({
       insertTextFormat: InsertTextFormat.Snippet,
-      textEdit: { newText: `check(expression: "\${1:expression}")` },
+      textEdit: { newText: 'check(expression: ${1:expression})' },
     });
     expect(
       applyCompletionItem({ sourceFile: checkCompletion.sourceFile, item: checkItem }),
     ).toEqual(
-      ['model Post {', '  id Int', `  @@check(expression: "\${1:expression}") // keep`, '}'].join(
+      ['model Post {', '  id Int', '  @@check(expression: ${1:expression}) // keep', '}'].join(
         '\n',
       ),
     );

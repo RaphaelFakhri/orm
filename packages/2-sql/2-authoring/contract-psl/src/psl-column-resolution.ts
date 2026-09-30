@@ -35,8 +35,7 @@ import type {
   Binder,
   FieldSymbol,
   ModelSymbol,
-  NumLiteral,
-  ParsedTaggedLiteral,
+  ParsedWrittenScalar,
   PslSpan,
   ResolvedTypeConstructorCall,
   SymbolTable,
@@ -44,6 +43,7 @@ import type {
 import {
   type DiagnosticSource,
   diagnosticSource,
+  nodePslSpan,
   type PslDiagnosticCollector,
 } from '@internal/psl-parser';
 import {
@@ -52,12 +52,7 @@ import {
   reportUncomposedNamespace,
   reportUnknownFieldPreset,
 } from '@internal/psl-parser/interpret';
-import {
-  ArrayLiteralAst,
-  type ExpressionAst,
-  type FieldAttributeAst,
-  type PslSources,
-} from '@internal/psl-parser/syntax';
+import type { PslSources } from '@internal/psl-parser/syntax';
 import {
   SQL_EXPRESSION_DATA_TYPE_ID,
   SQL_EXPRESSION_TAG,
@@ -67,7 +62,7 @@ import { checkSqlDefaultText, reservedSqlDefaultText } from '@internal/sql-contr
 import type { AuthoredColumnDefault } from '@internal/sql-contract-ts/contract-builder';
 import { InternalError } from '@internal/utils/internal-error';
 import { contractError } from './contract-errors';
-import { type DefaultRefusalPlace, lowerDataTypeDefault } from './data-type-default';
+import { type DefaultSpans, lowerDataTypeDefault } from './data-type-default';
 import { lowerDefaultFunctionWithRegistry } from './default-function-registry';
 
 import { getAttribute } from './psl-attribute-parsing';
@@ -578,15 +573,6 @@ const TAGGED_LITERAL_CANONICALIZATION_CODES = {
   'too-large': 'PSL_TAGGED_LITERAL_TOO_LARGE',
 } as const;
 
-function defaultValueExpression(node: FieldAttributeAst): ExpressionAst | undefined {
-  return [...(node.argList()?.args() ?? [])].find((arg) => arg.colon() === undefined)?.value();
-}
-
-function listElements(expression: ExpressionAst | undefined): readonly ExpressionAst[] {
-  const list = expression === undefined ? undefined : ArrayLiteralAst.cast(expression.syntax);
-  return list === undefined ? [] : [...list.elements()];
-}
-
 export function lowerDefaultForField(input: {
   readonly modelName: string;
   readonly fieldName: string;
@@ -629,23 +615,11 @@ export function lowerDefaultForField(input: {
   });
   if (interpreted === undefined) return {};
   const value = interpreted.value;
-  const valueExpression = defaultValueExpression(node);
-  const refusalLocation = (place: DefaultRefusalPlace) => {
-    if (place.kind === 'attribute') return source.at();
-    const expression =
-      place.elementIndex === undefined
-        ? valueExpression
-        : listElements(valueExpression)[place.elementIndex];
-    if (expression === undefined) {
-      throw new InternalError(
-        `Field "${input.modelName}.${input.fieldName}": the refused @default value has no written expression.`,
-      );
-    }
-    return diagnosticSource(input.sources, expression.syntax).at();
-  };
-  const readAsLiteral = (written: WrittenValue) => {
+  const attributeSpan = nodePslSpan(node.syntax, input.sources);
+  const readAsLiteral = (written: WrittenValue, spans: DefaultSpans) => {
     const lowered = lowerDataTypeDefault({
       written,
+      spans,
       isList: input.field.list,
       column: input.columnDescriptor,
       codecLookup: input.codecLookup,
@@ -656,29 +630,21 @@ export function lowerDefaultForField(input: {
       input.diagnostics.push({
         code: lowered.code,
         message: lowered.message,
-        ...refusalLocation(lowered.place),
+        ...source.at(lowered.span),
       });
       return {};
     }
     return { defaultValue: { kind: 'literal' as const, value: lowered.value, canonical: true } };
   };
 
-  const writtenScalar = (
-    element: string | boolean | NumLiteral | ParsedTaggedLiteral,
-  ): WrittenScalar | { readonly ok: false } => {
-    if (typeof element === 'string') return { kind: 'string', text: element };
-    if (typeof element === 'boolean') return { kind: 'boolean', value: element };
-    if ('text' in element) return { kind: 'number', text: element.text };
-    const { canonicalization } = element;
-    if (!canonicalization.ok) {
-      input.diagnostics.push({
-        code: TAGGED_LITERAL_CANONICALIZATION_CODES[canonicalization.reason],
-        message: describeTaggedLiteralFailure(canonicalization.reason),
-        ...source.at(element.span),
-      });
-      return { ok: false };
-    }
-    return { kind: 'tag', tag: element.tag, text: canonicalization.text };
+  const canonicalized = (scalar: ParsedWrittenScalar): WrittenScalar | undefined => {
+    if (scalar.ok) return scalar.written;
+    input.diagnostics.push({
+      code: TAGGED_LITERAL_CANONICALIZATION_CODES[scalar.reason],
+      message: describeTaggedLiteralFailure(scalar.reason),
+      ...source.at(scalar.span),
+    });
+    return undefined;
   };
 
   const sqlExpressionDefault = (text: string, span: PslSpan) => {
@@ -698,43 +664,53 @@ export function lowerDefaultForField(input: {
     return { defaultValue: { kind: 'function' as const, expression: text } };
   };
 
+  // An enum member identifier is lowered against its enum's handle, which a field without one lacks.
+  if (typeof value === 'string') return {};
+
   // A column bound to a value set (`pg.enum(Ref)`) takes member names, which are checked against the
   // value set rather than read as literals; its codec accepts no literal default at all.
   if (input.columnDescriptor.valueSet !== undefined) {
-    if (typeof value === 'string') return { defaultValue: { kind: 'literal', value } };
-    if (Array.isArray(value)) {
-      const members = value.filter((element): element is string => typeof element === 'string');
-      if (members.length === value.length) {
+    const memberName = (scalar: ParsedWrittenScalar) =>
+      scalar.ok && scalar.written.kind === 'string' ? scalar.written.text : undefined;
+    if ('written' in value || 'reason' in value) {
+      const member = memberName(value);
+      if (member !== undefined) return { defaultValue: { kind: 'literal', value: member } };
+    }
+    if ('elements' in value) {
+      const members = value.elements.map(memberName);
+      if (members.every((member) => member !== undefined)) {
         return { defaultValue: { kind: 'literal', value: members } };
       }
     }
   }
 
-  if (Array.isArray(value)) {
+  if ('elements' in value) {
     const elements: WrittenValue[] = [];
-    for (const element of value) {
-      const written = writtenScalar(element);
-      if ('ok' in written) return {};
+    for (const element of value.elements) {
+      const written = canonicalized(element);
+      if (written === undefined) return {};
       elements.push(written);
     }
-    return readAsLiteral({ kind: 'list', elements });
+    return readAsLiteral(
+      { kind: 'list', elements },
+      {
+        attribute: attributeSpan,
+        value: value.span,
+        elements: value.elements.map((element) => element.span),
+      },
+    );
   }
 
-  if (typeof value === 'string') return readAsLiteral({ kind: 'string', text: value });
-  if (typeof value === 'boolean') return readAsLiteral({ kind: 'boolean', value });
-
-  if ('text' in value) {
-    return readAsLiteral({ kind: 'number', text: value.text });
-  }
-
-  if ('tag' in value) {
-    const written = writtenScalar(value);
-    if ('ok' in written) return {};
+  if ('written' in value || 'reason' in value) {
+    const written = canonicalized(value);
+    if (written === undefined) return {};
+    const spans = { attribute: attributeSpan, value: value.span, elements: [] };
+    if (written.kind !== 'tag') return readAsLiteral(written, spans);
     const read = readWrittenValue(input.dataTypes, written);
     if (read.ok && read.value.type === SQL_EXPRESSION_DATA_TYPE_ID) {
       return sqlExpressionDefault(sqlTextFromCanonical(read.value.value), value.span);
     }
-    return readAsLiteral(written);
+    return readAsLiteral(written, spans);
   }
 
   if (typeof value === 'object') {

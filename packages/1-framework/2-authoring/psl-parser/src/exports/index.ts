@@ -53,6 +53,8 @@ export { oneOf } from '../attribute-spec/combinators/one-of';
 export { record } from '../attribute-spec/combinators/record';
 export { str } from '../attribute-spec/combinators/str';
 export { taggedLiteral } from '../attribute-spec/combinators/tagged-literal';
+export type { ParsedWrittenScalar } from '../attribute-spec/combinators/written-scalar';
+export { writtenScalar } from '../attribute-spec/combinators/written-scalar';
 export { fieldAttribute } from '../attribute-spec/field-attribute';
 export type { ArgBindingSpec } from '../attribute-spec/interpret';
 export { interpretArgs, interpretAttribute } from '../attribute-spec/interpret';
