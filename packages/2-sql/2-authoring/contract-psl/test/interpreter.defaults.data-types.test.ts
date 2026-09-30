@@ -266,6 +266,38 @@ describe('written defaults a column refuses', () => {
     ]);
   });
 
+  it('refuses an element the list cast does not take at the element, suggesting the forms of the types it takes', () => {
+    expect(diagnostics(model('  embed pgvector.Vector(3) @default([1, "x", 3])'))).toEqual([
+      {
+        code: 'PSL_VALUE_TYPE_INCOMPATIBLE',
+        message:
+          'Field "N.embed" at element 2: pgvector/vector has no cast from a list holding pg/text; write a number',
+        sourceId: 'schema.prisma',
+        span: {
+          start: { offset: 63, line: 3, column: 41 },
+          end: { offset: 66, line: 3, column: 44 },
+        },
+      },
+    ]);
+  });
+
+  it('refuses an unknown tag among the elements of a list read through a list cast, at the element', () => {
+    expect(
+      diagnostics(model(`  embed pgvector.Vector(3) @default([1, ${tagged('pg.json', '2')}, 3])`)),
+    ).toEqual([
+      {
+        code: 'PSL_UNKNOWN_LITERAL_TAG',
+        message:
+          'Field "N.embed" at element 2: Unknown literal tag "pg.json". Known tags: sql, json.',
+        sourceId: 'schema.prisma',
+        span: {
+          start: { offset: 63, line: 3, column: 41 },
+          end: { offset: 73, line: 3, column: 51 },
+        },
+      },
+    ]);
+  });
+
   it('refuses a tag no pack registered, listing the tags the stack knows', () => {
     expect(diagnostics(model(`  meta Jsonb @default(${tagged('sqlite.sql', 'x')})`))).toEqual([
       expect.objectContaining({

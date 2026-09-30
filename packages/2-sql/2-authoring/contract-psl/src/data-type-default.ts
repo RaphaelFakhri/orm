@@ -54,6 +54,13 @@ export type DefaultRefusal = {
       readonly receivingType: DataTypeId;
       readonly casts: readonly string[];
     }
+  | {
+      readonly kind: 'no-element-cast';
+      readonly receivingType: DataTypeId;
+      readonly valueType: DataTypeId;
+      /** The element types the receiving type's list cast takes. */
+      readonly elementTypes: readonly DataTypeId[];
+    }
   | { readonly kind: 'undecodable'; readonly codecId: string; readonly message: string }
 );
 
@@ -63,7 +70,7 @@ export type ReadDefaultResult =
       readonly ok: false;
       readonly refusal: DefaultRefusal;
       /** The types whose written forms a diagnostic suggests instead. */
-      readonly receivingTypes: readonly DataTypeId[];
+      readonly suggestedTypes: readonly DataTypeId[];
     };
 
 type DefaultFailure = Extract<ReadDefaultResult, { readonly ok: false }>;
@@ -89,20 +96,20 @@ function messageOf(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
-function refused(refusal: DefaultRefusal, receivingTypes: readonly DataTypeId[]): DefaultFailure {
-  return { ok: false, refusal, receivingTypes };
+function refused(refusal: DefaultRefusal, suggestedTypes: readonly DataTypeId[]): DefaultFailure {
+  return { ok: false, refusal, suggestedTypes };
 }
 
 function readOneValue(
   dataTypes: DataTypeSupport,
   written: WrittenScalar,
   elementIndex: number | undefined,
-  receivingTypes: readonly DataTypeId[],
+  suggestedTypes: readonly DataTypeId[],
 ): { readonly ok: true; readonly typed: TypedValue } | DefaultFailure {
   const read = readWrittenValue(dataTypes, written);
   return read.ok
     ? { ok: true, typed: read.value }
-    : refused({ ...read.failure, elementIndex }, receivingTypes);
+    : refused({ ...read.failure, elementIndex }, suggestedTypes);
 }
 
 /** The column's `typeParams` as the codec reference carries them, so `vector(3)` checks its length. */
@@ -143,7 +150,7 @@ export function readDataTypeDefault(input: {
     );
   }
   const columnType = descriptor.dataType;
-  const receivingTypes = [columnType];
+  const suggestedTypes = [columnType];
 
   const codec = materializeCodec(
     descriptor,
@@ -165,22 +172,22 @@ export function readDataTypeDefault(input: {
           message: messageOf(error),
           elementIndex,
         },
-        receivingTypes,
+        suggestedTypes,
       );
     }
   };
 
   const readOne = (written: WrittenScalar, elementIndex: number | undefined): ReadDefaultResult => {
-    const read = readOneValue(input.dataTypes, written, elementIndex, receivingTypes);
+    const read = readOneValue(input.dataTypes, written, elementIndex, suggestedTypes);
     if (!read.ok) return read;
     const cast = castTypedValue(input.dataTypes, columnType, read.typed);
-    if (!cast.ok) return refused({ ...cast.failure, elementIndex }, receivingTypes);
+    if (!cast.ok) return refused({ ...cast.failure, elementIndex }, suggestedTypes);
     return validate(cast.value.value, elementIndex);
   };
 
   if (input.written.kind !== 'list') {
     if (input.isList) {
-      return refused({ kind: 'not-a-list', elementIndex: undefined }, receivingTypes);
+      return refused({ kind: 'not-a-list', elementIndex: undefined }, suggestedTypes);
     }
     return readOne(input.written, undefined);
   }
@@ -188,7 +195,7 @@ export function readDataTypeDefault(input: {
   if (input.isList) {
     const elements: JsonValue[] = [];
     for (const [elementIndex, written] of input.written.elements.entries()) {
-      if (written.kind === 'list') return nestedList(elementIndex, receivingTypes);
+      if (written.kind === 'list') return nestedList(elementIndex, suggestedTypes);
       const element = readOne(written, elementIndex);
       if (!element.ok) return element;
       elements.push(element.value);
@@ -199,10 +206,10 @@ export function readDataTypeDefault(input: {
   return readListIntoScalar({ ...input, written: input.written, columnType, validate });
 }
 
-function nestedList(elementIndex: number, receivingTypes: readonly DataTypeId[]): DefaultFailure {
+function nestedList(elementIndex: number, suggestedTypes: readonly DataTypeId[]): DefaultFailure {
   return refused(
     { kind: 'unreadable', message: 'a list holds values, not other lists', elementIndex },
-    receivingTypes,
+    suggestedTypes,
   );
 }
 
@@ -235,10 +242,10 @@ function readListIntoScalar(input: {
     if (!listCast.of.includes(read.typed.type)) {
       return refused(
         {
-          kind: 'no-cast',
+          kind: 'no-element-cast',
           receivingType: input.columnType,
           valueType: read.typed.type,
-          casts: [...listCast.of],
+          elementTypes: listCast.of,
           elementIndex,
         },
         listCast.of,
@@ -281,7 +288,7 @@ export function lowerDataTypeDefault(input: {
   if (read.ok) return read;
   const { refusal } = read;
   const where = location(input.fieldPath, refusal.elementIndex);
-  const forms = formsOf(input.dataTypes, read.receivingTypes);
+  const forms = formsOf(input.dataTypes, read.suggestedTypes);
   const atWrittenValue: DefaultRefusalPlace = {
     kind: 'written-value',
     elementIndex: refusal.elementIndex,
@@ -306,6 +313,13 @@ export function lowerDataTypeDefault(input: {
         ok: false,
         code: 'PSL_VALUE_TYPE_INCOMPATIBLE',
         message: `${where}: ${refusal.receivingType} has no cast from a list; write ${forms}`,
+        place: atWrittenValue,
+      };
+    case 'no-element-cast':
+      return {
+        ok: false,
+        code: 'PSL_VALUE_TYPE_INCOMPATIBLE',
+        message: `${where}: ${refusal.receivingType} has no cast from a list holding ${refusal.valueType}; write ${forms}`,
         place: atWrittenValue,
       };
     default: {

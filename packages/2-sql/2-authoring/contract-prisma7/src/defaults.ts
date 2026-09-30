@@ -323,6 +323,8 @@ function refusalReason(refusal: DefaultRefusal): string {
       return `holds a ${refusal.valueType} value${at}, which ${refusal.receivingType} has no cast from; ${describeCasts(refusal.casts)}.`;
     case 'no-list-cast':
       return `holds a list, which ${refusal.receivingType} has no cast from; ${describeCasts(refusal.casts)}.`;
+    case 'no-element-cast':
+      return `holds a ${refusal.valueType} value${at}, which the list cast of ${refusal.receivingType} does not take; it takes ${refusal.elementTypes.join(', ')}.`;
     case 'undecodable':
       return `holds a value${at} that ${refusal.codecId} does not read: ${refusal.message}`;
   }
