@@ -7,12 +7,10 @@
  */
 
 import type { CodecLookup } from '@internal/framework-components/codec';
-import { createDataTypeLookup } from '@internal/framework-components/codec';
 import { assembleAuthoringContributions } from '@internal/framework-components/control';
 import { buildSymbolTable } from '@internal/psl-parser';
 import { parse } from '@internal/psl-parser/syntax';
 import { interpretPslDocumentToSqlContract } from '@internal/sql-contract-psl';
-import { postgresDataTypes } from '@internal/target-postgres/data-types';
 import { describe, expect, it } from 'vitest';
 import {
   postgresAuthoringEntityTypes,
@@ -24,8 +22,7 @@ import { PG_ENUM_CODEC_ID } from '../src/core/codec-ids';
 import { pgEnumDescriptor } from '../src/core/codecs';
 import { postgresIndexTypes } from '../src/core/index-types';
 import { type PostgresSchema, postgresCreateNamespace } from '../src/core/postgres-schema';
-
-const postgresDataTypeLookup = createDataTypeLookup(postgresDataTypes);
+import { postgresDataTypeSupport } from './fixtures/postgres-data-type-support';
 
 const assembled = assembleAuthoringContributions([
   {
@@ -78,7 +75,7 @@ function interpret(source: string) {
     symbolTable,
     sources,
     target: postgresTarget,
-    dataTypes: { entries: assembled.dataTypes, lookup: postgresDataTypeLookup },
+    dataTypes: postgresDataTypeSupport,
     scalarColumnDescriptors: scalarTypeDescriptors,
     authoringContributions: assembled,
     composedExtensionContracts: new Map(),
@@ -117,7 +114,7 @@ describe('@@fullTextIndex', () => {
     const typed = indexesOf(model(`  @@fullTextIndex([text], name: "message_text_search")`));
     const authored = indexesOf(
       model(
-        `  @@index(expression: "to_tsvector('english', \\"text\\")", type: "gin", name: "message_text_search")`,
+        `  @@index(expression: sql\`to_tsvector('english', "text")\`, type: "gin", name: "message_text_search")`,
       ),
     );
 
@@ -164,16 +161,46 @@ model Message {
 
   it('passes a where predicate through to the index, like @@index(expression:, where:)', () => {
     const typed = indexesOf(
-      model(`  @@fullTextIndex([text], where: "id > 0", name: "message_text_search_live")`),
+      model(`  @@fullTextIndex([text], where: sql\`id > 0\`, name: "message_text_search_live")`),
     );
     const authored = indexesOf(
       model(
-        `  @@index(expression: "to_tsvector('english', \\"text\\")", type: "gin", where: "id > 0", name: "message_text_search_live")`,
+        `  @@index(expression: sql\`to_tsvector('english', "text")\`, type: "gin", where: sql\`id > 0\`, name: "message_text_search_live")`,
       ),
     );
 
     expect(typed).toEqual(authored);
     expect(typed[0]).toMatchObject({ where: 'id > 0' });
+  });
+
+  it.each([
+    ['"id > 0"', 'sql/expression has no cast from pg/text; write it as sql`id > 0`'],
+    ['42', 'sql/expression has no cast from pg/int2; write sql`...`'],
+    ['true', 'sql/expression has no cast from pg/bool; write sql`...`'],
+  ])('refuses the where value %s at the value', (value, message) => {
+    const source = model(
+      `  @@fullTextIndex([text], where: ${value}, name: "message_text_search_live")`,
+    );
+    const line = source.split('\n').findIndex((text) => text.includes('@@fullTextIndex')) + 1;
+    const lineText = source.split('\n')[line - 1] ?? '';
+    const lineOffset = source.indexOf(lineText);
+    const column = lineText.indexOf(value) + 1;
+
+    expect(diagnosticsOf(source)).toEqual([
+      {
+        code: 'PSL_VALUE_TYPE_INCOMPATIBLE',
+        message,
+        sourceId: 'psl-full-text-index.test.psl',
+        span: {
+          start: { offset: lineOffset + column - 1, line, column },
+          end: {
+            offset: lineOffset + column - 1 + value.length,
+            line,
+            column: column + value.length,
+          },
+        },
+      },
+    ]);
   });
 
   it('rejects a field that is not textual, naming the field and its type', () => {

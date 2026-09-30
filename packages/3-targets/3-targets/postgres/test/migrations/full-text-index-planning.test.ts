@@ -8,7 +8,6 @@
 
 import type { Contract } from '@internal/contract/types';
 import type { ExecuteRequestLowerer } from '@internal/family-sql/control-adapter';
-import { createDataTypeLookup } from '@internal/framework-components/codec';
 import {
   APP_SPACE_ID,
   assembleAuthoringContributions,
@@ -17,7 +16,6 @@ import { buildSymbolTable } from '@internal/psl-parser';
 import { parse } from '@internal/psl-parser/syntax';
 import type { SqlStorage } from '@internal/sql-contract/types';
 import { interpretPslDocumentToSqlContract } from '@internal/sql-contract-psl';
-import { postgresDataTypes } from '@internal/target-postgres/data-types';
 import { blindCast } from '@internal/utils/casts';
 import { describe, expect, it } from 'vitest';
 import {
@@ -32,8 +30,7 @@ import { postgresCreateNamespace } from '../../src/core/postgres-schema';
 import { PostgresDatabaseSchemaNode } from '../../src/core/schema-ir/postgres-database-schema-node';
 import { PostgresNamespaceSchemaNode } from '../../src/core/schema-ir/postgres-namespace-schema-node';
 import { PostgresTableSchemaNode } from '../../src/core/schema-ir/postgres-table-schema-node';
-
-const postgresDataTypeLookup = createDataTypeLookup(postgresDataTypes);
+import { postgresDataTypeSupport } from '../fixtures/postgres-data-type-support';
 
 const TYPED_ATTRIBUTE_SCHEMA = `
 model Message {
@@ -47,7 +44,7 @@ const HAND_WRITTEN_EXPRESSION_SCHEMA = `
 model Message {
   id   Int    @id
   text String
-  @@index(expression: "to_tsvector('english', \\"text\\")", type: "gin", name: "message_text_search")
+  @@index(expression: sql\`to_tsvector('english', "text")\`, type: "gin", name: "message_text_search")
 }
 `;
 
@@ -77,7 +74,7 @@ function authoredContract(schema: string): Contract<SqlStorage> {
     sources,
     capabilities: {},
     target: postgresTargetDescriptorMeta,
-    dataTypes: { entries: assembled.dataTypes, lookup: postgresDataTypeLookup },
+    dataTypes: postgresDataTypeSupport,
     scalarColumnDescriptors: new Map([
       ['Int', { codecId: 'pg/int4@1', nativeType: 'int4' }],
       ['String', { codecId: 'pg/text@1', nativeType: 'text' }],

@@ -13,17 +13,10 @@
  *     factory chain (no test-side hand-lowering).
  */
 
-import { createDataTypeLookup } from '@internal/framework-components/codec';
 import { assembleAuthoringContributions } from '@internal/framework-components/control';
-import {
-  buildSymbolTable,
-  createBinder,
-  EMPTY_DATA_TYPES,
-  interpretExtensionBlocks,
-} from '@internal/psl-parser';
+import { buildSymbolTable, createBinder, interpretExtensionBlocks } from '@internal/psl-parser';
 import { parse } from '@internal/psl-parser/syntax';
 import { interpretPslDocumentToSqlContract } from '@internal/sql-contract-psl';
-import { postgresDataTypes } from '@internal/target-postgres/data-types';
 import { createSqlContract } from '@repo/test-utils';
 import { describe, expect, it } from 'vitest';
 import {
@@ -35,8 +28,7 @@ import { PostgresContractSerializer } from '../src/core/postgres-contract-serial
 import { PostgresRlsPolicy } from '../src/core/postgres-rls-policy';
 import { PostgresSchema, postgresCreateNamespace } from '../src/core/postgres-schema';
 import { computeContentHash } from '../src/core/rls/canonicalize';
-
-const postgresDataTypeLookup = createDataTypeLookup(postgresDataTypes);
+import { postgresDataTypeSupport } from './fixtures/postgres-data-type-support';
 
 const assembled = assembleAuthoringContributions([
   {
@@ -58,7 +50,7 @@ function blockResolutionBinder(
     typeConstructors: {},
     attributeSpecs: { model: {}, field: {} },
     defaultFunctionRegistry: new Map(),
-    dataTypes: EMPTY_DATA_TYPES,
+    dataTypes: postgresDataTypeSupport,
     pslBlockDescriptors: assembled.pslBlockDescriptors,
   }).binder;
 }
@@ -92,7 +84,7 @@ namespace public {
   policy_select p_read {
     target = profile
     roles  = [app_user]
-    using  = "owner_id = current_setting('app.uid')::int"
+    using  = sql\`owner_id = current_setting('app.uid')::int\`
   }
 }
 `;
@@ -105,7 +97,7 @@ namespace public {
       sources,
       pslBlockDescriptors: assembled.pslBlockDescriptors,
       binder: blockResolutionBinder(symbolTable, sources),
-      dataTypes: EMPTY_DATA_TYPES,
+      dataTypes: postgresDataTypeSupport,
     });
     return { document, sources, symbolTable, diagnostics, parsedBlocks };
   }
@@ -137,7 +129,7 @@ namespace public {
     const target = envelope.values['target'] as { declaration: { name: string } };
     const tableName = target.declaration.name;
     const roles = [...readRoleNames(envelope.values)].sort();
-    const using = envelope.values['using'] as string;
+    const using = (envelope.values['using'] as { value: string }).value;
 
     const wireHash = computeContentHash({ using, roles, operation: 'select', permissive: true });
     const wireName = `${prefix}_${wireHash}`;
@@ -196,7 +188,7 @@ namespace public {
   policy_select p_read {
     target = profile
     roles  = [app_user]
-    using  = "owner_id = current_setting('app.uid')::int"
+    using  = sql\`owner_id = current_setting('app.uid')::int\`
   }
 }
 `;
@@ -231,7 +223,7 @@ namespace public {
       sources,
     });
     return interpretPslDocumentToSqlContract({
-      dataTypes: { entries: assembled.dataTypes, lookup: postgresDataTypeLookup },
+      dataTypes: postgresDataTypeSupport,
       documents: [document],
       symbolTable,
       sources,
@@ -244,11 +236,11 @@ namespace public {
     });
   }
 
-  it('reads a policy expression as a JSON string, and keeps any other backslash sequence as written', () => {
+  it('reads the escapes of a double-quoted sql literal as a string does, and keeps any other backslash sequence as written', () => {
     const result = interpret(
       source.replace(
-        `using  = "owner_id = current_setting('app.uid')::int"`,
-        String.raw`using  = "a\tb\u0041 \"q\" \\ \/ \d"`,
+        `using  = sql\`owner_id = current_setting('app.uid')::int\``,
+        String.raw`using  = sql"a\tb\u0041 \"q\" \\ \/ \d"`,
       ),
     );
 
@@ -266,7 +258,7 @@ namespace public {
 
     const result = interpretPslDocumentToSqlContract({
       documents: [document],
-      dataTypes: { entries: assembled.dataTypes, lookup: postgresDataTypeLookup },
+      dataTypes: postgresDataTypeSupport,
       symbolTable,
       sources,
       target: postgresTarget,
