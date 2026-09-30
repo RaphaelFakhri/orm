@@ -17,6 +17,7 @@ Reviewer-maintained. Contract: `projects/data-types-completion/design.md` sectio
 | b | 2 (`006f164312`, design `185969a71c`) | SATISFIED: S1-b-R1-1 to S1-b-R1-3 closed, no new finding |
 | c | 1 (`707b4c86af..806c08cfc4`, design `bf9ebd9d60` excluded) | SATISFIED: no finding |
 | d | 1 (`7565a8f8f9`, `45fe7b6423`, `28773fa5f1..ecca4f2409`) | ANOTHER ROUND NEEDED: 1 should-fix, 2 low |
+| d | 2 (`22fd1bc9de..bc2479e72f`) | SATISFIED: S1-d-R1-1 to S1-d-R1-3 closed, no new finding |
 
 ## Findings log
 
@@ -128,7 +129,17 @@ Reviewer-maintained. Contract: `projects/data-types-completion/design.md` sectio
 - What is wrong: `storedSqlTypeNameOfCodec` reuses both codes when a contract is authored. This is the error a user now sees when a `contract.ts` uses an extension's codec without listing the extension. The entries describe only control-plane resolution and assembly. The `DATA_TYPE_UNREGISTERED` entry gives the payload `dataType, contributedBy`, but this site sends `codecId, dataType` (`.agents/rules/doc-maintenance.mdc`).
 - Change: add the authoring site to both entries, say how to fix it (list the pack that provides the codec), and list the payload of each site.
 
+### Dispatch d round 2 status of the round 1 findings
+
+- S1-d-R1-1: closed. A codec with no `paramsSchema` now declares no keys of its own, and mapped keys are checked against the data type's `params`. A present schema that exposes no keys is still skipped. Two new tests fail when the fix is reverted (I checked).
+- S1-d-R1-2: closed. `createControlStack` is tested to refuse a constructor naming an unregistered codec, and `createSqlFamilyInstance` to refuse colliding SQL data types. Each test fails when its call or input is removed (I checked). The one `blindCast` is in a test file.
+- S1-d-R1-3: closed. Both error reference entries name the authoring source, how to fix it, and its payload (`codecId`; `codecId`, `dataType`).
+
 ## Round notes
+
+### Dispatch d, round 2
+
+Checks: framework-components 800 and family-sql 406 tests pass; root typecheck and `check:error-reference` exit 0. All three commits carry both sign-offs and no AI attribution.
 
 ### Dispatch d, round 1
 
