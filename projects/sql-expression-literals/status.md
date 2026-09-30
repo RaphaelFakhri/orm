@@ -42,12 +42,43 @@ The second review is in `slice-reviews/2a-round-2/` (findings B01 to B05 and G01
 
 Verification (logs in the gitignored `wip/v4/`): `build`, `typecheck`, `lint`, `lint:deps`, `lint:casts` (delta 0), `lint:throws` (delta 0), `check:error-reference` (361 codes), `lint:framework-vocabulary` (272 of 272), `fixtures:check` (tree clean) and `check:upgrade-coverage` pass. Tests: framework-components 794 pass, family-sql 372 pass (after the operation preview fix; the first run failed on that stub), the integration registration test 16 pass, language server 734 pass, `sql-expression.test.ts` and `sql-attribute-specs.test.ts` pass. Manual QA: `wip/v4/manual-qa.log`. The orchestrator still has to run `test:packages` and `test:integration`.
 
+## Slice 2t, 2026-09-30
+
+Implemented on branch `tml-3367-data-type-value`, on top of slice 2a. Not pushed; no pull request. Brief: `dispatches/2t-implementer-brief.md`. Two points need a decision: `dispatches/2t-findings.md`.
+
+### What was built
+
+- **Section 4** (`6ce7f897a9`): `framework-components/src/shared/written-value.ts`, exported from `/authoring`, holds the cast rule for one written value. `contract-psl/src/data-type-default.ts` keeps the list handling, `DefaultRefusal`, `readDataTypeDefault` and `lowerDataTypeDefault`, and imports the rest. `contract-prisma7` imports `entryForTag`, `WrittenValue` and `DataTypeSupport` from the framework.
+- **Section 5** (`1e47750cf6`): `readWrittenLiteral` in `psl-parser/src/written-literal.ts`.
+- **Section 6** (`0f3d47efb9`): `dataTypeValue`, `ParsedTypedValue`, `DataTypeValueArgType`. The language server's `completion-values.ts` returns no items for it; completion is section 12, slice 2b.
+- **Section 7** (`42b9fc44b5`): `AttributeSpecContext.dataTypes`, `EMPTY_DATA_TYPES`, `ControlDefaultRegistries` with only the function registry. Every construction site passes the stack's data types, including the binder.
+- **Carried over from the 2a review:** ADR 254 has the scalar cast rule sentence (`32837b1c52`). `TaggedLiteralCanonicalization.text`, `TaggedLiteralExprAst.text()`, `parseJsonText` and `printJsonText` (`24c934710f`). `@default` reports `PSL_VALUE_TYPE_INCOMPATIBLE` and `PSL_INVALID_LITERAL` at the written value or the list element; the two default-only codes stay at the attribute (`32837b1c52`). The `@default` list arm no longer offers `sql` (`32837b1c52`). No name about lowering a tag is left. The `unknown-tag` arm of `lowerDataTypeDefault` is **not** removed: see finding 1.
+- **Docs** (`bcae07f564`, `32837b1c52`): ADR 231 (`dataTypeValue`, the `oneOf` rule), ADR 249 (the context carries `dataTypes`), ADR 254, the error reference and the editor tooling brief.
+- **Upgrade instructions** (`55f5c11982`): `upgrade-instructions/pending/arguments-typed-by-data-type/{app,extension}`. The detection patterns are tested against a true positive and the nearest false positive (`wip/2t/detection.log`). The extension entry was validated by execution: with `packages/3-extensions/` restored to the merge base, no non-test path differs and the Mongo extension tests pass (`wip/2t/fragment-validation*.log`).
+- **Manual QA** (`907248634f`): the slice 2t script and run in `manual-qa.md`. Every case gives the expected code, message and start.
+
+### Design corrections
+
+- The language server has no `pipeline.ts`, `PipelineInputs` or `server.ts` edit. `LspControlStack.dataTypes` is set in `lspControlStackFromStack`, and `project.ts` spreads it into both `candidates` objects. Design section 7 is corrected.
+- The binder is a construction site that research Part B missed. `CreateBinderOptions` gains a required `dataTypes`; `createSqlBinder` takes an optional one and `createMongoBinder` a required one. Design section 7 is corrected.
+- Mongo tests pass `EMPTY_DATA_TYPES`, which is the value the design wrote out.
+- `TaggedLiteralExprAst.body()` returned the canonical text, so it is renamed `text()` with the field.
+
+### Verification
+
+Logs are in the gitignored `wip/2t/`.
+
+- `build` (`build.log`), `typecheck` (`typecheck.log`), `lint` (`lint.log`), `lint:deps` (`lint-deps.log`), `check:error-reference` (`check-error-reference.log`, 361 codes), `fixtures:check` (`fixtures-check.log`, tree clean) and `check:upgrade-coverage` (`check-upgrade-coverage.log`) pass.
+- `lint:casts`: delta 0. `lint:throws`: delta 0. `lint:framework-vocabulary`: 272 of 272.
+- `test:packages` (`test-packages.log`): 1422 files pass. Seven failed. The three tarball tests fail on the registry refusal. `render-typescript.roundtrip.test.ts`, the two `cli-telemetry` files and `cli` `migration-plan.test.ts` pass when rerun alone (`rerun-*.log`).
+- Integration, run alone: `test/authoring`, `test/number-defaults` and the four Mongo and value-object files whose imports changed, 36 files, 244 tests, pass (`integration.log`).
+
 ## Slice order and tickets
 
 | Order | Plan slice | Ticket | State |
 | --- | --- | --- | --- |
 | 1 | 2a: `sql` is the data type `sql/expression` | TML-3296 | PR #30534 open; two review rounds done, all findings fixed |
-| 2 | 2t: an argument declares the data type it receives | TML-3367 | Waiting for 2a |
+| 2 | 2t: an argument declares the data type it receives | TML-3367 | Implemented on `tml-3367-data-type-value`; review and two findings pending |
 | 3 | 2b: the six places take `sql` literals | TML-3288 | Waiting for 2t |
 | 4 | 3: the TypeScript builder takes `sql` values | TML-3289 | Waiting for 2b |
 | On the side | 1: line comments in raw SQL | TML-3287 | Not started; depends on nothing |
