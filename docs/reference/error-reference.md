@@ -373,7 +373,7 @@ A data type declares a cast from a type no contract source can write, so the cas
 
 ### CONTRACT.DATA_TYPE_UNREGISTERED
 
-Something names a data type that no component in the stack registers: a codec's `dataType`, an authoring entry's key, a type its number classifier returns, or a type a cast takes values of. Raised while checking the assembled data types. Payload: `dataType`, `contributedBy`. Also raised while a SQL contract is authored, when a column's codec is registered but the data type it represents is not, so the column's database type cannot be named. List the pack that declares the data type, usually the pack that provides the codec. Payload (meta): `codecId`, `dataType`.
+Something names a data type that no component in the stack registers: a codec's `dataType`, an authoring entry's key, a type its number classifier returns, or a type a cast takes values of. Raised while checking the assembled data types. Payload: `dataType`, `contributedBy`. Also raised while a SQL contract is authored, when a column's codec is registered but the data type it represents is not, so the column's database type cannot be named. List the pack that declares the data type, usually the pack that provides the codec. Payload (meta): `codecId`, `dataType`. Also raised when a PostgreSQL adapter is built with a codec whose data type is not passed beside it (`createPostgresAdapter` without the codec's type in `dataTypes`, or an extension that contributes codecs without their `dataTypes`), because a parameter of that codec could not be cast. Payload (meta): `codecId`, `dataType`.
 
 ### CONTRACT.DATA_TYPE_WRITTEN_FORM_DUPLICATE
 

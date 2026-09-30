@@ -290,6 +290,17 @@ describe('PostgreSQL adapter codec registry composition', () => {
     expect(() => adapter.lower(ast, { contract })).toThrow(/codecId "pg\/vector@1"/);
   });
 
+  it('refuses at construction a codec whose data type no contribution registers', () => {
+    const descriptor = transformingPostgresDescriptor('app/unregistered@1', 'citext');
+
+    expect(() => createPostgresAdapter({ codecDescriptors: [descriptor] })).toThrow(
+      expect.objectContaining({
+        code: 'CONTRACT.DATA_TYPE_UNREGISTERED',
+        meta: { codecId: 'app/unregistered@1', dataType: 'app/unregistered' },
+      }),
+    );
+  });
+
   it('derives direct runtime materialization and native-type rendering from one descriptor contribution', () => {
     let materializations = 0;
     const descriptor = transformingPostgresDescriptor('app/direct-runtime@1', 'citext', () => {

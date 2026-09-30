@@ -1,6 +1,7 @@
 import type { CodecRegistry, DataType, DataTypeLookup } from '@internal/framework-components/codec';
 import type { ComponentMetadata } from '@internal/framework-components/components';
 import { assembleDataTypes, extractCodecLookup } from '@internal/framework-components/control';
+import { structuredError } from '@internal/utils/structured-error';
 import {
   type AnyPostgresCodecDescriptor,
   buildPostgresCodecDescriptorRegistry,
@@ -30,11 +31,25 @@ function buildPostgresCodecRegistry(
       types: { codecTypes: { codecDescriptors: validatedDescriptors } },
     },
   ]);
+  const dataTypes = assembleDataTypes(dataTypeContributors).lookup;
+  for (const descriptor of validatedDescriptors) {
+    if (!dataTypes.has(descriptor.dataType)) {
+      throw structuredError(
+        'CONTRACT.DATA_TYPE_UNREGISTERED',
+        `Codec "${descriptor.codecId}" represents data type "${descriptor.dataType}", which no component registers.`,
+        {
+          why: 'A parameter of this codec is written with a cast named by its data type.',
+          fix: 'Pass the data type beside the codec: in `dataTypes` of createPostgresAdapter, or in the `dataTypes` of the extension that contributes the codec.',
+          meta: { codecId: descriptor.codecId, dataType: descriptor.dataType },
+        },
+      );
+    }
+  }
   const registry: PostgresCodecRegistry = {
     ...codecRegistry,
     descriptorFor: (codecId) => descriptorRegistry.descriptorFor(codecId),
     values: () => descriptorRegistry.values(),
-    dataTypes: assembleDataTypes(dataTypeContributors).lookup,
+    dataTypes,
   };
   return Object.freeze(registry);
 }
