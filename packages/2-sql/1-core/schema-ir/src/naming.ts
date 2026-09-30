@@ -120,10 +120,19 @@ export function parseWireName(name: string): WireName | undefined {
  * (lowercasing, paren-stripping, cast-alias folding) risks collapsing two
  * distinct bodies onto one hash.
  *
+ * A body that contains `--` keeps its line breaks, because a line break ends a line comment: `a --c` followed by a line break and `b` compares `b`, while `a --c b` does not. Such a body is split into lines, each line is collapsed and trimmed, blank lines are dropped, and the lines are joined with `\n`. Every body without `--` normalizes as it always has.
+ *
+ * The normalizer gives the same output on its own output, which policy hashing relies on: it normalizes twice.
+ *
  * The normalizer is a stability commitment: any change re-suffixes all wire names.
  */
 export function normalizeSqlBody(sql: string): string {
-  return sql.replace(/\s+/g, ' ').trim();
+  if (!sql.includes('--')) return sql.replace(/\s+/g, ' ').trim();
+  return sql
+    .split(/\r\n|\r|\n/)
+    .map((line) => line.replace(/\s+/g, ' ').trim())
+    .filter((line) => line !== '')
+    .join('\n');
 }
 
 /**
