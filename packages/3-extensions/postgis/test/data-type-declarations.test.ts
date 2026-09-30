@@ -1,4 +1,8 @@
 import {
+  instantiateAuthoringTypeConstructor,
+  validateAuthoringHelperArguments,
+} from '@internal/framework-components/authoring';
+import {
   isSqlDataType,
   type ReportedSqlType,
   renderSqlCatalogText,
@@ -85,5 +89,25 @@ describe('the postgis data type declaration', () => {
   it('is the parameter schema of the geometry codec', () => {
     expect(postgisGeometryDescriptor.dataType).toBe(geometryType().id);
     expect(postgisGeometryDescriptor.paramsSchema).toBe(geometryType().params);
+  });
+});
+
+describe('the postgis type constructor', () => {
+  it('takes its SRID as an optional argument', () => {
+    const geometryConstructor = postgisPackMeta.authoring.type.postgis.Geometry;
+    expect(() =>
+      validateAuthoringHelperArguments('postgis.Geometry', geometryConstructor.args, []),
+    ).not.toThrow();
+    expect(instantiateAuthoringTypeConstructor(geometryConstructor, [])).toEqual({
+      codecId: 'pg/geometry@1',
+    });
+    expect(instantiateAuthoringTypeConstructor(geometryConstructor, [4326])).toEqual({
+      codecId: 'pg/geometry@1',
+      typeParams: { srid: 4326 },
+    });
+  });
+
+  it('is the one contract infer prints for its data type', () => {
+    expect(postgisPackMeta.authoring.type.postgis.Geometry).toHaveProperty('inferred', true);
   });
 });

@@ -8,7 +8,13 @@
  * ADR 254.
  */
 
-import type { DataType, DataTypeId, DataTypeSpec } from '@internal/framework-components/codec';
+import type {
+  CodecLookup,
+  DataType,
+  DataTypeId,
+  DataTypeLookup,
+  DataTypeSpec,
+} from '@internal/framework-components/codec';
 import { dataType } from '@internal/framework-components/codec';
 import { blindCast } from '@internal/utils/casts';
 import { ifDefined } from '@internal/utils/defined';
@@ -313,6 +319,53 @@ export function sqlBaseName<Params extends SqlTypeParams>(
   if (placeholdersOf(fewest.text).length === 0) return name;
   const bracket = name.indexOf('(');
   return bracket === -1 ? name : name.slice(0, bracket);
+}
+
+/**
+ * The type name a contract stores for a column or storage type of `type` with `typeParams`: the
+ * base name, or for a type that claims a kind, its `typeName` parameter as written.
+ */
+export function storedSqlTypeName(type: DataType, typeParams: SqlTypeParams | undefined): string {
+  if (!isSqlDataType(type)) {
+    throw new InternalError(`Data type ${type.id} is not a SQL data type, so it has no type name.`);
+  }
+  const params = dataTypeParams(type, typeParams);
+  if (type.sql.claimsKind === undefined) return sqlBaseName(type, params);
+  const { typeName } = validatedParams(type, params);
+  if (typeof typeName !== 'string') {
+    throw new InternalError(
+      `Data type ${type.id} claims the kind "${type.sql.claimsKind}" but declares no string typeName parameter.`,
+    );
+  }
+  return typeName;
+}
+
+/** {@link storedSqlTypeName} of the data type the codec `codecId` represents. */
+export function storedSqlTypeNameOfCodec(
+  codecId: string,
+  typeParams: SqlTypeParams | undefined,
+  lookups: {
+    readonly codecLookup: Pick<CodecLookup, 'descriptorFor'>;
+    readonly dataTypeLookup: Pick<DataTypeLookup, 'get'>;
+  },
+): string {
+  const descriptor = lookups.codecLookup.descriptorFor?.(codecId);
+  if (descriptor === undefined) {
+    throw contractError(
+      'CONTRACT.CODEC_DESCRIPTOR_MISSING',
+      `No codec "${codecId}" is registered, so its column type cannot be named.`,
+      { meta: { codecId } },
+    );
+  }
+  const type = lookups.dataTypeLookup.get(descriptor.dataType);
+  if (type === undefined) {
+    throw contractError(
+      'CONTRACT.DATA_TYPE_UNREGISTERED',
+      `Codec "${codecId}" represents data type "${descriptor.dataType}", which no component registers.`,
+      { meta: { codecId, dataType: descriptor.dataType } },
+    );
+  }
+  return storedSqlTypeName(type, typeParams);
 }
 
 /** The text a migration writes for `type` with the raw `params`. */

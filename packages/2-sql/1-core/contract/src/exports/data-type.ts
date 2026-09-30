@@ -15,4 +15,6 @@ export {
   resolveReportedSqlType,
   sqlBaseName,
   sqlDataType,
+  storedSqlTypeName,
+  storedSqlTypeNameOfCodec,
 } from '../sql-data-type';

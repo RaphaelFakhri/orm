@@ -87,17 +87,12 @@ export type AuthoringArgumentDescriptor = AuthoringArgumentDescriptorCommon &
     | AuthoringOption
   );
 
+/**
+ * What a type constructor or field preset produces: a codec and its parameters. The database type
+ * is the codec's data type's, named by the family that writes the contract.
+ */
 export interface AuthoringStorageTypeTemplate {
   readonly codecId: string;
-  /**
-   * The storage type's base name — a plain string, never a template:
-   * parameters live in `typeParams` and the DDL renderer composes them.
-   * Optional so a type constructor whose {@link AuthoringTypeConstructorDescriptor.entityRefArg}
-   * names another entity can omit it entirely — its output for that case is
-   * derived by the codec at `codecId`. Every other consumer of this shape
-   * (field presets, plain type constructors) always supplies it.
-   */
-  readonly nativeType?: string;
   readonly typeParams?: Record<string, AuthoringTemplateValue>;
 }
 
@@ -132,6 +127,8 @@ export interface AuthoringTypeConstructorDescriptor {
   readonly entityRefArg?: AuthoringTypeConstructorEntityRef;
   /** Present when this name is kept only as an alias of `replacement` and will be removed; it resolves as before, and a source may warn. */
   readonly deprecated?: { readonly replacement: string };
+  /** Marks the constructor `contract infer` prints for its codec's data type; at most one per data type. */
+  readonly inferred?: true;
 }
 
 export interface AuthoringColumnDefaultTemplateLiteral {
@@ -1013,7 +1010,6 @@ export function collectContributedDescriptorPaths(
 
 export interface ScalarTypeConstructorOutput {
   readonly codecId: string;
-  readonly nativeType: string;
   readonly typeParams?: Record<string, unknown>;
 }
 
@@ -1075,9 +1071,8 @@ function visitTemplateArgRefs(
  * per contributing component at assembly (which supplies `contributedBy`
  * for attribution). Rejects what the types cannot express — entity-ref
  * constructors are skipped (their output derives from the referenced
- * entity): a plain constructor must declare its output storage type name,
- * and every `typeParams` arg-ref (including refs inside arg-ref defaults)
- * must point at a declared argument index.
+ * entity): every `typeParams` arg-ref (including refs inside arg-ref
+ * defaults) must point at a declared argument index.
  */
 export function assertResolvableTypeConstructorTemplates(
   namespace: AuthoringTypeNamespace,
@@ -1098,11 +1093,6 @@ export function assertResolvableTypeConstructorTemplates(
         `Invalid authoring type constructor "${currentPath.join('.')}" contributed by descriptor "${contributedBy}". ${detail}`,
       );
 
-    if (value.output.nativeType === undefined) {
-      throw invalid(
-        'The output declares no storage type template and no entityRefArg; a plain constructor must declare one.',
-      );
-    }
     for (const [key, template] of Object.entries(value.output.typeParams ?? {})) {
       visitTemplateArgRefs(template, (ref) => {
         if (args[ref.index] === undefined) {
@@ -1755,18 +1745,7 @@ export function validateAuthoringHelperArguments(
 function resolveAuthoringStorageTypeTemplate(
   template: AuthoringStorageTypeTemplate,
   args: readonly unknown[],
-): {
-  readonly codecId: string;
-  readonly nativeType: string;
-  readonly typeParams?: Record<string, unknown>;
-} {
-  const nativeType = template.nativeType;
-  if (nativeType === undefined) {
-    throw runtimeError(
-      'CONTRACT.PACK_CONTRIBUTION_INVALID',
-      `Authoring output template for codec "${template.codecId}" declares no nativeType; only entity-ref constructors may omit it`,
-    );
-  }
+): ScalarTypeConstructorOutput {
   const typeParams =
     template.typeParams === undefined
       ? undefined
@@ -1782,7 +1761,6 @@ function resolveAuthoringStorageTypeTemplate(
 
   return {
     codecId: template.codecId,
-    nativeType,
     ...ifDefined('typeParams', normalizedTypeParams),
   };
 }
@@ -1866,11 +1844,7 @@ function resolveAuthoringExecutionDefaultsTemplate(
 export function instantiateAuthoringTypeConstructor(
   descriptor: AuthoringTypeConstructorDescriptor,
   args: readonly unknown[],
-): {
-  readonly codecId: string;
-  readonly nativeType: string;
-  readonly typeParams?: Record<string, unknown>;
-} {
+): ScalarTypeConstructorOutput {
   return resolveAuthoringStorageTypeTemplate(descriptor.output, args);
 }
 
@@ -1910,11 +1884,7 @@ export function instantiateAuthoringFieldPreset(
   descriptor: AuthoringFieldPresetDescriptor,
   args: readonly unknown[],
 ): {
-  readonly descriptor: {
-    readonly codecId: string;
-    readonly nativeType: string;
-    readonly typeParams?: Record<string, unknown>;
-  };
+  readonly descriptor: ScalarTypeConstructorOutput;
   readonly nullable: boolean;
   readonly default?: ColumnDefault;
   readonly executionDefaults?: ExecutionMutationDefaultPhases;

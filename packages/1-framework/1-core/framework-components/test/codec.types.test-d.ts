@@ -190,7 +190,7 @@ test('strict satisfies catches wrong codec wired in', () => {
 
 test('column packs the helper-supplied nativeType (non-parameterized)', () => {
   const col = int4Fixture();
-  expectTypeOf(col.nativeType).toEqualTypeOf<string>();
+  expectTypeOf(col.nativeType).toEqualTypeOf<string | undefined>();
   expectTypeOf(col.codecId).toEqualTypeOf<string>();
   // Runtime confirms the helper's nativeType reaches the spec, distinct from codecId.
   if (col.nativeType !== 'int4' || col.codecId !== 'demo/int4@1') {
@@ -200,7 +200,7 @@ test('column packs the helper-supplied nativeType (non-parameterized)', () => {
 
 test('column packs the helper-supplied nativeType (parameterized)', () => {
   const col = vectorFixture(1536);
-  expectTypeOf(col.nativeType).toEqualTypeOf<string>();
+  expectTypeOf(col.nativeType).toEqualTypeOf<string | undefined>();
   if (col.nativeType !== 'vector' || col.codecId !== 'demo/vector@1') {
     throw new Error(`nativeType / codecId mismatch: ${col.nativeType} / ${col.codecId}`);
   }

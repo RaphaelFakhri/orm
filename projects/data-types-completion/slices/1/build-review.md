@@ -1,0 +1,205 @@
+# Code review: slice 1 (TML-3386)
+
+Reviewer-maintained. Contract: `projects/data-types-completion/design.md` sections 1 to 6. Plan: `projects/data-types-completion/slices/1/plan.md`.
+
+## Subagent IDs
+
+- Implementer: slice1-implementer (Fable), dispatch a round 1. Replaced for round 2 by slice1-implementer-2 (Opus) on 2026-09-30, because the account reached its Fable usage limit before round 2 started; nothing was lost (clean tree). Return to Fable for the next fresh implementer once the limit resets.
+- Reviewer: slice 1 reviewer (Opus), persistent, started 2026-09-30 for dispatch a round 1
+
+## Scoreboard
+
+| Dispatch | Round | Verdict |
+| --- | --- | --- |
+| a | 1 (`ee324c75f6..16ef9dd0e7`) | ANOTHER ROUND NEEDED: 1 must-fix, 1 should-fix, 7 low |
+| a | 2 (`a41f377b5b..01a3f1c8b3`, design `2c1a3335d4`) | SATISFIED: S1-a-R1-1 to S1-a-R1-9 closed, no new finding |
+| b | 1 (`48b4fc0c59..14645c85c8`, design `4fc18309bc`) | ANOTHER ROUND NEEDED: 3 low |
+| b | 2 (`006f164312`, design `185969a71c`) | SATISFIED: S1-b-R1-1 to S1-b-R1-3 closed, no new finding |
+| c | 1 (`707b4c86af..806c08cfc4`, design `bf9ebd9d60` excluded) | SATISFIED: no finding |
+
+## Findings log
+
+### S1-a-R1-1 (must-fix): the golden test skips 40 committed SQL contracts
+
+- Where: `test/integration/test/planner-golden/planner-ddl-golden.test.ts:57-64`, and the claim in the file header (lines 1-12) and in commit `d0891e296d`.
+- What is wrong: contracts are selected by file name (`**/contract.json`, `**/expected.contract.json`). That misses 40 tracked whole SQL contracts: 35 Prisma 7 reader fixtures `packages/2-sql/2-authoring/contract-prisma7/test/fixtures/*/expected-contract.json` (hyphen, not dot), `packages/3-targets/3-targets/sqlite/test/fixtures/sqlite-contract.json`, `packages/3-targets/3-targets/postgres/test/fixtures/namespaced-contract.json`, `packages/3-targets/3-targets/postgres/test/fixtures/snapshot-read-shapes/codec-instance.json`, `test/integration/test/value-objects/fixtures/generated/sql-contract.json` and `test/integration/test/fixtures/contract-format/supabase-before-dbgenerated-removal.contract.json`. Design 6 asks for every committed example and fixture contract. The skipped Prisma 7 fixtures hold the only `pg/float4` column in the repository and the only `time`, `timetz` and `timestamp` columns without precision, so a DDL change for those types would not be seen. Nothing records that these files were left out.
+- Change: select every tracked `*.json` file whose top level has `targetFamily: "sql"` and `target` `postgres` or `sqlite`, whatever its name. Keep the `unreadable` recording for files the validator refuses. Record the new goldens now: the three commits change no planner, adapter or target code, so the output equals the base commit's. Update the header and the test's own wording to match.
+
+### S1-a-R1-2 (should-fix): no committed contract covers the raw-parameter cases or several SQLite types
+
+- Where: `test/integration/test/planner-golden/` (corpus).
+- What is wrong: even with S1-a-R1-1 fixed, no committed contract has a column of these shapes: `pg/numeric` with `precision` and no `scale` (written `numeric(10)`, the case where writing the normal form would give `numeric(10,0)`); `pg/char` with no `length` (written `character`, not `character(1)`); `pg/bit`, `pg/varbit` without `length`; `pg/interval` without `precision`; `pg/varchar` without `length`; any list of a parameterised type. On SQLite: `sqlite/real@1`, `sqlite/blob@1`, `sql/varchar@1` (the new `sqlite/character-varying`), `sql/char@1` without `length`, `sql/int@1`, `sql/float@1`. Design 2.3's raw-versus-normalised rule is the main way dispatch e can change DDL, and the `renderSqlTypeName` unit tests of dispatch b cannot catch a planner that passes the wrong parameters. The halt condition "the golden planner test finds a DDL change" is only as good as this corpus.
+- Change: add one TypeScript-authored fixture contract per target (Postgres with pgvector and postgis; SQLite), emitted and committed in this dispatch through the same path as the other `test/fixtures/generated/contract.json` files so `pnpm fixtures:check` holds them fixed. Give it one column per data type of design 2.6 in each parameter shape the TypeScript helpers can write today (with and without each optional parameter), one list column per type that allows lists, and one `typeRef` alias of a parameterised type. Record their goldens now. The `typeRef` alias will then show the one allowed DDL change of design 3.6 as a visible diff in dispatch e.
+
+### S1-a-R1-3 (low): example-local packs are dropped without a record
+
+- Where: `test/integration/test/planner-golden/planner-ddl-golden.test.ts:110-113`.
+- What is wrong: an extension id not in `extensionsById` is dropped silently, and the golden lists it under `extensions` as if it were loaded. Today this is harmless: I checked the nine affected contracts and none has a column whose codec comes from `demo/engagement-stats`, `slugid-defaults`, `audit` or `feature-flags` (all are `pg/*` or `pg/vector@1`). But a future contract that uses an example-local pack's codec would be planned without it and nobody would see why.
+- Change: keep an explicit set of the four pack ids known not to be importable, fail the test on any other unknown id, and write the ids that were not loaded into the golden (for example `extensionsNotLoaded`).
+
+### S1-a-R1-4 (low): a space between `(` or `,` and a double quote is kept
+
+- Where: `packages/2-sql/1-core/contract/src/sql-data-type.ts:354-356`.
+- What is wrong: design 11.2 step 2 removes spaces after `(` and `,`. The double-quote branch writes a pending space without that check, so `foo( "Bar")` prepares to `foo( "Bar")`, not `foo("Bar")`.
+- Change: apply the same after-`(`-or-`,` check in the quote branch, and add a resolve test with a synthetic quoted text preceded by `( `.
+
+### S1-a-R1-5 (low): rule 3 lets `display` rename a placeholder
+
+- Where: `packages/2-sql/1-core/contract/src/sql-data-type.ts:140`.
+- What is wrong: the check compares `display` and `text` without letter case, so a display `geometry(Geometry,{SRID})` passes, and `substitute` then writes `undefined`, because `params['SRID']` does not exist.
+- Change: also require `placeholdersOf(display)` to equal `placeholdersOf(text)` exactly, and add a declare test that refuses such a display.
+
+### S1-a-R1-6 (low): one resolver assertion cannot fail
+
+- Where: `packages/2-sql/1-core/contract/test/sql-data-type.resolve.test.ts:66`.
+- What is wrong: no fixture declares `character varying`, so `character varying (255)` resolves to `undefined` whatever the text preparation does. The assertion is meant to show that a space before `(` is kept.
+- Change: assert on a declared text instead, for example `numeric (10,2)` resolves to `undefined`.
+
+### S1-a-R1-7 (low): two render tests read wrongly
+
+- Where: `packages/2-sql/1-core/contract/test/sql-data-type.render.test.ts:122` and `:69-72`, `:161-169`.
+- What is wrong: "refuses a written parameter on a type that is never written" passes no parameter. `dataTypeWithDisplay()` builds a data type by spreading `geometry` and swapping its texts, so it never goes through `sqlDataType` and its rules.
+- Change: rename the first to "refuses to write a type that is never written". Declare the second with `sqlDataType('t/displayed', { texts: [{ text: 'geometry', written: true, display: 'Geometry' }] })`.
+
+### S1-a-R1-8 (low): the error reference leaves out the catalog case
+
+- Where: `docs/reference/error-reference.md:578-580`.
+- What is wrong: the entry names two causes, a schema failure and "no written text ... takes that set of parameters". `renderSqlCatalogText` also raises the code when no catalog text takes the parameters in their normal form.
+- Change: add that cause to the entry.
+
+### S1-a-R1-9 (low): `sqlBaseName` passes unchecked parameters to `render`
+
+- Where: `packages/2-sql/1-core/contract/src/sql-data-type.ts:295-301`.
+- What is wrong: the `blindCast` reason says callers pass what `dataTypeParams` kept. `dataTypeParams` does not make sure required keys are present, so a `pg/enum` column without `typeName` reaches `render` and fails with a `TypeError` from `split`, not a structured error.
+- Change: in the `render` branch, call `validatedParams(type, params)` and pass its result, which removes the cast. Add a test: `sqlBaseName(enumType, {})` throws `CONTRACT.TYPE_PARAMS_INVALID`. The branch without `render` stays unvalidated, because it ignores the parameters (the pgvector contract has a `pg/vector@1` storage type with no `length`, and its base name must still be `vector`).
+
+### Round 2 status of the round 1 findings
+
+- S1-a-R1-1: closed. `listCommittedSqlContracts` now reads every tracked `*.json` file and keeps those whose top level names the SQL family and Postgres or SQLite. The 40 files are in the corpus (340 goldens). The 289 goldens not otherwise touched are byte-identical to round 1. The nine that changed differ only in the extension lists; I compared `planned` with `jq -S` before and after.
+- S1-a-R1-2: closed. `test/integration/test/planner-golden/fixtures/{postgres,sqlite}/contract.ts` are emitted through `emit-fixture-configs.mjs`. Their goldens contain `numeric(10)`, `character`, `bit`, `bit varying`, `interval`, `time` and `timetz` with and without parameters, `float4`, `tsquery`, lists of each parameterised type, the enum, pgvector and postgis with and without `srid`. They also contain the `typeRef` aliases, which show today's quoting bug (`"character"`, `"uuid"`). SQLite has `REAL`, `BLOB`, and `CHARACTER` and `CHARACTER VARYING` with and without `length`.
+- S1-a-R1-3: closed. `examplePackIds` is explicit, and any other unknown pack throws. The golden lists what was not loaded under `extensionsNotLoaded`.
+- S1-a-R1-4: closed without a test, correctly. Design 2.7 item 2 now refuses `"` in a declared text, and that refusal has a test (`'a double quote'`). So a reported text that contains a quote can never match, whatever preparation does around it, and a test of the space rule next to a quote could not fail. The code follows 2.7 item 3.
+- S1-a-R1-5: closed, with a test (`/t\/bad.*SRID/`).
+- S1-a-R1-6: closed. `numeric (10,2)` and `numeric(10 ,2)` are asserted against a declared text. Each would turn red if preparation removed that space.
+- S1-a-R1-7: closed. The test is renamed, and `t/displayed` is declared through `sqlDataType`.
+- S1-a-R1-8: closed. The entry names the catalog cause and `sqlBaseName`.
+- S1-a-R1-9: closed. The `render` branch calls `validatedParams`, and the cast is gone. The test expects `CONTRACT.TYPE_PARAMS_INVALID` naming `typeName`. Design 2.7 item 6 is also done: kind claims are validated and normalised through `resolvedWith`, with a test for each.
+
+### S1-b-R1-1 (low): an enum reported with no schema is not tested
+
+- Where: `packages/3-targets/3-targets/postgres/test/data-type-texts.test.ts:168-179`; the doc comment at `packages/3-targets/3-targets/postgres/src/core/data-types.ts:106`.
+- What is wrong: design 11.3, as edited in `4fc18309bc`, reads an enum with an undefined `schema` as unqualified. The code does this (`reported.schema === undefined ||`), but no test covers it, so removing that clause would leave every test green. The doc comment still says "its name in `public`" only.
+- Change: add a case `reported('mood', { kind: 'enum', schema: undefined, name: 'mood' })` that resolves to `{ dataType: 'pg/enum', typeParams: { typeName: 'mood' } }`. Make the comment say "its name in `public` or with no schema".
+
+### S1-b-R1-2 (low): the pgvector and postgis declaration tests accept extra keys
+
+- Where: `packages/3-extensions/pgvector/test/data-type-declarations.test.ts:34-39`; `packages/3-extensions/postgis/test/data-type-declarations.test.ts:33-46`.
+- What is wrong: both tests compare `sql` with `toMatchObject`, so a text with an extra key (a stray `display`, say) still passes. The Postgres test uses `toEqual`.
+- Change: assert `sql.texts` with `toEqual` and `sql.claimsKind` with `toBeUndefined()`.
+
+### S1-b-R1-3 (low): the codec authoring guide shows the old `postgresCodec` call
+
+- Where: `docs/reference/codec-authoring-guide.md:289`, `:295` and `:545`.
+- What is wrong: both examples pass `dataType: pgInt4.id` / `pgText.id`, which no longer typechecks. Line 295 says the adapter takes the wrapped descriptor's parameter schema, but it now takes the data type's (`.agents/rules/doc-maintenance.mdc`).
+- Change: pass `pgInt4` and `pgText`, and say that the adapted codec's parameter schema is its data type's. Dispatch f's rewrite of the guide does not remove the need to keep these examples compiling now.
+
+### Dispatch b round 2 status of the round 1 findings
+
+- S1-b-R1-1: closed. `data-type-texts.test.ts` now reads an enum reported with `schema: undefined` as `{ typeName: 'mood' }`. `wip/logs/b2-enum-red.log` shows it failing with the clause removed. The doc comment is updated.
+- S1-b-R1-2: closed. Both extension tests compare `sql.texts` with `toEqual` and check that `claimsKind` is undefined.
+- S1-b-R1-3: closed. Both `postgresCodec` examples pass the data type object and import what they use. The guide says the adapted codec's parameter schema is its data type's `params`. `lint:docs` passed.
+
+## Round notes
+
+### Dispatch c, round 1
+
+Declarations. SQLite matches design 2.6: seven types, each with one text marked written only. `sqlite/character` (`character` W) and `sqlite/character-varying` (`character varying` W) have an optional integer `length` of at least 1. `normalize` removes `length` (design 2.5), and each casts from `sqlite/text` unchanged. The existing casts are unchanged. Nothing claims: `data-type-declarations.test.ts` checks that each declared text resolves to `undefined`. Mongo matches: `mongoDataType(id, { bsonTypes, params?, casts? })` and `isMongoDataType` are in `mongo-contract/src/mongo-data-type.ts`. The twelve `bsonTypes` lists equal each codec's `targetTypes`, with eight for `mongo/json` and none for `mongo/bson`. `mongo/vector` has an optional `length` of at least 1 (design 2.4). The tests of every pack fail for a missing or extra registration, and check each codec's `paramsSchema` against its data type's `params` by identity.
+
+Registration and constructors. `dataTypes` is in the SQLite target's `descriptor-meta-runtime.ts`, which the control meta spreads; the adapter registers none (tested). The moved scalar constructors are the same text; only the import path changed to `./codec-ids`. The order is `BigIntNumber`, then the scalars, the same as target-then-adapter before (tested).
+
+The duplicate. `sql/char@1` is registered twice only in `sqlite-codec-registry-composition.test.ts:391-400`, where a test extension contributes a codec with that id. Before, the adapter's metadata left `sql/char@1` out, so the stack's duplicate check did not see the collision and the SQLite registry refused it at `create`. Now the adapter's metadata lists it, so the stack refuses the same input first, with `Duplicate codec descriptor for codecId "sql/char@1"`. The runtime path still gives the SQLite message. Nothing that worked now fails; only the step and the message changed for input that was already refused. No extension in the repository contributes either id.
+
+`mongo/vector@1` is now parameterised, and nothing observable changes. No Mongo package reads `isParameterized` or `paramsSchema`, and the Mongo runtime never calls a codec factory per field. `factory` still hands out the one shared codec. The control stack's representative codec comes from `factory({})`, which still succeeds. `forCodecRef` used to refuse any `typeParams` for this codec as unexpected, and now validates them. That only permits more. No committed contract uses `mongo/vector@1`. The Mongo contract, target and adapter tests pass: 176, 664 and 330.
+
+The `.d.ts` diffs are exactly the accepted rows. Five files gain four lines each: `sql/char@1` and `sql/varchar@1` under `min` and `max`. Nothing else changed, and no `contract.json` changed. Every emitted SQLite `contract.d.ts` in the repository has the rows. `packages/3-targets/3-targets/sqlite/test/fixtures/sqlite-contract.d.ts` is an older hand-kept file with no aggregate section, and is not touched. The golden test is unchanged (684 passed), so the `CHARACTER` and `CHARACTER VARYING` DDL still matches.
+
+Dependency. The SQLite target adds `"arktype": "^2.2.2"`, the same specifier as the Postgres target. The lockfile gains only the three-line importer entry, resolving to 2.2.3, which the lockfile already held. That is what `pnpm install` writes; nothing else in the lockfile moved.
+
+Rules: no `any` and no bare cast. The one new comment, above the two character codecs, says why they render no TypeScript type. Test names are fine. Every commit carries both sign-offs. My scan for attribution matched only "Regenerated with pnpm" in `806c08cfc4`; there is no AI attribution. `fixtures:check`, typecheck and `lint:deps` exit 0.
+
+### Dispatch b, round 2
+
+Package tests: target 2701, pgvector 197, postgis 121. Commit `006f164312` carries both sign-offs and no AI attribution.
+
+For dispatch f: `check:upgrade-coverage --mode pr` requires a new declaration for each audience whose directory the pull request touches (`scripts/check-upgrade-coverage.mjs:311-329`): `examples/` for apps and `packages/3-extensions/` for extensions. Design 6 now says slice 1 has no app-audience instruction. If dispatch e edits anything under `examples/` (design 3.3 names `examples/prisma-8-demo/src/app/ContractView.tsx`), the check will also require an app-audience declaration. Dispatch f must then add one that states apps have nothing to change.
+
+### Dispatch b, round 1
+
+Declarations: each `pg/*` row matches design 2.6 exactly: texts, marks, the order of texts, no `display` on Postgres types, `claimsKind` only on `pg/enum`, and `pg/text-array` with nothing. The 2.4 bounds match. The 2.5 normal forms are on `pg/numeric`, `pg/char` and `pg/bit` only. `pgNumericParams` uses `.narrow` for "scale needs a precision"; I checked that its `props` still list both keys, so `dataTypeParams` and rule 1 keep working. The `render` of `pg/enum` splits at the first dot and quotes with `quoteIdentifier`, as 11.3 says. pgvector (`vector({length})` W C, 1 to 16000, required) and postgis (`geometry` W C; `geometry(geometry,{srid})` W C with display; `srid` at least 1) match. Casts and list casts are unchanged.
+
+Tests: `data-type-declarations.test.ts` fails for a registered type with no entry and for an entry with no registered type. `data-type-texts.test.ts` has every row of inventory 1.3 as a writing, catalog and read-back case; every claiming text in lower case, upper case and with extra spaces; the only-written texts; `"char"`, `bpchar`, `interval year to month`; and `normalize` twice equals once. Parameters are checked through the codecs: the bounds test turned red 11 times against the old schemas (`wip/logs/b-bounds-red.log`). Its coverage test would fail if a data type without parameters gained a schema.
+
+Codec schemas: every codec the target ships is checked with `toBe` against its data type's `params`, and `isParameterized` against whether that exists. pgvector and postgis check the same with `toBe`. The codec classes point at the exported constant (`pgNumericParams` and so on), which is the same object as `pgNumeric.params`; the identity test would catch a mismatch. `postgresCodec` now takes the data type object and uses its `params`. The runtime still validates and builds per column from the full `typeParams`. arktype does not strip undeclared keys, and `arktype/json@1` (data type `pg/jsonb`, no `params`) keeps its own schema, so the codec's own keys still reach the factory.
+
+`pg/unboundedint@1` taking the numeric parameters is harmless. The `UnboundedInt` constructor takes no arguments, so PSL cannot write them; only a hand-written TypeScript descriptor can. A column without `typeParams` still passes: `validateCodecTypeParams` validates `typeParams ?? {}`, and `{}` fits. The `sum` aggregates that produce this codec resolve through the same resolver with `{}`. The visible change: a hand-written `{ precision: 10 }` used to fail at runtime (parameters on a codec that takes none) and is now accepted; after dispatch e it would be written `numeric(10)`, which fits its data type. The design could say once that a codec cannot narrow its data type's parameters.
+
+Constructor move: the block removed from the adapter's `control-mutation-defaults.ts` and the block added to the target's `authoring.ts` are identical text. The only extra lines are the two spreads. The target's namespace is `BigIntNumber, UnboundedInt, pg`, then the scalars, then the native types. Before, the stack merged the target (first three) and then the adapter (scalars, natives), in descriptor order family, target, adapter. So the assembled order, and with it `scalarTypes` and completion, is unchanged; `type-constructors.test.ts` asserts that order. The removed adapter tests reappear in the target (documentation, `TimestamptzJsDate`, the inferred-type binding). The moved names were never exported publicly, and the column helpers are untouched. `dataTypes` is in `descriptor-meta-runtime.ts`, which the control meta spreads, so both planes register it; the adapter registers none (tested).
+
+The stub adapter in `psl-infer/infer-psl-contract-described-contracts.test.ts:561` is justified. The target's data types now have casts, the stack's writability check needs value entries for their sources, and the real adapter still carries those entries until dispatch d. Remove that line when dispatch d moves the entries to the target.
+
+The four `test:packages` failures are environmental. Three tarball tests fail in `pnpm install` on a registry trust check ("High-risk trust downgrade for @vercel/detect-agent@1.2.5"). The telemetry e2e test times out under load and passes alone (`wip/logs/b-telemetry.log`, 4 passed). Typecheck, the golden test (684 passed), `fixtures:check` (clean diff), `lint:deps` and biome all exit 0. Commits carry both sign-offs and no AI attribution. There is no `any` and no bare cast. The one new `blindCast` in `codec-descriptor.ts` gives a true reason.
+
+For the orchestrator (not a finding in this dispatch): `check:upgrade-coverage --mode pr` requires a new extension-audience declaration under `upgrade-instructions/pending/` for any diff in `packages/3-extensions/`, and this dispatch changes pgvector and postgis. Slice 1 also breaks extension authors' code. `postgresCodec`, public at `@prisma/orm-target-postgres/target/codec-descriptor` and `@prisma/orm-postgres/target/codec-descriptor`, now takes the data type object, and dispatch e deletes `targetTypes` and the `expandNativeType` hooks. The design and plan mention upgrade instructions only for slice 2. The design should say that slice 1 ships an extension-audience instruction, written in dispatch f.
+
+### Dispatch a, round 2
+
+Can the golden test miss a DDL change? No, for every contract that plans today: the comparison is one `toBe` on the whole rendering. `wip/logs/golden-red.20260930-002407.95458.log` shows it turning red when only the extension lists changed. `plannerError` catches only structured errors thrown by `plan()`. A contract that plans today and fails later changes its golden from `success` to `plannerError`, so the test fails. Any other error still throws. `extensionsNotLoaded` changes only the extension list, and the planned output is compared in full. None of the nine contracts with an unloaded pack has a column whose codec comes from that pack. The 46 `unreadable` contracts and the one `plannerError` contract have no DDL at the base, so there is nothing in them to change.
+
+How the SQLite fixture got goldens for `sql/char@1` and `sql/varchar@1`: today neither `createControlStack` nor `deserializeContract` checks a column's codec against the registry, and the SQLite planner writes the contract's `nativeType` upper-cased. So the hand-written descriptors plan without the codecs registered. `examples/prisma-8-demo-sqlite` already works this way. After dispatch e the planner finds the data type through the codec. If dispatch c has not registered both codecs (design 2.7 item 9), those goldens break, which is the right signal.
+
+Commit `01a3f1c8b3` added `typeParams: {}` to two aliases in the Postgres fixture's `contract.ts`. The emitted `contract.json` still has no `typeParams` on `Code` and `Id`, `wip/logs/emit-pg.log` re-emitted it at 00:36, and the tree is clean. So the emitter drops an empty `typeParams`, and the fixture and its golden agree.
+
+Rules: no `any`, no bare casts in production code, and no test name uses "should". The one new comment (the TS2742 import in the fixture) explains an import that would otherwise look unused. Every commit from `a41f377b5b` to `2c1a3335d4` carries both sign-offs and no AI attribution. I read the implementer's logs for typecheck, `lint:deps`, `check:error-reference`, biome, framework-components (787), Prisma 7 provider (14) and the golden run (684, exit 0). I spent no `pnpm` run.
+
+For later dispatches:
+- The `plannerError` golden for `packages/3-targets/3-targets/postgres/test/fixtures/snapshot-read-shapes/codec-instance.json` quotes the `expandNativeType` message. Dispatch e deletes that hook, so this golden will change even though no DDL changes. Re-record it with the diff shown in the report; this is not the DDL halt condition. After dispatch e the stack for that contract has no `pg/vector@1` codec. If the planner then fails with a plain `Error`, not a structured one, the test throws. Dispatch e should make that failure a structured error.
+- The text-preparation branch for double quotes has no observable effect while 2.7 item 2 refuses quotes in declared texts. It is kept because 2.7 item 3 asks for it.
+- `pg/char@1` appears only with a `length`. The data type `pg/char` without a length is covered through `sql/char@1`, and rendering depends only on the data type.
+
+### Dispatch a, round 1
+
+Scope: nothing from later dispatches. There are no real declarations, no deletions, and no planner, adapter or runtime changes. The public `package.json` mirrors are build output. `architecture.config.json` needs no change: `packages/2-sql/1-core/**` is already shared. Commits carry no AI attribution and both sign-offs. There is no `any`, no bare `as` in production code (`as const` only), and no test name uses "should". The framework change adds no family vocabulary: the count is 272 with a threshold of 272. I read the implementer's logs for package tests, typecheck, `lint:deps`, `check:error-reference`, framework vocabulary and the golden compare; all are green. I spent no `pnpm` run.
+
+Hand walks, all correct:
+- `pg/numeric` with `{precision: 10}`. Writing: validate; `normalize` gives `{precision: 10, scale: 0}`; the raw keys are `[precision]`, all kept; the written text for `{precision}` gives `numeric(10)`. Catalog: the normal-form keys are `[precision, scale]`; the catalog text gives `numeric(10,0)`.
+- `pg/timestamptz` catalog text `timestamp({precision}) with time zone` with `{precision: 3}` gives `timestamp(3) with time zone`. Resolving that text gives the pattern `^timestamp\((\d+)\) with time zone$` and `{precision: 3}`. The only written texts are `timestamptz` and `timestamptz({precision})`, which do not claim.
+- postgis `geometry(geometry,{srid})` with display `geometry(Geometry,{srid})`. Writing and catalog use the display, giving `geometry(Geometry,4326)`. Resolving lower-cases outside quotes, giving `geometry(geometry,4326)`, which matches with `srid` 4326.
+
+Module against design 2.2, 2.3 and 11.2: every rule of 2.2 is enforced with an `InternalError` naming the id. 2.3 follows the design step by step: the raw parameters are used for writing, with only the keys `normalize` removes dropped; the normal form is used for the catalog; `display` is used in both. 11.2 follows the design: a kind claim does not consult texts; text preparation, whole-text match, schema check and normal form on return are all there. Findings 4, 5 and 9 are the only deviations.
+
+Golden test: it builds a real control stack, deserializes each contract, and calls the Postgres or SQLite planner's `plan()` from an empty schema with `INIT_ADDITIVE_POLICY`. It records every operation's precheck, execute and postcheck SQL, and compares the whole rendering as one string with `toBe`, so any change fails. It also fails on a missing or stale golden. The goldens contain no machine paths. Recording the 46 old-format snapshots as `unreadable` is acceptable: no code at the base can plan them, the refusal is committed, and a change in it would show. Plans from an empty database do not cover `ALTER COLUMN TYPE` DDL or `SAFE_WIDENINGS`. Dispatch e must rely on the existing planner tests for those.
+
+Undocumented choices. All are sound. The design should record these:
+1. `resolveReportedSqlType(reported, dataTypes: readonly DataType[])`. The stack cannot supply that list today: `ControlStack` exposes only `dataTypeLookup` (`get`, `has`; `packages/1-framework/1-core/framework-components/src/control/control-stack.ts:88,853`), and it drops `assembleDataTypes(...).declared`. Dispatch d needs the list too, because `enforceSqlDataTypeInvariants(stack)` (design 5.2) must compare every pair of SQL data types. The design should say how the stack exposes it, for example `ControlStack.dataTypes: readonly DataType[]` taken from `declared`.
+2. Text preparation leaves quoted text exactly as reported, whitespace included, and keeps a space before `,`. The design should either state this or also remove spaces before `,`.
+3. "Lower case" applies to the literal parts of a text. Placeholder names are the exact `params` keys and may be camelCase. The literal characters are `a-z 0-9 _ space ( ) , . "`.
+4. `sqlBaseName` of a type with no written text and no `render` throws `InternalError`. `renderSqlTypeName` of the same type throws `CONTRACT.TYPE_PARAMS_INVALID` ("it is never written").
+5. `renderSqlCatalogText` of a kind-claiming type throws `InternalError`. When no catalog text fits, it throws `CONTRACT.TYPE_PARAMS_INVALID` with `<id> cannot be reported with parameters [..]; it is reported with [...]`.
+6. `texts: []` next to `claimsKind` is refused.
+7. The kind path returns `fromReported`'s result without checking it against the schema or normalising it, and gives `{}` when there is no `fromReported`. The design should say whether that is intended.
+8. If S1-a-R1-9 is taken: `sqlBaseName` checks parameters only for a type with `render`.
+
+For later dispatches (not findings here):
+- `packages/3-extensions/pgvector/src/contract.json` has `storage.types.vector` with codec `pg/vector@1`, no `typeParams`, and `nativeType: "vector"`. Design 2.4 makes `length` required, so `renderSqlTypeName` would refuse it. `sqlBaseName` still gives `vector`, so the section 4 writers are fine. Nothing plans a column from it today.
+- `packages/3-extensions/pgvector/test/migrations/planner.behavior.test.ts:246-270` plans columns with `pg/text-array@1` (never written, per 2.6) and `pg/tsvector@1` (no such codec is registered), using `nativeType`. Once the planner finds the data type through the codec (dispatch e), these tests need a decision. The design does not cover them, so this may be a halt condition in dispatch e.
+- Slice 2 renames every snapshot directory, so the golden file names change. Slice 2's plan should say how it shows that DDL is unchanged, for example by comparing `planned` for each contract path without the hash.
+- Resolver tests over the real declarations are due in dispatch b: every claiming text of 2.6, `"char"`, `bpchar`, `interval year to month`.
+- The props-reading helper duplicates `postgres-contract-serializer.ts:100-121`. Acceptable for now.
+
+## Orchestrator notes
+
+### Orchestrator note, dispatch a round 2 (2026-09-30)
+- Implementer slice1-implementer-2 (Opus) finished round 2: commits 38e59dd701 to 01a3f1c8b3; all nine findings reported fixed; checks green (logs in the report under `wip/`).
+- Design fixed from its report: section 4 now says a `claimsKind` type stores `typeParams.typeName` unquoted; section 2.7 item 9 has dispatch c register `sql/char@1` and `sql/varchar@1` on SQLite.
+- NEXT: send round 2 to the reviewer (commits `a41f377b5b..01a3f1c8b3`). Then dispatch b.
+- Stopped here on the usage limit.

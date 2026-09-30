@@ -8,7 +8,6 @@ export const sqlFamilyAuthoringTypes = {
       args: [{ kind: 'number', name: 'length', integer: true, minimum: 1, maximum: 10485760 }],
       output: {
         codecId: 'sql/varchar@1',
-        nativeType: 'character varying',
         typeParams: {
           length: { kind: 'arg', index: 0 },
         },

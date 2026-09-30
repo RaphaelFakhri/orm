@@ -82,3 +82,9 @@ describe('the pgvector data type declaration', () => {
     expect(pgVectorDescriptor.paramsSchema).toBe(vectorType().params);
   });
 });
+
+describe('the pgvector type constructor', () => {
+  it('is the one contract infer prints for its data type', () => {
+    expect(pgvectorPackMeta.authoring.type.pgvector.Vector).toHaveProperty('inferred', true);
+  });
+});

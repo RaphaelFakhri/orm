@@ -5,12 +5,12 @@ export const pgvectorAuthoringTypes = {
   pgvector: {
     Vector: {
       kind: 'typeConstructor',
+      inferred: true,
       args: [
         { kind: 'number', name: 'length', integer: true, minimum: 1, maximum: VECTOR_MAX_DIM },
       ],
       output: {
         codecId: 'pg/vector@1',
-        nativeType: 'vector',
         typeParams: {
           length: { kind: 'arg', index: 0 },
         },

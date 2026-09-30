@@ -145,7 +145,7 @@ describe('assembleAuthoringContributions', () => {
       createDescriptor({
         authoring: {
           field: {
-            ns1: { kind: 'fieldPreset', output: { codecId: 'a@1', nativeType: 'text' } },
+            ns1: { kind: 'fieldPreset', output: { codecId: 'a@1' } },
           },
         },
       }),
@@ -153,7 +153,7 @@ describe('assembleAuthoringContributions', () => {
         id: 'other',
         authoring: {
           field: {
-            ns2: { kind: 'fieldPreset', output: { codecId: 'b@1', nativeType: 'int' } },
+            ns2: { kind: 'fieldPreset', output: { codecId: 'b@1' } },
           },
         },
       }),
@@ -167,7 +167,7 @@ describe('assembleAuthoringContributions', () => {
         createDescriptor({
           authoring: {
             field: {
-              dup: { kind: 'fieldPreset', output: { codecId: 'a@1', nativeType: 'text' } },
+              dup: { kind: 'fieldPreset', output: { codecId: 'a@1' } },
             },
           },
         }),
@@ -175,7 +175,7 @@ describe('assembleAuthoringContributions', () => {
           id: 'other',
           authoring: {
             field: {
-              dup: { kind: 'fieldPreset', output: { codecId: 'b@1', nativeType: 'int' } },
+              dup: { kind: 'fieldPreset', output: { codecId: 'b@1' } },
             },
           },
         }),
@@ -186,7 +186,7 @@ describe('assembleAuthoringContributions', () => {
   it('lands top-level type constructors from a descriptor in the merged namespace', () => {
     const stringConstructor = {
       kind: 'typeConstructor',
-      output: { codecId: 'pg/text@1', nativeType: 'text' },
+      output: { codecId: 'pg/text@1' },
     } as const;
     const result = assembleAuthoringContributions([
       createDescriptor({
@@ -205,7 +205,7 @@ describe('assembleAuthoringContributions', () => {
           id: 'adapter-a',
           authoring: {
             type: {
-              String: { kind: 'typeConstructor', output: { codecId: 'a@1', nativeType: 'text' } },
+              String: { kind: 'typeConstructor', output: { codecId: 'a@1' } },
             },
           },
         }),
@@ -213,7 +213,7 @@ describe('assembleAuthoringContributions', () => {
           id: 'adapter-b',
           authoring: {
             type: {
-              String: { kind: 'typeConstructor', output: { codecId: 'b@1', nativeType: 'text' } },
+              String: { kind: 'typeConstructor', output: { codecId: 'b@1' } },
             },
           },
         }),
@@ -235,7 +235,6 @@ describe('assembleAuthoringContributions', () => {
                 args: [{ kind: 'number', name: 'length', integer: true, minimum: 1 }],
                 output: {
                   codecId: 'a/sized@1',
-                  nativeType: 'sized',
                   typeParams: { length: { kind: 'arg', index: 2 } },
                 },
               },
@@ -262,7 +261,6 @@ describe('assembleAuthoringContributions', () => {
                   kind: 'typeConstructor',
                   output: {
                     codecId: 'a/odd@1',
-                    nativeType: 'odd',
                     typeParams: { size: { kind: 'arg', index: 0 } },
                   },
                 },
@@ -290,7 +288,6 @@ describe('assembleAuthoringContributions', () => {
                 args: [{ kind: 'number', name: 'length', integer: true, optional: true }],
                 output: {
                   codecId: 'a/sized@1',
-                  nativeType: 'sized',
                   typeParams: {
                     length: { kind: 'arg', index: 0, default: { kind: 'arg', index: 5 } },
                   },
@@ -307,22 +304,19 @@ describe('assembleAuthoringContributions', () => {
     );
   });
 
-  it('rejects a plain type constructor without an output template', () => {
+  it('accepts a plain type constructor whose output names only its codec', () => {
     expect(() =>
       assembleAuthoringContributions([
         createDescriptor({
           id: 'adapter-a',
           authoring: {
             type: {
-              Odd: { kind: 'typeConstructor', output: { codecId: 'a/odd@1' } },
+              Plain: { kind: 'typeConstructor', output: { codecId: 'a/plain@1' } },
             },
           },
         }),
       ]),
-    ).toThrow(
-      'Invalid authoring type constructor "Odd" contributed by descriptor "adapter-a". ' +
-        'The output declares no storage type template and no entityRefArg; a plain constructor must declare one.',
-    );
+    ).not.toThrow();
   });
 
   it('accepts typeParams references to optional arguments without defaults (omitted-key semantics)', () => {
@@ -336,7 +330,6 @@ describe('assembleAuthoringContributions', () => {
               args: [{ kind: 'number', name: 'length', integer: true, minimum: 1, optional: true }],
               output: {
                 codecId: 'a/varcharish@1',
-                nativeType: 'character varying',
                 typeParams: { length: { kind: 'arg', index: 0 } },
               },
             },
@@ -371,7 +364,7 @@ describe('assembleAuthoringContributions', () => {
         id: 'adapter-a',
         authoring: {
           type: {
-            Rich: { kind: 'typeConstructor', output: { codecId: 'a/rich@1', nativeType: 'rich' } },
+            Rich: { kind: 'typeConstructor', output: { codecId: 'a/rich@1' } },
           },
           valueObjectStorageType: 'Rich',
         },
@@ -386,7 +379,7 @@ describe('assembleAuthoringContributions', () => {
       createDescriptor({
         authoring: {
           type: {
-            Rich: { kind: 'typeConstructor', output: { codecId: 'a/rich@1', nativeType: 'rich' } },
+            Rich: { kind: 'typeConstructor', output: { codecId: 'a/rich@1' } },
           },
         },
       }),
@@ -401,7 +394,7 @@ describe('assembleAuthoringContributions', () => {
         id: 'target-a',
         authoring: {
           type: {
-            Rich: { kind: 'typeConstructor', output: { codecId: 'a/rich@1', nativeType: 'rich' } },
+            Rich: { kind: 'typeConstructor', output: { codecId: 'a/rich@1' } },
           },
         },
       }),
@@ -422,7 +415,7 @@ describe('assembleAuthoringContributions', () => {
             type: {
               Rich: {
                 kind: 'typeConstructor',
-                output: { codecId: 'a/rich@1', nativeType: 'rich' },
+                output: { codecId: 'a/rich@1' },
               },
             },
             valueObjectStorageType: 'Rich',
@@ -447,7 +440,7 @@ describe('assembleAuthoringContributions', () => {
             type: {
               Rich: {
                 kind: 'typeConstructor',
-                output: { codecId: 'a/rich@1', nativeType: 'rich' },
+                output: { codecId: 'a/rich@1' },
               },
             },
             valueObjectStorageType: 'Missing',
@@ -469,7 +462,7 @@ describe('assembleAuthoringContributions', () => {
               Sized: {
                 kind: 'typeConstructor',
                 args: [{ kind: 'number', name: 'length', integer: true, minimum: 1 }],
-                output: { codecId: 'a/sized@1', nativeType: 'sized' },
+                output: { codecId: 'a/sized@1' },
               },
             },
             valueObjectStorageType: 'Sized',
@@ -490,7 +483,7 @@ describe('assembleAuthoringContributions', () => {
             sql: {
               String: {
                 kind: 'typeConstructor',
-                output: { codecId: 'sql/varchar@1', nativeType: 'character varying' },
+                output: { codecId: 'sql/varchar@1' },
               },
             },
           },
@@ -502,7 +495,7 @@ describe('assembleAuthoringContributions', () => {
           type: {
             String: {
               kind: 'typeConstructor',
-              output: { codecId: 'pg/text@1', nativeType: 'text' },
+              output: { codecId: 'pg/text@1' },
             },
           },
         },
@@ -545,7 +538,7 @@ describe('assembleAuthoringContributions', () => {
           authoring: {
             field: {
               custom: {
-                Json: { kind: 'fieldPreset', output: { codecId: 'a@1', nativeType: 'json' } },
+                Json: { kind: 'fieldPreset', output: { codecId: 'a@1' } },
               },
             },
           },
@@ -557,7 +550,7 @@ describe('assembleAuthoringContributions', () => {
               custom: {
                 Json: {
                   kind: 'typeConstructor',
-                  output: { codecId: 'b@1', nativeType: 'jsonb' },
+                  output: { codecId: 'b@1' },
                 },
               },
             },
@@ -978,14 +971,14 @@ describe('assembleAuthoringContributions', () => {
     const packAAuthoring = {
       field: {
         id: {
-          alpha: { kind: 'fieldPreset' as const, output: { codecId: 'a@1', nativeType: 'text' } },
+          alpha: { kind: 'fieldPreset' as const, output: { codecId: 'a@1' } },
         },
       },
     };
     const packBAuthoring = {
       field: {
         id: {
-          beta: { kind: 'fieldPreset' as const, output: { codecId: 'b@1', nativeType: 'int4' } },
+          beta: { kind: 'fieldPreset' as const, output: { codecId: 'b@1' } },
         },
       },
     };
@@ -1011,7 +1004,7 @@ describe('assembleAuthoringContributions', () => {
           id: {
             alpha: {
               kind: 'fieldPreset' as const,
-              output: { codecId: 'a@1', nativeType: 'text' },
+              output: { codecId: 'a@1' },
             },
           },
         },
@@ -1024,7 +1017,7 @@ describe('assembleAuthoringContributions', () => {
           id: {
             beta: {
               kind: 'fieldPreset' as const,
-              output: { codecId: 'b@1', nativeType: 'int4' },
+              output: { codecId: 'b@1' },
             },
           },
         },
@@ -1047,7 +1040,7 @@ describe('assembleAuthoringContributions', () => {
               id: {
                 shared: {
                   kind: 'fieldPreset' as const,
-                  output: { codecId: 'a@1', nativeType: 'text' },
+                  output: { codecId: 'a@1' },
                 },
               },
             },
@@ -1060,7 +1053,7 @@ describe('assembleAuthoringContributions', () => {
               id: {
                 shared: {
                   kind: 'fieldPreset' as const,
-                  output: { codecId: 'b@1', nativeType: 'int4' },
+                  output: { codecId: 'b@1' },
                 },
               },
             },
@@ -1122,7 +1115,7 @@ describe('assembleAuthoringContributions', () => {
             b: {
               alpha: {
                 kind: 'fieldPreset' as const,
-                output: { codecId: 'a@1', nativeType: 'text' },
+                output: { codecId: 'a@1' },
               },
             },
           },
@@ -1137,7 +1130,7 @@ describe('assembleAuthoringContributions', () => {
             b: {
               beta: {
                 kind: 'fieldPreset' as const,
-                output: { codecId: 'b@1', nativeType: 'int4' },
+                output: { codecId: 'b@1' },
               },
             },
           },
@@ -1361,7 +1354,7 @@ describe('createControlStack', () => {
             type: {
               myType: {
                 kind: 'typeConstructor',
-                output: { codecId: 'a@1', nativeType: 'text' },
+                output: { codecId: 'a@1' },
               },
             },
           },
@@ -1449,7 +1442,7 @@ describe('createControlStack', () => {
                 String: {
                   kind: 'typeConstructor',
                   args: [{ kind: 'number', name: 'length' }],
-                  output: { codecId: 'sql/varchar@1', nativeType: 'character varying' },
+                  output: { codecId: 'sql/varchar@1' },
                 },
               },
             },
@@ -1463,11 +1456,11 @@ describe('createControlStack', () => {
             type: {
               String: {
                 kind: 'typeConstructor',
-                output: { codecId: 'pg/text@1', nativeType: 'text' },
+                output: { codecId: 'pg/text@1' },
               },
               Int: {
                 kind: 'typeConstructor',
-                output: { codecId: 'pg/int4@1', nativeType: 'int4' },
+                output: { codecId: 'pg/int4@1' },
               },
             },
           },
@@ -1483,7 +1476,7 @@ describe('validateScalarTypeCodecIds', () => {
     const namespace = {
       String: {
         kind: 'typeConstructor' as const,
-        output: { codecId: 'missing/codec@1', nativeType: 'text' },
+        output: { codecId: 'missing/codec@1' },
       },
     };
     const lookup: CodecLookup = {
@@ -1502,7 +1495,7 @@ describe('validateScalarTypeCodecIds', () => {
     const namespace = {
       String: {
         kind: 'typeConstructor' as const,
-        output: { codecId: 'test/text@1', nativeType: 'text' },
+        output: { codecId: 'test/text@1' },
       },
     };
     const lookup: CodecLookup = {
@@ -1528,7 +1521,7 @@ describe('validateScalarTypeCodecIds', () => {
       Vector: {
         kind: 'typeConstructor' as const,
         args: [{ kind: 'number' as const, name: 'dimensions' }],
-        output: { codecId: 'missing/vector@1', nativeType: 'vector' },
+        output: { codecId: 'missing/vector@1' },
       },
     };
     const lookup: CodecLookup = {

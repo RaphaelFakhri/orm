@@ -19,7 +19,8 @@ import type { CodecInstanceContext } from './codec-types';
  */
 export type ColumnTypeDescriptor<TCodecId extends string = string> = {
   readonly codecId: TCodecId;
-  readonly nativeType: string;
+  /** Ignored: the contract names the database type from the codec's data type. */
+  readonly nativeType?: string;
   readonly typeParams?: Record<string, unknown> | undefined;
   readonly typeRef?: string;
   /**

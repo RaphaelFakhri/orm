@@ -38,6 +38,65 @@ describe('the type constructors the target contributes', () => {
   );
 });
 
+/** Design 13.4: the constructor `contract infer` prints for each data type, where one exists today. */
+const INFERRED = [
+  'String',
+  'Boolean',
+  'Int',
+  'BigInt',
+  'Float',
+  'Numeric',
+  'Json',
+  'Jsonb',
+  'Bytes',
+  'SmallInt',
+  'Real',
+  'Char',
+  'VarChar',
+  'Uuid',
+  'Inet',
+  'Date',
+  'Time',
+  'Timetz',
+  'Timestamp',
+  'Timestamptz',
+  'pg.enum',
+];
+
+function constructorPaths(namespace: object, prefix: readonly string[] = []): string[] {
+  return Object.entries(namespace).flatMap(([name, value]) =>
+    value !== null && typeof value === 'object' && 'kind' in value
+      ? [[...prefix, name].join('.')]
+      : constructorPaths(value, [...prefix, name]),
+  );
+}
+
+function constructorAt(path: string): unknown {
+  return path
+    .split('.')
+    .reduce<unknown>(
+      (current, segment) =>
+        current !== null && typeof current === 'object'
+          ? (current as Record<string, unknown>)[segment]
+          : undefined,
+      postgresAuthoringTypes,
+    );
+}
+
+describe('the constructors contract infer prints', () => {
+  it('are marked inferred, and no other constructor is', () => {
+    const marked = constructorPaths(postgresAuthoringTypes).filter((path) => {
+      const descriptor = constructorAt(path);
+      return descriptor !== null && typeof descriptor === 'object' && 'inferred' in descriptor;
+    });
+    expect(marked.sort()).toEqual([...INFERRED].sort());
+  });
+
+  it.each(INFERRED)('%s is marked with true', (path) => {
+    expect(constructorAt(path)).toHaveProperty('inferred', true);
+  });
+});
+
 describe('postgresScalarAuthoringTypes', () => {
   const codecLookup = createPostgresBuiltinCodecLookup();
   const namespace: AuthoringTypeNamespace = postgresScalarAuthoringTypes;
