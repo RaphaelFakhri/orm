@@ -304,8 +304,8 @@ export const postgresNativeAuthoringTypes = {
   },
   // The representation-explicit spellings. Same columns, same precision, same native types — the
   // only difference is that a read hands back PostgreSQL's own text instead of a `Temporal.*`, so a
-  // value Temporal cannot express still round-trips. Authoring-only: they claim no introspection
-  // mapping, because a bare `timestamptz` column introspects to the Temporal-backed name.
+  // value Temporal cannot express still round-trips. `contract infer` writes these for `date`,
+  // `timestamp`, `timestamptz` and `time` columns, so an inferred contract needs no `Temporal`.
   DateString: {
     kind: 'typeConstructor',
     documentation: 'A PostgreSQL date represented as database text rather than Temporal.PlainDate.',

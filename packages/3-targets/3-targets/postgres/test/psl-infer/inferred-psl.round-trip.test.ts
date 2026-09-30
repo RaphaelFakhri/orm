@@ -40,12 +40,43 @@ const authoringTypes = {
   BigInt: { kind: 'typeConstructor', output: { codecId: 'pg/int8@1', nativeType: 'int8' } },
   Float: { kind: 'typeConstructor', output: { codecId: 'pg/float8@1', nativeType: 'float8' } },
   Jsonb: { kind: 'typeConstructor', output: { codecId: 'pg/jsonb@1', nativeType: 'jsonb' } },
-  Timestamp: {
+  TimestampString: {
     kind: 'typeConstructor',
     args: [{ kind: 'number', name: 'precision', integer: true, minimum: 0, optional: true }],
     output: {
-      codecId: 'pg/timestamp-temporal@1',
+      codecId: 'pg/timestamp-string@1',
       nativeType: 'timestamp',
+      typeParams: { precision: { kind: 'arg', index: 0 } },
+    },
+  },
+  TimestamptzString: {
+    kind: 'typeConstructor',
+    args: [{ kind: 'number', name: 'precision', integer: true, minimum: 0, optional: true }],
+    output: {
+      codecId: 'pg/timestamptz-string@1',
+      nativeType: 'timestamptz',
+      typeParams: { precision: { kind: 'arg', index: 0 } },
+    },
+  },
+  DateString: {
+    kind: 'typeConstructor',
+    output: { codecId: 'pg/date-string@1', nativeType: 'date' },
+  },
+  TimeString: {
+    kind: 'typeConstructor',
+    args: [{ kind: 'number', name: 'precision', integer: true, minimum: 0, optional: true }],
+    output: {
+      codecId: 'pg/time-string@1',
+      nativeType: 'time',
+      typeParams: { precision: { kind: 'arg', index: 0 } },
+    },
+  },
+  Timetz: {
+    kind: 'typeConstructor',
+    args: [{ kind: 'number', name: 'precision', integer: true, minimum: 0, optional: true }],
+    output: {
+      codecId: 'pg/timetz@1',
+      nativeType: 'timetz',
       typeParams: { precision: { kind: 'arg', index: 0 } },
     },
   },
@@ -203,6 +234,51 @@ two lines é'::text`,
       scores: { kind: 'literal', value: [1, 2] },
       docs: { kind: 'literal', value: [{}, []] },
     });
+  });
+
+  it.each([
+    ['timestamp', "'2024-01-01 00:00:00'::timestamp without time zone", '2024-01-01T00:00:00'],
+    [
+      'timestamp(3)',
+      "'2024-01-01 00:00:00.5'::timestamp(3) without time zone",
+      '2024-01-01T00:00:00.5',
+    ],
+    ['timestamptz', "'2024-01-01 01:00:00+00'::timestamp with time zone", '2024-01-01T01:00:00Z'],
+    [
+      'timestamptz(6)',
+      "'2024-01-01 01:00:00.123456+00'::timestamp(6) with time zone",
+      '2024-01-01T01:00:00.123456Z',
+    ],
+    [
+      'timestamptz',
+      "'0044-03-15 00:00:00+00 BC'::timestamp with time zone",
+      '-000043-03-15T00:00:00Z',
+    ],
+    ['date', "'2024-01-01'::date", '2024-01-01'],
+    ['date', "'0044-03-15 BC'::date", '-000043-03-15'],
+    ['time', "'12:34:56.5'::time without time zone", '12:34:56.5'],
+    ['time(3)', "'12:34:56.123'::time(3) without time zone", '12:34:56.123'],
+    ['timetz', "'12:34:56+02'::time with time zone", '12:34:56+02:00'],
+    ['timestamp', "'infinity'::timestamp without time zone", 'infinity'],
+    ['timestamptz', "'-infinity'::timestamp with time zone", '-infinity'],
+    ['date', "'infinity'::date", 'infinity'],
+  ])('round-trips a %s default of %s', (nativeType, rawDefault, value) => {
+    expect(roundTrippedDefaults([introspected('stamp', nativeType, rawDefault)])).toEqual({
+      stamp: { kind: 'literal', value },
+    });
+  });
+
+  it('round-trips a list of timestamps', () => {
+    expect(
+      roundTrippedDefaults([
+        introspected(
+          'stamps',
+          'timestamp(3)',
+          "ARRAY['2024-01-01 00:00:00'::timestamp(3) without time zone]",
+          { many: true },
+        ),
+      ]),
+    ).toEqual({ stamps: { kind: 'literal', value: ['2024-01-01T00:00:00'] } });
   });
 
   it('prints a type constructor for every inferred type name the round trip covers', () => {
