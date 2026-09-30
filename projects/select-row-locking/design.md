@@ -220,7 +220,7 @@ The node itself carries no rule about which combinations are valid. Postgres ref
 
 ## What the renderer prints
 
-The Postgres renderer appends one rendered clause per entry after `offsetClause`, in order: the strength keyword, then `OF "a", "b"` when `of` is set, then `NOWAIT` or `SKIP LOCKED` when `wait` is set. Names in `of` are quoted like every other identifier.
+The Postgres renderer appends one rendered clause per entry after `offsetClause`, in order: the strength keyword, then `OF "a", "b"` when `of` is set, then `NOWAIT` or `SKIP LOCKED` when `waitPolicy` is set. Names in `of` are quoted like every other identifier.
 
 ```sql
 SELECT "id" AS "id" FROM "public"."contact" WHERE "id" = $1 FOR NO KEY UPDATE
@@ -232,7 +232,7 @@ Before rendering, the renderer checks each clause against the capabilities the a
 
 The SQLite renderer throws a structured error when `ast.locking` is set. Dropping the clause silently would turn a lock into no lock, which is the worst possible outcome.
 
-Future renderers map the same node to their own syntax: MariaDB writes `LOCK IN SHARE MODE` for `forShare`; SQL Server turns each clause into `WITH (UPDLOCK, ROWLOCK)` or `WITH (HOLDLOCK)` on the FROM items named in `of`, or on every FROM item when `of` is unset, and turns `wait` into the `NOWAIT` or `READPAST` hint. None of this is built now. The point is that the node carries enough for it.
+Future renderers map the same node to their own syntax: MariaDB writes `LOCK IN SHARE MODE` for `forShare`; SQL Server turns each clause into `WITH (UPDLOCK, ROWLOCK)` or `WITH (HOLDLOCK)` on the FROM items named in `of`, or on every FROM item when `of` is unset, and turns `waitPolicy` into the `NOWAIT` or `READPAST` hint. None of this is built now. The point is that the node carries enough for it.
 
 ## What is refused, and where
 
@@ -313,7 +313,7 @@ Commands that must pass: `pnpm typecheck`, `pnpm lint`, `pnpm lint:deps`, `pnpm 
 
 **Two flags, `rowLocking` and `keyLocking`.** Rejected for the same reason: the options vary independently of the strengths.
 
-**A `wait: 'nowait' | 'skipLocked'` option instead of two booleans.** Rejected for the public API because `forUpdate({ skipLocked: true })` reads as the SQL. The union type gives the same exclusivity. The tree keeps a single `wait` field, because a tree should not be able to hold both.
+**A `wait: 'nowait' | 'skipLocked'` option instead of two booleans.** Rejected for the public API because `forUpdate({ skipLocked: true })` reads as the SQL. The union type gives the same exclusivity. The tree keeps a single `waitPolicy` field, because a tree should not be able to hold both.
 
 **Postgres spelling in the tree, for example `strength: 'FOR NO KEY UPDATE'`.** Rejected. The tree is shared by every target, and a SQL Server renderer would have to parse Postgres words to place its hints. The values use the same camel-case names as the methods, which read as SQL without being one dialect's spelling.
 
