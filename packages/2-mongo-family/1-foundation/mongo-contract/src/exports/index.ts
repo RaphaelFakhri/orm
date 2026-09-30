@@ -94,6 +94,8 @@ export type {
 export { MongoValidator } from '../ir/mongo-validator';
 export type { MongoValueSetInput } from '../ir/mongo-value-set';
 export { MongoValueSet } from '../ir/mongo-value-set';
+export type { MongoDataType, MongoDataTypeSpec } from '../mongo-data-type';
+export { isMongoDataType, mongoDataType } from '../mongo-data-type';
 export type {
   ApplyScopeResult,
   PolymorphicIndexScope,
