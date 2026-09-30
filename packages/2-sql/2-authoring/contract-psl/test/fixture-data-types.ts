@@ -145,7 +145,7 @@ function parseJson(text: string): JsonValue {
     throw structuredError(
       'CONTRACT.INVALID_JSON_LITERAL',
       error instanceof Error ? error.message : String(error),
-      { why: 'The body is not a JSON document.', fix: 'Write a JSON document.' },
+      { why: 'The text is not a JSON document.', fix: 'Write a JSON document.' },
     );
   }
 }

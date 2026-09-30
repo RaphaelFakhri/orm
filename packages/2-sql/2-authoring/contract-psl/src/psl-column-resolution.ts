@@ -586,7 +586,7 @@ function readTaggedLiteral(
       describeTaggedLiteralFailure(canonicalization.reason),
     );
   }
-  return { ok: true, written: { kind: 'tag', tag: literal.tag, text: canonicalization.body } };
+  return { ok: true, written: { kind: 'tag', tag: literal.tag, text: canonicalization.text } };
 }
 
 export function lowerDefaultForField(input: {

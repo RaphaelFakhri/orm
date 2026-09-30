@@ -106,8 +106,8 @@ authoring: {
   dataTypes: {
     [pgJson.id]: {
       // `parse` turns the literal's text into the canonical form and refuses what it cannot read.
-      written: { kind: 'tag', tag: 'json', parse: parseJsonBody },
-      print: printJsonBody,
+      written: { kind: 'tag', tag: 'json', parse: parseJsonText },
+      print: printJsonText,
       documentation: 'Reads the text as a JSON document and stores it as the default value.',
     },
     [pgText.id]: {

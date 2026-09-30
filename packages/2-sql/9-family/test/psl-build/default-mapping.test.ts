@@ -11,8 +11,8 @@ import {
   createNumberClassifier,
   isNonFiniteText,
   numeralText,
-  parseJsonBody,
-  printJsonBody,
+  parseJsonText,
+  printJsonText,
   signedRange,
 } from '@internal/sql-relational-core/ast';
 import { describe, expect, expectTypeOf, it } from 'vitest';
@@ -108,8 +108,8 @@ const entries: Readonly<Record<string, DataTypeAuthoringEntry>> = {
     documentation: 'A number.',
   },
   [json.id]: {
-    written: { kind: 'tag', tag: 'json', parse: parseJsonBody },
-    print: printJsonBody,
+    written: { kind: 'tag', tag: 'json', parse: parseJsonText },
+    print: printJsonText,
     documentation: 'A JSON document.',
   },
   [SQL_EXPRESSION_DATA_TYPE_ID]: sqlExpressionAuthoringEntry,

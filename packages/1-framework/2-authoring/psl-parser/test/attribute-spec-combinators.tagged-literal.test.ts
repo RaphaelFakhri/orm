@@ -62,7 +62,7 @@ describe('taggedLiteral', () => {
     if (result.ok) {
       expect(result.value).toEqual({
         tag: 'postgis.geometry',
-        canonicalization: { ok: true, body: 'POINT(0 0)' },
+        canonicalization: { ok: true, text: 'POINT(0 0)' },
         span: { start: { offset: 3, line: 1, column: 4 }, end: { offset: 35, line: 3, column: 2 } },
       });
     }
@@ -72,7 +72,7 @@ describe('taggedLiteral', () => {
     const { expr, ctx } = argOf('json"[1]"');
     expect(type.parse(expr, ctx)).toMatchObject({
       ok: true,
-      value: { tag: 'json', canonicalization: { ok: true, body: '[1]' } },
+      value: { tag: 'json', canonicalization: { ok: true, text: '[1]' } },
     });
   });
 
@@ -80,7 +80,7 @@ describe('taggedLiteral', () => {
     const { expr, ctx } = argOf('sql`x`');
     expect(type.parse(expr, ctx)).toMatchObject({
       ok: true,
-      value: { tag: 'sql', canonicalization: { ok: true, body: 'x' } },
+      value: { tag: 'sql', canonicalization: { ok: true, text: 'x' } },
     });
   });
 
@@ -103,7 +103,7 @@ describe('taggedLiteral', () => {
     const { expr, ctx } = argOf('sql`a $' + '{x} b`');
     expect(type.parse(expr, ctx)).toMatchObject({
       ok: true,
-      value: { canonicalization: { ok: true, body: 'a $' + '{x} b' } },
+      value: { canonicalization: { ok: true, text: 'a $' + '{x} b' } },
     });
   });
 
