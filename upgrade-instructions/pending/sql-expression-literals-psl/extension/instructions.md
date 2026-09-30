@@ -28,11 +28,12 @@ changes:
         - 'sqlAttributeSpecs\.(model|field)\.\w+\(\)'
   - id: tagged-literal-text-helpers
     summary: |
-      `canonicalizeTaggedLiteralBody` is exported from `@internal/framework-components/authoring` only, beside the new `taggedLiteralTextReadsBack`. `printSqlExpressionLiteral` throws for a text that would read back as different text; check with `sqlTextsReadBack` first.
+      `canonicalizeTaggedLiteralBody` and `TaggedLiteralCanonicalization` are exported from `@internal/framework-components/authoring` only, beside the new `taggedLiteralTextReadsBack`. `printSqlExpressionLiteral` throws for a text that would read back as different text; check with `sqlTextsReadBack` first.
     detection:
       glob: "**/*.{ts,mts,cts}"
       matches:
         - '\bcanonicalizeTaggedLiteralBody\b'
+        - '\bTaggedLiteralCanonicalization\b'
         - '\bprintSqlExpressionLiteral\b'
   - id: supabase-contract-writes-sql-literals
     summary: |
@@ -111,11 +112,15 @@ A pack that ships a PSL contract, such as the Supabase pack's `src/contract/cont
 
 ## Tagged literal text helpers
 
-`canonicalizeTaggedLiteralBody` is no longer exported from `@internal/framework-components/control`. Import it from `@internal/framework-components/authoring`:
+`canonicalizeTaggedLiteralBody` and its result type `TaggedLiteralCanonicalization` are no longer exported from `@internal/framework-components/control`. Import them from `@internal/framework-components/authoring`:
 
 ```diff
 - import { canonicalizeTaggedLiteralBody } from '@internal/framework-components/control';
+- import type { TaggedLiteralCanonicalization } from '@internal/framework-components/control';
 + import { canonicalizeTaggedLiteralBody } from '@internal/framework-components/authoring';
++ import type { TaggedLiteralCanonicalization } from '@internal/framework-components/authoring';
 ```
+
+`canonicalizeTaggedLiteralBody` now drops every blank line at the start and end of the body, not only the first and the last, so its result is always its own canonical text.
 
 The same entry exports `taggedLiteralTextReadsBack(text)`, which says whether a tagged literal printed with `text` reads back as the same text. `printSqlExpressionLiteral` from `@internal/sql-contract/sql-expression` now throws an internal error for a text that would read back as different text. Check the texts first with `sqlTextsReadBack(texts)` from the same module. When it returns `false`, `contract infer` skips an object named with `map:`, prints a wire-named index with `canonicalSqlText(text)` (whose result always reads back), and `contract print` refuses the object. Default expressions are not checked: they print with `printTaggedLiteral`, because defaults are compared with case and whitespace ignored.

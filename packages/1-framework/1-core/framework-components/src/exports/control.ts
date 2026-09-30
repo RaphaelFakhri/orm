@@ -146,7 +146,6 @@ export type {
   SourceSpan,
   TypedDefaultFunctionCall,
 } from '../shared/mutation-default-types';
-export type { TaggedLiteralCanonicalization } from '../shared/tagged-literal';
 export {
   describeTaggedLiteralFailure,
   resolvePslBacktickEscapes,

@@ -71,6 +71,7 @@ export type {
   PslExtensionBlockParsedAttribute,
   PslExtensionBlockPrintEntry,
 } from '../shared/psl-extension-block';
+export type { TaggedLiteralCanonicalization } from '../shared/tagged-literal';
 export {
   canonicalizeTaggedLiteralBody,
   printTaggedLiteral,
