@@ -24,6 +24,7 @@ Reviewer-maintained. Contract: `projects/data-types-completion/design.md` sectio
 | f | 2 (`ddb0814c42..2f23721797`) | ANOTHER ROUND NEEDED: S1-f-R1-1 to S1-f-R1-4 closed; 1 new low |
 | f | 3 (`9ddfaa62e3`) | SATISFIED: S1-f-R2-1 closed, no new finding |
 | review fixes 1 | 1 (`01925ee865..f4e89409e0`) | ANOTHER ROUND NEEDED: 2 low |
+| review fixes 1 | 2 (`c409a672b8`, `ca0de95478`) | SATISFIED: S1-rf1-R1-1 and S1-rf1-R1-2 closed, no new finding |
 
 ## Findings log
 
@@ -212,6 +213,13 @@ Reviewer-maintained. Contract: `projects/data-types-completion/design.md` sectio
 - Where: `packages/2-mongo-family/2-authoring/contract-ts/src/contract-builder.ts:1101`.
 - What is wrong: `aa360b5595` made `AuthoringEntityContext.dataTypeLookup` required, and the Mongo helpers now fill it with `createDataTypeLookup(components.flatMap(...))`. That is the construction CR-F05 removed from the SQL facades: with a duplicate id, `get` returns the last type and `all()` returns both. Item 5 of the brief named only the SQL facades, so this is not a scope breach, but it brings the same pattern back in a new place.
 - Change: use `assembleDataTypes(components).lookup` from `@internal/framework-components/control`, which refuses a duplicate id.
+
+### Review fixes round 2 status of the round 1 findings
+
+- S1-rf1-R1-1: closed by `ca0de95478`. The Postgres `defineContract` test registers `pg/text` from an extension and expects `CONTRACT.DATA_TYPE_DUPLICATE` naming `duplicate-text`. It passes at the parent too, because the behaviour already existed; the test pins it.
+- S1-rf1-R1-2: closed by `c409a672b8`. The Mongo helpers use `assembleDataTypes(components).lookup`. The new test registers `mongo/string` twice and expects `CONTRACT.DATA_TYPE_DUPLICATE`; it would pass silently with `createDataTypeLookup`, so it was red at the parent.
+- Upgrade proof: `wip/proof2/` (on `f4e89409e0`) and `wip/proof/` (on `ca0de95478`, `steps.txt`). Steps 4 and 5 print nothing and exit 0 for both audiences. Step 6: the extension suites pass (postgres 257, pgvector 188, postgis 124, sqlite 55, supabase 102, mongo 150; 68 of 68 turbo tasks), and the SQLite demo re-emits and typechecks cleanly.
+- `@internal/mongo-contract-ts` (131) and `@internal/postgres` (257) pass. Both commits carry both sign-offs and no AI attribution.
 
 ### Review fixes round 1 status of the code review findings
 
