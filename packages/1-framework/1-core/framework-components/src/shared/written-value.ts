@@ -51,10 +51,12 @@ export interface RefusalDescription {
   readonly message: string;
 }
 
-/** Words a refusal of the cast rule; `forms` says what to write instead, as in `a number`. */
+/**
+ * Words a refusal of the cast rule. `guidance` is what follows `write ` in the message: the admitted forms, as in `a number`, or a rewrite, as in ``it as sql`8` ``.
+ */
 export function describeRefusal(
   refusal: ReadRefusal | CastRefusal,
-  forms: string,
+  guidance: string,
 ): RefusalDescription {
   switch (refusal.kind) {
     case 'unknown-tag':
@@ -65,14 +67,14 @@ export function describeRefusal(
     case 'unwritable':
       return {
         code: 'PSL_VALUE_TYPE_INCOMPATIBLE',
-        message: `This target has no data type for a ${refusal.syntax} value; write ${forms}`,
+        message: `This target has no data type for a ${refusal.syntax} value; write ${guidance}`,
       };
     case 'unreadable':
       return { code: 'PSL_INVALID_LITERAL', message: refusal.message };
     case 'no-cast':
       return {
         code: 'PSL_VALUE_TYPE_INCOMPATIBLE',
-        message: `${refusal.receivingType} has no cast from ${refusal.valueType}; write ${forms}`,
+        message: `${refusal.receivingType} has no cast from ${refusal.valueType}; write ${guidance}`,
       };
   }
 }
