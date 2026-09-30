@@ -8,6 +8,7 @@ export type {
   SqlTypeText,
 } from '../sql-data-type';
 export {
+  claimingSqlTexts,
   dataTypeParams,
   isSqlDataType,
   renderSqlCatalogText,
@@ -15,6 +16,7 @@ export {
   resolveReportedSqlType,
   sqlBaseName,
   sqlDataType,
+  sqlTypeTextsCollide,
   storedSqlTypeName,
   storedSqlTypeNameOfCodec,
 } from '../sql-data-type';

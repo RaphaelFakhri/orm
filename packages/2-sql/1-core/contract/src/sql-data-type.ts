@@ -15,7 +15,7 @@ import type {
   DataTypeLookup,
   DataTypeSpec,
 } from '@internal/framework-components/codec';
-import { dataType } from '@internal/framework-components/codec';
+import { dataType, objectSchemaKeys } from '@internal/framework-components/codec';
 import { blindCast } from '@internal/utils/casts';
 import { ifDefined } from '@internal/utils/defined';
 import { InternalError } from '@internal/utils/internal-error';
@@ -80,30 +80,15 @@ const PLACEHOLDER = /\{([A-Za-z][A-Za-z0-9]*)\}/g;
 const LITERAL_CHARACTERS = /^[a-z0-9_ (),.]*$/;
 const REGEXP_SPECIAL = /[.*+?^${}()|[\]\\]/g;
 
-type SchemaProp = { readonly kind: string; readonly key: PropertyKey };
-
-function isSchemaPropList(value: unknown): value is readonly SchemaProp[] {
-  return (
-    Array.isArray(value) &&
-    value.every(
-      (prop) =>
-        prop !== null &&
-        (typeof prop === 'object' || typeof prop === 'function') &&
-        'kind' in prop &&
-        'key' in prop,
-    )
-  );
-}
-
 function paramKeysOf(schema: Type<unknown> | undefined): readonly string[] {
   if (schema === undefined) return [];
-  const props = 'props' in schema ? schema.props : undefined;
-  if (!isSchemaPropList(props)) {
+  const keys = objectSchemaKeys(schema);
+  if (keys === undefined) {
     throw new InternalError(
       'A data type parameter schema must be an arktype object schema; this one exposes no props.',
     );
   }
-  return props.flatMap((prop) => (typeof prop.key === 'string' ? [prop.key] : []));
+  return keys;
 }
 
 function placeholdersOf(text: string): readonly string[] {
@@ -414,6 +399,19 @@ function prepareReportedText(text: string): string {
 
 function claims(text: SqlTypeText): boolean {
   return text.catalog === true || text.written !== true;
+}
+
+/** The texts by which `type` recognises a reported type: those marked catalog, and those with neither mark. */
+export function claimingSqlTexts<Params extends SqlTypeParams>(
+  type: SqlDataType<Params>,
+): readonly string[] {
+  return type.sql.texts.filter(claims).map((text) => text.text);
+}
+
+/** Two claiming texts collide when either one's pattern matches the other with each placeholder written as 1. */
+export function sqlTypeTextsCollide(a: string, b: string): boolean {
+  const withOnes = (text: string) => text.replace(PLACEHOLDER, '1');
+  return patternOf(a).test(withOnes(b)) || patternOf(b).test(withOnes(a));
 }
 
 /**
