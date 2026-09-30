@@ -81,6 +81,34 @@ Brief: `dispatches/2t-findings-fixes-brief.md`.
 - **Finding 2** (`c294bfd4f1`, `3ac77e2800`): `oneOf` returns the result of the one `funcCall` alternative that names the called function. `@default(uuid(5))` now reports `Expected one of: 4 | 7` at `5`, and `@default(nanoid("8"))` with a `dataTypeValue` parameter would report the cast refusal at `"8"`. ADR 231, design section 6, the app upgrade fragment and the manual QA script are updated; the run is recorded.
 - Verification, logs in `wip/2t-fixes/`: `build`, `typecheck`, `lint`, `lint:deps`, `check:error-reference` (361 codes), `fixtures:check` (tree clean), `check:upgrade-coverage` pass. `lint:casts` delta 0, `lint:throws` delta 0, `lint:framework-vocabulary` 272 of 272. `test:packages` (`test-packages.log`): 1423 files pass, 6 fail; the three tarball tests fail on the registry refusal, and `completion-provider.test.ts`, `cli-telemetry` `cli-e2e.test.ts` and `render-typescript.roundtrip.test.ts` timed out and pass alone (`rerun-*.log`). Integration `test/authoring test/number-defaults`: 28 files, 174 tests pass (`integration-authoring-number-defaults.log`). Manual QA: `manual-qa.log`.
 
+### Slice 2t review fixes, 2026-09-30
+
+Brief: `dispatches/2t-review-fixes-brief.md`. Reviews: `slice-reviews/2t/`. Commits `e4ca38ef56` to `b90636f40e`.
+
+- **A01** (`d60177aeed`): no code change. Design-notes decision 14 and the note to "Data types own column types" above record the mechanism: a default-function signature becomes `(dataTypes: DataTypeSupport) => FuncCallSig`, resolved in `scalarDefaultArms`.
+- **A02** (`e6c2815e36`): the pair is the field `dataTypes` everywhere. `DataTypeSupport` keeps its name; its doc comment says what it holds.
+- **A03** (`93d49f733e`): `ControlStack.dataTypes` is built once. `ContractSourceContext` had two production construction sites, so it replaces `dataTypeLookup` with `dataTypes`, and the SQL and Prisma 7 interpreter inputs do the same. Every test that built a context or an interpreter input was updated; a test that passed a lookup without entries passes `{ entries: {}, lookup }`, and contract-psl tests now pass the fixture's entries. ADR 249 and the extension fragment are updated.
+- **A04, A07**: carried over to slice 2b in `plan.md`.
+- **A05, A13** (`4d7d7a6fa7`): ADR 254 states the end state; ADR 231 lists all six codes and the label rule.
+- **A06, A12** (`f70a219d11`): the doc comment cites ADR 231 and ADR 254. A tagless label is `describeAdmittedForms` (`a number`, `true or false`), tested.
+- **A08** (`87581a7e0a`): `DefaultRefusal` is `ReadRefusal | CastRefusal` plus `not-a-list`, `no-list-cast` and `undecodable`. The brief said two default-only arms; a third, `no-list-cast`, was needed because a list written on a scalar column whose type has no list cast has no `DataTypeId` for `valueType`. Prisma 7 reads `receivingType`.
+- **A09** (`249c4d760d`): the sentence is on `WrittenValue`.
+- **A10** (`d5117ef66b`): `readWrittenScalar`, `WrittenScalarResult`, files `written-scalar.ts` and its test; design section 5 updated.
+- **A11** (`a2c75c6ba7`): `checkSqlDefaultText`, `reservedSqlDefaultText`, `UNSAFE_DEFAULT_TEXT`, file `default-sql-text.ts`; `default-mapping.ts` and `sql-default-literal.ts` say text. Extension fragment updated.
+- **A14** (`1360f60594`): `test/integration/test/authoring/data-type-value.test.ts` parses `8`, `"8"` and `` sql`x` `` on the assembled Postgres and SQLite stacks.
+- **A15** (`cbd529fb90`, `f70a219d11`, `87581a7e0a`, `47db2ee790`): `describeRefusal` in `written-value.ts` is the one wording. `@default` passes the forms of the receiving types and adds only `Field "X.y": `; for an element read through a list cast, the forms are those of the list cast's element types. `@default` words `no-list-cast` itself in the same pattern. Tests, `error-reference.md`, design sections 4, 6, 10.1 and 13, and the app fragment (detection `; it casts from `, before and after table) are updated. Manual QA cases 13 and 14 added and the script rerun.
+- **F01, F02, F07** (`cbd529fb90`, `f70a219d11`): casts with a visible effect, the admitted-tag order, and the `an expression` refusal are tested. Planted defects (returning the value before the cast) fail the new tests.
+- **F03** (`47db2ee790`): the extension fragment describes the `oneOf` rule and the binders that require `dataTypes`.
+- **F04** (`5929d57073`): the dead named-argument fallback is gone.
+- **F05** (`87581a7e0a`): the codec-refusal test asserts the whole diagnostic with the `@default` span.
+- **F06** (`f70a219d11`, `980f83e74b`): dotted and colon-qualified callees list the arms; a colon-qualified callee cannot be written in argument position (`a:` opens a named argument), so its test builds the tree of the dotted form with a colon. The Mongo `@@index([email(sort: Up)])` case reports `Expected one of: Asc | Desc` at `Up`.
+- **F08** (`93d49f733e`): the config-resolution test asserts the stack's pair is passed by identity.
+- **F09** (`30a4523acf`): `createSqlBinder` requires `dataTypes`; design section 7 corrected.
+- **F10** (`47db2ee790`, `d60177aeed`): the order is kept; the app fragment and finding 1's outcome say so.
+- The code review's first four deferred items and one new observation are in `plan.md` slice 2b: a type with no written form gives the message ending `write no written form`.
+
+Verification, logs in `wip/2t-review-fixes/`: `build`, `typecheck`, `lint`, `lint:deps`, `check:error-reference` (361 codes), `fixtures:check` (tree clean) and `check:upgrade-coverage` pass. `lint:casts` delta 0, `lint:throws` delta 0, `lint:framework-vocabulary` 272 of 272. `test:packages` (`test-packages.log`): 1425 files pass, 4 fail; the three tarball tests fail on the registry refusal, and `cli-telemetry` `cli-e2e.test.ts` passes alone (`cli-telemetry-rerun.log`). Integration `test/authoring test/number-defaults`: 30 files, 198 tests pass (`integration-authoring-number-defaults.log`). Manual QA: `manual-qa.log`, recorded in `manual-qa.md`.
+
 ## Slice order and tickets
 
 | Order | Plan slice | Ticket | State |
