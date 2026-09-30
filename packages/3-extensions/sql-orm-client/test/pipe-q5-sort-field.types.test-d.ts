@@ -1,5 +1,6 @@
 import { describe, expectTypeOf, test } from 'vitest';
 import { Collection } from '../src/collection';
+import type { HasOrderBy } from '../src/collection-internal-types';
 import { sortField } from '../src/pipe-fragments';
 import { type SoftDeleteContract, softDeleteSetup } from './pipe-fragments-fixture';
 
@@ -17,7 +18,7 @@ class SortedPosts extends Collection<SoftDeleteContract, 'Post'> {
 describe('sortField', () => {
   test('root, chained, include refinement and this', () => {
     expectTypeOf(Post.orderBy(sortField(Post, input.sort, input.direction))).toEqualTypeOf<
-      ReturnType<(typeof Post)['orderBy']>
+      typeof Post & HasOrderBy
     >();
     const chained = Post.where({ userId: 1 });
     expectTypeOf(chained.orderBy(sortField(chained, input.sort)).cursor({ id: 1 })).not.toBeAny();

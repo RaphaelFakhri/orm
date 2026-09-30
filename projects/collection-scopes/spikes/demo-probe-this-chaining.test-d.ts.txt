@@ -15,9 +15,10 @@ export const exportedChain = db.User.admins().newestFirst().limit(10);
 export const exportedCustomWhere = db.Tag.where({ label: 'x' });
 const plain = orm({ runtime, context: demoDb.context as ExecutionContext<Contract> }).public;
 export const exportedPlainWhere = plain.Tag.where({ label: 'x' });
+export const exportedIncluded = db.User.include('posts').admins();
 export const exportedPlainOrdered = plain.User.where({ kind: 'admin' }).orderBy((u) => u.createdAt.desc());
 
-test('custom classes chain against dist', () => {
+test('custom classes chain against dist', async () => {
   expectTypeOf(db.User.admins().newestFirst().emailDomain('x.io')).toExtend<UserCollection>();
   expectTypeOf(db.User.where({ kind: 'admin' }).newestFirst()).toExtend<UserCollection>();
   expectTypeOf(
@@ -39,8 +40,20 @@ test('custom classes chain against dist', () => {
   expectTypeOf(q).toEqualTypeOf<PostCollection>();
   expectTypeOf(db.Post.pipe((c) => (flag ? c.withTitle('t') : c))).toEqualTypeOf<PostCollection>();
   expectTypeOf(db.Task.bugs().all()).not.toBeAny();
-  // @ts-expect-error include returns a plain Collection
-  db.User.include('posts').admins();
+  const withPosts = db.User.include('posts').admins().newestFirst();
+  expectTypeOf(withPosts).toExtend<UserCollection>();
+  const userRow = await withPosts.first();
+  expectTypeOf(userRow!.posts[0]!.title).toEqualTypeOf<string>();
+  expectTypeOf(userRow!.email).toEqualTypeOf<string>();
+  const twice = db.Post.include('user').forUser('u1').include('tags');
+  expectTypeOf(twice).toExtend<PostCollection>();
+  const postRow = await twice.first();
+  expectTypeOf(postRow!.user).not.toBeAny();
+  expectTypeOf(postRow!.tags).not.toBeAny();
+  expectTypeOf((await db.Post.include('user').select('id').first())!).toEqualTypeOf<{
+    id: string;
+    user: NonNullable<typeof postRow>['user'];
+  }>();
   // @ts-expect-error the refinement collection is not the registered class
   db.User.include('posts', (posts) => posts.withTitle('t'));
 });

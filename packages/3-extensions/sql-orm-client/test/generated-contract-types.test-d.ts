@@ -1,9 +1,9 @@
 import type { Contract, NamespaceId, StorageHashBase } from '@internal/contract/types';
-import type { ContractWithTypeMaps, SqlStorage, TypeMaps } from '@internal/sql-contract/types';
+import type { ContractWithTypeMaps, TypeMaps } from '@internal/sql-contract/types';
 import type { ExecutionContext } from '@internal/sql-relational-core/query-lane-context';
 import { expectTypeOf, test } from 'vitest';
 import { Collection } from '../src/collection';
-import type { StateType } from '../src/collection-internal-types';
+import type { RowType, StateType } from '../src/collection-internal-types';
 
 import { createMockRuntime } from './helpers';
 
@@ -199,15 +199,7 @@ class PostCollection extends Collection<GeneratedLikeContract, 'Post'> {
   }
 }
 
-type RowOf<TCollection> =
-  TCollection extends Collection<
-    infer _Contract extends Contract<SqlStorage>,
-    infer _ModelName extends string,
-    infer Row,
-    infer _State
-  >
-    ? Row
-    : never;
+type RowOf<TCollection> = TCollection extends { readonly [RowType]: infer Row } ? Row : never;
 
 type StateOf<TCollection> = TCollection extends { readonly [StateType]: infer State }
   ? State

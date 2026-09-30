@@ -1,5 +1,6 @@
 import { describe, expectTypeOf, test } from 'vitest';
 import { Collection } from '../src/collection';
+import type { FlatRow } from '../src/collection-internal-types';
 import { type RowOf, rowFragment } from '../src/pipe-fragments';
 import type { CollectionTypeState } from '../src/types';
 import { type SoftDeleteContract, softDeleteSetup } from './pipe-fragments-fixture';
@@ -49,7 +50,7 @@ describe('rowFragment', () => {
   });
 
   test('the row type can be named from the fragment', () => {
-    type PostSummary = RowOf<ReturnType<typeof summary>>;
+    type PostSummary = FlatRow<RowOf<ReturnType<typeof summary>>>;
     expectTypeOf<PostSummary>().toEqualTypeOf<{
       id: number;
       title: string;

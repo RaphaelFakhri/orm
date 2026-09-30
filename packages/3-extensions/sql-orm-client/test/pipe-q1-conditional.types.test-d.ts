@@ -1,5 +1,6 @@
 import { describe, expectTypeOf, test } from 'vitest';
 import { Collection } from '../src/collection';
+import type { HasOrderBy, HasWhere } from '../src/collection-internal-types';
 import { when } from '../src/pipe-fragments';
 import {
   type SoftDeleteContract,
@@ -15,9 +16,9 @@ declare const sort: 'asc' | 'desc' | undefined;
 declare const flag: boolean;
 
 type Base = typeof Post;
-type Filtered = ReturnType<Base['where']>;
-type Ordered = ReturnType<Base['orderBy']>;
-type CustomFiltered = ReturnType<SoftPostCollection['where']>;
+type Filtered = Base & HasWhere;
+type Ordered = Base & HasOrderBy;
+type CustomFiltered = SoftPostCollection & HasWhere;
 
 class ConditionalPosts extends Collection<SoftDeleteContract, 'Post'> {
   search(term: string | undefined) {
@@ -33,7 +34,7 @@ describe('a: conditional steps inside pipe', () => {
     const a = Post.pipe((c) => (search ? c.where((p) => p.title.eq(search)) : c))
       .pipe((c) => (sort ? c.orderBy((p) => p.id[sort]()) : c))
       .limit(10);
-    expectTypeOf(a).toEqualTypeOf<ReturnType<Base['limit']>>();
+    expectTypeOf(a).toEqualTypeOf<Base>();
     expectTypeOf(a).not.toBeAny();
     expectTypeOf(a.where((p) => p.views.gt(1))).toEqualTypeOf<Filtered>();
     expectTypeOf(a.orderBy((p) => p.id.asc())).toEqualTypeOf<Ordered>();
@@ -123,7 +124,7 @@ describe('d: when', () => {
     const d = Post.pipe(when(search, (c, s) => c.where((p) => p.title.eq(s))))
       .pipe(when(sort, (c, dir) => c.orderBy((p) => p.id[dir]())))
       .limit(10);
-    expectTypeOf(d).toEqualTypeOf<ReturnType<Base['limit']>>();
+    expectTypeOf(d).toEqualTypeOf<Base>();
     expectTypeOf(d.include('author').all()).not.toBeAny();
     expectTypeOf(d.select('id').first()).not.toBeAny();
     // @ts-expect-error update stays locked

@@ -1,5 +1,6 @@
 import { describe, expectTypeOf, test } from 'vitest';
 import { Collection } from '../src/collection';
+import type { HasOrderBy, HasWhere } from '../src/collection-internal-types';
 import {
   type SoftDeleteContract,
   type SoftPostCollection,
@@ -16,9 +17,9 @@ declare const mode: 'title' | 'views' | 'none';
 declare const terms: readonly string[];
 
 type Base = typeof Post;
-type Filtered = ReturnType<Base['where']>;
-type Ordered = ReturnType<Base['orderBy']>;
-type FilteredOrdered = ReturnType<Filtered['orderBy']>;
+type Filtered = Base & HasWhere;
+type Ordered = Base & HasOrderBy;
+type FilteredOrdered = Filtered & HasOrderBy;
 const selectedPost = Post.select('id', 'title');
 type Selected = typeof selectedPost;
 
@@ -127,8 +128,7 @@ describe('b: where in one branch, orderBy in the other', () => {
     expectTypeOf(x).toEqualTypeOf<Filtered | Ordered>();
     expectTypeOf(x.where({ id: 2 })).not.toBeAny();
     expectTypeOf(x.first()).not.toBeAny();
-    // @ts-expect-error TS2349: the union members' include signatures are not compatible
-    x.include('author');
+    expectTypeOf(x.include('author').all()).not.toBeAny();
     // @ts-expect-error update is locked
     x.update({ title: 'x' });
     // @ts-expect-error delete is locked

@@ -116,6 +116,18 @@ export declare const StateType: unique symbol;
 export type CollectionStateOf<C extends { readonly [StateType]: CollectionTypeState }> =
   C[typeof StateType];
 
+export type CollectionRowOf<C extends { readonly [RowType]: unknown }> = FlatRow<C[typeof RowType]>;
+
+export type FlatRow<R> = R extends object ? { [K in keyof R]: R[K] } : R;
+
+export interface StateCarrier {
+  readonly [StateType]: CollectionTypeState;
+}
+
+export interface IncludeReceiver {
+  readonly [RowType]: unknown;
+}
+
 export interface HasWhere {
   readonly [StateType]: { readonly hasWhere: true };
 }
@@ -143,7 +155,7 @@ export type IncludeRefinementValue<
       // cardinality-wrapped; Collection carries a raw row that still needs it.
       RefinedResult extends { readonly kind: 'includeScalar' | 'includeCombine' }
       ? V
-      : RefinedIncludeRelationValue<TContract, ParentModelName, RelName, V, NsId>
+      : RefinedIncludeRelationValue<TContract, ParentModelName, RelName, FlatRow<V>, NsId>
     : IncludeRelationValue<TContract, ParentModelName, RelName, DefaultIncludedRow, NsId>;
 
 /**

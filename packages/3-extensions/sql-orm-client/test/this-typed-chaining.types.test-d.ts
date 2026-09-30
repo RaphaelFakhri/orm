@@ -1,5 +1,6 @@
 import { describe, expectTypeOf, test } from 'vitest';
 import { Collection } from '../src/collection';
+import type { HasWhere } from '../src/collection-internal-types';
 import { orm } from '../src/orm';
 import { createMockRuntime, getTestContext, type TestContract } from './helpers';
 
@@ -36,6 +37,12 @@ const db = orm({
 });
 const Post = db.public.Post;
 const plain = orm({ runtime: createMockRuntime(), context: getTestContext() }).public.Post;
+const plainWithAuthor = plain.include('author');
+type PlainAuthorRow = NonNullable<Awaited<ReturnType<typeof plainWithAuthor.first>>>;
+const plainWithAuthorComments = plainWithAuthor.include('comments');
+type PlainAuthorCommentsRow = NonNullable<
+  Awaited<ReturnType<typeof plainWithAuthorComments.first>>
+>;
 
 describe('the class survives chaining', () => {
   test('custom method after a custom method', () => {
@@ -49,10 +56,15 @@ describe('the class survives chaining', () => {
     expectTypeOf(Post.where((p) => p.views.gt(1)).published()).toExtend<PostCollection>();
   });
 
-  test('custom method after include is refused: include changes the row, so it returns a plain Collection', () => {
-    // @ts-expect-error include returns Collection, not the class
-    Post.include('author').published();
-    expectTypeOf(Post.published().include('author').all()).not.toBeAny();
+  test('custom method after include keeps the class and the widened row', async () => {
+    const c = Post.include('author').published();
+    expectTypeOf(c).toExtend<PostCollection>();
+    const row = await c.first();
+    expectTypeOf(row).toEqualTypeOf<PlainAuthorRow | null>();
+    expectTypeOf<keyof NonNullable<typeof row>>().toEqualTypeOf<
+      'id' | 'title' | 'userId' | 'embedding' | 'views' | 'author'
+    >();
+    expectTypeOf(await c.all()).toEqualTypeOf<PlainAuthorRow[]>();
   });
 
   test('custom method on the related class inside an include refinement', () => {
@@ -173,8 +185,7 @@ describe('conditionals reduce to the class', () => {
     expectTypeOf(r.limit(1).all()).not.toBeAny();
     expectTypeOf(r.published().recent()).toExtend<PostCollection>();
     expectTypeOf(r.select('id').all()).not.toBeAny();
-    // @ts-expect-error TS2684: include cannot infer one state from a union of differently flagged collections
-    r.include('author');
+    expectTypeOf(r.include('author').all()).not.toBeAny();
     // @ts-expect-error cursor needs an orderBy on every branch
     r.cursor({ id: 1 });
     // @ts-expect-error update needs a where
@@ -204,13 +215,70 @@ describe('row-changing methods', () => {
     r.published();
   });
 
-  test('include keeps the flags and the widened row, but not the class', async () => {
+  test('include after where keeps the class, the flag and the widened row', async () => {
     const c = Post.published().include('author');
-    const rows = await c.all();
-    expectTypeOf(rows[0]!.author).not.toBeAny();
-    expectTypeOf(rows[0]!.title).toEqualTypeOf<string>();
-    expectTypeOf(c.delete()).not.toBeAny();
-    // @ts-expect-error the class does not survive include
-    c.published();
+    expectTypeOf(c).toExtend<PostCollection & HasWhere>();
+    expectTypeOf(await c.all()).toEqualTypeOf<PlainAuthorRow[]>();
+    expectTypeOf(await c.delete()).toEqualTypeOf<PlainAuthorRow | null>();
+    expectTypeOf(await c.update({ title: 'x' })).toEqualTypeOf<PlainAuthorRow | null>();
+    expectTypeOf(c.published().recent()).toExtend<PostCollection>();
+  });
+
+  test('update after where then include returns the widened row', async () => {
+    const c = Post.where((p) => p.id.eq(1)).include('author');
+    expectTypeOf(await c.update({ title: 'x' })).toEqualTypeOf<PlainAuthorRow | null>();
+  });
+
+  test('chained includes widen twice', async () => {
+    const c = Post.include('author').published().include('comments');
+    expectTypeOf(c).toExtend<PostCollection>();
+    expectTypeOf(await c.first()).toEqualTypeOf<PlainAuthorCommentsRow | null>();
+  });
+
+  test('select after include still narrows and keeps the relation', async () => {
+    const c = Post.include('author').published().select('id');
+    expectTypeOf(await c.first()).toEqualTypeOf<{
+      id: number;
+      author: PlainAuthorRow['author'];
+    } | null>();
+    expectTypeOf(await c.update({ title: 'x' })).not.toBeAny();
+  });
+
+  test('the included relation has the row of the related model', () => {
+    expectTypeOf<PlainAuthorRow['author']>().toEqualTypeOf<{
+      name: string;
+      id: number;
+      invitedById: number | null;
+      address: {
+        readonly city: string;
+        readonly street: string;
+        readonly zip: string | null;
+      } | null;
+      email: string;
+    }>();
+    expectTypeOf<keyof PlainAuthorCommentsRow>().toEqualTypeOf<
+      'id' | 'title' | 'userId' | 'embedding' | 'views' | 'author' | 'comments'
+    >();
+  });
+
+  test('inside a refinement, include then orderBy keeps the widened row', async () => {
+    const c = db.public.User.include('posts', (posts) =>
+      posts.include('comments').orderBy((p) => p.id.asc()),
+    );
+    const row = await c.first();
+    expectTypeOf(row!.posts[0]!.comments).not.toBeAny();
+    expectTypeOf<keyof NonNullable<typeof row>['posts'][number]>().toEqualTypeOf<
+      'id' | 'title' | 'userId' | 'embedding' | 'views' | 'comments'
+    >();
+  });
+
+  test('plain collection rows are unchanged', async () => {
+    expectTypeOf(await plain.first()).toEqualTypeOf<{
+      id: number;
+      title: string;
+      userId: number;
+      embedding: number[] | null;
+      views: number;
+    } | null>();
   });
 });

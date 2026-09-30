@@ -53,9 +53,7 @@ describe('E: curried helper applied with pipe', () => {
   });
 
   test('pipe takes any function of the collection', () => {
-    expectTypeOf(Post.pipe((posts) => posts.limit(1))).toEqualTypeOf<
-      ReturnType<(typeof Post)['limit']>
-    >();
+    expectTypeOf(Post.pipe((posts) => posts.limit(1))).toEqualTypeOf<typeof Post>();
     expectTypeOf(Post.pipe(() => 42)).toEqualTypeOf<number>();
   });
 });

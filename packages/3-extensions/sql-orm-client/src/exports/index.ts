@@ -1,8 +1,12 @@
 export { Collection, type CollectionImpl } from '../collection';
 export type {
+  CollectionRowOf,
   CollectionStateOf,
   HasOrderBy,
   HasWhere,
+  IncludeReceiver,
+  RowSelection,
+  RowType,
   StateType,
 } from '../collection-internal-types';
 export { all, and, not, or } from '../filters';

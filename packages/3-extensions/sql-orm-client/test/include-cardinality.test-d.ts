@@ -1,19 +1,10 @@
-import type { Contract } from '@internal/contract/types';
-import type { SqlStorage } from '@internal/sql-contract/types';
 import type { ExecutionContext } from '@internal/sql-relational-core/query-lane-context';
 import { expectTypeOf, test } from 'vitest';
 import { Collection } from '../src/collection';
+import type { RowType } from '../src/collection-internal-types';
 import { createMockRuntime, type TestContract } from './helpers';
 
-type RowOf<TCollection> =
-  TCollection extends Collection<
-    infer _Contract extends Contract<SqlStorage>,
-    infer _ModelName extends string,
-    infer Row,
-    infer _State
-  >
-    ? Row
-    : never;
+type RowOf<TCollection> = TCollection extends { readonly [RowType]: infer Row } ? Row : never;
 
 type Equal<A, B> =
   (<T>() => T extends A ? 1 : 2) extends <T>() => T extends B ? 1 : 2 ? true : false;
