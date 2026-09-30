@@ -30,6 +30,7 @@ Stack: slice 1, then slice 2. Slice 2 needs slice 1's node and flags.
 
 - Slice 2 must add a test that `bindSelectAst` in `packages/3-extensions/sql-orm-client/src/where-binding.ts` carries `locking` through; D1 of slice 1 added the field there without a test because the ORM has no way to set it yet.
 
+- `AdapterProfile.capabilities` in `packages/2-sql/4-lanes/relational-core/src/ast/adapter-types.ts` is typed `Record<string, unknown>`, so the Postgres runtime adapter passes its capability constant to the renderer rather than `this.profile.capabilities`. Typing the profile field as `CapabilityMatrix` touches every adapter and is a follow-up ticket to file after slice 2.
 - Mapping SQLSTATE `55P03` to a structured error code is a follow-up ticket to file after slice 2.
 - Porting the Prisma 7 test "high concurrency with SET FOR UPDATE" waits on a real Postgres server in the integration suite.
 
