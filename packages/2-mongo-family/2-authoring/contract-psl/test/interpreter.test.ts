@@ -14,7 +14,13 @@ import {
   MongoStorage,
   MongoValidator,
 } from '@internal/mongo-contract';
-import { buildSymbolTable, jsonValue, mapBlock, type SymbolTable } from '@internal/psl-parser';
+import {
+  buildSymbolTable,
+  EMPTY_DATA_TYPES,
+  jsonValue,
+  mapBlock,
+  type SymbolTable,
+} from '@internal/psl-parser';
 import type { DocumentAst, PslSources, SyntaxNode } from '@internal/psl-parser/syntax';
 import { parse } from '@internal/psl-parser/syntax';
 import type { JsonObject } from '@internal/utils/json';
@@ -113,10 +119,8 @@ function interpret(
   return interpretPslDocumentToMongoContract({
     ...buildSymbolTableInput(schema),
     scalarTypeCodecIds: mongoScalarTypeDescriptors,
-    controlMutationDefaults: {
-      dataTypeEntries: {},
-      defaultFunctionRegistry: new Map(),
-    },
+    controlMutationDefaults: { defaultFunctionRegistry: new Map() },
+    dataTypes: EMPTY_DATA_TYPES,
     codecLookup: mongoCodecLookup,
     ...overrides,
   });
@@ -163,10 +167,8 @@ describe('interpretPslDocumentToMongoContract', () => {
     const result = interpretPslDocumentToMongoContract({
       ...input,
       scalarTypeCodecIds: mongoScalarTypeDescriptors,
-      controlMutationDefaults: {
-        dataTypeEntries: {},
-        defaultFunctionRegistry: new Map(),
-      },
+      controlMutationDefaults: { defaultFunctionRegistry: new Map() },
+      dataTypes: EMPTY_DATA_TYPES,
       codecLookup: mongoCodecLookup,
       authoringContributions: {
         pslBlockDescriptors: {
@@ -2244,10 +2246,8 @@ describe('interpretPslDocumentToMongoContract', () => {
           'schema.prisma',
         ),
         scalarTypeCodecIds: mongoScalarTypeDescriptors,
-        controlMutationDefaults: {
-          dataTypeEntries: {},
-          defaultFunctionRegistry: new Map(),
-        },
+        controlMutationDefaults: { defaultFunctionRegistry: new Map() },
+        dataTypes: EMPTY_DATA_TYPES,
       });
 
       expect(result.ok).toBe(false);
@@ -2278,10 +2278,8 @@ describe('interpretPslDocumentToMongoContract', () => {
           'schema.prisma',
         ),
         scalarTypeCodecIds: mongoScalarTypeDescriptors,
-        controlMutationDefaults: {
-          dataTypeEntries: {},
-          defaultFunctionRegistry: new Map(),
-        },
+        controlMutationDefaults: { defaultFunctionRegistry: new Map() },
+        dataTypes: EMPTY_DATA_TYPES,
       });
 
       expect(result.ok).toBe(false);
@@ -2304,10 +2302,8 @@ describe('interpretPslDocumentToMongoContract', () => {
           'schema.prisma',
         ),
         scalarTypeCodecIds: mongoScalarTypeDescriptors,
-        controlMutationDefaults: {
-          dataTypeEntries: {},
-          defaultFunctionRegistry: new Map(),
-        },
+        controlMutationDefaults: { defaultFunctionRegistry: new Map() },
+        dataTypes: EMPTY_DATA_TYPES,
       });
 
       expect(result.ok).toBe(true);

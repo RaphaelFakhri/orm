@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { EMPTY_DATA_TYPES } from '../src/attribute-spec/spec-context';
 import { createBinder } from '../src/binder';
 import type { FieldAttributeCtx } from '../src/exports';
 import { taggedLiteral } from '../src/exports';
@@ -26,8 +27,8 @@ function makeCtx(sources: PslSources): FieldAttributeCtx {
     attributeSpecs: { model: {}, field: {} },
     controlMutationDefaults: {
       defaultFunctionRegistry: new Map(),
-      dataTypeEntries: {},
     },
+    dataTypes: EMPTY_DATA_TYPES,
   });
   return { sources, symbols: symbolTable, selfModel, field, binder };
 }

@@ -5,7 +5,10 @@ import type {
   AuthoringPslBlockDescriptorNamespace,
   AuthoringTypeNamespace,
   DataTypeAuthoringEntry,
+  DataTypeSupport,
 } from '@internal/framework-components/authoring';
+import { createDataTypeLookup } from '@internal/framework-components/codec';
+
 import {
   assembleAuthoringContributions,
   assembleControlMutationDefaults,
@@ -268,6 +271,7 @@ function completeWithSource(input: {
   readonly pslBlockDescriptors: AuthoringPslBlockDescriptorNamespace;
   readonly authoringContributions?: typeof attributeContributions;
   readonly controlMutationDefaults?: typeof controlMutationDefaults;
+  readonly dataTypes?: DataTypeSupport;
   readonly clientSupportsSnippets?: boolean;
   readonly clientSupportsTriggerParameterHintsCommand?: boolean;
   readonly scalarTypes?: readonly string[];
@@ -298,6 +302,7 @@ function completeWithSource(input: {
         ...(input.controlMutationDefaults === undefined
           ? {}
           : { controlMutationDefaults: input.controlMutationDefaults }),
+        ...(input.dataTypes === undefined ? {} : { dataTypes: input.dataTypes }),
       },
       clientSupportsSnippets: input.clientSupportsSnippets === true,
       clientSupportsTriggerParameterHintsCommand:
@@ -366,14 +371,13 @@ function completeWithActualStack(
     readonly dataTypes?: Readonly<Record<string, DataTypeAuthoringEntry>>;
   } = {},
 ) {
-  const contributions = actualAuthoringContributions(stack);
   return completeWithSource({
     markedSource,
     pslBlockDescriptors: stack.pslBlockDescriptors,
-    authoringContributions:
-      options.dataTypes === undefined
-        ? contributions
-        : { ...contributions, dataTypes: options.dataTypes },
+    authoringContributions: actualAuthoringContributions(stack),
+    ...(options.dataTypes === undefined
+      ? {}
+      : { dataTypes: { entries: options.dataTypes, lookup: createDataTypeLookup([]) } }),
     controlMutationDefaults: options.controlMutationDefaults ?? controlMutationDefaults,
     clientSupportsSnippets: options.clientSupportsSnippets === true,
   });

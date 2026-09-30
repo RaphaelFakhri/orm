@@ -66,6 +66,7 @@ export type {
   FieldAttributeSpecFactory,
   ModelAttributeSpecFactory,
 } from '../attribute-spec/spec-context';
+export { EMPTY_DATA_TYPES } from '../attribute-spec/spec-context';
 export type {
   ArgType,
   ArgTypeKind,

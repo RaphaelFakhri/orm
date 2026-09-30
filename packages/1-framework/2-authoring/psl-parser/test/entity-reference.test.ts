@@ -1,5 +1,6 @@
 import { ok } from '@internal/utils/result';
 import { describe, expect, it } from 'vitest';
+import { EMPTY_DATA_TYPES } from '../src/attribute-spec/spec-context';
 import type { EntitySelector, PslBlockSpecDescriptor } from '../src/exports';
 import {
   blockAttribute,
@@ -66,7 +67,8 @@ function fixture(value: string, local = true) {
       },
       field: {},
     },
-    controlMutationDefaults: { defaultFunctionRegistry: new Map(), dataTypeEntries: {} },
+    controlMutationDefaults: { defaultFunctionRegistry: new Map() },
+    dataTypes: EMPTY_DATA_TYPES,
   });
   for (const syntax of document.syntax.descendants()) {
     if (!(syntax instanceof SyntaxNode)) continue;
@@ -115,7 +117,8 @@ describe('syntax-scoped entity resolution', () => {
       symbolTable: result.symbolTable,
       typeConstructors: {},
       attributeSpecs: { model: {}, field: {} },
-      controlMutationDefaults: { defaultFunctionRegistry: new Map(), dataTypeEntries: {} },
+      controlMutationDefaults: { defaultFunctionRegistry: new Map() },
+      dataTypes: EMPTY_DATA_TYPES,
       pslBlockDescriptors: { permission: descriptor },
     });
     expect(binderDiagnostics).toEqual([]);
@@ -220,7 +223,8 @@ describe('syntax-scoped entity resolution', () => {
           },
           field: {},
         },
-        controlMutationDefaults: { defaultFunctionRegistry: new Map(), dataTypeEntries: {} },
+        controlMutationDefaults: { defaultFunctionRegistry: new Map() },
+        dataTypes: EMPTY_DATA_TYPES,
       });
       const selfModel = symbolTable.topLevel.models['Owner'];
       if (!selfModel) throw new Error('Missing owner');

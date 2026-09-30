@@ -8,6 +8,7 @@ import { fieldAttribute } from '../src/attribute-spec/field-attribute';
 import { interpretAttribute } from '../src/attribute-spec/interpret';
 import { modelAttribute } from '../src/attribute-spec/model-attribute';
 import { optional } from '../src/attribute-spec/optional';
+import { EMPTY_DATA_TYPES } from '../src/attribute-spec/spec-context';
 import { createBinder } from '../src/binder';
 import { parse } from '../src/parse';
 import { PslSources } from '../src/source-file';
@@ -63,8 +64,8 @@ function bind(text: string) {
     attributeSpecs: ATTRIBUTE_SPECS,
     controlMutationDefaults: {
       defaultFunctionRegistry: new Map(),
-      dataTypeEntries: {},
     },
+    dataTypes: EMPTY_DATA_TYPES,
   });
   return { sources, symbolTable, binder, binderDiagnostics: diagnostics };
 }

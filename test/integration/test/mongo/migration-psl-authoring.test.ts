@@ -7,7 +7,7 @@ import { UNBOUND_NAMESPACE_ID } from '@internal/framework-components/ir';
 import type { MongoContract } from '@internal/mongo-contract';
 import { interpretPslDocumentToMongoContract } from '@internal/mongo-contract-psl';
 import type { MongoMigrationPlanOperation } from '@internal/mongo-query-ast/control';
-import { buildSymbolTable } from '@internal/psl-parser';
+import { buildSymbolTable, EMPTY_DATA_TYPES } from '@internal/psl-parser';
 import { parse } from '@internal/psl-parser/syntax';
 import {
   MongoMigrationPlanner,
@@ -71,10 +71,8 @@ function pslToContract(schema: string): MongoContract {
     symbolTable,
     sources,
     scalarTypeCodecIds,
-    controlMutationDefaults: {
-      dataTypeEntries: {},
-      defaultFunctionRegistry: new Map(),
-    },
+    controlMutationDefaults: { defaultFunctionRegistry: new Map() },
+    dataTypes: EMPTY_DATA_TYPES,
     codecLookup: mongoCodecLookup,
   });
   if (!result.ok) {

@@ -1,4 +1,4 @@
-import { buildSymbolTable, type SymbolTable } from '@internal/psl-parser';
+import { buildSymbolTable, EMPTY_DATA_TYPES, type SymbolTable } from '@internal/psl-parser';
 import type { DocumentAst, PslSources } from '@internal/psl-parser/syntax';
 import { parse } from '@internal/psl-parser/syntax';
 import { describe, expect, it } from 'vitest';
@@ -29,8 +29,8 @@ function diagnosticCodes(schema: string): readonly string[] {
     scalarTypeCodecIds,
     controlMutationDefaults: {
       defaultFunctionRegistry: new Map(),
-      dataTypeEntries: {},
     },
+    dataTypes: EMPTY_DATA_TYPES,
   });
   if (result.ok) throw new Error('expected interpretation to fail');
   return result.failure.diagnostics.map((diagnostic) => diagnostic.code);

@@ -7,7 +7,11 @@ import type {
   Param,
   ResolvedEntityReference,
 } from '@internal/psl-parser';
-import { buildSymbolTable, createPslDiagnosticCollector } from '@internal/psl-parser';
+import {
+  buildSymbolTable,
+  createPslDiagnosticCollector,
+  EMPTY_DATA_TYPES,
+} from '@internal/psl-parser';
 import { parse } from '@internal/psl-parser/syntax';
 import { describe, expect, expectTypeOf, it } from 'vitest';
 import {
@@ -74,10 +78,8 @@ function contexts(): { model: AttributeSpecContext; field: FieldAttributeSpecCon
   const modelContext: AttributeSpecContext = {
     symbols: symbolTable,
     model,
-    controlMutationDefaults: {
-      dataTypeEntries: {},
-      defaultFunctionRegistry: new Map(),
-    },
+    controlMutationDefaults: { defaultFunctionRegistry: new Map() },
+    dataTypes: EMPTY_DATA_TYPES,
   };
   return { model: modelContext, field: { ...modelContext, field } };
 }
@@ -109,7 +111,8 @@ model Base { id String }`,
         symbolTable,
         sources,
         scalarTypeCodecIds: new Map(),
-        controlMutationDefaults: { defaultFunctionRegistry: new Map(), dataTypeEntries: {} },
+        controlMutationDefaults: { defaultFunctionRegistry: new Map() },
+        dataTypes: EMPTY_DATA_TYPES,
       }).binder,
       diagnostics,
     });

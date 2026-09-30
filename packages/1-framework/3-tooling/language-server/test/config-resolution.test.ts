@@ -9,6 +9,7 @@ import {
   errorUnexpected,
 } from '@internal/errors/control';
 import type { AuthoringPslBlockDescriptorNamespace } from '@internal/framework-components/authoring';
+import { createDataTypeLookup } from '@internal/framework-components/codec';
 import type { ControlStack } from '@internal/framework-components/control';
 import * as control from '@internal/framework-components/control';
 import { jsonValue, mapBlock } from '@internal/psl-parser';
@@ -73,13 +74,16 @@ function stubStackWithContext(): ControlStack {
   } as unknown as ControlStack;
 }
 
+const stubDataTypeLookup = createDataTypeLookup([]);
+
 function stubStack(
   scalarTypes: readonly string[],
   pslBlockDescriptors: AuthoringPslBlockDescriptorNamespace,
 ): ControlStack {
   return {
     scalarTypes,
-    authoringContributions: { pslBlockDescriptors },
+    authoringContributions: { pslBlockDescriptors, dataTypes: {} },
+    dataTypeLookup: stubDataTypeLookup,
   } as unknown as ControlStack;
 }
 
@@ -207,7 +211,8 @@ describe('resolveConfigInputs', { timeout: timeouts.coldTransformImport }, () =>
     expect(result.controlStack).toEqual({
       scalarTypes: ['Int'],
       pslBlockDescriptors: {},
-      authoringContributions: { pslBlockDescriptors: {} },
+      authoringContributions: { pslBlockDescriptors: {}, dataTypes: {} },
+      dataTypes: { entries: {}, lookup: stubDataTypeLookup },
     });
     expect(result.inputs.includes(pathToFileURL('/abs/schema.psl').toString())).toBe(true);
   });
@@ -253,7 +258,8 @@ describe('control-stack input derivation', () => {
     expect(result.controlStack).toEqual({
       scalarTypes: ['Int', 'String'],
       pslBlockDescriptors,
-      authoringContributions: { pslBlockDescriptors },
+      authoringContributions: { pslBlockDescriptors, dataTypes: {} },
+      dataTypes: { entries: {}, lookup: stubDataTypeLookup },
     });
   });
 

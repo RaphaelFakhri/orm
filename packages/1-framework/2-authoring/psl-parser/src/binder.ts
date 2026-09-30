@@ -1,6 +1,7 @@
 import type {
   AuthoringPslBlockDescriptorNamespace,
   AuthoringTypeNamespace,
+  DataTypeSupport,
 } from '@internal/framework-components/authoring';
 import type { ControlDefaultRegistries } from '@internal/framework-components/control';
 import type { ContributedPslDiagnosticCode } from '@internal/framework-components/psl-ast';
@@ -103,6 +104,7 @@ export interface CreateBinderOptions {
   readonly typeConstructors: AuthoringTypeNamespace;
   readonly attributeSpecs: AttributeSpecNamespace;
   readonly controlMutationDefaults: ControlDefaultRegistries;
+  readonly dataTypes: DataTypeSupport;
   readonly pslBlockDescriptors?: AuthoringPslBlockDescriptorNamespace | undefined;
   readonly describeUnsupportedAttribute?: DescribeUnsupportedAttribute | undefined;
 }
@@ -182,6 +184,7 @@ export function createBinder(options: CreateBinderOptions): BinderResult {
     typeConstructors,
     attributeSpecs,
     controlMutationDefaults,
+    dataTypes,
     describeUnsupportedAttribute,
   } = options;
   const pslBlockDescriptors = options.pslBlockDescriptors ?? {};
@@ -243,7 +246,7 @@ export function createBinder(options: CreateBinderOptions): BinderResult {
     };
     const specContext =
       entity.kind === 'model'
-        ? { symbols: symbolTable, model: entity, controlMutationDefaults }
+        ? { symbols: symbolTable, model: entity, controlMutationDefaults, dataTypes }
         : undefined;
     bindAttributes(
       entity,

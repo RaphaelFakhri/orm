@@ -72,10 +72,8 @@ function lowerEnumDefaultForField(input: {
       symbols: input.symbolTable,
       model,
       field,
-      controlMutationDefaults: {
-        defaultFunctionRegistry: input.defaultFunctionRegistry,
-        dataTypeEntries: input.dataTypeSupport.entries,
-      },
+      controlMutationDefaults: { defaultFunctionRegistry: input.defaultFunctionRegistry },
+      dataTypes: input.dataTypeSupport,
     }),
   );
   const interpreted = interpretFieldAttribute({

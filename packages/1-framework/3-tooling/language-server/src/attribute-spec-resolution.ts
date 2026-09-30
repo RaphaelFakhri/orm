@@ -1,4 +1,7 @@
-import type { AuthoringPslBlockDescriptorNamespace } from '@internal/framework-components/authoring';
+import type {
+  AuthoringPslBlockDescriptorNamespace,
+  DataTypeSupport,
+} from '@internal/framework-components/authoring';
 import type {
   AssembledAuthoringContributions,
   ControlMutationDefaults,
@@ -7,6 +10,7 @@ import {
   type AttributeSpec,
   assembleAttributeSpecs,
   type BlockAttributeSpecFactory,
+  EMPTY_DATA_TYPES,
   findBlockDescriptor,
   type SymbolTable,
 } from '@internal/psl-parser';
@@ -23,6 +27,7 @@ export interface AttributeSpecSource {
   readonly symbolTable: SymbolTable;
   readonly authoringContributions?: AssembledAuthoringContributions;
   readonly controlMutationDefaults?: ControlMutationDefaults;
+  readonly dataTypes?: DataTypeSupport;
 }
 
 export type AttributeSpecOwner =
@@ -66,10 +71,8 @@ export function attributeSpecResolver(
       const specContext = {
         symbols: source.symbolTable,
         model,
-        controlMutationDefaults: {
-          ...source.controlMutationDefaults,
-          dataTypeEntries: source.authoringContributions.dataTypes ?? {},
-        },
+        controlMutationDefaults: source.controlMutationDefaults,
+        dataTypes: source.dataTypes ?? EMPTY_DATA_TYPES,
       };
       return (name) => specs.model[name]?.(specContext);
     }
@@ -85,10 +88,8 @@ export function attributeSpecResolver(
       const specContext = {
         symbols: source.symbolTable,
         model,
-        controlMutationDefaults: {
-          ...source.controlMutationDefaults,
-          dataTypeEntries: source.authoringContributions.dataTypes ?? {},
-        },
+        controlMutationDefaults: source.controlMutationDefaults,
+        dataTypes: source.dataTypes ?? EMPTY_DATA_TYPES,
       };
       return (name) => specs.field[name]?.({ ...specContext, field });
     }

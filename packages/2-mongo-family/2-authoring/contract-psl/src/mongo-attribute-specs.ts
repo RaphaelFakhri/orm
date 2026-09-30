@@ -1,6 +1,7 @@
 import type {
   AuthoringContributions,
   AuthoringTypeConstructorDescriptor,
+  DataTypeSupport,
 } from '@internal/framework-components/authoring';
 import type { ControlDefaultRegistries } from '@internal/framework-components/control';
 import type {
@@ -127,6 +128,7 @@ export function createMongoBinder(input: {
   readonly sources: PslSources;
   readonly scalarTypeCodecIds: ReadonlyMap<string, string>;
   readonly controlMutationDefaults: ControlDefaultRegistries;
+  readonly dataTypes: DataTypeSupport;
   readonly authoringContributions?: AuthoringContributions | undefined;
 }): { readonly binder: Binder; readonly diagnostics: readonly PslDiagnostic[] } {
   const scalars: Record<string, AuthoringTypeConstructorDescriptor> = {};
@@ -139,6 +141,7 @@ export function createMongoBinder(input: {
     typeConstructors: { ...scalars, ...(input.authoringContributions?.type ?? {}) },
     attributeSpecs: mongoAttributeSpecs,
     controlMutationDefaults: input.controlMutationDefaults,
+    dataTypes: input.dataTypes,
     pslBlockDescriptors: input.authoringContributions?.pslBlockDescriptors ?? {},
     describeUnsupportedAttribute: describeUnsupportedMongoAttribute(input.sources),
   });

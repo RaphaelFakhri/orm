@@ -86,6 +86,7 @@ function lspControlStackFromStack(stack: ControlStack): LspControlStack {
     scalarTypes: [...stack.scalarTypes],
     pslBlockDescriptors: stack.authoringContributions.pslBlockDescriptors,
     authoringContributions: stack.authoringContributions,
+    dataTypes: { entries: stack.authoringContributions.dataTypes, lookup: stack.dataTypeLookup },
     ...(stack.controlMutationDefaults === undefined
       ? {}
       : { controlMutationDefaults: stack.controlMutationDefaults }),

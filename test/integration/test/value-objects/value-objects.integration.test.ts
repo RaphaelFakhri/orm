@@ -10,7 +10,7 @@ import { MongoContractSerializer } from '@internal/family-mongo/ir';
 import { createDataTypeLookup } from '@internal/framework-components/codec';
 import { interpretPslDocumentToMongoContract } from '@internal/mongo-contract-psl';
 import { mongoOrm } from '@internal/mongo-orm';
-import { buildSymbolTable } from '@internal/psl-parser';
+import { buildSymbolTable, EMPTY_DATA_TYPES } from '@internal/psl-parser';
 import { parse } from '@internal/psl-parser/syntax';
 import { interpretPslDocumentToSqlContract } from '@internal/sql-contract-psl';
 import { postgresDataTypes } from '@internal/target-postgres/data-types';
@@ -86,10 +86,8 @@ function interpretMongoPsl(schema: string) {
     symbolTable,
     sources,
     scalarTypeCodecIds: mongoScalarTypeDescriptors,
-    controlMutationDefaults: {
-      dataTypeEntries: {},
-      defaultFunctionRegistry: new Map(),
-    },
+    controlMutationDefaults: { defaultFunctionRegistry: new Map() },
+    dataTypes: EMPTY_DATA_TYPES,
   });
 }
 

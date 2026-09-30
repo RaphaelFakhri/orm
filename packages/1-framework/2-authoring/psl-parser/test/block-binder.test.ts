@@ -15,6 +15,7 @@ import { str } from '../src/attribute-spec/combinators/str';
 import { fieldAttribute } from '../src/attribute-spec/field-attribute';
 import { modelAttribute } from '../src/attribute-spec/model-attribute';
 import { optional } from '../src/attribute-spec/optional';
+import { EMPTY_DATA_TYPES } from '../src/attribute-spec/spec-context';
 import type { ArgType, AttributeCtx } from '../src/attribute-spec/types';
 import { createBinder } from '../src/binder';
 import { mapBlock } from '../src/block-spec/constructors';
@@ -42,7 +43,8 @@ function bind(
       sources,
       symbolTable,
       typeConstructors: {},
-      controlMutationDefaults: { defaultFunctionRegistry: new Map(), dataTypeEntries: {} },
+      controlMutationDefaults: { defaultFunctionRegistry: new Map() },
+      dataTypes: EMPTY_DATA_TYPES,
       attributeSpecs: { model: { refs: () => modelAttribute('refs', parameters) }, field: {} },
       pslBlockDescriptors: {
         policy: {
@@ -351,7 +353,8 @@ it('resolves a field after an entity lookup fails', () => {
     sources,
     symbolTable,
     typeConstructors: {},
-    controlMutationDefaults: { defaultFunctionRegistry: new Map(), dataTypeEntries: {} },
+    controlMutationDefaults: { defaultFunctionRegistry: new Map() },
+    dataTypes: EMPTY_DATA_TYPES,
     attributeSpecs: {
       model: {},
       field: {

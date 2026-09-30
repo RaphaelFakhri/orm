@@ -8,7 +8,7 @@ import type { MongoContract } from '@internal/mongo-contract';
 import { interpretPslDocumentToMongoContract } from '@internal/mongo-contract-psl';
 import type { AnyMongoMigrationOperation } from '@internal/mongo-query-ast/control';
 import { MongoSchemaIR } from '@internal/mongo-schema-ir';
-import { buildSymbolTable } from '@internal/psl-parser';
+import { buildSymbolTable, EMPTY_DATA_TYPES } from '@internal/psl-parser';
 import { parse } from '@internal/psl-parser/syntax';
 import {
   MongoMigrationPlanner,
@@ -123,10 +123,8 @@ function makeContractFromPsl(): MongoContract {
     symbolTable,
     sources,
     scalarTypeCodecIds: mongoScalarTypeDescriptors,
-    controlMutationDefaults: {
-      dataTypeEntries: {},
-      defaultFunctionRegistry: new Map(),
-    },
+    controlMutationDefaults: { defaultFunctionRegistry: new Map() },
+    dataTypes: EMPTY_DATA_TYPES,
     codecLookup: mongoCodecLookup,
   });
   if (!result.ok) {

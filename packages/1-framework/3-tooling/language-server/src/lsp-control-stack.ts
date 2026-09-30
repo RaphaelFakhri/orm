@@ -1,4 +1,7 @@
-import type { AuthoringPslBlockDescriptorNamespace } from '@internal/framework-components/authoring';
+import type {
+  AuthoringPslBlockDescriptorNamespace,
+  DataTypeSupport,
+} from '@internal/framework-components/authoring';
 import type {
   AssembledAuthoringContributions,
   ControlMutationDefaults,
@@ -9,4 +12,5 @@ export interface LspControlStack {
   readonly pslBlockDescriptors: AuthoringPslBlockDescriptorNamespace;
   readonly authoringContributions?: AssembledAuthoringContributions;
   readonly controlMutationDefaults?: ControlMutationDefaults;
+  readonly dataTypes?: DataTypeSupport;
 }

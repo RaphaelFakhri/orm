@@ -21,6 +21,7 @@ import type {
   AuthoringContributions,
   AuthoringEntityContext,
   AuthoringTypeNamespace,
+  DataTypeSupport,
   ParsedPslExtensionBlock,
 } from '@internal/framework-components/authoring';
 import {
@@ -99,6 +100,7 @@ export interface InterpretPslDocumentToMongoContractInput {
   readonly sources: PslSources;
   readonly scalarTypeCodecIds: ReadonlyMap<string, string>;
   readonly controlMutationDefaults: ControlDefaultRegistries;
+  readonly dataTypes: DataTypeSupport;
   readonly codecLookup?: CodecLookup;
   readonly seedDiagnostics?: readonly ContractSourceDiagnostic[];
   readonly authoringContributions?: AuthoringContributions;
@@ -1182,6 +1184,7 @@ export function interpretPslDocumentToMongoContract(
     sources,
     scalarTypeCodecIds,
     controlMutationDefaults: input.controlMutationDefaults,
+    dataTypes: input.dataTypes,
     authoringContributions: input.authoringContributions,
   });
   diagnostics.push(
@@ -1209,6 +1212,7 @@ export function interpretPslDocumentToMongoContract(
     symbols: symbolTable,
     model,
     controlMutationDefaults: input.controlMutationDefaults,
+    dataTypes: input.dataTypes,
   });
   const modelMetadataByName = new Map<string, MongoModelMetadata>();
   for (const model of allModels) {

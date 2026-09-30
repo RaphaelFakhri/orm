@@ -4,7 +4,7 @@ import { mongoFamilyDescriptor } from '@internal/family-mongo/control';
 import { collectScalarTypeConstructors } from '@internal/framework-components/authoring';
 import { createControlStack } from '@internal/framework-components/control';
 import { interpretPslDocumentToMongoContract } from '@internal/mongo-contract-psl';
-import { buildSymbolTable } from '@internal/psl-parser';
+import { buildSymbolTable, EMPTY_DATA_TYPES } from '@internal/psl-parser';
 import { parse } from '@internal/psl-parser/syntax';
 import { mongoTargetDescriptor } from '@internal/target-mongo/control';
 import { describe, expect, it } from 'vitest';
@@ -31,10 +31,8 @@ function interpret(schema: string) {
         ([name, output]) => [name, output.codecId],
       ),
     ),
-    controlMutationDefaults: {
-      dataTypeEntries: {},
-      defaultFunctionRegistry: new Map(),
-    },
+    controlMutationDefaults: { defaultFunctionRegistry: new Map() },
+    dataTypes: EMPTY_DATA_TYPES,
     codecLookup: stack.codecLookup,
     authoringContributions: stack.authoringContributions,
   });

@@ -35,9 +35,10 @@ export function mongoContract(schemaPath: string, options?: MongoContractOptions
         sources: input.sources,
         seedDiagnostics: [],
         scalarTypeCodecIds: collectScalarTypeCodecIds(context.authoringContributions.type),
-        controlMutationDefaults: {
-          ...context.controlMutationDefaults,
-          dataTypeEntries: context.authoringContributions.dataTypes,
+        controlMutationDefaults: context.controlMutationDefaults,
+        dataTypes: {
+          entries: context.authoringContributions.dataTypes,
+          lookup: context.dataTypeLookup,
         },
         codecLookup: context.codecLookup,
         authoringContributions: context.authoringContributions,

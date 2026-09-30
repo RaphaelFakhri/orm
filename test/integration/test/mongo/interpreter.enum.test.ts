@@ -8,7 +8,7 @@ import {
   type InterpretPslDocumentToMongoContractInput,
   interpretPslDocumentToMongoContract,
 } from '@internal/mongo-contract-psl';
-import { buildSymbolTable } from '@internal/psl-parser';
+import { buildSymbolTable, EMPTY_DATA_TYPES } from '@internal/psl-parser';
 import { parse } from '@internal/psl-parser/syntax';
 import { MONGO_INT32_CODEC_ID, MONGO_STRING_CODEC_ID } from '@internal/target-mongo/codec-ids';
 import { timeouts } from '@repo/test-utils';
@@ -70,10 +70,8 @@ function interpret(
     symbolTable,
     sources,
     scalarTypeCodecIds: mongoScalarTypeDescriptors,
-    controlMutationDefaults: {
-      dataTypeEntries: {},
-      defaultFunctionRegistry: new Map(),
-    },
+    controlMutationDefaults: { defaultFunctionRegistry: new Map() },
+    dataTypes: EMPTY_DATA_TYPES,
     codecLookup: mongoCodecLookup,
     authoringContributions: contributions,
     enumInferenceCodecs: { text: MONGO_STRING_CODEC_ID, int: MONGO_INT32_CODEC_ID },

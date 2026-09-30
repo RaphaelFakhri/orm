@@ -10,7 +10,12 @@ import {
   UNSPECIFIED_PSL_NAMESPACE_ID,
 } from '@internal/framework-components/psl-ast';
 import type { BlockSymbol, PslDiagnostic, SymbolTable } from '@internal/psl-parser';
-import { buildSymbolTable, createBinder, interpretExtensionBlocks } from '@internal/psl-parser';
+import {
+  buildSymbolTable,
+  createBinder,
+  EMPTY_DATA_TYPES,
+  interpretExtensionBlocks,
+} from '@internal/psl-parser';
 import { parse } from '@internal/psl-parser/syntax';
 import { describe, expect, it } from 'vitest';
 import { printPslFromAst } from '../src/print-psl';
@@ -64,7 +69,8 @@ function parsePolicySelect(schema: string): ParsedPolicySelect {
       String: { kind: 'typeConstructor', output: { codecId: 'fixture/scalar@1' } },
     },
     attributeSpecs: { model: {}, field: {} },
-    controlMutationDefaults: { defaultFunctionRegistry: new Map(), dataTypeEntries: {} },
+    controlMutationDefaults: { defaultFunctionRegistry: new Map() },
+    dataTypes: EMPTY_DATA_TYPES,
     pslBlockDescriptors: assembled.pslBlockDescriptors,
   });
   const { parsedBlocks, diagnostics: blockDiagnostics } = interpretExtensionBlocks({

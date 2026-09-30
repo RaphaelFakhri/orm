@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { EMPTY_DATA_TYPES } from '../src/attribute-spec/spec-context';
 import { createBinder } from '../src/binder';
 import type { ModelAttributeCtx } from '../src/exports';
 import {
@@ -45,8 +46,8 @@ function foreignArg(source: string): { arg: ExpressionAst; ctx: ModelAttributeCt
     attributeSpecs: { model: {}, field: {} },
     controlMutationDefaults: {
       defaultFunctionRegistry: new Map(),
-      dataTypeEntries: {},
     },
+    dataTypes: EMPTY_DATA_TYPES,
   });
   return {
     arg: new ForeignCopyOfAnAstNode(value.syntax) as unknown as ExpressionAst,

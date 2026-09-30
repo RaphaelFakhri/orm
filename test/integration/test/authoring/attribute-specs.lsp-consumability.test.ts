@@ -48,7 +48,10 @@ describe('postgres attribute specs are consumable from a resolved language-serve
       model,
       controlMutationDefaults: {
         ...interpretation.context.controlMutationDefaults,
-        dataTypeEntries: interpretation.context.authoringContributions.dataTypes,
+      },
+      dataTypes: {
+        entries: interpretation.context.authoringContributions.dataTypes,
+        lookup: interpretation.context.dataTypeLookup,
       },
     };
 
@@ -100,7 +103,10 @@ describe('mongo attribute specs are consumable from a resolved language-server p
       model,
       controlMutationDefaults: {
         ...interpretation.context.controlMutationDefaults,
-        dataTypeEntries: interpretation.context.authoringContributions.dataTypes,
+      },
+      dataTypes: {
+        entries: interpretation.context.authoringContributions.dataTypes,
+        lookup: interpretation.context.dataTypeLookup,
       },
     };
 
@@ -170,7 +176,10 @@ describe('mongo attribute specs are consumable from a resolved language-server p
       field,
       controlMutationDefaults: {
         ...interpretation.context.controlMutationDefaults,
-        dataTypeEntries: interpretation.context.authoringContributions.dataTypes,
+      },
+      dataTypes: {
+        entries: interpretation.context.authoringContributions.dataTypes,
+        lookup: interpretation.context.dataTypeLookup,
       },
     });
 

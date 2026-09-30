@@ -1,6 +1,6 @@
 import type { ContractSourceDiagnostic } from '@internal/config/config-types';
 import { UNBOUND_NAMESPACE_ID } from '@internal/framework-components/ir';
-import { buildSymbolTable } from '@internal/psl-parser';
+import { buildSymbolTable, EMPTY_DATA_TYPES } from '@internal/psl-parser';
 import { parse } from '@internal/psl-parser/syntax';
 import { describe, expect, it } from 'vitest';
 import { interpretPslDocumentToMongoContract } from '../src/interpreter';
@@ -22,10 +22,8 @@ function interpret(schema: string) {
     symbolTable,
     sources,
     scalarTypeCodecIds,
-    controlMutationDefaults: {
-      dataTypeEntries: {},
-      defaultFunctionRegistry: new Map(),
-    },
+    controlMutationDefaults: { defaultFunctionRegistry: new Map() },
+    dataTypes: EMPTY_DATA_TYPES,
   });
 }
 

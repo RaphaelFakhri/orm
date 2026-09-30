@@ -5,6 +5,7 @@ import { oneOf } from '../src/attribute-spec/combinators/one-of';
 import { record } from '../src/attribute-spec/combinators/record';
 import { interpretAttribute } from '../src/attribute-spec/interpret';
 import { modelAttribute } from '../src/attribute-spec/model-attribute';
+import { EMPTY_DATA_TYPES } from '../src/attribute-spec/spec-context';
 import type { ArgType, ModelAttributeCtx } from '../src/attribute-spec/types';
 import { createBinder } from '../src/binder';
 import type { PslDiagnostic } from '../src/diagnostic';
@@ -34,8 +35,8 @@ function build(text: string) {
     attributeSpecs: { model: {}, field: {} },
     controlMutationDefaults: {
       defaultFunctionRegistry: new Map(),
-      dataTypeEntries: {},
     },
+    dataTypes: EMPTY_DATA_TYPES,
   });
   return { sources, model, binder, symbolTable };
 }

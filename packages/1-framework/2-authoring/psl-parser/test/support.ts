@@ -1,4 +1,5 @@
 import type { AuthoringPslBlockDescriptorNamespace } from '@internal/framework-components/authoring';
+import { EMPTY_DATA_TYPES } from '../src/attribute-spec/spec-context';
 import { type Binder, createBinder } from '../src/binder';
 import type { PslSources, Range, SourceFile } from '../src/source-file';
 import type { SymbolTable } from '../src/symbol-table';
@@ -93,7 +94,8 @@ export function supportBinder(input: {
     symbolTable: input.symbolTable,
     typeConstructors: {},
     attributeSpecs: { model: {}, field: {} },
-    controlMutationDefaults: { defaultFunctionRegistry: new Map(), dataTypeEntries: {} },
+    controlMutationDefaults: { defaultFunctionRegistry: new Map() },
+    dataTypes: EMPTY_DATA_TYPES,
     ...(input.pslBlockDescriptors === undefined
       ? {}
       : { pslBlockDescriptors: input.pslBlockDescriptors }),

@@ -2,6 +2,7 @@ import type {
   AuthoringTypeConstructorDescriptor,
   AuthoringTypeNamespace,
 } from '@internal/framework-components/authoring';
+import { createDataTypeLookup } from '@internal/framework-components/codec';
 import { describe, expect, it } from 'vitest';
 import { entityRef } from '../src/attribute-spec/combinators/entity-ref';
 import { fieldRef, referencedFieldRef } from '../src/attribute-spec/combinators/field-ref';
@@ -13,6 +14,7 @@ import type {
   AttributeSpecContext,
   FieldAttributeSpecContext,
 } from '../src/attribute-spec/spec-context';
+import { EMPTY_DATA_TYPES } from '../src/attribute-spec/spec-context';
 import {
   createBinder,
   type DescribeUnsupportedAttribute,
@@ -84,10 +86,7 @@ const FIELD_SPECS = {
 
 const ATTRIBUTE_SPECS = { model: MODEL_SPECS, field: FIELD_SPECS };
 
-const NO_CONTROL_DEFAULTS = {
-  defaultFunctionRegistry: new Map(),
-  dataTypeEntries: {},
-};
+const NO_CONTROL_DEFAULTS = { defaultFunctionRegistry: new Map() };
 
 function attributeNodes(
   owner: ModelSymbol | CompositeTypeSymbol | FieldSymbol,
@@ -144,6 +143,7 @@ function bind(...texts: string[]) {
       typeConstructors: TYPE_CONSTRUCTORS,
       attributeSpecs: ATTRIBUTE_SPECS,
       controlMutationDefaults: NO_CONTROL_DEFAULTS,
+      dataTypes: EMPTY_DATA_TYPES,
     }),
   };
 }
@@ -161,6 +161,7 @@ function bindWithUnsupportedDescriber(
       typeConstructors: TYPE_CONSTRUCTORS,
       attributeSpecs: ATTRIBUTE_SPECS,
       controlMutationDefaults: NO_CONTROL_DEFAULTS,
+      dataTypes: EMPTY_DATA_TYPES,
       describeUnsupportedAttribute,
     }),
   };
@@ -1082,6 +1083,7 @@ describe('attribute-spec registry shape', () => {
       typeConstructors: TYPE_CONSTRUCTORS,
       attributeSpecs: registry,
       controlMutationDefaults: NO_CONTROL_DEFAULTS,
+      dataTypes: EMPTY_DATA_TYPES,
     });
     const user = symbolTable.topLevel.models['User']!;
     const post = symbolTable.topLevel.models['Post']!;
@@ -1248,6 +1250,7 @@ describe('the binder calls the real spec factories', () => {
       typeConstructors: TYPE_CONSTRUCTORS,
       attributeSpecs: registry,
       controlMutationDefaults: NO_CONTROL_DEFAULTS,
+      dataTypes: EMPTY_DATA_TYPES,
     });
     const user = symbolTable.topLevel.models['User']!;
 
@@ -1264,6 +1267,40 @@ describe('the binder calls the real spec factories', () => {
       kind: 'field',
       symbol: user.fields['id'],
     });
+  });
+});
+
+describe('the binder gives spec factories the data types of the stack', () => {
+  it('passes the same data types to model and field factories', () => {
+    const dataTypes = { entries: {}, lookup: createDataTypeLookup([]) };
+    const seen: unknown[] = [];
+    const { sources, symbolTable } = build(
+      ['model User {', '  id Int', '  name String @contextual', '  @@index([id])', '}'].join('\n'),
+    );
+    createBinder({
+      sources,
+      symbolTable,
+      typeConstructors: TYPE_CONSTRUCTORS,
+      attributeSpecs: {
+        model: {
+          index: (ctx: AttributeSpecContext) => {
+            seen.push(ctx.dataTypes);
+            return modelSpec('index', [fieldListParam('fields')]);
+          },
+        },
+        field: {
+          contextual: (ctx: FieldAttributeSpecContext) => {
+            seen.push(ctx.dataTypes);
+            return fieldAttribute('contextual', { documentation: 'fixture' });
+          },
+        },
+      },
+      controlMutationDefaults: NO_CONTROL_DEFAULTS,
+      dataTypes,
+    });
+
+    expect(seen).toHaveLength(2);
+    expect(seen.every((received) => received === dataTypes)).toBe(true);
   });
 });
 

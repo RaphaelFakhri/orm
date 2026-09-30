@@ -615,10 +615,8 @@ export function lowerDefaultForField(input: {
       symbols: input.symbolTable,
       model: input.model,
       field: input.field,
-      controlMutationDefaults: {
-        defaultFunctionRegistry: input.defaultFunctionRegistry,
-        dataTypeEntries: input.dataTypeSupport.entries,
-      },
+      controlMutationDefaults: { defaultFunctionRegistry: input.defaultFunctionRegistry },
+      dataTypes: input.dataTypeSupport,
     }),
   );
   const interpreted = interpretFieldAttribute({

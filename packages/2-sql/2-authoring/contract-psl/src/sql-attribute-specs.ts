@@ -5,6 +5,7 @@ import type {
   AuthoringPslBlockDescriptorNamespace,
   AuthoringTypeConstructorDescriptor,
   AuthoringTypeNamespace,
+  DataTypeSupport,
 } from '@internal/framework-components/authoring';
 import { isAuthoringFieldPresetDescriptor } from '@internal/framework-components/authoring';
 import type { ControlDefaultRegistries } from '@internal/framework-components/control';
@@ -37,6 +38,7 @@ import {
   bool,
   createBinder,
   diagnosticSource,
+  EMPTY_DATA_TYPES,
   entityRef,
   fieldAttribute,
   fieldRef,
@@ -148,6 +150,7 @@ export function createSqlBinder(input: {
   readonly sources: PslSources;
   readonly authoringContributions?: AuthoringContributions | undefined;
   readonly controlMutationDefaults?: ControlDefaultRegistries | undefined;
+  readonly dataTypes?: DataTypeSupport | undefined;
   readonly scalarColumnDescriptors?: ReadonlyMap<string, { readonly codecId: string }> | undefined;
   readonly pslBlockDescriptors?: AuthoringPslBlockDescriptorNamespace | undefined;
   readonly describeUnsupportedAttribute?: DescribeUnsupportedAttribute | undefined;
@@ -180,8 +183,8 @@ export function createSqlBinder(input: {
     },
     controlMutationDefaults: input.controlMutationDefaults ?? {
       defaultFunctionRegistry: new Map(),
-      dataTypeEntries: {},
     },
+    dataTypes: input.dataTypes ?? EMPTY_DATA_TYPES,
     describeUnsupportedAttribute: input.describeUnsupportedAttribute,
   });
 }
@@ -273,12 +276,13 @@ type DefaultArgValue = DefaultLiteralElement | DefaultLiteralElement[] | TypedFu
 
 function scalarDefaultArms(
   isList: boolean,
+  dataTypes: DataTypeSupport,
   registries: ControlDefaultRegistries,
 ): readonly [ArgType<DefaultArgValue, AttributeCtx>, ...ArgType<DefaultArgValue, AttributeCtx>[]] {
   // One arm per distinct documentation, so each tag's completion and signature help carries the
   // text of the tag it names rather than every registered tag's text run together.
   const tagsByDocumentation = new Map<string, string[]>();
-  for (const entry of Object.values(registries.dataTypeEntries)) {
+  for (const entry of Object.values(dataTypes.entries)) {
     if (entry.written.kind !== 'tag') continue;
     const tags = tagsByDocumentation.get(entry.documentation);
     if (tags === undefined) tagsByDocumentation.set(entry.documentation, [entry.written.tag]);
@@ -375,7 +379,7 @@ function defaultFieldSpec(ctx: FieldAttributeSpecContext) {
   const members = enumMemberNames(ctx);
   const valueArms =
     members === undefined
-      ? scalarDefaultArms(ctx.field.list, ctx.controlMutationDefaults)
+      ? scalarDefaultArms(ctx.field.list, ctx.dataTypes, ctx.controlMutationDefaults)
       : enumDefaultArms(members, ctx.field.typeName);
   return fieldAttribute('default', {
     documentation: 'Supplies a default value when this field is omitted from a mutation.',
@@ -768,11 +772,13 @@ export function modelSpecContext(input: {
   readonly symbols: SymbolTable;
   readonly model: ModelSymbol;
   readonly controlMutationDefaults: ControlDefaultRegistries;
+  readonly dataTypes: DataTypeSupport;
 }): AttributeSpecContext {
   return {
     symbols: input.symbols,
     model: input.model,
     controlMutationDefaults: input.controlMutationDefaults,
+    dataTypes: input.dataTypes,
   };
 }
 
@@ -781,12 +787,14 @@ export function fieldSpecContext(input: {
   readonly model: ModelSymbol;
   readonly field: FieldSymbol;
   readonly controlMutationDefaults: ControlDefaultRegistries;
+  readonly dataTypes: DataTypeSupport;
 }): FieldAttributeSpecContext {
   return {
     symbols: input.symbols,
     model: input.model,
     field: input.field,
     controlMutationDefaults: input.controlMutationDefaults,
+    dataTypes: input.dataTypes,
   };
 }
 

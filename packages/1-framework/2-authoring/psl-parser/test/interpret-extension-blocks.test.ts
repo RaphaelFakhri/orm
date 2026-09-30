@@ -8,6 +8,7 @@ import { list } from '../src/attribute-spec/combinators/list';
 import { oneOf } from '../src/attribute-spec/combinators/one-of';
 import { str } from '../src/attribute-spec/combinators/str';
 import { optional } from '../src/attribute-spec/optional';
+import { EMPTY_DATA_TYPES } from '../src/attribute-spec/spec-context';
 import { createBinder } from '../src/binder';
 import { mapBlock, structBlock } from '../src/block-spec/constructors';
 import type { PslBlockSpecDescriptor } from '../src/block-spec/descriptor';
@@ -89,7 +90,8 @@ function build(source: string) {
       String: { kind: 'typeConstructor', output: { codecId: 'fixture/scalar@1' } },
     },
     attributeSpecs: { model: {}, field: {} },
-    controlMutationDefaults: { defaultFunctionRegistry: new Map(), dataTypeEntries: {} },
+    controlMutationDefaults: { defaultFunctionRegistry: new Map() },
+    dataTypes: EMPTY_DATA_TYPES,
     pslBlockDescriptors: DESCRIPTORS,
   });
   const { parsedBlocks, diagnostics } = interpretExtensionBlocks({

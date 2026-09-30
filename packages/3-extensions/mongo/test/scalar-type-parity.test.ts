@@ -6,7 +6,7 @@ import { collectScalarTypeConstructors } from '@internal/framework-components/au
 import { createControlStack } from '@internal/framework-components/control';
 import { interpretPslDocumentToMongoContract } from '@internal/mongo-contract-psl';
 import { mongoContract } from '@internal/mongo-contract-psl/provider';
-import { buildSymbolTable } from '@internal/psl-parser';
+import { buildSymbolTable, EMPTY_DATA_TYPES } from '@internal/psl-parser';
 import { hasPslInterpreter } from '@internal/psl-parser/interpret';
 import { parse } from '@internal/psl-parser/syntax';
 import { mongoTargetDescriptor } from '@internal/target-mongo/control';
@@ -62,10 +62,8 @@ function emit(
     symbolTable,
     sources,
     scalarTypeCodecIds,
-    controlMutationDefaults: {
-      dataTypeEntries: {},
-      defaultFunctionRegistry: new Map(),
-    },
+    controlMutationDefaults: { defaultFunctionRegistry: new Map() },
+    dataTypes: EMPTY_DATA_TYPES,
     codecLookup: stack.codecLookup,
     authoringContributions: stack.authoringContributions,
   });

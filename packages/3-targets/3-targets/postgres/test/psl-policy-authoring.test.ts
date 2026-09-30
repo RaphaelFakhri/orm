@@ -15,7 +15,12 @@
 
 import { createDataTypeLookup } from '@internal/framework-components/codec';
 import { assembleAuthoringContributions } from '@internal/framework-components/control';
-import { buildSymbolTable, createBinder, interpretExtensionBlocks } from '@internal/psl-parser';
+import {
+  buildSymbolTable,
+  createBinder,
+  EMPTY_DATA_TYPES,
+  interpretExtensionBlocks,
+} from '@internal/psl-parser';
 import { parse } from '@internal/psl-parser/syntax';
 import { interpretPslDocumentToSqlContract } from '@internal/sql-contract-psl';
 import { postgresDataTypes } from '@internal/target-postgres/data-types';
@@ -52,7 +57,8 @@ function blockResolutionBinder(
     symbolTable,
     typeConstructors: {},
     attributeSpecs: { model: {}, field: {} },
-    controlMutationDefaults: { defaultFunctionRegistry: new Map(), dataTypeEntries: {} },
+    controlMutationDefaults: { defaultFunctionRegistry: new Map() },
+    dataTypes: EMPTY_DATA_TYPES,
     pslBlockDescriptors: assembled.pslBlockDescriptors,
   }).binder;
 }

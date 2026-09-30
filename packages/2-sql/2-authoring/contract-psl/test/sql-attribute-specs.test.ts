@@ -7,7 +7,7 @@ import type {
   ModelSymbol,
   Param,
 } from '@internal/psl-parser';
-import { createPslDiagnosticCollector } from '@internal/psl-parser';
+import { createPslDiagnosticCollector, EMPTY_DATA_TYPES } from '@internal/psl-parser';
 import { describe, expect, it } from 'vitest';
 import {
   createSqlBinder,
@@ -22,10 +22,7 @@ import {
 import { fixtureDataTypeSupport } from './fixture-data-types';
 import { buildSymbolTableInput, createBuiltinLikeControlMutationDefaults } from './fixtures';
 
-const controlMutationDefaults = {
-  ...createBuiltinLikeControlMutationDefaults(),
-  dataTypeEntries: fixtureDataTypeSupport.entries,
-};
+const controlMutationDefaults = createBuiltinLikeControlMutationDefaults();
 
 function project(schema: string, modelName: string) {
   const input = buildSymbolTableInput(schema);
@@ -87,6 +84,7 @@ function interpretDefault(schema: string, fieldName: string) {
         model,
         field: target,
         controlMutationDefaults,
+        dataTypes: fixtureDataTypeSupport,
       }),
     ),
     model,
@@ -136,12 +134,14 @@ describe('sqlAttributeSpecs', () => {
     symbols: symbolTable,
     model,
     controlMutationDefaults,
+    dataTypes: fixtureDataTypeSupport,
   });
   const fieldCtx = fieldSpecContext({
     symbols: symbolTable,
     model,
     field: field(model, 'id'),
     controlMutationDefaults,
+    dataTypes: fixtureDataTypeSupport,
   });
 
   it('registers every model factory under its own attribute name at model level', () => {
@@ -244,6 +244,7 @@ describe('sqlAttributeSpecs.field.default', () => {
     model,
     field: field(model, 'id'),
     controlMutationDefaults,
+    dataTypes: fixtureDataTypeSupport,
   });
 
   it('exposes scalar default alternatives from the actual registry-backed factory', () => {
@@ -287,10 +288,8 @@ describe('sqlAttributeSpecs.field.default', () => {
       symbols: symbolTable,
       model,
       field: field(model, 'id'),
-      controlMutationDefaults: {
-        defaultFunctionRegistry: controlMutationDefaults.defaultFunctionRegistry,
-        dataTypeEntries: {},
-      },
+      controlMutationDefaults,
+      dataTypes: EMPTY_DATA_TYPES,
     });
     const value = oneOfMetadata(positionalType(sqlAttributeSpecs.field.default(noTags)));
     expect(value.alternatives.map((alt) => alt.kind)).not.toContain('taggedLiteral');
@@ -303,6 +302,7 @@ describe('sqlAttributeSpecs.field.default', () => {
       model,
       field: field(model, 'tags'),
       controlMutationDefaults,
+      dataTypes: fixtureDataTypeSupport,
     });
     const value = oneOfMetadata(positionalType(sqlAttributeSpecs.field.default(listCtx)));
 
@@ -338,6 +338,7 @@ describe('sqlAttributeSpecs.field.default', () => {
       model: enumProject.model,
       field: priority,
       controlMutationDefaults,
+      dataTypes: fixtureDataTypeSupport,
     });
     const enumDefault = oneOfMetadata(positionalType(sqlAttributeSpecs.field.default(enumCtx)));
     expect(enumDefault.alternatives).toEqual([
@@ -355,6 +356,7 @@ describe('sqlAttributeSpecs.field.default', () => {
       model: emptyProject.model,
       field: kind,
       controlMutationDefaults,
+      dataTypes: fixtureDataTypeSupport,
     });
     const emptyDefault = oneOfMetadata(positionalType(sqlAttributeSpecs.field.default(emptyCtx)));
     expect(emptyDefault.alternatives).toEqual([

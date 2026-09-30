@@ -1,5 +1,5 @@
 import type { ContractSourceDiagnostic } from '@internal/config/config-types';
-import { buildSymbolTable } from '@internal/psl-parser';
+import { buildSymbolTable, EMPTY_DATA_TYPES } from '@internal/psl-parser';
 import { parse } from '@internal/psl-parser/syntax';
 import { describe, expect, it } from 'vitest';
 import { interpretPslDocumentToMongoContract } from '../src/interpreter';
@@ -15,7 +15,8 @@ function diagnosticsOf(schema: string): readonly ContractSourceDiagnostic[] {
     symbolTable,
     sources,
     scalarTypeCodecIds: new Map([['ObjectId', 'mongo/objectId@1']]),
-    controlMutationDefaults: { dataTypeEntries: {}, defaultFunctionRegistry: new Map() },
+    controlMutationDefaults: { defaultFunctionRegistry: new Map() },
+    dataTypes: EMPTY_DATA_TYPES,
   });
   if (result.ok) throw new Error('Expected interpretation to fail');
   return result.failure.diagnostics;

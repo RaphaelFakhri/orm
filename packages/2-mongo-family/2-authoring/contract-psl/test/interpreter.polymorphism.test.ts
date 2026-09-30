@@ -7,7 +7,7 @@ function modelsOf(ir: Contract): Record<string, unknown> {
   return ir.domain.namespaces[UNBOUND_NAMESPACE_ID]!.models;
 }
 
-import { buildSymbolTable, type SymbolTable } from '@internal/psl-parser';
+import { buildSymbolTable, EMPTY_DATA_TYPES, type SymbolTable } from '@internal/psl-parser';
 import type { DocumentAst, PslSources } from '@internal/psl-parser/syntax';
 import { parse } from '@internal/psl-parser/syntax';
 import { describe, expect, it } from 'vitest';
@@ -75,10 +75,8 @@ function interpret(schema: string) {
   return interpretPslDocumentToMongoContract({
     ...buildSymbolTableInput(schema),
     scalarTypeCodecIds: mongoScalarTypeDescriptors,
-    controlMutationDefaults: {
-      dataTypeEntries: {},
-      defaultFunctionRegistry: new Map(),
-    },
+    controlMutationDefaults: { defaultFunctionRegistry: new Map() },
+    dataTypes: EMPTY_DATA_TYPES,
     codecLookup: mongoCodecLookup,
   });
 }

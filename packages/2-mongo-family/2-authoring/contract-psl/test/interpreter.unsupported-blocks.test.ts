@@ -1,5 +1,5 @@
 import { emptyCodecLookup } from '@internal/framework-components/codec';
-import { buildSymbolTable } from '@internal/psl-parser';
+import { buildSymbolTable, EMPTY_DATA_TYPES } from '@internal/psl-parser';
 import { parse } from '@internal/psl-parser/syntax';
 import { describe, expect, it } from 'vitest';
 import { interpretPslDocumentToMongoContract } from '../src/interpreter';
@@ -18,7 +18,8 @@ function interpret(schema: string) {
       ['String', 'mongo/string@1'],
       ['ObjectId', 'mongo/objectId@1'],
     ]),
-    controlMutationDefaults: { dataTypeEntries: {}, defaultFunctionRegistry: new Map() },
+    controlMutationDefaults: { defaultFunctionRegistry: new Map() },
+    dataTypes: EMPTY_DATA_TYPES,
     codecLookup: emptyCodecLookup,
   });
 }

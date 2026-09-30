@@ -1081,10 +1081,8 @@ function buildModelNodeFromPsl(input: BuildModelNodeInput): BuildModelNodeResult
         spec: specFactory({
           symbols: input.symbolTable,
           model,
-          controlMutationDefaults: {
-            defaultFunctionRegistry: input.defaultFunctionRegistry,
-            dataTypeEntries: input.dataTypeSupport.entries,
-          },
+          controlMutationDefaults: { defaultFunctionRegistry: input.defaultFunctionRegistry },
+          dataTypes: input.dataTypeSupport,
         }),
         model,
         symbols: input.symbolTable,
@@ -2061,6 +2059,10 @@ export function interpretPslDocumentToSqlContract(
   const modelAttributesByName = buildModelAttributesByName(input.authoringContributions);
   const contributedModelSpecs = modelAttributeSpecsFrom(modelAttributesByName);
   const composedPslBlockDescriptors = input.authoringContributions?.pslBlockDescriptors ?? {};
+  const dataTypeSupport: DataTypeSupport = {
+    entries: input.authoringContributions?.dataTypes ?? {},
+    lookup: input.dataTypeLookup,
+  };
   const { binder, diagnostics: binderDiagnostics } = createSqlBinder({
     symbolTable: input.symbolTable,
     sources: input.sources,
@@ -2068,8 +2070,8 @@ export function interpretPslDocumentToSqlContract(
     authoringContributions: input.authoringContributions,
     controlMutationDefaults: {
       defaultFunctionRegistry: input.controlMutationDefaults?.defaultFunctionRegistry ?? new Map(),
-      dataTypeEntries: input.authoringContributions?.dataTypes ?? {},
     },
+    dataTypes: dataTypeSupport,
     scalarColumnDescriptors: input.scalarColumnDescriptors,
     contributedModelAttributeSpecs: contributedModelSpecs,
     describeUnsupportedAttribute: describeUnsupportedSqlAttribute({
@@ -2161,10 +2163,6 @@ export function interpretPslDocumentToSqlContract(
     input.composedExtensionContracts;
   const defaultFunctionRegistry: ControlMutationDefaultRegistry =
     input.controlMutationDefaults?.defaultFunctionRegistry ?? new Map();
-  const dataTypeSupport: DataTypeSupport = {
-    entries: input.authoringContributions?.dataTypes ?? {},
-    lookup: input.dataTypeLookup,
-  };
   const generatorDescriptors = input.controlMutationDefaults?.generatorDescriptors ?? [];
   const generatorDescriptorById = new Map<string, MutationDefaultGeneratorDescriptor>();
   for (const descriptor of generatorDescriptors) {

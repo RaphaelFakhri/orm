@@ -1,5 +1,6 @@
 import { ok } from '@internal/utils/result';
 import { describe, expect, it } from 'vitest';
+import { EMPTY_DATA_TYPES } from '../src/attribute-spec/spec-context';
 import { createBinder } from '../src/binder';
 import type { ArgType, AttributeCtx, FieldAttributeCtx, ModelAttributeCtx } from '../src/exports';
 import {
@@ -47,8 +48,8 @@ function makeCtx(sources: PslSources): FieldAttributeCtx {
     attributeSpecs: { model: {}, field: {} },
     controlMutationDefaults: {
       defaultFunctionRegistry: new Map(),
-      dataTypeEntries: {},
     },
+    dataTypes: EMPTY_DATA_TYPES,
   });
   return { sources, symbols: symbolTable, selfModel, field, binder };
 }
@@ -84,8 +85,8 @@ function schemaArg(schema: string, attribute: string, argName?: string) {
     },
     controlMutationDefaults: {
       defaultFunctionRegistry: new Map(),
-      dataTypeEntries: {},
     },
+    dataTypes: EMPTY_DATA_TYPES,
   });
   for (const node of field.node.attributes()) {
     if (node.name()?.path().join('.') !== attribute) continue;
@@ -777,7 +778,8 @@ describe('entityRef', () => {
             }),
         },
       },
-      controlMutationDefaults: { defaultFunctionRegistry: new Map(), dataTypeEntries: {} },
+      controlMutationDefaults: { defaultFunctionRegistry: new Map() },
+      dataTypes: EMPTY_DATA_TYPES,
     });
     return { expr, ctx: { sources, symbols: symbolTable, selfModel, binder } };
   }
