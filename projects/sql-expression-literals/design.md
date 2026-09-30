@@ -432,6 +432,7 @@ In `packages/1-framework/3-tooling/language-server/src/`:
 | `PSL_INVALID_DEFAULT_SQL` (moved to contract-psl) | `@default` | Reserved text or `checkSqlDefaultBody` refusal |
 | `PSL_DEFAULT_LIST_EXPECTED` (renamed from `PSL_DEFAULT_TYPE_INCOMPATIBLE`), `PSL_INVALID_DEFAULT_LITERAL` | `@default` | Only `not-a-list` and a codec refusal |
 | `PSL_INVALID_JSON_LITERAL`, `PSL_UNKNOWN_DEFAULT_LITERAL_TAG` | — | Retired / renamed |
+| `CONTRACT.DATA_TYPE_CASTS_FROM_SQL_EXPRESSION` (new, slice 2a) | SQL family, when it creates its control instance | A registered data type declares a cast or a list cast from `sql/expression` (section 3.5) |
 | `CONTRACT.SQL_EXPRESSION_INTERPOLATION` (renamed from `CONTRACT.DEFAULT_SQL_INTERPOLATION`) | TS `sql` tag | Something other than a `sql` value interpolated |
 | `CONTRACT.SQL_EXPRESSION_INVALID` (new) | `SqlExpression` constructor | Canonicalization failed |
 | `CONTRACT.DEFAULT_INVALID` | TS `.default()` | Reserved text or unsafe SQL (moved from the tag) |
