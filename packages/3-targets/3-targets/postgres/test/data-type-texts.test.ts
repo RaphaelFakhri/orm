@@ -178,6 +178,14 @@ describe('the enum, which claims a kind', () => {
     });
   });
 
+  it('reads an enum reported with no schema as its unqualified name', () => {
+    const noSchema = reported('mood', { kind: 'enum', schema: undefined, name: 'mood' });
+    expect(resolveReportedSqlType(noSchema, postgresDataTypes)).toEqual({
+      dataType: 'pg/enum',
+      typeParams: { typeName: 'mood' },
+    });
+  });
+
   it('claims no other kind', () => {
     const domain = reported('int4', { kind: 'domain', schema: 'public', name: 'positive' });
     expect(resolveReportedSqlType(domain, postgresDataTypes)).toBeUndefined();

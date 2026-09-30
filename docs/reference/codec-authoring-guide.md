@@ -286,13 +286,13 @@ import { postgresCodec } from '@internal/target-postgres/codec-descriptor';
 import { pgInt4 } from '@internal/target-postgres/data-types';
 
 const postgresSqlIntDescriptor = postgresCodec(sqlIntDescriptor, {
-  dataType: pgInt4.id,
+  dataType: pgInt4,
   nativeType: () => 'integer',
   jsonProjection: (expression) => expression,
 });
 ```
 
-The adapter delegates the wrapped descriptor's codec id, literals, parameter schema, factory, renderers and target types. It adds the PostgreSQL discriminant and target methods without changing codec materialization.
+The adapter delegates the wrapped descriptor's codec id, literals, factory, renderers and target types. Its parameter schema is the data type's `params`, not the wrapped descriptor's, so a parameter's bound is declared once, on the data type. It adds the PostgreSQL discriminant and target methods without changing codec materialization.
 
 ### SQLite
 
@@ -541,14 +541,18 @@ export class SqlTextDescriptor extends CodecDescriptorTemplateImpl<void> {
 The target names the type when it adapts the template, alongside the native type and the JSON projection:
 
 ```ts
+import { sqlTextDescriptor } from '@internal/sql-relational-core/ast';
+import { postgresCodec } from '@internal/target-postgres/codec-descriptor';
+import { pgText } from '@internal/target-postgres/data-types';
+
 export const postgresSqlTextDescriptor = postgresCodec(sqlTextDescriptor, {
-  dataType: pgText.id,
+  dataType: pgText,
   nativeType: () => 'text',
-  jsonProjection: identityJsonProjection,
+  jsonProjection: (expression) => expression,
 });
 ```
 
-The adapted descriptor satisfies `CodecDescriptor`, so the codec reaches the stack with a data type even though the shared template declares none.
+The adapted descriptor satisfies `CodecDescriptor`, so the codec reaches the stack with a data type even though the shared template declares none. Its parameter schema is that data type's `params`, not the template's.
 
 See [ADR 254](../architecture%20docs/adrs/ADR%20254%20-%20Data%20types%20and%20casts.md).
 

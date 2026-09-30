@@ -31,18 +31,16 @@ describe('the postgis data type declaration', () => {
   });
 
   it('is declared as design 2.6 says', () => {
-    expect(geometryType().sql).toMatchObject({
-      texts: [
-        { text: 'geometry', written: true, catalog: true },
-        {
-          text: 'geometry(geometry,{srid})',
-          written: true,
-          catalog: true,
-          display: 'geometry(Geometry,{srid})',
-        },
-      ],
-      claimsKind: undefined,
-    });
+    expect(geometryType().sql.texts).toEqual([
+      { text: 'geometry', written: true, catalog: true },
+      {
+        text: 'geometry(geometry,{srid})',
+        written: true,
+        catalog: true,
+        display: 'geometry(Geometry,{srid})',
+      },
+    ]);
+    expect(geometryType().sql.claimsKind).toBeUndefined();
   });
 
   it.each([

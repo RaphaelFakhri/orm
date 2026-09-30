@@ -103,7 +103,7 @@ const withDefaultLength = <Params extends { readonly length?: number }>(params: 
 export const pgText = namedOnly('pg/text', 'text');
 export const pgTextArray = sqlDataType('pg/text-array', {});
 
-/** The enum's `typeName`: its name in `public`, its schema-qualified name elsewhere. */
+/** The enum's `typeName`: its name in `public` or with no schema, its schema-qualified name elsewhere. */
 function qualifiedEnumName(reported: ReportedSqlType): string {
   const name = reported.name ?? '';
   return reported.schema === undefined || reported.schema === 'public'

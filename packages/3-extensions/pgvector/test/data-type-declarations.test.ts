@@ -31,10 +31,10 @@ describe('the pgvector data type declaration', () => {
   });
 
   it('is declared as design 2.6 says', () => {
-    expect(vectorType().sql).toMatchObject({
-      texts: [{ text: 'vector({length})', written: true, catalog: true }],
-      claimsKind: undefined,
-    });
+    expect(vectorType().sql.texts).toEqual([
+      { text: 'vector({length})', written: true, catalog: true },
+    ]);
+    expect(vectorType().sql.claimsKind).toBeUndefined();
   });
 
   it('writes and reports the length', () => {
