@@ -1,6 +1,6 @@
 # Slice 1: sound conditional collections and `pipe`
 
-**Project:** [spec](../../spec.md), [plan](../../plan.md). **Design:** [ADR 258](../../../../docs/architecture%20docs/adrs/ADR%20258%20-%20Query%20fragments%20are%20functions.md), sections 1 and 2. **Closes:** TML-3397.
+**Project:** [spec](../../spec.md), [plan](../../plan.md). **Design:** ADR 258 (a collection keeps its class through the chain) and ADR 259 (query fragments are functions), on prisma/orm#30543. **Closes:** TML-3397.
 
 ## At a glance
 
@@ -27,7 +27,7 @@ Three lines of production code plus one method, with a large set of type tests. 
 
 ## Scope
 
-In: `packages/3-extensions/sql-orm-client` source and tests; the Postgres facade only if it re-declares the state type; upgrade instructions for `DefaultCollectionTypeState`; the ADR 258 example for `pipe` and conditionals must match the code.
+In: `packages/3-extensions/sql-orm-client` source and tests; the Postgres facade only if it re-declares the state type; upgrade instructions for `DefaultCollectionTypeState`; the ADR 259 example for `pipe` and conditionals must match the code.
 
 Out: `FieldExpression`, `rowFragment`, `RowOf`, `sortField` (slice 2); any change to the demo (slice 2); the Mongo ORM client; making the union of a custom class and its filtered collection usable.
 

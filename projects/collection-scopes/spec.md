@@ -1,7 +1,7 @@
 # Query fragments, collection scopes and weighted full-text search
 
 **Linear project:** none yet.
-**Design records:** [ADR 258 — Query fragments are functions](../../docs/architecture%20docs/adrs/ADR%20258%20-%20Query%20fragments%20are%20functions.md) (Proposed) and [ADR 257 — Packages offer collection scopes for their kinds of index](../../docs/architecture%20docs/adrs/ADR%20257%20-%20Packages%20offer%20collection%20scopes%20for%20their%20kinds%20of%20index.md) (Proposed).
+**Design records:** [ADR 259 — Query fragments are functions](../../docs/architecture%20docs/adrs/ADR%20259%20-%20Query%20fragments%20are%20functions.md) (Proposed) and [ADR 257 — Packages offer collection scopes for their kinds of index](../../docs/architecture%20docs/adrs/ADR%20257%20-%20Packages%20offer%20collection%20scopes%20for%20their%20kinds%20of%20index.md) (Proposed).
 
 ## Purpose
 
@@ -99,7 +99,7 @@ const posts = await db.Post
 ## Project Definition of Done
 
 - [ ] Team-DoD floor (repo checks, docs, upgrade instructions, Linear close-out).
-- [ ] ADR 258 and ADR 257 are Accepted and match what shipped, including their examples.
+- [ ] ADR 259 and ADR 257 are Accepted and match what shipped, including their examples.
 - [ ] TML-3397 is closed by a test: a ternary between a filtered and an unfiltered collection refuses `deleteAll`.
 - [ ] `examples/prisma-8-demo` has a conditional list query written with `pipe`, a shared soft-delete filter typed with `FieldExpression`, and a sort field from a request.
 - [ ] A model with a weighted multi-field full-text index can be searched through a scope on a root collection, a chained collection, an include refinement, and a custom collection class, with whole-result assertions.

@@ -2,7 +2,7 @@
 
 **Status:** Proposed
 **Date:** 2026-09-29
-**Builds on:** [ADR 258 — Query fragments are functions](ADR%20258%20-%20Query%20fragments%20are%20functions.md), [ADR 175 — Shared ORM Collection interface](ADR%20175%20-%20Shared%20ORM%20Collection%20interface.md), [ADR 206 — Operations as TypeScript functions](ADR%20206%20-%20Operations%20as%20TypeScript%20functions.md), [ADR 236 — Target-contributed model attributes](ADR%20236%20-%20Target-contributed%20model%20attributes.md)
+**Builds on:** [ADR 259 — Query fragments are functions](ADR%20259%20-%20Query%20fragments%20are%20functions.md), [ADR 175 — Shared ORM Collection interface](ADR%20175%20-%20Shared%20ORM%20Collection%20interface.md), [ADR 206 — Operations as TypeScript functions](ADR%20206%20-%20Operations%20as%20TypeScript%20functions.md), [ADR 236 — Target-contributed model attributes](ADR%20236%20-%20Target-contributed%20model%20attributes.md)
 
 ---
 
@@ -51,7 +51,7 @@ The query uses the index, because it is built from the index's own definition in
 
 ## Decision
 
-A **scope** is a named query fragment on a model: a function that takes a collection of the model and returns a collection of the same type. Query fragments and `pipe` are defined in ADR 258. `where` chains and the methods of a custom collection class are scopes that the application writes.
+A **scope** is a named query fragment on a model: a function that takes a collection of the model and returns a collection of the same type. Query fragments and `pipe` are defined in ADR 259. `where` chains and the methods of a custom collection class are scopes that the application writes.
 
 1. **A package that introduces a kind of index can export a scope helper.** Given the contract and a model, a scope helper returns one scope for each index of that kind on the model. Each scope is named after its index, and each is a fragment that `pipe` applies.
 2. **A scope is built from the index's definition in the contract.** The query cannot differ from the index.
@@ -232,7 +232,7 @@ The builder reads the model's indexes from the contract type and the model's nam
 
 The fragment a scope returns is generic over the collection it receives. It reads the contract, the model's name and its namespace from that collection's type, as three separate type parameters, and refuses a collection of another model. Reading them separately is what makes the fragment work on `this` inside a custom collection class, whose type TypeScript has not resolved: reading the model's name through `this` gives no members, and reading the three from the class's declared base type works.
 
-**Cost.** An application that does not use a scope pays nothing beyond `pipe`, which every collection has (ADR 258).
+**Cost.** An application that does not use a scope pays nothing beyond `pipe`, which every collection has (ADR 259).
 
 ## Responsibilities
 
@@ -279,7 +279,7 @@ The design is meant for any database and for more than text search. Two appendic
 **For applications**
 
 - **An application writes one line to get a model's scopes**, and applies one with `pipe` at the call or in a method of its custom collection class.
-- **A scope composes with other fragments.** A conditional search, `posts.pipe((c) => (q ? c.pipe(postScopes.post_search(q)) : c))`, is sound for the reasons ADR 258 gives: its type is the unfiltered collection.
+- **A scope composes with other fragments.** A conditional search, `posts.pipe((c) => (q ? c.pipe(postScopes.post_search(q)) : c))`, is sound for the reasons ADR 259 gives: its type is the unfiltered collection.
 
 **For queries**
 
