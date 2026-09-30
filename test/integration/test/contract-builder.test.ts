@@ -356,25 +356,26 @@ describe('builder integration', () => {
     });
   });
 
-  it('accepts any codecId format in descriptor (validation happens at runtime)', () => {
-    // Column descriptors accept any codecId format - validation happens at runtime when the contract is used, not at build time
-    const contract = defineContract({
-      ...postgresTypeLookups,
-      family: sqlFamilyPack,
-      target: postgresPack,
-      createNamespace: postgresCreateNamespace,
-      models: {
-        User: model('User', {
-          fields: {
-            // biome-ignore lint/suspicious/noExplicitAny: Testing invalid type descriptor
-            id: field.column({ codecId: 'invalid', nativeType: 'invalid' } as any),
-          },
-        }).sql({ table: 'user' }),
-      },
-    });
-    // Contract builds successfully - invalid codecId will cause errors at runtime
-    expect(contract.storage.namespaces['public'].entries.table.user.columns.id.codecId).toBe(
-      'invalid',
+  it('refuses a column whose codec the lookup does not register', () => {
+    expect(() =>
+      defineContract({
+        ...postgresTypeLookups,
+        family: sqlFamilyPack,
+        target: postgresPack,
+        createNamespace: postgresCreateNamespace,
+        models: {
+          User: model('User', {
+            fields: {
+              id: field.column({ codecId: 'invalid' }),
+            },
+          }).sql({ table: 'user' }),
+        },
+      }),
+    ).toThrow(
+      expect.objectContaining({
+        code: 'CONTRACT.CODEC_DESCRIPTOR_MISSING',
+        message: 'No codec "invalid" is registered, so its column type cannot be named.',
+      }),
     );
   });
 
