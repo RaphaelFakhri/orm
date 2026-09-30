@@ -40,7 +40,7 @@ For each project whose `prisma.config.ts` uses `prisma7Schema(...)`:
 
    `@db.Timetz` fields already read as text and do not change.
 
-2. Change the code that reads or writes these fields. A read gives the string itself, so drop calls such as `.toString()` or `.toJSON()`. Where the code compares or computes with the value, parse it first; for a `timestamp` column, `` new Date(`${value.replace(' ', 'T')}Z`) `` is the instant. Write a string in a form PostgreSQL reads, such as `"2026-09-14T10:00:00Z"` for `@db.Timestamptz` or `"2026-09-14 10:00:00"` for `DateTime`, instead of a `Temporal` value.
+2. Change the code that reads or writes these fields. A read gives the text itself, with a space between the date and the time, where `.toString()` on a `Temporal.PlainDateTime` gave a `T`. Where code printed or stored that form, replace `value.toString()` with `value.replace(' ', 'T')`. Where it compares or computes with the value, parse it first; for a `DateTime` field, `` new Date(`${value.replace(' ', 'T')}Z`) `` is the instant. Write a string PostgreSQL reads, such as `"2026-09-14 10:00:00"` for `DateTime` or `"2026-09-14T10:00:00Z"` for `@db.Timestamptz`, instead of a `Temporal` value.
 
 3. If no other code in the application uses `Temporal`, remove the `import 'temporal-polyfill/full/global'` it had for these fields, and remove `temporal-polyfill` from the application's `dependencies`. Keep the dependency in a project that installs with Yarn: `@prisma/orm-postgres` declares it as a peer dependency, and Yarn does not install peers on its own.
 
