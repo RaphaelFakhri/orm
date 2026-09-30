@@ -71,7 +71,7 @@ import type { PostgresContract } from './types';
  *
  * `pg/json` / `pg/jsonb` are intentionally excluded: their operator overloads make context inference unreliable in expression positions (e.g. `$1 -> 'key'` is ambiguous between the two).
  */
-const POSTGRES_INFERRABLE_NATIVE_TYPES: ReadonlySet<string> = new Set([
+const POSTGRES_INFERRABLE_DATA_TYPES: ReadonlySet<string> = new Set([
   pgInt2.id,
   pgInt4.id,
   pgInt8.id,
@@ -124,7 +124,7 @@ function renderTypedParam(
     dataTypeLookup: types.dataTypeLookup,
   });
   const arraySuffix = many ? '[]' : '';
-  if (forceCast || !POSTGRES_INFERRABLE_NATIVE_TYPES.has(dataType.id) || many) {
+  if (forceCast || !POSTGRES_INFERRABLE_DATA_TYPES.has(dataType.id) || many) {
     const params = isPlainRecord(typeParams) ? typeParams : undefined;
     const baseName = sqlBaseName(dataType, dataTypeParams(dataType, params));
     return `$${index}::${baseName}${arraySuffix}`;
