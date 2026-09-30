@@ -86,7 +86,7 @@ This supersedes the section about lowering entries in the `data-types-column-def
 
 Every key of `authoring.dataTypes` must now be the id of a data type that a component in the stack registers. A key such as `lowering:sql` fails assembly with `CONTRACT.DATA_TYPE_UNREGISTERED`.
 
-The SQL family registers `sql/expression` and its entry itself. A target or an extension does not register it, and a target that registered it too fails assembly with `CONTRACT.DATA_TYPE_DUPLICATE`. No component's data types may declare a cast or a list cast from `sql/expression`. The SQL family refuses a stack that has one with `CONTRACT.DATA_TYPE_CASTS_FROM_SQL_EXPRESSION` when it creates its control instance.
+The SQL family registers `sql/expression` and its entry itself. A target or an extension does not register it, and a target that registered it too fails assembly with `CONTRACT.DATA_TYPE_ENTRY_DUPLICATE` (or `CONTRACT.DATA_TYPE_DUPLICATE` if it registers only the type). Remove both from the target. No component's data types may declare a cast or a list cast from `sql/expression`. The SQL family refuses a stack that has one with `CONTRACT.DATA_TYPE_CASTS_FROM_SQL_EXPRESSION` when it creates its control instance.
 
 Two types exported from `@internal/sql-contract-psl/resolution` changed:
 

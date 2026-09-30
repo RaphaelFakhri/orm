@@ -86,7 +86,7 @@ No shape change. `Index.where`, `Index.expression`, `CheckConstraint.expression`
 
 ## Adapter impact
 
-Postgres and SQLite. Each target registers the family's `sql/expression` declaration and entry. Each adapter registers its target's data types and entries unchanged, and no longer adds lowering entries or a prefixed tag. Both adapters render opaque SQL through one function. Postgres also owns policies, `@@fullTextIndex` and the `contract infer` printers. SQLite refuses expression and partial indexes and `@@check`, so on SQLite the type is used only by `@default`.
+Postgres and SQLite. The SQL family registers `sql/expression` and its entry; the targets do not. Each adapter registers its target's data types and entries unchanged, and no longer adds lowering entries or a prefixed tag. Both adapters render opaque SQL through one function. Postgres also owns policies, `@@fullTextIndex` and the `contract infer` printers. SQLite refuses expression and partial indexes and `@@check`, so on SQLite the type is used only by `@default`.
 
 ## ADR pointer
 
