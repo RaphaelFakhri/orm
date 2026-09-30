@@ -39,16 +39,16 @@ import { isDeepStrictEqual } from 'node:util';
 import { renderLoweredSql } from '@internal/adapter-postgres/sql-renderer';
 import type { PostgresContract } from '@internal/adapter-postgres/types';
 import { computeProfileHash, computeStorageHash } from '@internal/contract/hashing';
+import { isPlainRecord } from '@internal/contract/is-plain-record';
 import type { JsonValue } from '@internal/contract/types';
 import { UNBOUND_DOMAIN_NAMESPACE_ID } from '@internal/contract/types';
-import { isPlainRecord } from '@internal/contract/is-plain-record';
 import type { CodecRef } from '@internal/framework-components/codec';
-import { createDataTypeLookup, validateCodecTypeParams } from '@internal/framework-components/codec';
 import {
-  dataTypeParams,
-  sqlBaseName,
-  sqlDataTypeOfCodec,
-} from '@internal/sql-contract/data-type';
+  createDataTypeLookup,
+  type DataType,
+  validateCodecTypeParams,
+} from '@internal/framework-components/codec';
+import { dataTypeParams, sqlBaseName, sqlDataTypeOfCodec } from '@internal/sql-contract/data-type';
 import { SqlStorage } from '@internal/sql-contract/types';
 import {
   CastExpr,
@@ -112,6 +112,10 @@ export interface PostgresCodecConformanceCase {
    * than the target registering. The registry only knows the built-ins.
    */
   readonly descriptor?: AnyPostgresCodecDescriptor;
+  /** The data type `descriptor` represents, when the target does not register it. */
+  readonly dataType?: DataType;
+  /** The column type to store the value in, for a codec whose data type is never written (`pg/text-array`). */
+  readonly columnType?: string;
   /** Identifies the value under test within its codec's cases. */
   readonly label: string;
   /** Application-level value handed to `codec.encode` and `codec.encodeJson`. */
@@ -248,6 +252,27 @@ function descriptorFor(conformanceCase: PostgresCodecConformanceCase) {
  */
 const postgresDataTypeLookup = createDataTypeLookup(postgresDataTypes);
 
+/** The base name of the data type the case's codec represents, for the storage column. */
+function columnBaseName(
+  conformanceCase: PostgresCodecConformanceCase,
+  descriptor: AnyPostgresCodecDescriptor,
+): string {
+  const dataType = sqlDataTypeOfCodec(descriptor.codecId, {
+    codecLookup: { descriptorFor: () => descriptor },
+    dataTypeLookup: createDataTypeLookup([
+      ...postgresDataTypes,
+      ...(conformanceCase.dataType === undefined ? [] : [conformanceCase.dataType]),
+    ]),
+  });
+  return sqlBaseName(
+    dataType,
+    dataTypeParams(
+      dataType,
+      isPlainRecord(conformanceCase.typeParams) ? conformanceCase.typeParams : undefined,
+    ),
+  );
+}
+
 export function buildProjectionSql(conformanceCase: PostgresCodecConformanceCase): string {
   const descriptor = descriptorFor(conformanceCase);
   const projection = descriptor.projectJson(
@@ -346,14 +371,7 @@ export async function runPostgresCodecProjection(
   for (const statement of conformanceCase.setupSql ?? []) {
     await connection.query(statement);
   }
-  const dataType = sqlDataTypeOfCodec(ref.codecId, {
-    codecLookup: postgresCodecDescriptorRegistry,
-    dataTypeLookup: postgresDataTypeLookup,
-  });
-  const elementType = sqlBaseName(
-    dataType,
-    dataTypeParams(dataType, isPlainRecord(ref.typeParams) ? ref.typeParams : undefined),
-  );
+  const elementType = conformanceCase.columnType ?? columnBaseName(conformanceCase, descriptor);
   const columnType = conformanceCase.many === true ? `${elementType}[]` : elementType;
   await connection.query(`CREATE TABLE "${STORAGE_TABLE}" ("${VALUE_COLUMN}" ${columnType})`);
 

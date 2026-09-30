@@ -327,9 +327,10 @@ export const postgresConformanceCases: readonly PostgresCodecConformanceCase[] =
   },
   { codecId: 'pg/inet@1', label: 'ipv4 address', value: '192.168.0.1' },
   { codecId: 'pg/tsquery@1', label: 'tsquery in its canonical form', value: "'zebra' & !'graze'" },
-  { codecId: 'pg/text-array@1', label: 'string array', value: ['a', 'b'] },
+  { codecId: 'pg/text-array@1', columnType: 'text[]', label: 'string array', value: ['a', 'b'] },
   {
     codecId: 'pg/text-array@1',
+    columnType: 'text[]',
     label: 'elements containing array-literal punctuation',
     value: ['a,b', '{c}', 'd"e', 'f\\g', '', ' h '],
   },
@@ -483,6 +484,7 @@ export const postgresConformanceCases: readonly PostgresCodecConformanceCase[] =
   },
   {
     codecId: 'pg/text-array@1',
+    columnType: 'text[]',
     label: 'null',
     value: undefined,
     nullValue: true,
