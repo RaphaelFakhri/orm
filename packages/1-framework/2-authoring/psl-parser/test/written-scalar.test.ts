@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { readWrittenLiteral } from '../src/exports';
+import { readWrittenScalar } from '../src/exports';
 import { Cursor, parseAttribute } from '../src/parse';
 import { FieldAttributeAst } from '../src/syntax/ast/attributes';
 import { type ExpressionAst, NumberLiteralExprAst } from '../src/syntax/ast/expressions';
@@ -14,20 +14,20 @@ function expressionOf(source: string): ExpressionAst {
   return expression;
 }
 
-describe('readWrittenLiteral', () => {
+describe('readWrittenScalar', () => {
   it.each([
     ['a double-quoted string', '"a\\"b"', 'a"b'],
     ['a single-quoted string', "'a'", 'a'],
     ['a backtick string', '`a`', 'a'],
   ])('reads %s as a string', (_why, source, text) => {
-    expect(readWrittenLiteral(expressionOf(source))).toEqual({
+    expect(readWrittenScalar(expressionOf(source))).toEqual({
       ok: true,
       written: { kind: 'string', text },
     });
   });
 
   it('reads a number as the text it is written as', () => {
-    expect(readWrittenLiteral(expressionOf('-1.50'))).toEqual({
+    expect(readWrittenScalar(expressionOf('-1.50'))).toEqual({
       ok: true,
       written: { kind: 'number', text: '-1.50' },
     });
@@ -37,25 +37,25 @@ describe('readWrittenLiteral', () => {
     ['true', true],
     ['false', false],
   ])('reads %s as a boolean', (source, value) => {
-    expect(readWrittenLiteral(expressionOf(source))).toEqual({
+    expect(readWrittenScalar(expressionOf(source))).toEqual({
       ok: true,
       written: { kind: 'boolean', value },
     });
   });
 
   it('reads a tagged literal as its tag and canonical text', () => {
-    expect(readWrittenLiteral(expressionOf('postgis.geometry`\n  POINT(0 0)\n`'))).toEqual({
+    expect(readWrittenScalar(expressionOf('postgis.geometry`\n  POINT(0 0)\n`'))).toEqual({
       ok: true,
       written: { kind: 'tag', tag: 'postgis.geometry', text: 'POINT(0 0)' },
     });
   });
 
   it('refuses a tagged literal holding a NUL character', () => {
-    expect(readWrittenLiteral(expressionOf('sql`a\0b`'))).toEqual({ ok: false, reason: 'nul' });
+    expect(readWrittenScalar(expressionOf('sql`a\0b`'))).toEqual({ ok: false, reason: 'nul' });
   });
 
   it('refuses a tagged literal larger than the limit', () => {
-    expect(readWrittenLiteral(expressionOf(`sql\`${'a'.repeat(65537)}\``))).toEqual({
+    expect(readWrittenScalar(expressionOf(`sql\`${'a'.repeat(65537)}\``))).toEqual({
       ok: false,
       reason: 'too-large',
     });
@@ -67,7 +67,7 @@ describe('readWrittenLiteral', () => {
     ['a list', '[1, 2]'],
     ['an object', '{ a: 1 }'],
   ])('refuses %s as not a literal', (found, source) => {
-    expect(readWrittenLiteral(expressionOf(source))).toEqual({
+    expect(readWrittenScalar(expressionOf(source))).toEqual({
       ok: false,
       reason: 'not-a-literal',
       found,
@@ -76,7 +76,7 @@ describe('readWrittenLiteral', () => {
 
   it('refuses a number literal with no number token as an expression', () => {
     const empty = new NumberLiteralExprAst(createSyntaxTree(greenNode('NumberLiteralExpr', [])));
-    expect(readWrittenLiteral(empty)).toEqual({
+    expect(readWrittenScalar(empty)).toEqual({
       ok: false,
       reason: 'not-a-literal',
       found: 'an expression',

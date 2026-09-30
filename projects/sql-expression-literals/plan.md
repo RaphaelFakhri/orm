@@ -79,7 +79,7 @@ flowchart LR
 **Tests:**
 
 - `framework-components/test/written-value.test.ts`: `readWrittenValue` for each written kind and refusal; `castTypedValue` same type, cast, no cast, throwing cast, and the returned `TypedValue`; `admittedTags` and `describeAdmittedForms` for `sql/expression`, a boolean type, a number type reached through a classifier's `types`, a type casting from a tag type.
-- `psl-parser/test/written-literal.test.ts`: every row of the table in design section 5.
+- `psl-parser/test/written-scalar.test.ts`: every row of the table in design section 5.
 - `psl-parser/test/attribute-spec-combinators.data-type-value.test.ts`: label and metadata; every diagnostic in design section 6 with exact code, message and span, including each `found` word; success returns the typed value; construction does not throw for an unregistered type, and `parse` throws `InternalError` for it.
 - The same combinator test file: `dataTypeValue` for `pg/int4`, a type without a tag; and as a parameter of a `funcCall` that is an arm of `oneOf`.
 - The existing `@default` tests pass unchanged.

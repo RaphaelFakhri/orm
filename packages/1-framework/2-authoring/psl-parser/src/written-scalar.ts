@@ -11,8 +11,8 @@ import {
 } from './syntax/ast/expressions';
 import { IdentifierAst } from './syntax/ast/identifier';
 
-/** The written literal an expression is, or why it is not one. */
-export type WrittenLiteralResult =
+/** The written scalar a PSL literal expression is, or why it is not one. */
+export type WrittenScalarResult =
   | { readonly ok: true; readonly written: WrittenScalar }
   | { readonly ok: false; readonly reason: 'nul' | 'too-large' }
   | {
@@ -26,18 +26,18 @@ export type WrittenLiteralResult =
         | 'an expression';
     };
 
-const AN_EXPRESSION: WrittenLiteralResult = {
+const AN_EXPRESSION: WrittenScalarResult = {
   ok: false,
   reason: 'not-a-literal',
   found: 'an expression',
 };
 
-function written(value: WrittenScalar): WrittenLiteralResult {
+function written(value: WrittenScalar): WrittenScalarResult {
   return { ok: true, written: value };
 }
 
-/** Reads an expression as a written literal, for a position that takes a value of a data type. ADR 254. */
-export function readWrittenLiteral(expression: ExpressionAst): WrittenLiteralResult {
+/** Reads a PSL literal expression as a `WrittenScalar`, for a position that takes a value of a data type. ADR 254. */
+export function readWrittenScalar(expression: ExpressionAst): WrittenScalarResult {
   const syntax = expression.syntax;
 
   const string = StringLiteralExprAst.cast(syntax)?.value();

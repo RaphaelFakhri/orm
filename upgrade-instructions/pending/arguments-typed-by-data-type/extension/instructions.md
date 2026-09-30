@@ -110,7 +110,7 @@ A test that passed a lookup without entries passes `{ entries: {}, lookup }`. Co
 
 `entryForTag` now returns the key as a `DataTypeId`.
 
-`@internal/psl-parser` adds the argument type `dataTypeValue(dataType, support)`, which admits any literal the cast rule admits for `dataType`, and `readWrittenLiteral`. No built-in attribute uses `dataTypeValue` yet.
+`@internal/psl-parser` adds the argument type `dataTypeValue(dataType, support)`, which admits any literal the cast rule admits for `dataType`, and `readWrittenScalar`. No built-in attribute uses `dataTypeValue` yet.
 
 ## The canonical value of a tagged literal is its text
 

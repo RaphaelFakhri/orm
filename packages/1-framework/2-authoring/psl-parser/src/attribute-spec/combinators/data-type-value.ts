@@ -13,7 +13,7 @@ import { notOk, ok, type Result } from '@internal/utils/result';
 import type { PslDiagnostic } from '../../diagnostic';
 import { nodePslSpan } from '../../resolve';
 import type { ExpressionAst } from '../../syntax/ast/expressions';
-import { readWrittenLiteral } from '../../written-literal';
+import { readWrittenScalar } from '../../written-scalar';
 import type { AttributeCtx, DataTypeValueArgType, ParsedTypedValue } from '../types';
 import { leafDiagnostic } from './diagnostic';
 
@@ -55,7 +55,7 @@ function parseDataTypeValue(
     notOk([leafDiagnostic(ctx, arg, message, code)]);
   const forms = describeAdmittedForms(support, dataType);
 
-  const literal = readWrittenLiteral(arg);
+  const literal = readWrittenScalar(arg);
   if (!literal.ok) {
     return literal.reason === 'not-a-literal'
       ? refuse('PSL_INVALID_ATTRIBUTE_SYNTAX', `Expected ${forms}, got ${literal.found}`)

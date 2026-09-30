@@ -198,17 +198,17 @@ Behaviour:
 
 ## 5. Reading PSL syntax into a written literal (slice 2t)
 
-New file `packages/1-framework/2-authoring/psl-parser/src/written-literal.ts`. Export `readWrittenLiteral` and `type WrittenLiteralResult` from `src/exports/index.ts`:
+New file `packages/1-framework/2-authoring/psl-parser/src/written-scalar.ts`. Export `readWrittenScalar` and `type WrittenScalarResult` from `src/exports/index.ts`:
 
 ```ts
 /** The written literal an expression is, or why it is not one. */
-export type WrittenLiteralResult =
+export type WrittenScalarResult =
   | { readonly ok: true; readonly written: WrittenScalar }
   | { readonly ok: false; readonly reason: 'nul' | 'too-large' }
   | { readonly ok: false; readonly reason: 'not-a-literal'; readonly found: 'an identifier' | 'a function call' | 'a list' | 'an object' | 'an expression' };
 
 /** Reads an expression as a written literal, for a position that takes a value of a data type. ADR 254. */
-export function readWrittenLiteral(expression: ExpressionAst): WrittenLiteralResult;
+export function readWrittenScalar(expression: ExpressionAst): WrittenScalarResult;
 ```
 
 | Expression | Result |
@@ -264,7 +264,7 @@ Construction never throws. The language server builds every spec only to list at
 `parse(arg, ctx)`, with `T = dataType` and `F = describeAdmittedForms(support, T)`. Every diagnostic is `leafDiagnostic(ctx, arg, message, code)`, so its span is the argument value:
 
 0. If `!support.lookup.has(T)`, throw `new InternalError(\`An argument receives data type "${T}", which this stack does not register.\`)`. This is a pack bug: a spec names a type its stack lacks.
-1. `const literal = readWrittenLiteral(arg)`.
+1. `const literal = readWrittenScalar(arg)`.
    - `not-a-literal`: code `PSL_INVALID_ATTRIBUTE_SYNTAX`, message `` `Expected ${F}, got ${found}` `` (for example ``Expected sql`...`, got an identifier``).
    - `nul` / `too-large`: codes `PSL_TAGGED_LITERAL_NUL` / `PSL_TAGGED_LITERAL_TOO_LARGE`, message `describeTaggedLiteralFailure(reason)`.
 2. `const read = readWrittenValue(support, literal.written)`.
