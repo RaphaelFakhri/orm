@@ -255,7 +255,7 @@ The SQL emitter is asked to emit an aggregate result row whose declared result c
 
 ### CONTRACT.CODEC_DESCRIPTOR_MISSING
 
-The control plane resolves a codec referenced by the contract (a `CodecRef.codecId`) against the contract's pack stack and finds no registered codec descriptor for that id. Hit during control-plane operations (emit, migration tooling) when a contract references a codec no composed pack provides. Payload: `codecId`.
+The control plane resolves a codec referenced by the contract (a `CodecRef.codecId`) against the contract's pack stack and finds no registered codec descriptor for that id. Hit during control-plane operations (emit, migration tooling) when a contract references a codec no composed pack provides. Payload: `codecId`. Also raised while a SQL contract is authored, when a column or storage type names a codec the contract's packs do not register, so its database type cannot be named from the codec's data type. A TypeScript `contract.ts` hits this when it uses an extension's codec without listing the extension in `defineContract({ extensions })`. List the pack that provides the codec. Payload (meta): `codecId`.
 
 ### CONTRACT.CAST_REFUSED
 
@@ -373,7 +373,7 @@ A data type declares a cast from a type no contract source can write, so the cas
 
 ### CONTRACT.DATA_TYPE_UNREGISTERED
 
-Something names a data type that no component in the stack registers: a codec's `dataType`, an authoring entry's key, a type its number classifier returns, or a type a cast takes values of. Raised while checking the assembled data types. Payload: `dataType`, `contributedBy`.
+Something names a data type that no component in the stack registers: a codec's `dataType`, an authoring entry's key, a type its number classifier returns, or a type a cast takes values of. Raised while checking the assembled data types. Payload: `dataType`, `contributedBy`. Also raised while a SQL contract is authored, when a column's codec is registered but the data type it represents is not, so the column's database type cannot be named. List the pack that declares the data type, usually the pack that provides the codec. Payload (meta): `codecId`, `dataType`.
 
 ### CONTRACT.DATA_TYPE_WRITTEN_FORM_DUPLICATE
 
