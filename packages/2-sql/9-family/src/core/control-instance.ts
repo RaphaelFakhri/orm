@@ -509,11 +509,7 @@ export function createSqlFamilyInstance<TTargetId extends string>(
   if (!stack.adapter) {
     throw new InternalError('SQL family requires an adapter descriptor in ControlStack');
   }
-  assertNothingCastsFromSqlExpression(
-    [stack.family, stack.target, stack.adapter, ...stack.extensions].flatMap(
-      (descriptor) => descriptor.dataTypes ?? [],
-    ),
-  );
+  assertNothingCastsFromSqlExpression(stack.declaredDataTypes);
 
   const target = blindCast<
     TargetDescriptor<'sql', TTargetId> & DescriptorWithStorageTypes,

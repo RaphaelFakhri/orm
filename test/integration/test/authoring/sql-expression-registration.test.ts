@@ -17,12 +17,6 @@ import postgres from '@internal/target-postgres/control';
 import sqlite from '@internal/target-sqlite/control';
 import { describe, expect, it } from 'vitest';
 
-function registeredDataTypes(stack: ControlStack<'sql', string>): readonly DataType[] {
-  return [stack.family, stack.target, stack.adapter, ...stack.extensions].flatMap(
-    (descriptor) => descriptor?.dataTypes ?? [],
-  );
-}
-
 const castsFromSqlExpression = (type: DataType): boolean =>
   Object.hasOwn(type.casts, SQL_EXPRESSION_DATA_TYPE_ID) ||
   (type.listCast?.of.includes(SQL_EXPRESSION_DATA_TYPE_ID) ?? false);
@@ -61,7 +55,7 @@ describe.each([
   });
 
   it('registers no data type that casts from sql/expression', () => {
-    const registered = registeredDataTypes(stack);
+    const registered = stack.declaredDataTypes.map(({ type }) => type);
     expect(registered).toContain(sqlExpressionDataType);
     expect(registered.filter(castsFromSqlExpression).map((type) => type.id)).toEqual([]);
     expect(() => sql.create(stack)).not.toThrow();

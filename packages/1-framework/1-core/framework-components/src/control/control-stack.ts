@@ -85,6 +85,11 @@ export interface ControlStack<
   readonly authoringContributions: AssembledAuthoringContributions;
   /** Every data type the composed components register, by id. ADR 254. */
   readonly dataTypeLookup: DataTypeLookup;
+  /** Every data type the composed components register, with the id of the component that registered it. ADR 254. */
+  readonly declaredDataTypes: ReadonlyArray<{
+    readonly type: DataType;
+    readonly contributedBy: string;
+  }>;
   /** Names of the top-level zero-arg type constructors in the assembled authoring namespace — the base scalars of the composed stack. */
   readonly scalarTypes: ReadonlyArray<string>;
   readonly controlMutationDefaults: ControlMutationDefaults;
@@ -845,6 +850,7 @@ export function createControlStack<TFamilyId extends string, TTargetId extends s
     codecLookup,
     codecDescriptors,
     dataTypeLookup: dataTypes.lookup,
+    declaredDataTypes: dataTypes.declared,
     aggregateDescriptors: collectAggregateDescriptors(allDescriptors),
     authoringContributions,
     scalarTypes: [...collectScalarTypeConstructors(authoringContributions.type).keys()],

@@ -82,7 +82,8 @@ describe('createSqlFamilyInstance and casts from sql/expression', () => {
       expect.objectContaining({
         code: 'CONTRACT.DATA_TYPE_CASTS_FROM_SQL_EXPRESSION',
         message:
-          'Data type "postgis/geometry" declares a cast from sql/expression. No data type may cast from sql/expression: a sql literal is SQL the database runs, not a value of another type.',
+          'Data type "postgis/geometry" from "geometry-pack" declares a cast from sql/expression. No data type may cast from sql/expression: a sql literal is SQL the database runs, not a value of another type.',
+        details: { dataType: 'postgis/geometry', contributedBy: 'geometry-pack' },
       }),
     );
   });

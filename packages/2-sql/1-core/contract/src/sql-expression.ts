@@ -41,14 +41,16 @@ function castFromSqlExpression(type: DataType): string | undefined {
  * SQL the database runs, so a cast would turn it into a value of another type with no diagnostic.
  * ADR 254.
  */
-export function assertNothingCastsFromSqlExpression(dataTypes: readonly DataType[]): void {
-  for (const type of dataTypes) {
+export function assertNothingCastsFromSqlExpression(
+  declaredDataTypes: ReadonlyArray<{ readonly type: DataType; readonly contributedBy: string }>,
+): void {
+  for (const { type, contributedBy } of declaredDataTypes) {
     const declared = castFromSqlExpression(type);
     if (declared === undefined) continue;
     throw runtimeError(
       'CONTRACT.DATA_TYPE_CASTS_FROM_SQL_EXPRESSION',
-      `Data type "${type.id}" declares ${declared} from ${SQL_EXPRESSION_DATA_TYPE_ID}. No data type may cast from ${SQL_EXPRESSION_DATA_TYPE_ID}: a ${SQL_EXPRESSION_TAG} literal is SQL the database runs, not a value of another type.`,
-      { dataType: type.id },
+      `Data type "${type.id}" from "${contributedBy}" declares ${declared} from ${SQL_EXPRESSION_DATA_TYPE_ID}. No data type may cast from ${SQL_EXPRESSION_DATA_TYPE_ID}: a ${SQL_EXPRESSION_TAG} literal is SQL the database runs, not a value of another type.`,
+      { dataType: type.id, contributedBy },
     );
   }
 }

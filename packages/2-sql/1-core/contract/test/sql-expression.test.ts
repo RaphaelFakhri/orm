@@ -68,38 +68,47 @@ describe('printSqlExpressionLiteral', () => {
 });
 
 describe('assertNothingCastsFromSqlExpression', () => {
-  const text = dataType('pg/text', {});
+  const text = { type: dataType('pg/text', {}), contributedBy: 'postgres' };
 
   it('accepts data types that do not cast from sql/expression', () => {
-    const json = dataType('pg/jsonb', { casts: { 'pg/text': (value) => value } });
-    expect(() =>
-      assertNothingCastsFromSqlExpression([text, json, sqlExpressionDataType]),
-    ).not.toThrow();
+    const json = {
+      type: dataType('pg/jsonb', { casts: { 'pg/text': (value) => value } }),
+      contributedBy: 'postgres',
+    };
+    const sqlExpression = { type: sqlExpressionDataType, contributedBy: 'sql' };
+    expect(() => assertNothingCastsFromSqlExpression([text, json, sqlExpression])).not.toThrow();
   });
 
   it('refuses a data type with a cast from sql/expression', () => {
-    const geometry = dataType('postgis/geometry', {
-      casts: { [SQL_EXPRESSION_DATA_TYPE_ID]: (value) => value },
-    });
+    const geometry = {
+      type: dataType('postgis/geometry', {
+        casts: { [SQL_EXPRESSION_DATA_TYPE_ID]: (value) => value },
+      }),
+      contributedBy: 'postgis',
+    };
     expect(() => assertNothingCastsFromSqlExpression([text, geometry])).toThrow(
       expect.objectContaining({
         code: 'CONTRACT.DATA_TYPE_CASTS_FROM_SQL_EXPRESSION',
         message:
-          'Data type "postgis/geometry" declares a cast from sql/expression. No data type may cast from sql/expression: a sql literal is SQL the database runs, not a value of another type.',
-        details: { dataType: 'postgis/geometry' },
+          'Data type "postgis/geometry" from "postgis" declares a cast from sql/expression. No data type may cast from sql/expression: a sql literal is SQL the database runs, not a value of another type.',
+        details: { dataType: 'postgis/geometry', contributedBy: 'postgis' },
       }),
     );
   });
 
   it('refuses a data type with a list cast from sql/expression', () => {
-    const vector = dataType('pgvector/vector', {
-      listCast: { of: [SQL_EXPRESSION_DATA_TYPE_ID], cast: (elements) => elements },
-    });
+    const vector = {
+      type: dataType('pgvector/vector', {
+        listCast: { of: [SQL_EXPRESSION_DATA_TYPE_ID], cast: (elements) => elements },
+      }),
+      contributedBy: 'pgvector',
+    };
     expect(() => assertNothingCastsFromSqlExpression([vector])).toThrow(
       expect.objectContaining({
         code: 'CONTRACT.DATA_TYPE_CASTS_FROM_SQL_EXPRESSION',
         message:
-          'Data type "pgvector/vector" declares a list cast from sql/expression. No data type may cast from sql/expression: a sql literal is SQL the database runs, not a value of another type.',
+          'Data type "pgvector/vector" from "pgvector" declares a list cast from sql/expression. No data type may cast from sql/expression: a sql literal is SQL the database runs, not a value of another type.',
+        details: { dataType: 'pgvector/vector', contributedBy: 'pgvector' },
       }),
     );
   });

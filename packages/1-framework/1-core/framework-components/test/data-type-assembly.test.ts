@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
+import type { CreateControlStackInput } from '../src/control/control-stack';
 import {
   assembleAuthoringDataTypes,
   assembleDataTypes,
+  createControlStack,
   enforceDataTypeInvariants,
 } from '../src/control/control-stack';
 import { type DataType, type DataTypeId, dataType, dataTypeId } from '../src/shared/data-type';
@@ -185,5 +187,29 @@ describe('assembleAuthoringDataTypes', () => {
         { id: 'two', authoring: { dataTypes: { [int2.id]: numberEntry() } } },
       ]),
     ).toThrow(/"one".*"two"|"two".*"one"/s);
+  });
+});
+
+describe('createControlStack', () => {
+  it('exposes every declared data type with its contributor, in stack order', () => {
+    const uuid = dataType('demo/uuid', {});
+    const component = (kind: string, id: string, dataTypes: readonly DataType[]) => ({
+      kind,
+      id,
+      version: '0.0.1',
+      dataTypes,
+    });
+    const input = {
+      family: component('family', 'fam', [text]),
+      target: component('target', 'tgt', [int2]),
+      adapter: component('adapter', 'adp', []),
+      extensions: [component('extension', 'ext', [uuid])],
+    } as unknown as CreateControlStackInput;
+
+    expect(createControlStack(input).declaredDataTypes).toEqual([
+      { type: text, contributedBy: 'fam' },
+      { type: int2, contributedBy: 'tgt' },
+      { type: uuid, contributedBy: 'ext' },
+    ]);
   });
 });
