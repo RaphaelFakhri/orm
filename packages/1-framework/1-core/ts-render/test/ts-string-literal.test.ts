@@ -51,5 +51,21 @@ describe('tsQuotedTextSource', () => {
     it('renders text with both quote kinds and U+2029 as a string literal', () => {
       expect(tsQuotedTextSource(`"a" = 'b'\u2029`)).toBe('"\\"a\\" = \'b\'\\u2029"');
     });
+
+    it('renders text with both quote kinds and a tab as a string literal', () => {
+      expect(tsQuotedTextSource(`"a" =\t'b'`)).toBe('"\\"a\\" =\\t\'b\'"');
+    });
+
+    it('renders text with both quote kinds and a NUL as a string literal', () => {
+      expect(tsQuotedTextSource(`"a" = 'b\u0000'`)).toBe('"\\"a\\" = \'b\\u0000\'"');
+    });
+
+    it('renders text with both quote kinds and DEL as a string literal', () => {
+      expect(tsQuotedTextSource(`"a" = 'b\u007f'`)).toBe('"\\"a\\" = \'b\u007f\'"');
+    });
+
+    it('renders text with both quote kinds and a lone surrogate as a string literal', () => {
+      expect(tsQuotedTextSource(`"a" = '\ud800'`)).toBe('"\\"a\\" = \'\\ud800\'"');
+    });
   });
 });

@@ -17,12 +17,24 @@ export function tsStringLiteral(value: string): string {
 }
 
 /**
- * TypeScript source for a string: an untagged template literal when the text holds both quote kinds and no line
- * break, so neither quote is escaped; otherwise `tsStringLiteral(text)`.
+ * TypeScript source for a string: an untagged template literal when the text holds both quote kinds, so neither quote
+ * is escaped; otherwise `tsStringLiteral(text)`. Text holding a control character (below U+0020, or U+007F), U+2028,
+ * U+2029 or a lone surrogate is always `tsStringLiteral(text)`.
  */
 export function tsQuotedTextSource(text: string): string {
   const holdsBothQuoteKinds = text.includes("'") && text.includes('"');
-  if (!holdsBothQuoteKinds || /[\n\r\u2028\u2029]/.test(text)) return tsStringLiteral(text);
+  if (!holdsBothQuoteKinds || needsEscapeSequence(text)) return tsStringLiteral(text);
   const escaped = text.replace(/\\/g, '\\\\').replace(/`/g, '\\`').replace(/\$\{/g, '\\${');
   return `\`${escaped}\``;
+}
+
+function needsEscapeSequence(text: string): boolean {
+  for (const char of text) {
+    const code = char.codePointAt(0) ?? 0;
+    const isControl = code < 0x20 || code === 0x7f;
+    const isLineOrParagraphSeparator = code === 0x2028 || code === 0x2029;
+    const isLoneSurrogate = code >= 0xd800 && code <= 0xdfff;
+    if (isControl || isLineOrParagraphSeparator || isLoneSurrogate) return true;
+  }
+  return false;
 }
