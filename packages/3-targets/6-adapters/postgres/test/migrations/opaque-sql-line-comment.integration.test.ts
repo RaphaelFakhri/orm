@@ -1,5 +1,5 @@
 /**
- * A contract SQL body whose last line is a `--` comment must not comment out the rest of the statement the planner places it in.
+ * An opaque SQL body whose last line is a `--` comment must not comment out the rest of the statement the planner places it in.
  */
 import { checkExpression, col, fn } from '@internal/sql-relational-core/contract-free';
 import { parseNaming } from '@internal/sql-schema-ir/naming';
@@ -32,7 +32,7 @@ async function applyOp(
   }
 }
 
-describe('contract SQL ending in a line comment', { concurrent: false }, () => {
+describe('opaque SQL ending in a line comment', { concurrent: false }, () => {
   let database: Awaited<ReturnType<typeof createTestDatabase>>;
   let driver: PostgresControlDriver | undefined;
 
@@ -56,8 +56,15 @@ describe('contract SQL ending in a line comment', { concurrent: false }, () => {
     }
   }, testTimeout);
 
+  function requireDriver(): PostgresControlDriver {
+    if (!driver) throw new Error('driver is not connected');
+    return driver;
+  }
+
   async function createItemTable(): Promise<void> {
-    await driver!.query('CREATE TABLE public.item (id int PRIMARY KEY, price int, email text)');
+    await requireDriver().query(
+      'CREATE TABLE public.item (id int PRIMARY KEY, price int, email text)',
+    );
   }
 
   it('creates a table with a CHECK and a function default', { timeout: testTimeout }, async () => {
@@ -72,20 +79,20 @@ describe('contract SQL ending in a line comment', { concurrent: false }, () => {
         constraints: [checkExpression('item_price_positive', `price > 0${TRAILING_COMMENT}`)],
       }),
     );
-    await driver!.query(statement.sql);
+    await requireDriver().query(statement.sql);
 
-    await driver!.query('INSERT INTO public.item (id) VALUES (1)');
-    const rows = await driver!.query('SELECT id, price FROM public.item');
+    await requireDriver().query('INSERT INTO public.item (id) VALUES (1)');
+    const rows = await requireDriver().query('SELECT id, price FROM public.item');
     expect(rows.rows).toEqual([{ id: 1, price: 1 }]);
     await expect(
-      driver!.query('INSERT INTO public.item (id, price) VALUES (2, -1)'),
+      requireDriver().query('INSERT INTO public.item (id, price) VALUES (2, -1)'),
     ).rejects.toThrow(/item_price_positive/);
   });
 
   it('adds a CHECK constraint to an existing table', { timeout: testTimeout }, async () => {
     await createItemTable();
     await applyOp(
-      driver!,
+      requireDriver(),
       new AddCheckConstraintCall(
         'public',
         'item',
@@ -95,14 +102,14 @@ describe('contract SQL ending in a line comment', { concurrent: false }, () => {
     );
 
     await expect(
-      driver!.query('INSERT INTO public.item (id, price) VALUES (1, -1)'),
+      requireDriver().query('INSERT INTO public.item (id, price) VALUES (1, -1)'),
     ).rejects.toThrow(/item_price_positive/);
   });
 
   it('creates a policy with USING and WITH CHECK', { timeout: testTimeout }, async () => {
     await createItemTable();
     await applyOp(
-      driver!,
+      requireDriver(),
       new CreatePostgresRlsPolicyCall(
         'public',
         'item',
@@ -119,7 +126,7 @@ describe('contract SQL ending in a line comment', { concurrent: false }, () => {
       ),
     );
 
-    const policies = await driver!.query(
+    const policies = await requireDriver().query(
       "SELECT policyname, qual, with_check FROM pg_policies WHERE tablename = 'item'",
     );
     expect(policies.rows).toEqual([
@@ -132,13 +139,13 @@ describe('contract SQL ending in a line comment', { concurrent: false }, () => {
   }, async () => {
     await createItemTable();
     await applyOp(
-      driver!,
+      requireDriver(),
       new CreateIndexCall('public', 'item', 'item_email_idx', {
         expression: 'lower(email), id -- c',
       }),
     );
 
-    const indexes = await driver!.query(
+    const indexes = await requireDriver().query(
       "SELECT indexdef FROM pg_indexes WHERE indexname = 'item_email_idx'",
     );
     expect(indexes.rows).toEqual([
@@ -153,7 +160,7 @@ describe('contract SQL ending in a line comment', { concurrent: false }, () => {
   }, async () => {
     await createItemTable();
     await applyOp(
-      driver!,
+      requireDriver(),
       new CreateIndexCall(
         'public',
         'item',
@@ -163,7 +170,7 @@ describe('contract SQL ending in a line comment', { concurrent: false }, () => {
       ),
     );
 
-    const indexes = await driver!.query(
+    const indexes = await requireDriver().query(
       "SELECT indexdef FROM pg_indexes WHERE indexname = 'item_email_partial_idx'",
     );
     expect(indexes.rows).toEqual([
