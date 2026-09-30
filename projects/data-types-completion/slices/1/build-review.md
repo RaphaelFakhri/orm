@@ -23,6 +23,7 @@ Reviewer-maintained. Contract: `projects/data-types-completion/design.md` sectio
 | f | 1 (`4b33205e76..ddb0814c42`) | ANOTHER ROUND NEEDED: 1 must-fix, 2 should-fix, 1 low |
 | f | 2 (`ddb0814c42..2f23721797`) | ANOTHER ROUND NEEDED: S1-f-R1-1 to S1-f-R1-4 closed; 1 new low |
 | f | 3 (`9ddfaa62e3`) | SATISFIED: S1-f-R2-1 closed, no new finding |
+| review fixes 1 | 1 (`01925ee865..f4e89409e0`) | ANOTHER ROUND NEEDED: 2 low |
 
 ## Findings log
 
@@ -200,7 +201,51 @@ Reviewer-maintained. Contract: `projects/data-types-completion/design.md` sectio
 
 - S1-f-R2-1: closed. The app entry `column-helpers-raise-type-params-invalid` names `vector(length)`, `geometry({ srid })` and `pgGeometryColumn({ srid })`, the change from `CONTRACT.ARGUMENT_INVALID` to `CONTRACT.TYPE_PARAMS_INVALID`, and that `srid: 0` is refused when the contract is built. It detects both `CONTRACT.ARGUMENT_INVALID` and `srid: 0`. Its `meta` claim (`{ dataType, parameters }`) matches `validateSqlTypeParams` in `sql-data-type.ts:245-250`. `check:upgrade-coverage --mode pr` exits 0 against both `bot/data-types-completion` and the default base. The commit carries both sign-offs and no AI attribution.
 
+### S1-rf1-R1-1 (low): the Postgres facade's refusal of a duplicate data type has no test
+
+- Where: `packages/3-extensions/postgres/src/contract/define-contract.ts` (`assemblePostgresDataTypeLookupWithBuiltins`); the only test of the new behaviour is `packages/3-extensions/sqlite/test/contract-builder/data-type-assembly.test.ts`.
+- What is wrong: `3cc2ea28e3` and `0dc997cd07` changed both facades so that the data type lookup is assembled once, with the duplicate check. Before, the Postgres facade built its lookup with `createDataTypeLookup`, which accepts a duplicate id. The SQLite facade has a test that an extension registering `sqlite/text` is refused with `CONTRACT.DATA_TYPE_DUPLICATE`. No test does the same for Postgres, and no Postgres test mentions `DATA_TYPE_DUPLICATE`, so a return to `createDataTypeLookup` in the Postgres facade would pass every test.
+- Change: add the same test for the Postgres `defineContract`, with an extension that registers `pg/text`.
+
+### S1-rf1-R1-2 (low): the Mongo TypeScript helpers build a data type lookup without the duplicate check
+
+- Where: `packages/2-mongo-family/2-authoring/contract-ts/src/contract-builder.ts:1101`.
+- What is wrong: `aa360b5595` made `AuthoringEntityContext.dataTypeLookup` required, and the Mongo helpers now fill it with `createDataTypeLookup(components.flatMap(...))`. That is the construction CR-F05 removed from the SQL facades: with a duplicate id, `get` returns the last type and `all()` returns both. Item 5 of the brief named only the SQL facades, so this is not a scope breach, but it brings the same pattern back in a new place.
+- Change: use `assembleDataTypes(components).lookup` from `@internal/framework-components/control`, which refuses a duplicate id.
+
+### Review fixes round 1 status of the code review findings
+
+All 19 items of `wip/briefs/review-fixes-1.md` are built as written. Code review F01 to F09 and system design F01, F03 to F09 and F11 to F15 are closed. Details in the round note.
+
 ## Round notes
+
+### Review fixes, round 1
+
+Scope: `01925ee865..f4e89409e0`, 20 commits, one per item of `wip/briefs/review-fixes-1.md` plus `f4e89409e0` (upgrade entry). The two docs commits after it (`36a07405da`, `5453754750`) are the orchestrator's.
+
+Item by item:
+- 1 (CR-F01): `substitute` refuses a value that is not a safe integer with `CONTRACT.TYPE_PARAMS_INVALID` and `meta: { dataType, parameters: [name] }`, for both written and catalog texts. The test uses a string parameter carrying `1); DROP TABLE users; --`; it was red at the parent, which returned the text. `sqlBaseName` substitutes nothing, so it needs no check. The guide says a `render` hook must quote every value it writes.
+- 2 (CR-F02): the registry refuses a codec whose data type the lookup lacks, with `CONTRACT.DATA_TYPE_UNREGISTERED`, a `why`, a `fix` and `{ codecId, dataType }`. `createPostgresAdapter({ codecDescriptors: [descriptor] })` throws at construction.
+- 3 (CR-F03, SD-F06): `buildStorageColumn` validates every column after `typeRef` resolution and adds `modelName` and `fieldName`. A `storage.types` entry no column uses is not checked (tested). `git grep validateSqlTypeParams` in production source finds only `sql-data-type.ts` and `build-contract.ts`, so no column helper checks on its own. The `type.*` helpers keep `CONTRACT.ARGUMENT_INVALID`. Tests cover `varcharColumn(0)`, `numericColumn(2000)`, `vector(0)`, `pgGeometryColumn({ srid: 0 })` and `geometry({ srid: 0 })` through `defineContract`. Both upgrade entries say the helpers no longer throw and the build does. The error reference states the PSL, `type.*` and contract-build mapping under `CONTRACT.TYPE_PARAMS_INVALID` and points to it from `CONTRACT.ARGUMENT_INVALID`. The new `blindCast` reason is true: `materializeCodec` calls `validateCodecTypeParams` before the factory.
+- 4 (CR-F04): the planner test asserts `formatTypeExpected: 'bigint'` for an `int8` alias column. It passes at the parent too, because the branch was already unreachable; it pins the behaviour. The branch, `formatUserDefinedTypeName` and its tests are gone; `wip/pr-notes.md` names the change. The enum postcheck consequence is the recorded ruling.
+- 5 (CR-F05): one assembly in both facades and both extension contracts. See S1-rf1-R1-1.
+- 6 (CR-F06): all three messages as asked. The table and column are added in `contractToSchemaIR`, which the planner calls. The framework `objectSchemaProps` also gained an `extends('object')` check, needed so that `type('string')` is refused with the id.
+- 7 (CR-F07): `columnDataType` throws `InternalError`; `DefaultLiteralColumn.dataType` is required. The control adapter now calls the exported `renderArrayLiteralDefault` directly. The test was red at the parent.
+- 8 (CR-F08, SD-F15): `requiredSchemaKeys` is the one reader; the serializer's copy is deleted. The three arktype shapes are tested for both key readers.
+- 9 (CR-F09): `storedTemporalText` takes the data type id; `TemporalNativeType` and the name pairs are gone; the bytea list type is `sqlBaseName(pgBytea, {}).toUpperCase()`.
+- 10 (SD-F03): `findSqlDataTypeCollision(types)` is the one function; `claimingSqlTexts` and `sqlTypeTextsCollide` are private. `enforceSqlDataTypeInvariants` reads `stack.dataTypeLookup.all()`. The new test puts a colliding type only in the lookup, so walking the contributors would miss it; with the call removed, the earlier `createSqlFamilyInstance` test fails.
+- 11 (SD-F04, SD-F11): renamed; the doc comment names the difference from `sqlBaseName` and the three consumers. `renderSqlColumnTypeName` is deleted; its one other user, the codec testkit, calls `renderSqlTypeName`.
+- 12 (SD-F07): no field or parameter typed `DataTypeLookup` is named `dataTypes`; `SqlComponentTypes` is gone; design 3.4 and 3.5 say `dataTypeLookup`.
+- 13 (SD-F08): `PostgresCodecRegistry` is `CodecRegistry & PostgresCodecDescriptorRegistry`. The control and runtime descriptors and `createPostgresAdapter` assemble the lookup, then the registry against it, and pass both on.
+- 14 (SD-F09): `type.mongo.bsonTypes`, `'mongo' in type`, entry point `@internal/mongo-contract/data-type` with tsdown and public mirrors, `AuthoringEntityContext.dataTypeLookup` required, design 2.6 and 3.5 amended. The Mongo enum factory also separates the two diagnostics. See S1-rf1-R1-2.
+- 15, 16: done. ADR 205's historical example keeps the old constant name under its update note.
+- 17 (SD-F14): the templates' `paramsSchema` is `undefined`; the template type did not need to change.
+- 18 (SD-F01): the Postgres entry lists `data-types.ts`, `data-type-entries.ts`, `sql-utils.ts` and `errors.ts`, the import closure (`errors.ts` imports only the shared `@internal/errors`). SQLite's `src/exports/data-types.ts` is shared.
+- 19 (SD-F05): ADR 241's example matches the Postgres `VarChar` and `String` constructors; ADRs 155, 184, 202, 204 and 207 carry the note; ADR 208 carries the update.
+
+Rules: no `any`, no bare `as` in production code, no new comments, no test name with "should". Every commit carries both sign-offs and no AI attribution. No `contract.json`, `contract.d.ts` or golden changed in the range.
+
+Checks at `5453754750`, logs under `wip/rf1-review/`: `typecheck:agent`, `lint:agent`, `lint:deps`, `lint:docs`, `check:error-reference` (360), `check:upgrade-coverage --mode pr --prev bot/data-types-completion`, `lint:framework-vocabulary` (262 of 262), `lint:throws` (40 = 40) and `fixtures:check:agent` (tree clean afterwards) all exit 0. The slice 1 grep check prints nothing. The golden planner test passes (684). The touched integration files pass (8 files, 82 tests). The tests of all 24 touched packages pass; in `@internal/adapter-postgres` two round-trip tests timed out under load and pass alone (5 of 5). I did not rerun the upgrade entries' validation by execution and found no log of it under `wip/`; `f4e89409e0` suggests it ran. The orchestrator should confirm it from the implementer's report.
 
 ### Dispatch f, round 1
 
