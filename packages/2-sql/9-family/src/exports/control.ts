@@ -52,7 +52,6 @@ export type {
   SqlSchemaDiffInput,
   SqlSchemaDiffResult,
 } from '../core/migrations/schema-differ';
-export type { SqlComponentTypes } from '../core/migrations/sql-type-lookups';
 export { sqlComponentTypes } from '../core/migrations/sql-type-lookups';
 export type { TableNameCaseGuardTable } from '../core/migrations/table-name-case-guard';
 export {

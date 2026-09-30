@@ -94,7 +94,7 @@ function makeContract(options: {
 const projectionOptions = {
   annotationNamespace: 'pg',
   renderDefault: postgresRenderDefault,
-  dataTypes: postgresTypeLookups.dataTypeLookup,
+  dataTypeLookup: postgresTypeLookups.dataTypeLookup,
   codecLookup: postgresTypeLookups.codecLookup,
 } as const;
 

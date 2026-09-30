@@ -73,7 +73,7 @@ const postgresTargetDescriptor: SqlControlTargetDescriptor<'postgres', PostgresP
         >(contract);
         return contractToPostgresDatabaseSchemaNode(postgresContract, {
           annotationNamespace: 'pg',
-          dataTypes: types.dataTypeLookup,
+          dataTypeLookup: types.dataTypeLookup,
           codecLookup: types.codecLookup,
           renderDefault: postgresRenderDefault,
           resolveDefault: postgresResolveDefault,

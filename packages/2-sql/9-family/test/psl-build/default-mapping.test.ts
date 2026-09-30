@@ -114,7 +114,7 @@ function forColumn(
 ): DefaultMappingOptions {
   return {
     dataTypeEntries: entries,
-    dataTypes: createDataTypeLookup(types),
+    dataTypeLookup: createDataTypeLookup(types),
     columnDataType: columnDataType.id,
     ...(shape.list === true ? { list: true } : {}),
   };

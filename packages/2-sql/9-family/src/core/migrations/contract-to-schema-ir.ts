@@ -1,5 +1,5 @@
 import type { ColumnDefault, Contract, JsonValue } from '@internal/contract/types';
-import type { CodecLookup, CodecRef, DataTypeLookup } from '@internal/framework-components/codec';
+import type { CodecRef } from '@internal/framework-components/codec';
 import type {
   MigrationPlannerConflict,
   SchemaNodeRef,
@@ -432,17 +432,11 @@ export function detectDestructiveChanges(
   return conflicts;
 }
 
-export interface ContractToSchemaIROptions {
+/** Each column's type is written from the data type its codec represents, found through the lookups. */
+export interface ContractToSchemaIROptions extends SqlTypeLookups {
   readonly annotationNamespace: string;
-  /** The stack's data types; each column's type is written from the data type its codec represents. */
-  readonly dataTypes: DataTypeLookup;
-  readonly codecLookup: CodecLookup;
   readonly renderDefault?: DefaultRenderer;
   readonly resolveDefault?: DefaultResolver;
-}
-
-function typeLookupsOf(options: ContractToSchemaIROptions): SqlTypeLookups {
-  return { codecLookup: options.codecLookup, dataTypeLookup: options.dataTypes };
 }
 
 /**
@@ -500,7 +494,7 @@ export function contractNamespaceToSchemaIR(
       tableName,
       tableDefRaw,
       storageTypes,
-      typeLookupsOf(options),
+      options,
       options.renderDefault,
       options.resolveDefault,
       storage,
@@ -551,7 +545,7 @@ export function contractToSchemaIR(
         tableName,
         tableDef,
         storageTypes,
-        typeLookupsOf(options),
+        options,
         options.renderDefault,
         options.resolveDefault,
         storage,

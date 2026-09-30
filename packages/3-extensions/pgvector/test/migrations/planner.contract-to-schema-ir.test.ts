@@ -47,8 +47,7 @@ const postgresComponents: ReadonlyArray<TargetBoundComponentDescriptor<'sql', 'p
 ];
 
 function typeOptions(components: ReadonlyArray<TargetBoundComponentDescriptor<'sql', string>>) {
-  const { codecLookup, dataTypeLookup } = sqlComponentTypes(components);
-  return { codecLookup, dataTypes: dataTypeLookup };
+  return sqlComponentTypes(components);
 }
 
 const postgresTypeOptions = typeOptions(postgresComponents);

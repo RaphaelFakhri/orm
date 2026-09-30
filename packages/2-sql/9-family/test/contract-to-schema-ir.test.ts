@@ -164,7 +164,7 @@ function contractToSchemaIR(
 ): SqlSchemaIR {
   return contractToSchemaIRImpl(contract, {
     annotationNamespace: 'pg',
-    dataTypes: testDataTypes,
+    dataTypeLookup: testDataTypes,
     codecLookup: testCodecLookup,
     ...options,
   });

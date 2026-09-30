@@ -134,7 +134,7 @@ export function diffPostgresSchema(input: {
   const types = sqlComponentTypes(input.frameworkComponents);
   const fullExpected = contractToPostgresDatabaseSchemaNode(postgresContract, {
     annotationNamespace: 'pg',
-    dataTypes: types.dataTypeLookup,
+    dataTypeLookup: types.dataTypeLookup,
     codecLookup: types.codecLookup,
     resolveDefault: postgresResolveDefault,
   });
@@ -231,7 +231,7 @@ export function buildPostgresPlanDiff(input: {
   const types = sqlComponentTypes(input.frameworkComponents);
   const projectionOptions = {
     annotationNamespace: 'pg',
-    dataTypes: types.dataTypeLookup,
+    dataTypeLookup: types.dataTypeLookup,
     codecLookup: types.codecLookup,
     resolveDefault: postgresResolveDefault,
   };

@@ -37,10 +37,11 @@ export function bsonTypesOfCodec(
   codecId: string,
   lookups: {
     readonly codecLookup: Pick<CodecLookup, 'descriptorFor'> | undefined;
-    readonly dataTypes: Pick<DataTypeLookup, 'get'>;
+    readonly dataTypeLookup: Pick<DataTypeLookup, 'get'>;
   },
 ): readonly string[] | undefined {
   const descriptor = lookups.codecLookup?.descriptorFor?.(codecId);
-  const type = descriptor === undefined ? undefined : lookups.dataTypes.get(descriptor.dataType);
+  const type =
+    descriptor === undefined ? undefined : lookups.dataTypeLookup.get(descriptor.dataType);
   return type !== undefined && isMongoDataType(type) ? type.bsonTypes : undefined;
 }

@@ -206,7 +206,7 @@ describe('PostgresMigrationPlanner - materialized FK/index combinations', () => 
     const schema = contractToPostgresDatabaseSchemaNode(fromContract, {
       annotationNamespace: 'pg',
       codecLookup,
-      dataTypes: codecLookup.dataTypes,
+      dataTypeLookup: codecLookup.dataTypes,
     });
 
     const result = planner.plan({

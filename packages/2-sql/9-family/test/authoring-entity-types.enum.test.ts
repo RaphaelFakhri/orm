@@ -143,7 +143,7 @@ function makeContext(diagnostics: unknown[], withDataTypes = true): AuthoringEnt
     family: 'sql',
     target: 'postgres',
     codecLookup: testCodecLookup,
-    ...(withDataTypes ? { dataTypes: testDataTypes } : {}),
+    ...(withDataTypes ? { dataTypeLookup: testDataTypes } : {}),
     sourceId: 'schema.prisma',
     diagnostics: sink,
     enumInferenceCodecs: { text: TEXT_CODEC_ID, int: INT_CODEC_ID },

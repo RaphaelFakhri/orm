@@ -252,7 +252,7 @@ describe('BSON scalar descriptors', () => {
     expect(
       bsonTypesOfCodec(codecId, {
         codecLookup: { descriptorFor: mongoDescriptorById },
-        dataTypes: createDataTypeLookup(mongoDataTypes),
+        dataTypeLookup: createDataTypeLookup(mongoDataTypes),
       }),
     ).toEqual(bsonTypes);
   });

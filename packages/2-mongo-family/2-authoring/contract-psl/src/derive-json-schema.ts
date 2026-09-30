@@ -27,13 +27,13 @@ function anyValueSchema(field: ContractField): Record<string, unknown> {
 
 function fieldToBsonSchema(
   field: ContractField,
-  dataTypes: DataTypeLookup,
+  dataTypeLookup: DataTypeLookup,
   valueObjects: Record<string, ContractValueObject> | undefined,
   codecLookup: CodecLookup | undefined,
   valueSets: FieldValueSets | undefined,
 ): Record<string, unknown> | undefined {
   if (field.type.kind === 'scalar') {
-    const bsonTypes = bsonTypesOfCodec(field.type.codecId, { codecLookup, dataTypes });
+    const bsonTypes = bsonTypesOfCodec(field.type.codecId, { codecLookup, dataTypeLookup });
     if (bsonTypes === undefined) return undefined;
     if (bsonTypes.length === 0) return anyValueSchema(field);
     const bsonType = bsonTypeKeyword(bsonTypes);
@@ -63,7 +63,13 @@ function fieldToBsonSchema(
   if (field.type.kind === 'valueObject') {
     const vo = valueObjects?.[field.type.name];
     if (!vo) return undefined;
-    const voSchema = deriveObjectSchema(vo.fields, dataTypes, valueObjects, codecLookup, valueSets);
+    const voSchema = deriveObjectSchema(
+      vo.fields,
+      dataTypeLookup,
+      valueObjects,
+      codecLookup,
+      valueSets,
+    );
     if ('many' in field && field.many) {
       return { bsonType: 'array', items: voSchema };
     }
@@ -78,7 +84,7 @@ function fieldToBsonSchema(
 
 function deriveObjectSchema(
   fields: Record<string, ContractField>,
-  dataTypes: DataTypeLookup,
+  dataTypeLookup: DataTypeLookup,
   valueObjects: Record<string, ContractValueObject> | undefined,
   codecLookup: CodecLookup | undefined,
   valueSets: FieldValueSets | undefined,
@@ -87,7 +93,7 @@ function deriveObjectSchema(
   const required: string[] = [];
 
   for (const [fieldName, field] of Object.entries(fields)) {
-    const schema = fieldToBsonSchema(field, dataTypes, valueObjects, codecLookup, valueSets);
+    const schema = fieldToBsonSchema(field, dataTypeLookup, valueObjects, codecLookup, valueSets);
     if (schema) {
       properties[fieldName] = schema;
       if (!field.nullable) {
@@ -113,13 +119,13 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 export function deriveJsonSchema(
   fields: Record<string, ContractField>,
-  dataTypes: DataTypeLookup,
+  dataTypeLookup: DataTypeLookup,
   valueObjects?: Record<string, ContractValueObject>,
   codecLookup?: CodecLookup,
   valueSets?: FieldValueSets,
 ): MongoValidator {
   return new MongoValidator({
-    jsonSchema: deriveObjectSchema(fields, dataTypes, valueObjects, codecLookup, valueSets),
+    jsonSchema: deriveObjectSchema(fields, dataTypeLookup, valueObjects, codecLookup, valueSets),
     validationLevel: 'strict',
     validationAction: 'error',
   });
@@ -134,14 +140,14 @@ export function derivePolymorphicJsonSchema(
   baseFields: Record<string, ContractField>,
   discriminatorField: string,
   variants: readonly PolymorphicVariant[],
-  dataTypes: DataTypeLookup,
+  dataTypeLookup: DataTypeLookup,
   valueObjects?: Record<string, ContractValueObject>,
   codecLookup?: CodecLookup,
   valueSets?: FieldValueSets,
 ): MongoValidator {
   const baseSchema = deriveObjectSchema(
     baseFields,
-    dataTypes,
+    dataTypeLookup,
     valueObjects,
     codecLookup,
     valueSets,
@@ -160,7 +166,7 @@ export function derivePolymorphicJsonSchema(
     const variantProperties: Record<string, unknown> = {};
     const variantRequired: string[] = [discriminatorField];
     for (const [name, field] of Object.entries(variantOnlyFields)) {
-      const schema = fieldToBsonSchema(field, dataTypes, valueObjects, codecLookup, valueSets);
+      const schema = fieldToBsonSchema(field, dataTypeLookup, valueObjects, codecLookup, valueSets);
       if (schema) {
         variantProperties[name] = schema;
         if (!field.nullable) {

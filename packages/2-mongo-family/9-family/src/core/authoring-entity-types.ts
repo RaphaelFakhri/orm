@@ -41,9 +41,12 @@ export const mongoFamilyEnumEntityDescriptor = {
       const { codecId, codecSpan } = resolved;
 
       const bsonTypes =
-        ctx.dataTypes === undefined
+        ctx.dataTypeLookup === undefined
           ? undefined
-          : bsonTypesOfCodec(codecId, { codecLookup: ctx.codecLookup, dataTypes: ctx.dataTypes });
+          : bsonTypesOfCodec(codecId, {
+              codecLookup: ctx.codecLookup,
+              dataTypeLookup: ctx.dataTypeLookup,
+            });
       if (bsonTypes === undefined) {
         diagnostics?.push({
           code: 'PSL_EXTENSION_INVALID_VALUE',

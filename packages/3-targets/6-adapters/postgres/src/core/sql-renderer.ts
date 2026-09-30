@@ -121,7 +121,7 @@ function renderTypedParam(
   }
   const dataType = sqlDataTypeOfCodec(codecId, {
     codecLookup: types.codecDescriptorRegistry,
-    dataTypeLookup: types.dataTypes,
+    dataTypeLookup: types.dataTypeLookup,
   });
   const arraySuffix = many ? '[]' : '';
   if (forceCast || !POSTGRES_INFERRABLE_NATIVE_TYPES.has(dataType.id) || many) {
@@ -155,7 +155,7 @@ interface ParamIndexMap {
 
 interface RenderTypes {
   readonly codecDescriptorRegistry: PostgresCodecDescriptorRegistry;
-  readonly dataTypes: DataTypeLookup;
+  readonly dataTypeLookup: DataTypeLookup;
 }
 
 /**
@@ -167,7 +167,7 @@ export function renderLoweredSql(
   ast: AnyQueryAst,
   contract: PostgresContract,
   codecDescriptorRegistry: PostgresCodecDescriptorRegistry,
-  dataTypes: DataTypeLookup,
+  dataTypeLookup: DataTypeLookup,
 ): { readonly sql: string; readonly params: readonly LoweredParam[] } {
   const orderedRefs = collectOrderedParamRefs(ast);
   const indexMap = new Map<AnyParamRef, number>();
@@ -177,7 +177,7 @@ export function renderLoweredSql(
       ? { kind: 'bind', name: ref.name }
       : { kind: 'literal', value: ref.value };
   });
-  const pim: ParamIndexMap = { indexMap, types: { codecDescriptorRegistry, dataTypes } };
+  const pim: ParamIndexMap = { indexMap, types: { codecDescriptorRegistry, dataTypeLookup } };
 
   const node = ast;
   let sql: string;

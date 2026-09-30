@@ -37,7 +37,7 @@ function table(columns: Record<string, StorageColumn>): StorageTable {
 }
 
 const types = {
-  dataTypes: testTypeLookups.dataTypeLookup,
+  dataTypeLookup: testTypeLookups.dataTypeLookup,
   codecLookup: testTypeLookups.codecLookup,
 };
 

@@ -2220,7 +2220,7 @@ export function interpretPslDocumentToSqlContract(
       family: input.target.familyId,
       target: input.target.targetId,
       ...ifDefined('codecLookup', input.codecLookup),
-      dataTypes: input.dataTypeLookup,
+      dataTypeLookup: input.dataTypeLookup,
       sourceId: source.sources.sourceFileFor(source.node).filename,
       diagnostics: {
         push: (d) => {
@@ -2264,7 +2264,7 @@ export function interpretPslDocumentToSqlContract(
     target: input.target.targetId,
     ...ifDefined('enumInferenceCodecs', input.enumInferenceCodecs),
     ...ifDefined('codecLookup', input.codecLookup),
-    dataTypes: input.dataTypeLookup,
+    dataTypeLookup: input.dataTypeLookup,
     sourceId: source.sources.sourceFileFor(source.node).filename,
     diagnostics: {
       push: (d) => {

@@ -340,7 +340,7 @@ describe('policy drops run before structural DDL that the policy blocks', () => 
     it('is dropped before the type change in a migration plan', async () => {
       const fromSchema = contractToPostgresDatabaseSchemaNode(fromContract, {
         annotationNamespace: 'pg',
-        dataTypes: postgresTypeLookups.dataTypeLookup,
+        dataTypeLookup: postgresTypeLookups.dataTypeLookup,
         codecLookup: postgresTypeLookups.codecLookup,
       });
       expect(await planOpIds(contract, fromSchema, { fromContract })).toEqual(expected);

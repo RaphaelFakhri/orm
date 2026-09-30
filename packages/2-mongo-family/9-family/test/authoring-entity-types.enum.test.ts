@@ -131,7 +131,7 @@ function makeContext(diagnostics: unknown[]): AuthoringEntityContext {
     family: 'mongo',
     target: 'mongo',
     codecLookup: testCodecLookup,
-    dataTypes: testDataTypes,
+    dataTypeLookup: testDataTypes,
     sourceId: 'schema.prisma',
     diagnostics: sink,
     enumInferenceCodecs: { text: TEXT_CODEC_ID, int: INT_CODEC_ID },

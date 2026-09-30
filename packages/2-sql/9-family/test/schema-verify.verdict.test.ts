@@ -127,7 +127,7 @@ function runVerdict(options: {
 
   const expected = contractToSchemaIR(options.contract, {
     annotationNamespace: 'pg',
-    dataTypes: testTypeLookups.dataTypeLookup,
+    dataTypeLookup: testTypeLookups.dataTypeLookup,
     codecLookup: testTypeLookups.codecLookup,
   });
   const actual = stampLikeIntrospection(options.schema);

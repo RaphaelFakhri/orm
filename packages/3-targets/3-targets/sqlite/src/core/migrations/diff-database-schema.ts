@@ -1,5 +1,5 @@
 import type { ColumnDefault, Contract, ControlPolicy } from '@internal/contract/types';
-import type { SqlComponentTypes, SqlSchemaDiffResult } from '@internal/family-sql/control';
+import type { SqlSchemaDiffResult } from '@internal/family-sql/control';
 import { contractToSchemaIR, sqlComponentTypes } from '@internal/family-sql/control';
 import { verifySqlSchemaByDiff } from '@internal/family-sql/diff';
 import type { TargetBoundComponentDescriptor } from '@internal/framework-components/components';
@@ -9,6 +9,7 @@ import type {
 } from '@internal/framework-components/control';
 import { diffSchemas } from '@internal/framework-components/control';
 import { entityAt } from '@internal/framework-components/ir';
+import type { SqlTypeLookups } from '@internal/sql-contract/data-type';
 import type { SqlStorage, StorageColumn, StorageTable } from '@internal/sql-contract/types';
 import type {
   SqlColumnIRInput,
@@ -49,7 +50,7 @@ export function sqliteRenderDefault(def: ColumnDefault, _column: StorageColumn):
  */
 export function sqliteContractToSchema(
   contract: Contract<SqlStorage> | null,
-  types: SqlComponentTypes,
+  types: SqlTypeLookups,
 ): SqlSchemaIR {
   // SQLite is single-schema: every contract FK targets the unbound namespace
   // node, so derivation stamps no referenced namespace — the same absence
@@ -59,7 +60,7 @@ export function sqliteContractToSchema(
     annotationNamespace: 'sqlite',
     renderDefault: sqliteRenderDefault,
     resolveDefault: sqliteResolveDefault,
-    dataTypes: types.dataTypeLookup,
+    dataTypeLookup: types.dataTypeLookup,
     codecLookup: types.codecLookup,
   });
 }
