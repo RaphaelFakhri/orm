@@ -118,84 +118,98 @@ describe('written defaults a column takes', () => {
 });
 
 describe('written defaults a column refuses', () => {
+  const NO_DOUBLE_HOLDS = '9'.repeat(400);
+
   it.each([
     [
       'a number too wide for the column',
       'count Int @default(100000000000000099)',
       'PSL_VALUE_TYPE_INCOMPATIBLE',
-      'N.count": pg/int4 has no cast from pg/int8; it casts from pg/int2',
+      'Field "N.count": pg/int4 has no cast from pg/int8; it casts from pg/int2',
     ],
     [
       'a number with a fraction on a whole-number column',
       'count Int @default(1.5)',
       'PSL_VALUE_TYPE_INCOMPATIBLE',
-      'N.count": pg/int4 has no cast from pg/numeric; it casts from pg/int2',
+      'Field "N.count": pg/int4 has no cast from pg/numeric; it casts from pg/int2',
     ],
     [
       'a quoted document on a jsonb column',
       'meta Jsonb @default("{}")',
       'PSL_VALUE_TYPE_INCOMPATIBLE',
-      'N.meta": pg/jsonb has no cast from pg/text; it casts from pg/json',
+      'Field "N.meta": pg/jsonb has no cast from pg/text; it casts from pg/json',
     ],
     [
       'quoted digits on a numeric column',
       'price Decimal @default("1.50")',
       'PSL_VALUE_TYPE_INCOMPATIBLE',
-      'N.price": pg/numeric has no cast from pg/text;',
+      'Field "N.price": pg/numeric has no cast from pg/text; it casts from pg/int2, pg/int4, pg/int8',
     ],
     [
       'quoted digits on an int column',
       'count Int @default("1")',
       'PSL_VALUE_TYPE_INCOMPATIBLE',
-      'N.count": pg/int4 has no cast from pg/text;',
+      'Field "N.count": pg/int4 has no cast from pg/text; it casts from pg/int2',
     ],
     [
       'a JSON document on an int column',
       `count Int @default(${tagged('json', '1')})`,
       'PSL_VALUE_TYPE_INCOMPATIBLE',
-      'N.count": pg/int4 has no cast from pg/json;',
+      'Field "N.count": pg/int4 has no cast from pg/json; it casts from pg/int2',
     ],
     [
       'a written list on a column that holds one value',
       'count Int @default([1, 2])',
       'PSL_VALUE_TYPE_INCOMPATIBLE',
-      'N.count": pg/int4 has no cast from a list;',
+      'Field "N.count": pg/int4 has no cast from a list; it casts from pg/int2',
     ],
     [
       'text among a list of numbers',
       'scores Int[] @default([1, "x"])',
       'PSL_VALUE_TYPE_INCOMPATIBLE',
-      'N.scores" at element 2: pg/int4 has no cast from pg/text; it casts from pg/int2',
+      'Field "N.scores" at element 2: pg/int4 has no cast from pg/text; it casts from pg/int2',
     ],
     [
       'a written list on a jsonb column',
       'meta Jsonb @default([1, 2])',
       'PSL_VALUE_TYPE_INCOMPATIBLE',
-      'N.meta": pg/jsonb has no cast from a list; it casts from pg/json',
+      'Field "N.meta": pg/jsonb has no cast from a list; it casts from pg/json',
     ],
     [
       'a non-finite word on a whole-number column',
       'count Int @default(NaN)',
       'PSL_VALUE_TYPE_INCOMPATIBLE',
-      'N.count": pg/int4 has no cast from pg/numeric; it casts from pg/int2',
-    ],
-    [
-      'a single value on a list column',
-      `docs Jsonb[] @default(${tagged('json', '{}')})`,
-      'PSL_DEFAULT_LIST_EXPECTED',
-      'N.docs": this column holds a list, so its default is a list literal',
+      'Field "N.count": pg/int4 has no cast from pg/numeric; it casts from pg/int2',
     ],
     [
       'a number on a column whose type takes only text',
       'payload Bytes @default(1234)',
       'PSL_VALUE_TYPE_INCOMPATIBLE',
-      'N.payload": pg/bytea has no cast from pg/int2; it casts from pg/text',
+      'Field "N.payload": pg/bytea has no cast from pg/int2; it casts from pg/text',
+    ],
+    [
+      'a single value on a list column',
+      `docs Jsonb[] @default(${tagged('json', '{}')})`,
+      'PSL_DEFAULT_LIST_EXPECTED',
+      'Field "N.docs": this column holds a list, so its default is a list literal, as in [1, 2]',
+    ],
+    [
+      'a number whose cast to the column type throws',
+      `ratio Float @default(${NO_DOUBLE_HOLDS})`,
+      'PSL_INVALID_LITERAL',
+      `Field "N.ratio": ${NO_DOUBLE_HOLDS} is out of range.`,
+    ],
+    [
+      'a written list whose list cast throws',
+      `embed pgvector.Vector(3) @default([1, 2, ${NO_DOUBLE_HOLDS}])`,
+      'PSL_INVALID_LITERAL',
+      `Field "N.embed": ${NO_DOUBLE_HOLDS} is out of range.`,
     ],
   ])('refuses %s', (_name, field, code, message) => {
     expect(diagnostics(model(`  ${field}`))).toEqual([
       expect.objectContaining({
         code,
-        message: expect.stringContaining(message),
+        message,
         sourceId: 'schema.prisma',
         span: expect.objectContaining({ start: expect.objectContaining({ line: 3 }) }),
       }),
@@ -214,7 +228,7 @@ describe('written defaults a column refuses', () => {
     expect(result.ok ? [] : result.failure.diagnostics).toEqual([
       expect.objectContaining({
         code: 'PSL_VALUE_TYPE_INCOMPATIBLE',
-        message: expect.stringContaining('this target has no data type for a boolean value'),
+        message: 'Field "N.active": this target has no data type for a boolean value',
       }),
     ]);
   });
@@ -231,7 +245,8 @@ describe('written defaults a column refuses', () => {
     expect(diagnostics(model(`  meta Jsonb @default(${tagged('json', '{ plan }')})`))).toEqual([
       expect.objectContaining({
         code: 'PSL_INVALID_LITERAL',
-        message: expect.stringContaining('N.meta'),
+        message:
+          'Field "N.meta": Expected property name or \'}\' in JSON at position 2 (line 1 column 3)',
       }),
     ]);
   });
@@ -240,7 +255,7 @@ describe('written defaults a column refuses', () => {
     expect(diagnostics(model('  embed pgvector.Vector(3) @default([1, 2])'))).toEqual([
       expect.objectContaining({
         code: 'PSL_INVALID_DEFAULT_LITERAL',
-        message: expect.stringContaining('Vector length mismatch: expected 3, got 2'),
+        message: 'Field "N.embed": Vector length mismatch: expected 3, got 2',
       }),
     ]);
   });
