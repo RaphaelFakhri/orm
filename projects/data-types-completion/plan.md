@@ -51,7 +51,7 @@ Through `mise exec --` and the `:agent` variants, reading the log file each prin
 
 Stop and report to the orchestrator; do not choose an alternative.
 
-- Any committed contract changes in slice 1.
+- Any committed `contract.json` changes in slice 1, or any `contract.d.ts` changes other than the SQLite aggregate rows of design 2.7 item 9.
 - The golden planner test finds a DDL change in slice 1 other than the `typeRef` quoting fix.
 - A reported text from a real database that no claiming text of design 2.6 or section 9 covers, for a type that has a data type.
 - A column in a committed contract whose codec's data type does not reproduce its stored `nativeType` in slice 1.
