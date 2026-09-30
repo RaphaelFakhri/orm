@@ -14,7 +14,10 @@ import { INIT_ADDITIVE_POLICY, type SqlMigrationPlanOperation } from '@internal/
 import { APP_SPACE_ID } from '@internal/framework-components/control';
 import { UNBOUND_NAMESPACE_ID } from '@internal/framework-components/ir';
 import { SqlStorage } from '@internal/sql-contract/types';
-import { createPostgresBuiltinCodecLookup } from '@internal/target-postgres/codecs';
+import {
+  createPostgresBuiltinCodecLookup,
+  createPostgresBuiltinDataTypeLookup,
+} from '@internal/target-postgres/codecs';
 import { createPostgresMigrationPlanner } from '@internal/target-postgres/planner';
 import {
   PostgresDatabaseSchemaNode,
@@ -26,7 +29,10 @@ import { describe, expect, it } from 'vitest';
 import { PostgresControlAdapter } from '../../src/core/control-adapter';
 import { postgresComponents } from './fixtures/postgres-components';
 
-const testAdapter = new PostgresControlAdapter(createPostgresBuiltinCodecLookup());
+const testAdapter = new PostgresControlAdapter(
+  createPostgresBuiltinCodecLookup(),
+  createPostgresBuiltinDataTypeLookup(),
+);
 
 const emptySchema = new PostgresDatabaseSchemaNode({
   namespaces: {

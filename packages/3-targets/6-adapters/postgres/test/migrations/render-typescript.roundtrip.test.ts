@@ -19,7 +19,10 @@ import { promisify } from 'node:util';
 import { APP_SPACE_ID, storageHashHex } from '@internal/framework-components/control';
 import { keepInternalSpecifiers } from '@internal/framework-components/emission';
 import { col, primaryKey } from '@internal/sql-relational-core/contract-free';
-import { createPostgresBuiltinCodecLookup } from '@internal/target-postgres/codecs';
+import {
+  createPostgresBuiltinCodecLookup,
+  createPostgresBuiltinDataTypeLookup,
+} from '@internal/target-postgres/codecs';
 import {
   AddColumnCall,
   CreateExtensionCall,
@@ -44,7 +47,10 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { PostgresControlAdapter } from '../../src/core/control-adapter';
 
 const execFileAsync = promisify(execFile);
-const testAdapter = new PostgresControlAdapter(createPostgresBuiltinCodecLookup());
+const testAdapter = new PostgresControlAdapter(
+  createPostgresBuiltinCodecLookup(),
+  createPostgresBuiltinDataTypeLookup(),
+);
 const packageRoot = resolve(import.meta.dirname, '../..');
 const repoRoot = resolve(packageRoot, '../../../..');
 const targetPostgresRoot = resolve(repoRoot, 'packages/3-targets/3-targets/postgres');

@@ -1,6 +1,7 @@
 import { MongoControlAdapterImpl } from '@internal/adapter-mongo/control';
 import {
   createPostgresBuiltinCodecLookup,
+  createPostgresBuiltinDataTypeLookup,
   PostgresControlAdapter,
 } from '@internal/adapter-postgres/control';
 import {
@@ -231,6 +232,7 @@ describe('LedgerEntryRecord.operationCount parity across targets', {
     if (!pgResult.ok) throw new Error(formatRunnerFailure(pgResult.failure));
     const pgLedger = await new PostgresControlAdapter(
       createPostgresBuiltinCodecLookup(),
+      createPostgresBuiltinDataTypeLookup(),
     ).readLedger(pgDriver!, LEDGER_TEST_SPACE_ID);
 
     const sqlite = multiEdgePlanSqlite();
@@ -358,6 +360,7 @@ describe('LedgerEntryRecord.operationCount parity across targets', {
     if (!pgResult.ok) throw new Error(formatRunnerFailure(pgResult.failure));
     const pgLedger = await new PostgresControlAdapter(
       createPostgresBuiltinCodecLookup(),
+      createPostgresBuiltinDataTypeLookup(),
     ).readLedger(pgDriver!, LEDGER_TEST_SPACE_ID);
 
     const sqliteDriver = sqliteTestDb!.driver;
@@ -512,6 +515,7 @@ describe('LedgerEntryRecord.operationCount parity across targets', {
     if (!pgResult.ok) throw new Error(formatRunnerFailure(pgResult.failure));
     const pgLedger = await new PostgresControlAdapter(
       createPostgresBuiltinCodecLookup(),
+      createPostgresBuiltinDataTypeLookup(),
     ).readLedger(pgDriver!, LEDGER_TEST_SPACE_ID);
 
     const sqliteDest = sqliteContract.storage.storageHash;

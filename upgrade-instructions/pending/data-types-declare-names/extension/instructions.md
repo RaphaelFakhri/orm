@@ -132,6 +132,17 @@ changes:
       glob: "**/*.{ts,mts,cts}"
       matches:
         - '\bbuildBoundContract\b[^;]*from\s*[''"]@internal/sql-contract-ts/'
+  - id: postgres-codec-registry-takes-data-type-lookup
+    summary: |
+      The Postgres codec registry no longer carries the data types. `assemblePostgresCodecRegistry`,
+      `assemblePostgresCodecRegistryWithBuiltins`, `createPostgresCodecRegistryWithBuiltins`,
+      `createPostgresAdapterWithCodecRegistry` and the `PostgresControlAdapter` constructor take a
+      data type lookup beside the codecs, and refuse a codec whose data type it lacks.
+    detection:
+      glob: "**/*.{ts,mts,cts}"
+      matches:
+        - '\b(?:assemblePostgresCodecRegistry(?:WithBuiltins)?|createPostgresCodecRegistryWithBuiltins|createPostgresAdapterWithCodecRegistry)\s*\('
+        - '\bnew\s+PostgresControlAdapter\s*\('
   - id: contract-to-schema-takes-components
     summary: |
       The migrations capability's `contractToSchema(contract, frameworkComponents)` requires
@@ -142,8 +153,8 @@ changes:
         - '\bcontractToSchema\s*\(\s*[^,()]+\)'
   - id: contract-to-schema-ir-takes-lookups
     summary: |
-      `contractToSchemaIR` options replace `expandNativeType` with the required `dataTypes`
-      (a `DataTypeLookup`) and `codecLookup`.
+      `contractToSchemaIR` options replace `expandNativeType` with the required `dataTypeLookup`
+      and `codecLookup`.
     detection:
       glob: "**/*.{ts,mts,cts}"
       matches:
@@ -243,7 +254,7 @@ override readonly targetTypes = ['vector'] as const;
 // after: the line is gone; the names are the data type's texts
 ```
 
-Code that read `codecLookup.targetTypesFor(codecId)` or `registry.byTargetType(name)` reads the data type instead: `dataTypes.get(codecLookup.descriptorFor(codecId).dataType)`. For a SQL type, call `sqlBaseName(type, dataTypeParams(type, typeParams))` or `renderSqlTypeName(...)` from `@internal/sql-contract/data-type`. For a Mongo codec, move the list to the data type the codec names and read it with `bsonTypesOfCodec(codecId, { codecLookup, dataTypes })` from `@internal/mongo-contract`:
+Code that read `codecLookup.targetTypesFor(codecId)` or `registry.byTargetType(name)` reads the data type instead: `dataTypeLookup.get(codecLookup.descriptorFor(codecId).dataType)`. For a SQL type, call `sqlBaseName(type, dataTypeParams(type, typeParams))` or `renderSqlTypeName(...)` from `@internal/sql-contract/data-type`. For a Mongo codec, move the list to the data type the codec names and read it with `bsonTypesOfCodec(codecId, { codecLookup, dataTypes })` from `@internal/mongo-contract`:
 
 ```ts
 export const myDecimal = mongoDataType('my/decimal', { bsonTypes: ['decimal'] });
@@ -458,7 +469,7 @@ const pgvectorRuntimeDescriptor: SqlRuntimeExtensionDescriptor<'postgres'> = {
 };
 ```
 
-Without it, a query that binds a parameter of the extension's codec fails when the SQL is rendered, because the runtime stack has no data type to write the cast from. When building an adapter by hand, pass the same list: `createPostgresAdapter({ codecDescriptors, dataTypes: pgvectorDataTypes })`. An extension whose codecs represent only the target's data types, such as `arktype/json@1` over `pg/jsonb`, has no data types of its own and adds nothing.
+Without it, building the runtime adapter fails with `CONTRACT.DATA_TYPE_UNREGISTERED`, because the runtime stack has no data type to write the extension codec's casts from. When building an adapter by hand, pass the same list: `createPostgresAdapter({ codecDescriptors, dataTypes: pgvectorDataTypes })`. An extension whose codecs represent only the target's data types, such as `arktype/json@1` over `pg/jsonb`, has no data types of its own and adds nothing.
 
 ## `parameter-casts-use-base-names`
 
@@ -513,19 +524,23 @@ export const contract = defineContract({}, () => ({
 }));
 
 // after
-import { createDataTypeLookup } from '@internal/framework-components/codec';
-import { assemblePostgresCodecRegistryWithBuiltins } from '@internal/target-postgres/codecs';
-import { postgresDataTypes } from '@internal/target-postgres/data-types';
+import {
+  assemblePostgresCodecRegistryWithBuiltins,
+  assemblePostgresDataTypeLookupWithBuiltins,
+} from '@internal/target-postgres/codecs';
 import { pgvectorDataTypes } from './core/data-types';
 import { pgvectorCodecRegistry } from './core/registry';
 
+const dataTypeLookup = assemblePostgresDataTypeLookupWithBuiltins([
+  { dataTypes: pgvectorDataTypes },
+]);
+const codecLookup = assemblePostgresCodecRegistryWithBuiltins(
+  [{ types: { codecTypes: { codecDescriptors: [...pgvectorCodecRegistry.values()] } } }],
+  dataTypeLookup,
+);
+
 export const contract = defineContract(
-  {
-    codecLookup: assemblePostgresCodecRegistryWithBuiltins([
-      { types: { codecTypes: { codecDescriptors: [...pgvectorCodecRegistry.values()] } } },
-    ]),
-    dataTypeLookup: createDataTypeLookup([...postgresDataTypes, ...pgvectorDataTypes]),
-  },
+  { codecLookup, dataTypeLookup },
   () => ({
     types: {
       [PGVECTOR_NATIVE_TYPE]: {
@@ -544,21 +559,12 @@ A column whose codec the lookup lacks fails with `CONTRACT.CODEC_DESCRIPTOR_MISS
 
 ## `define-contract-wrapper-builds-data-type-lookup`
 
-A package that exposes its own `defineContract` over `buildBoundContract`, as the Postgres and SQLite facades do, makes four edits. The code below is the Postgres facade's; the SQLite facade uses its `target` constant where Postgres uses `postgresPack`.
+A package that exposes its own `defineContract` over `buildBoundContract`, as the Postgres and SQLite facades do, makes four edits.
 
-1. Import the lookup types and `ComponentMetadata`:
+1. Directly after the first import, import the lookup types:
 
    ```ts
-   import {
-     type CodecLookup,
-     createDataTypeLookup,
-     type DataType,
-     type DataTypeLookup,
-   } from '@internal/framework-components/codec';
-   import type {
-     ComponentMetadata,
-     ExtensionPackRef,
-   } from '@internal/framework-components/components';
+   import type { CodecLookup, DataTypeLookup } from '@internal/framework-components/codec';
    ```
 
 2. In the result type, the object passed to `ContractInput`'s build gains both lookups directly after `createNamespace`:
@@ -579,31 +585,57 @@ A package that exposes its own `defineContract` over `buildBoundContract`, as th
      readonly dataTypeLookup?: DataTypeLookup;
    ```
 
-4. Directly above the first `export function defineContract`, add:
+4. In the implementation, assemble the data type lookup once and build the codec lookup against it. On Postgres, import `assemblePostgresDataTypeLookupWithBuiltins` beside `assemblePostgresCodecRegistryWithBuiltins`, which now takes the data type lookup as its second argument:
 
    ```ts
-   function dataTypesOf(pack: Pick<ComponentMetadata, 'dataTypes'>): readonly DataType[] {
-     return pack.dataTypes ?? [];
-   }
-   ```
-
-   and in the implementation build the data type lookup beside the codec lookup:
-
-   ```ts
-   const extensionPacks: readonly Pick<ComponentMetadata, 'dataTypes'>[] = Object.values(
+   const extensions: readonly ExtensionPackRef<'sql', string>[] = Object.values(
      definition.extensions ?? {},
    );
+   const dataTypeLookup =
+     definition.dataTypeLookup ?? assemblePostgresDataTypeLookupWithBuiltins(extensions);
    const bound = {
      ...definition,
      createNamespace: postgresCreateNamespace,
      codecLookup:
        definition.codecLookup ??
-       assemblePostgresCodecRegistryWithBuiltins(Object.values(definition.extensions ?? {})),
-     dataTypeLookup:
-       definition.dataTypeLookup ??
-       createDataTypeLookup([postgresPack, ...extensionPacks].flatMap(dataTypesOf)),
+       assemblePostgresCodecRegistryWithBuiltins(extensions, dataTypeLookup),
+     dataTypeLookup,
    };
    ```
+
+   On SQLite, import `assembleDataTypes` from `@internal/framework-components/control` directly after the `@internal/framework-components/components` import, and use the target constant as the first contributor:
+
+   ```ts
+   const extensionPacks: readonly ExtensionPackRef<'sql', string>[] = Object.values(
+     definition.extensions ?? {},
+   );
+   const bound = {
+     ...definition,
+     createNamespace: sqliteCreateNamespace,
+     codecLookup: definition.codecLookup ?? assembleSqliteCodecRegistry(target, extensionPacks),
+     dataTypeLookup:
+       definition.dataTypeLookup ?? assembleDataTypes([target, ...extensionPacks]).lookup,
+   };
+   ```
+
+   Both refuse a data type id that two packs register, with `CONTRACT.DATA_TYPE_DUPLICATE`.
+
+## `postgres-codec-registry-takes-data-type-lookup`
+
+The Postgres codec registry no longer carries the data types. Each function that builds one takes the data type lookup its codecs are checked against, and refuses a codec whose data type the lookup lacks with `CONTRACT.DATA_TYPE_UNREGISTERED`. Build the lookup first, from the same components, with `assemblePostgresDataTypeLookup(components)`, `assemblePostgresDataTypeLookupWithBuiltins(extensions)` or `createPostgresBuiltinDataTypeLookup()` from `@internal/target-postgres/codecs`:
+
+```ts
+// before
+const codecRegistry = assemblePostgresCodecRegistry(components);
+const adapter = new PostgresControlAdapter(codecRegistry);
+
+// after
+const dataTypeLookup = assemblePostgresDataTypeLookup(components);
+const codecRegistry = assemblePostgresCodecRegistry(components, dataTypeLookup);
+const adapter = new PostgresControlAdapter(codecRegistry, dataTypeLookup);
+```
+
+`assemblePostgresCodecRegistryWithBuiltins(extensions, dataTypeLookup)` and `createPostgresAdapterWithCodecRegistry(codecRegistry, dataTypeLookup)` change the same way. `createPostgresCodecRegistryWithBuiltins(codecDescriptors, dataTypeLookup)` takes the lookup in place of a list of data types, and defaults to the target's own. A built-in adapter in a test is `new PostgresControlAdapter(createPostgresBuiltinCodecLookup(), createPostgresBuiltinDataTypeLookup())`.
 
 ## `contract-to-schema-takes-components`
 
@@ -615,7 +647,7 @@ const fromSchema = migrations.contractToSchema(fromContract);
 const fromSchema = migrations.contractToSchema(fromContract, frameworkComponents);
 ```
 
-Pass the framework components of the stack the contract was built with. A custom target's implementation passes them on to the family's `contractToSchemaIR` as `dataTypes` and `codecLookup`.
+Pass the framework components of the stack the contract was built with. A custom target's implementation passes them on to the family's `contractToSchemaIR` as `dataTypeLookup` and `codecLookup`.
 
 ## `contract-to-schema-ir-takes-lookups`
 
@@ -624,10 +656,10 @@ Pass the framework components of the stack the contract was built with. A custom
 contractToSchemaIR(contract, { annotationNamespace: 'pg', expandNativeType });
 
 // after
-contractToSchemaIR(contract, { annotationNamespace: 'pg', dataTypes, codecLookup });
+contractToSchemaIR(contract, { annotationNamespace: 'pg', dataTypeLookup, codecLookup });
 ```
 
-`dataTypes` and `codecLookup` come from the assembled stack; in a test, build them with `createDataTypeLookup([...postgresDataTypes, ...extensionDataTypes])` and the target's codec registry.
+`dataTypeLookup` and `codecLookup` come from the assembled stack: `sqlComponentTypes(frameworkComponents)` from `@internal/family-sql/control` returns both. Every field or parameter that holds a `DataTypeLookup` is now named `dataTypeLookup`; `dataTypes` names only a list of data types.
 
 ## `data-type-lookup-lists-all`
 

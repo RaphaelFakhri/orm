@@ -14,7 +14,10 @@ import type {
   ModelLike,
 } from '@internal/sql-contract-ts/contract-builder';
 import { buildBoundContract } from '@internal/sql-contract-ts/contract-builder';
-import { assemblePostgresCodecRegistryWithBuiltins } from '@internal/target-postgres/codecs';
+import {
+  assemblePostgresCodecRegistryWithBuiltins,
+  assemblePostgresDataTypeLookupWithBuiltins,
+} from '@internal/target-postgres/codecs';
 import postgresPack from '@internal/target-postgres/pack';
 import { postgresCreateNamespace } from '@internal/target-postgres/types';
 import type { RlsEntityHandle } from './rls';
@@ -95,24 +98,6 @@ type PostgresScaffold<
   readonly enums?: Enums;
 };
 
-function typeLookupsOf(definition: {
-  readonly extensions?: Record<string, ExtensionPackRef<'sql', string>> | undefined;
-  readonly codecLookup?: CodecLookup | undefined;
-  readonly dataTypeLookup?: DataTypeLookup | undefined;
-}): { readonly codecLookup: CodecLookup; readonly dataTypeLookup: DataTypeLookup } {
-  const { codecLookup, dataTypeLookup } = definition;
-  if (codecLookup !== undefined && dataTypeLookup !== undefined) {
-    return { codecLookup, dataTypeLookup };
-  }
-  const registry = assemblePostgresCodecRegistryWithBuiltins(
-    Object.values(definition.extensions ?? {}),
-  );
-  return {
-    codecLookup: codecLookup ?? registry,
-    dataTypeLookup: dataTypeLookup ?? registry.dataTypes,
-  };
-}
-
 export function defineContract<
   const Types extends TypesConstraint = Record<never, never>,
   const Models extends ModelsConstraint = Record<never, never>,
@@ -148,10 +133,18 @@ export function defineContract(
     readonly enums?: EnumsConstraint;
   },
 ): PostgresResult<TypesConstraint, ModelsConstraint, undefined, EnumsConstraint> {
+  const extensions: readonly ExtensionPackRef<'sql', string>[] = Object.values(
+    definition.extensions ?? {},
+  );
+  const dataTypeLookup =
+    definition.dataTypeLookup ?? assemblePostgresDataTypeLookupWithBuiltins(extensions);
   const bound = {
     ...definition,
     createNamespace: postgresCreateNamespace,
-    ...typeLookupsOf(definition),
+    codecLookup:
+      definition.codecLookup ??
+      assemblePostgresCodecRegistryWithBuiltins(extensions, dataTypeLookup),
+    dataTypeLookup,
   };
   if (factory !== undefined) {
     return buildBoundContract(sqlFamilyPack, postgresPack, bound, factory);

@@ -1,5 +1,6 @@
 import postgresAdapterControl, {
   createPostgresBuiltinCodecLookup,
+  createPostgresBuiltinDataTypeLookup,
   PostgresControlAdapter,
 } from '@internal/adapter-postgres/control';
 
@@ -52,7 +53,10 @@ const RECONCILIATION_POLICY: MigrationOperationPolicy = {
   allowedOperationClasses: ['additive', 'widening', 'destructive'],
 };
 
-const testAdapter = new PostgresControlAdapter(createPostgresBuiltinCodecLookup());
+const testAdapter = new PostgresControlAdapter(
+  createPostgresBuiltinCodecLookup(),
+  createPostgresBuiltinDataTypeLookup(),
+);
 const planner = createPostgresMigrationPlanner(testAdapter);
 
 const emptySchema = new PostgresDatabaseSchemaNode({

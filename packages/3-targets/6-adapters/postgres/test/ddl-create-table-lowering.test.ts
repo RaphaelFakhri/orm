@@ -1,5 +1,8 @@
 import { col, fn, lit } from '@internal/sql-relational-core/contract-free';
-import { createPostgresBuiltinCodecLookup } from '@internal/target-postgres/codecs';
+import {
+  createPostgresBuiltinCodecLookup,
+  createPostgresBuiltinDataTypeLookup,
+} from '@internal/target-postgres/codecs';
 import { PostgresCreateTable } from '@internal/target-postgres/ddl';
 import { describe, expect, it } from 'vitest';
 import { PostgresControlAdapter } from '../src/core/control-adapter';
@@ -17,7 +20,10 @@ describe('PostgresCreateTable DDL lowering', () => {
       ],
     });
 
-    const adapter = new PostgresControlAdapter(createPostgresBuiltinCodecLookup());
+    const adapter = new PostgresControlAdapter(
+      createPostgresBuiltinCodecLookup(),
+      createPostgresBuiltinDataTypeLookup(),
+    );
     const lowered = await adapter.lowerToExecuteRequest(ast, { contract: {} as PostgresContract });
 
     expect(lowered.sql).toBe(
@@ -40,7 +46,10 @@ describe('PostgresCreateTable DDL lowering', () => {
       ],
     });
 
-    const adapter = new PostgresControlAdapter(createPostgresBuiltinCodecLookup());
+    const adapter = new PostgresControlAdapter(
+      createPostgresBuiltinCodecLookup(),
+      createPostgresBuiltinDataTypeLookup(),
+    );
     const lowered = await adapter.lowerToExecuteRequest(ast, { contract: {} as PostgresContract });
 
     expect(lowered.sql).toContain(`"a" text DEFAULT 'x'`);
@@ -59,7 +68,10 @@ describe('PostgresCreateTable DDL lowering', () => {
       columns: [col('id', 'int4', { notNull: true, default: fn('autoincrement()') })],
     });
 
-    const adapter = new PostgresControlAdapter(createPostgresBuiltinCodecLookup());
+    const adapter = new PostgresControlAdapter(
+      createPostgresBuiltinCodecLookup(),
+      createPostgresBuiltinDataTypeLookup(),
+    );
     await expect(
       adapter.lowerToExecuteRequest(ast, { contract: {} as PostgresContract }),
     ).rejects.toMatchObject({
@@ -77,7 +89,10 @@ describe('PostgresCreateTable DDL lowering', () => {
       ],
     });
 
-    const adapter = new PostgresControlAdapter(createPostgresBuiltinCodecLookup());
+    const adapter = new PostgresControlAdapter(
+      createPostgresBuiltinCodecLookup(),
+      createPostgresBuiltinDataTypeLookup(),
+    );
     const lowered = await adapter.lowerToExecuteRequest(ast, { contract: {} as PostgresContract });
 
     expect(lowered.sql).toContain('"a" serial');
@@ -95,7 +110,10 @@ describe('PostgresCreateTable DDL lowering', () => {
       ],
     });
 
-    const adapter = new PostgresControlAdapter(createPostgresBuiltinCodecLookup());
+    const adapter = new PostgresControlAdapter(
+      createPostgresBuiltinCodecLookup(),
+      createPostgresBuiltinDataTypeLookup(),
+    );
     const lowered = await adapter.lowerToExecuteRequest(ast, { contract: {} as PostgresContract });
 
     expect(lowered.sql).toContain('"a" serial2');
@@ -110,7 +128,10 @@ describe('PostgresCreateTable DDL lowering', () => {
       columns: [col('name', 'text', { default: lit("O'Reilly") })],
     });
 
-    const adapter = new PostgresControlAdapter(createPostgresBuiltinCodecLookup());
+    const adapter = new PostgresControlAdapter(
+      createPostgresBuiltinCodecLookup(),
+      createPostgresBuiltinDataTypeLookup(),
+    );
     const lowered = await adapter.lowerToExecuteRequest(ast, { contract: {} as PostgresContract });
 
     expect(lowered.sql).toContain(`"name" text DEFAULT 'O''Reilly'`);
@@ -122,7 +143,10 @@ describe('PostgresCreateTable DDL lowering', () => {
       columns: [col('meta', 'jsonb', { default: lit({ a: "x'y" }) })],
     });
 
-    const adapter = new PostgresControlAdapter(createPostgresBuiltinCodecLookup());
+    const adapter = new PostgresControlAdapter(
+      createPostgresBuiltinCodecLookup(),
+      createPostgresBuiltinDataTypeLookup(),
+    );
     const lowered = await adapter.lowerToExecuteRequest(ast, { contract: {} as PostgresContract });
 
     expect(lowered.sql).toContain(`"meta" jsonb DEFAULT '{"a":"x''y"}'::jsonb`);
@@ -143,7 +167,10 @@ describe('PostgresCreateTable DDL lowering', () => {
         col('birthdate', 'date', { default: lit('2024-01-01') }),
       ],
     });
-    const adapter = new PostgresControlAdapter(createPostgresBuiltinCodecLookup());
+    const adapter = new PostgresControlAdapter(
+      createPostgresBuiltinCodecLookup(),
+      createPostgresBuiltinDataTypeLookup(),
+    );
     const lowered = await adapter.lowerToExecuteRequest(ast, { contract: {} as PostgresContract });
     expect(lowered.sql).toContain(`"id" uuid DEFAULT '00000000-0000-0000-0000-000000000000'::uuid`);
     expect(lowered.sql).toContain(
@@ -168,7 +195,10 @@ describe('PostgresCreateTable DDL lowering', () => {
         col('a_character', 'character(8)', { default: lit('hello') }),
       ],
     });
-    const adapter = new PostgresControlAdapter(createPostgresBuiltinCodecLookup());
+    const adapter = new PostgresControlAdapter(
+      createPostgresBuiltinCodecLookup(),
+      createPostgresBuiltinDataTypeLookup(),
+    );
     const lowered = await adapter.lowerToExecuteRequest(ast, { contract: {} as PostgresContract });
     expect(lowered.sql).toContain(`"a_text" text DEFAULT 'hello'`);
     expect(lowered.sql).toContain(`"a_varchar" varchar(50) DEFAULT 'hello'`);
@@ -193,7 +223,10 @@ describe('PostgresCreateTable DDL lowering', () => {
         col('a_nullable', 'uuid', { default: lit(null) }),
       ],
     });
-    const adapter = new PostgresControlAdapter(createPostgresBuiltinCodecLookup());
+    const adapter = new PostgresControlAdapter(
+      createPostgresBuiltinCodecLookup(),
+      createPostgresBuiltinDataTypeLookup(),
+    );
     const lowered = await adapter.lowerToExecuteRequest(ast, { contract: {} as PostgresContract });
     expect(lowered.sql).toContain('"a_int" int DEFAULT 42');
     expect(lowered.sql).toContain('"a_float" float8 DEFAULT 3.14');
@@ -210,7 +243,10 @@ describe('PostgresCreateTable DDL lowering', () => {
         col('meta', 'jsonb', { default: fn(`jsonb_build_object('k', 1)`) }),
       ],
     });
-    const adapter = new PostgresControlAdapter(createPostgresBuiltinCodecLookup());
+    const adapter = new PostgresControlAdapter(
+      createPostgresBuiltinCodecLookup(),
+      createPostgresBuiltinDataTypeLookup(),
+    );
     const lowered = await adapter.lowerToExecuteRequest(ast, { contract: {} as PostgresContract });
     expect(lowered.sql).toContain('"id" uuid DEFAULT (gen_random_uuid())');
     expect(lowered.sql).toContain(`"meta" jsonb DEFAULT (jsonb_build_object('k', 1))`);
@@ -244,7 +280,10 @@ describe('PostgresCreateTable DDL lowering', () => {
         col('tags', 'text[]', { default: lit([]), codecRef: { codecId: 'pg/text@1', many: true } }),
       ],
     });
-    const adapter = new PostgresControlAdapter(createPostgresBuiltinCodecLookup());
+    const adapter = new PostgresControlAdapter(
+      createPostgresBuiltinCodecLookup(),
+      createPostgresBuiltinDataTypeLookup(),
+    );
     const lowered = await adapter.lowerToExecuteRequest(ast, { contract: {} as PostgresContract });
     expect(lowered.sql).toContain(
       `"ids" int8[] DEFAULT ARRAY['1', '-2', '9007199254740993']::int8[]`,
@@ -266,7 +305,10 @@ describe('PostgresCreateTable DDL lowering', () => {
         col('status', 'text', { notNull: true, default: lit('open') }),
       ],
     });
-    const adapter = new PostgresControlAdapter(createPostgresBuiltinCodecLookup());
+    const adapter = new PostgresControlAdapter(
+      createPostgresBuiltinCodecLookup(),
+      createPostgresBuiltinDataTypeLookup(),
+    );
     const lowered = await adapter.lowerToExecuteRequest(ast, { contract: {} as PostgresContract });
     expect(lowered.sql).toContain('"active" bool DEFAULT true NOT NULL');
     expect(lowered.sql).toContain(`"status" text DEFAULT 'open' NOT NULL`);

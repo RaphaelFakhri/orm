@@ -3,7 +3,10 @@ import { INIT_ADDITIVE_POLICY } from '@internal/family-sql/control';
 import { APP_SPACE_ID } from '@internal/framework-components/control';
 import { UNBOUND_NAMESPACE_ID } from '@internal/framework-components/ir';
 import { SqlStorage } from '@internal/sql-contract/types';
-import { createPostgresBuiltinCodecLookup } from '@internal/target-postgres/codecs';
+import {
+  createPostgresBuiltinCodecLookup,
+  createPostgresBuiltinDataTypeLookup,
+} from '@internal/target-postgres/codecs';
 import {
   contractToPostgresDatabaseSchemaNode,
   createPostgresMigrationPlanner,
@@ -110,7 +113,10 @@ const MIGRATION_PLAN_POLICY = {
 
 describe('PostgresMigrationPlanner - materialized FK/index combinations', () => {
   const planner = createPostgresMigrationPlanner(
-    new PostgresControlAdapter(createPostgresBuiltinCodecLookup()),
+    new PostgresControlAdapter(
+      createPostgresBuiltinCodecLookup(),
+      createPostgresBuiltinDataTypeLookup(),
+    ),
   );
 
   it('plans both the FK constraint and its backing index when both are present in the contract', async () => {
@@ -206,7 +212,7 @@ describe('PostgresMigrationPlanner - materialized FK/index combinations', () => 
     const schema = contractToPostgresDatabaseSchemaNode(fromContract, {
       annotationNamespace: 'pg',
       codecLookup,
-      dataTypeLookup: codecLookup.dataTypes,
+      dataTypeLookup: createPostgresBuiltinDataTypeLookup(),
     });
 
     const result = planner.plan({

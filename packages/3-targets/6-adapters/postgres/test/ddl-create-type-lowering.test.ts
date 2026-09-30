@@ -1,10 +1,16 @@
-import { createPostgresBuiltinCodecLookup } from '@internal/target-postgres/codecs';
+import {
+  createPostgresBuiltinCodecLookup,
+  createPostgresBuiltinDataTypeLookup,
+} from '@internal/target-postgres/codecs';
 import { PostgresCreateType, PostgresDropType } from '@internal/target-postgres/ddl';
 import { describe, expect, it } from 'vitest';
 import { PostgresControlAdapter } from '../src/core/control-adapter';
 import type { PostgresContract } from '../src/core/types';
 
-const adapter = new PostgresControlAdapter(createPostgresBuiltinCodecLookup());
+const adapter = new PostgresControlAdapter(
+  createPostgresBuiltinCodecLookup(),
+  createPostgresBuiltinDataTypeLookup(),
+);
 const ctx = { contract: {} as PostgresContract };
 
 describe('PostgresControlAdapter.lowerToExecuteRequest — CREATE/DROP TYPE DDL', () => {

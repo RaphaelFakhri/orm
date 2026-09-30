@@ -1,5 +1,6 @@
 import {
   createPostgresBuiltinCodecLookup,
+  createPostgresBuiltinDataTypeLookup,
   PostgresControlAdapter,
 } from '@internal/adapter-postgres/control';
 import type { PostgresContract } from '@internal/adapter-postgres/types';
@@ -11,7 +12,10 @@ import {
 import type { PostgresDdlNode } from '@internal/target-postgres/ddl';
 import type { Client } from 'pg';
 
-const postgresControlAdapter = new PostgresControlAdapter(createPostgresBuiltinCodecLookup());
+const postgresControlAdapter = new PostgresControlAdapter(
+  createPostgresBuiltinCodecLookup(),
+  createPostgresBuiltinDataTypeLookup(),
+);
 const postgresControlLowererContext = { contract: {} as PostgresContract };
 
 export async function executeLoweredStatement(

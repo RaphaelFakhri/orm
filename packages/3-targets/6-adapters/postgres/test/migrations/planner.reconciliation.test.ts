@@ -5,7 +5,10 @@ import {
 } from '@internal/framework-components/control';
 import { UNBOUND_NAMESPACE_ID } from '@internal/framework-components/ir';
 import { SqlStorage } from '@internal/sql-contract/types';
-import { createPostgresBuiltinCodecLookup } from '@internal/target-postgres/codecs';
+import {
+  createPostgresBuiltinCodecLookup,
+  createPostgresBuiltinDataTypeLookup,
+} from '@internal/target-postgres/codecs';
 import { createPostgresMigrationPlanner } from '@internal/target-postgres/planner';
 import {
   PostgresDatabaseSchemaNode,
@@ -28,7 +31,10 @@ const WIDENING_POLICY: MigrationOperationPolicy = {
 
 describe('PostgresMigrationPlanner - reconciliation planning', () => {
   const planner = createPostgresMigrationPlanner(
-    new PostgresControlAdapter(createPostgresBuiltinCodecLookup()),
+    new PostgresControlAdapter(
+      createPostgresBuiltinCodecLookup(),
+      createPostgresBuiltinDataTypeLookup(),
+    ),
   );
 
   it('plans destructive drop for extra column when policy allows destructive', async () => {

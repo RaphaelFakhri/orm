@@ -18,6 +18,7 @@
  */
 import {
   createPostgresBuiltinCodecLookup,
+  createPostgresBuiltinDataTypeLookup,
   PostgresControlAdapter,
 } from '@internal/adapter-postgres/control';
 import { Collection } from '@internal/sql-orm-client';
@@ -51,7 +52,10 @@ function nodeTypes(node: unknown): readonly string[] {
 describe('full-text index usage', { timeout: timeouts.databaseOperation }, () => {
   const { db, runtime, client, contract, context, lower } = setupIntegrationTest();
 
-  const controlAdapter = new PostgresControlAdapter(createPostgresBuiltinCodecLookup());
+  const controlAdapter = new PostgresControlAdapter(
+    createPostgresBuiltinCodecLookup(),
+    createPostgresBuiltinDataTypeLookup(),
+  );
 
   /** The index nodes the fixture's `fullTextIndex(...)` helpers emitted. */
   function fixtureIndexes() {

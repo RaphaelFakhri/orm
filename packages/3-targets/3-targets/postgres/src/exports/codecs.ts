@@ -2,7 +2,10 @@ export type { PgInterval } from '../core/codec-helpers';
 export {
   assemblePostgresCodecRegistry,
   assemblePostgresCodecRegistryWithBuiltins,
+  assemblePostgresDataTypeLookup,
+  assemblePostgresDataTypeLookupWithBuiltins,
   createPostgresBuiltinCodecLookup,
+  createPostgresBuiltinDataTypeLookup,
   createPostgresCodecRegistryWithBuiltins,
   type PostgresCodecRegistry,
 } from '../core/codec-registry';

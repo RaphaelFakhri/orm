@@ -7,7 +7,10 @@
  */
 
 import { col, fn, primaryKey } from '@internal/sql-relational-core/contract-free';
-import { createPostgresBuiltinCodecLookup } from '@internal/target-postgres/codecs';
+import {
+  createPostgresBuiltinCodecLookup,
+  createPostgresBuiltinDataTypeLookup,
+} from '@internal/target-postgres/codecs';
 import {
   AddColumnCall,
   CreateSchemaCall,
@@ -17,7 +20,10 @@ import {
 import { describe, expect, it } from 'vitest';
 import { PostgresControlAdapter } from '../../src/core/control-adapter';
 
-const testAdapter = new PostgresControlAdapter(createPostgresBuiltinCodecLookup());
+const testAdapter = new PostgresControlAdapter(
+  createPostgresBuiltinCodecLookup(),
+  createPostgresBuiltinDataTypeLookup(),
+);
 
 describe('Postgres call classes - construction + toOp parity', () => {
   it('CreateTableCall freezes, labels from the table name, and lowers to a createTable op', async () => {

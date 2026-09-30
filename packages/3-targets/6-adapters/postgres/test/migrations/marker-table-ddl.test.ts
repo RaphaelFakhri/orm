@@ -1,4 +1,7 @@
-import { createPostgresBuiltinCodecLookup } from '@internal/target-postgres/codecs';
+import {
+  createPostgresBuiltinCodecLookup,
+  createPostgresBuiltinDataTypeLookup,
+} from '@internal/target-postgres/codecs';
 import { buildSignMarkerBootstrapQueries } from '@internal/target-postgres/contract-free';
 import type { PostgresDdlNode } from '@internal/target-postgres/ddl';
 import { describe, expect, test } from 'vitest';
@@ -6,7 +9,10 @@ import { PostgresControlAdapter } from '../../src/core/control-adapter';
 import type { PostgresContract } from '../../src/core/types';
 
 describe('Postgres marker table DDL lowering', () => {
-  const adapter = new PostgresControlAdapter(createPostgresBuiltinCodecLookup());
+  const adapter = new PostgresControlAdapter(
+    createPostgresBuiltinCodecLookup(),
+    createPostgresBuiltinDataTypeLookup(),
+  );
   const lowererContext = { contract: {} as PostgresContract };
 
   async function markerTableSql(): Promise<string> {

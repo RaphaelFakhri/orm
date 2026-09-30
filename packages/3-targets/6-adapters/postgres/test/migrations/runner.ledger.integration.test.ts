@@ -6,7 +6,10 @@ import {
   buildFabricatedMigrationEdge,
 } from '@internal/migration-tools/aggregate';
 import { EMPTY_CONTRACT_HASH } from '@internal/migration-tools/constants';
-import { createPostgresBuiltinCodecLookup } from '@internal/target-postgres/codecs';
+import {
+  createPostgresBuiltinCodecLookup,
+  createPostgresBuiltinDataTypeLookup,
+} from '@internal/target-postgres/codecs';
 import type { PostgresPlanTargetDetails } from '@internal/target-postgres/planner-target-details';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { PostgresControlAdapter } from '../../src/core/control-adapter';
@@ -38,7 +41,10 @@ interface LedgerRow {
   readonly operations: unknown;
 }
 
-const ledgerAdapter = new PostgresControlAdapter(createPostgresBuiltinCodecLookup());
+const ledgerAdapter = new PostgresControlAdapter(
+  createPostgresBuiltinCodecLookup(),
+  createPostgresBuiltinDataTypeLookup(),
+);
 
 type ExpectedLedgerEntry = Omit<LedgerEntryRecord, 'appliedAt'>;
 

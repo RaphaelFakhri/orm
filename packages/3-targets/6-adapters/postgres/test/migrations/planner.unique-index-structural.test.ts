@@ -21,7 +21,10 @@ import { INIT_ADDITIVE_POLICY } from '@internal/family-sql/control';
 import { APP_SPACE_ID } from '@internal/framework-components/control';
 import { UNBOUND_NAMESPACE_ID } from '@internal/framework-components/ir';
 import { SqlStorage, type StorageTableInput } from '@internal/sql-contract/types';
-import { createPostgresBuiltinCodecLookup } from '@internal/target-postgres/codecs';
+import {
+  createPostgresBuiltinCodecLookup,
+  createPostgresBuiltinDataTypeLookup,
+} from '@internal/target-postgres/codecs';
 import { createPostgresMigrationPlanner } from '@internal/target-postgres/planner';
 import {
   PostgresDatabaseSchemaNode,
@@ -36,7 +39,10 @@ import { postgresComponents } from './fixtures/postgres-components';
 
 describe('PostgresMigrationPlanner - unique constraints vs indexes (structural nodes)', () => {
   const planner = createPostgresMigrationPlanner(
-    new PostgresControlAdapter(createPostgresBuiltinCodecLookup()),
+    new PostgresControlAdapter(
+      createPostgresBuiltinCodecLookup(),
+      createPostgresBuiltinDataTypeLookup(),
+    ),
   );
 
   const emailCols = {

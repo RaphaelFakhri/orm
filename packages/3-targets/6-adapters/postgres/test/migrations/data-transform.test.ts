@@ -8,7 +8,10 @@ import type { SqlStorage } from '@internal/sql-contract/types';
 import type { ContractCodecRegistry, ProjectionExpr } from '@internal/sql-relational-core/ast';
 import type { SqlQueryPlan } from '@internal/sql-relational-core/plan';
 import { postgresCodec } from '@internal/target-postgres/codec-descriptor';
-import { createPostgresCodecRegistryWithBuiltins } from '@internal/target-postgres/codecs';
+import {
+  createPostgresBuiltinDataTypeLookup,
+  createPostgresCodecRegistryWithBuiltins,
+} from '@internal/target-postgres/codecs';
 import { pgTable } from '@internal/target-postgres/contract-free';
 import { dataTransform } from '@internal/target-postgres/data-transform';
 import { pgText } from '@internal/target-postgres/data-types';
@@ -254,7 +257,10 @@ const testTable = pgTable(
   },
 );
 
-const testAdapter = new PostgresControlAdapter(transformingCodecRegistry);
+const testAdapter = new PostgresControlAdapter(
+  transformingCodecRegistry,
+  createPostgresBuiltinDataTypeLookup(),
+);
 
 describe('dataTransform — codec-encoded params via lowerToExecuteRequest', () => {
   it('execute step params carry the codec-encoded wire value (not raw JS value)', async () => {

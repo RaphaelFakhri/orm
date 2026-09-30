@@ -7,6 +7,7 @@ import { col, fn, lit } from '@internal/sql-relational-core/contract-free';
 import { postgresCodec } from '@internal/target-postgres/codec-descriptor';
 import {
   createPostgresBuiltinCodecLookup,
+  createPostgresBuiltinDataTypeLookup,
   createPostgresCodecRegistryWithBuiltins,
 } from '@internal/target-postgres/codecs';
 import { jsonb, pgTable, text } from '@internal/target-postgres/contract-free';
@@ -19,7 +20,10 @@ import { PostgresControlAdapter } from '../src/core/control-adapter';
 import { encodeControlQueryParams } from '../src/core/control-codecs';
 import type { PostgresContract } from '../src/core/types';
 
-const adapter = new PostgresControlAdapter(createPostgresBuiltinCodecLookup());
+const adapter = new PostgresControlAdapter(
+  createPostgresBuiltinCodecLookup(),
+  createPostgresBuiltinDataTypeLookup(),
+);
 const ctx = { contract: {} as PostgresContract };
 
 /**
@@ -177,7 +181,10 @@ describe('PostgresControlAdapter.lowerToExecuteRequest — guards', () => {
   });
 
   it('routes a codec-bearing literal default through codec.encode (not raw type-branching)', async () => {
-    const codecAdapter = new PostgresControlAdapter(transformingCodecRegistry);
+    const codecAdapter = new PostgresControlAdapter(
+      transformingCodecRegistry,
+      createPostgresBuiltinDataTypeLookup(),
+    );
     const ast = new PostgresCreateTable({
       table: 'secrets',
       columns: [
@@ -242,7 +249,10 @@ const jsonbTable = pgTable(
   },
 );
 
-const codecAdapter = new PostgresControlAdapter(transformingCodecRegistry);
+const codecAdapter = new PostgresControlAdapter(
+  transformingCodecRegistry,
+  createPostgresBuiltinDataTypeLookup(),
+);
 
 describe('PostgresControlAdapter.lowerToExecuteRequest — query branch encoding', () => {
   it('codec-encodes a literal param bound to a transforming-codec column', async () => {
@@ -342,7 +352,10 @@ describe('PostgresControlAdapter.lowerToExecuteRequest — extension codec end-t
 
   it('encodes a query param through an extension codec when the adapter receives the descriptor', async () => {
     const { contract, table } = buildExtContractAndTable();
-    const extAdapter = new PostgresControlAdapter(extCodecRegistry);
+    const extAdapter = new PostgresControlAdapter(
+      extCodecRegistry,
+      createPostgresBuiltinDataTypeLookup(),
+    );
 
     const ast = table.select(table.label).where(table.label.eq('plaintext')).build();
     const result = await extAdapter.lowerToExecuteRequest(ast, { contract });
@@ -353,7 +366,10 @@ describe('PostgresControlAdapter.lowerToExecuteRequest — extension codec end-t
 
   it('throws when a contract column references a codec absent from the adapter lookup', async () => {
     const { contract, table } = buildExtContractAndTable();
-    const noExtAdapter = new PostgresControlAdapter(createPostgresBuiltinCodecLookup());
+    const noExtAdapter = new PostgresControlAdapter(
+      createPostgresBuiltinCodecLookup(),
+      createPostgresBuiltinDataTypeLookup(),
+    );
 
     const ast = table.select(table.label).where(table.label.eq('plaintext')).build();
     await expect(noExtAdapter.lowerToExecuteRequest(ast, { contract })).rejects.toThrow(

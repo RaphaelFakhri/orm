@@ -1,6 +1,9 @@
 import type { SqlControlDriverInstance } from '@internal/sql-contract/types';
 import { SqlCheckConstraintIR } from '@internal/sql-schema-ir/types';
-import { createPostgresBuiltinCodecLookup } from '@internal/target-postgres/codecs';
+import {
+  createPostgresBuiltinCodecLookup,
+  createPostgresBuiltinDataTypeLookup,
+} from '@internal/target-postgres/codecs';
 import { describe, expect, it } from 'vitest';
 import { PostgresControlAdapter } from '../src/core/control-adapter';
 
@@ -13,7 +16,10 @@ async function checksOf(
   tableName: string,
   checkRows: ReadonlyArray<{ constraint_name: string; check_expression: string }>,
 ) {
-  const adapter = new PostgresControlAdapter(createPostgresBuiltinCodecLookup());
+  const adapter = new PostgresControlAdapter(
+    createPostgresBuiltinCodecLookup(),
+    createPostgresBuiltinDataTypeLookup(),
+  );
   const mockDriver: SqlControlDriverInstance<'postgres'> = {
     familyId: 'sql',
     targetId: 'postgres',

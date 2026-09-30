@@ -30,6 +30,7 @@ import type { StorageColumn } from '@internal/sql-contract/types';
 import { col } from '@internal/sql-relational-core/contract-free';
 import {
   createPostgresBuiltinCodecLookup,
+  createPostgresBuiltinDataTypeLookup,
   postgresCodecDescriptorRegistry,
 } from '@internal/target-postgres/codecs';
 import {
@@ -66,7 +67,10 @@ const META = {
   from: 'a'.repeat(64),
   to: 'b'.repeat(64),
 } as const;
-const testAdapter = new PostgresControlAdapter(createPostgresBuiltinCodecLookup());
+const testAdapter = new PostgresControlAdapter(
+  createPostgresBuiltinCodecLookup(),
+  createPostgresBuiltinDataTypeLookup(),
+);
 
 describe('renderOps', () => {
   it('lowers each variant via its pure factory, pinning id/operationClass/target.details', async () => {

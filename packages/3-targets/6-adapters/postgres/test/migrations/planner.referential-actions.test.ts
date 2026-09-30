@@ -3,7 +3,10 @@ import { INIT_ADDITIVE_POLICY, type SqlMigrationPlanOperation } from '@internal/
 import { APP_SPACE_ID } from '@internal/framework-components/control';
 import { UNBOUND_NAMESPACE_ID } from '@internal/framework-components/ir';
 import { type ForeignKey, type ReferentialAction, SqlStorage } from '@internal/sql-contract/types';
-import { createPostgresBuiltinCodecLookup } from '@internal/target-postgres/codecs';
+import {
+  createPostgresBuiltinCodecLookup,
+  createPostgresBuiltinDataTypeLookup,
+} from '@internal/target-postgres/codecs';
 import { createPostgresMigrationPlanner } from '@internal/target-postgres/planner';
 import {
   PostgresDatabaseSchemaNode,
@@ -94,7 +97,10 @@ async function planAndGetFkSql(
   onUpdate?: ReferentialAction,
 ): Promise<string> {
   const planner = createPostgresMigrationPlanner(
-    new PostgresControlAdapter(createPostgresBuiltinCodecLookup()),
+    new PostgresControlAdapter(
+      createPostgresBuiltinCodecLookup(),
+      createPostgresBuiltinDataTypeLookup(),
+    ),
   );
   const contract = createRefActionContract(onDelete, onUpdate);
   const result = planner.plan({

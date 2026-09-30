@@ -41,32 +41,33 @@
  */
 
 import { defineContract } from '@internal/postgres/contract-builder';
-import { assemblePostgresCodecRegistryWithBuiltins } from '@internal/target-postgres/codecs';
+import {
+  assemblePostgresCodecRegistryWithBuiltins,
+  assemblePostgresDataTypeLookupWithBuiltins,
+} from '@internal/target-postgres/codecs';
 import { VECTOR_CODEC_ID } from './core/constants';
 import { PGVECTOR_NATIVE_TYPE } from './core/contract-space-constants';
 import { pgvectorDataTypes } from './core/data-types';
 import { pgvectorCodecRegistry } from './core/registry';
 
-const codecLookup = assemblePostgresCodecRegistryWithBuiltins([
-  {
-    types: { codecTypes: { codecDescriptors: [...pgvectorCodecRegistry.values()] } },
-    dataTypes: pgvectorDataTypes,
-  },
+const dataTypeLookup = assemblePostgresDataTypeLookupWithBuiltins([
+  { dataTypes: pgvectorDataTypes },
 ]);
-
-export const contract = defineContract(
-  { codecLookup, dataTypeLookup: codecLookup.dataTypes },
-  () => ({
-    types: {
-      [PGVECTOR_NATIVE_TYPE]: {
-        kind: 'codec-instance',
-        codecId: VECTOR_CODEC_ID,
-        nativeType: PGVECTOR_NATIVE_TYPE,
-        typeParams: {},
-      },
-    },
-    models: {},
-  }),
+const codecLookup = assemblePostgresCodecRegistryWithBuiltins(
+  [{ types: { codecTypes: { codecDescriptors: [...pgvectorCodecRegistry.values()] } } }],
+  dataTypeLookup,
 );
+
+export const contract = defineContract({ codecLookup, dataTypeLookup }, () => ({
+  types: {
+    [PGVECTOR_NATIVE_TYPE]: {
+      kind: 'codec-instance',
+      codecId: VECTOR_CODEC_ID,
+      nativeType: PGVECTOR_NATIVE_TYPE,
+      typeParams: {},
+    },
+  },
+  models: {},
+}));
 
 export default contract;

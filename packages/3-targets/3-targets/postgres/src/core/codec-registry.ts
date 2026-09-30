@@ -1,4 +1,4 @@
-import type { CodecRegistry, DataType, DataTypeLookup } from '@internal/framework-components/codec';
+import type { CodecRegistry, DataTypeLookup } from '@internal/framework-components/codec';
 import type { ComponentMetadata } from '@internal/framework-components/components';
 import { assembleDataTypes, extractCodecLookup } from '@internal/framework-components/control';
 import { structuredError } from '@internal/utils/structured-error';
@@ -10,30 +10,23 @@ import {
 import { postgresTargetDescriptorMetaRuntime } from './descriptor-meta-runtime';
 import { postgresCodecDescriptorRegistry } from './registry';
 
-/**
- * The codecs of a composed stack, with the data types the same components register. The SQL
- * renderer writes a parameter's cast from the data type its codec represents.
- */
-export type PostgresCodecRegistry = CodecRegistry &
-  PostgresCodecDescriptorRegistry & { readonly dataTypes: DataTypeLookup };
+export type PostgresCodecRegistry = CodecRegistry & PostgresCodecDescriptorRegistry;
 
+type CodecContributor = Pick<ComponentMetadata, 'types'>;
 type DataTypeContributor = Pick<ComponentMetadata, 'dataTypes'> & { readonly id?: string };
 
+/**
+ * A registry of `descriptors`, refusing a codec whose data type `dataTypeLookup` does not have: the
+ * SQL renderer writes a parameter's cast from the data type its codec represents.
+ */
 function buildPostgresCodecRegistry(
   descriptors: ReadonlyArray<unknown>,
-  dataTypeContributors: ReadonlyArray<DataTypeContributor>,
+  dataTypeLookup: Pick<DataTypeLookup, 'has'>,
 ): PostgresCodecRegistry {
   const descriptorRegistry = buildPostgresCodecDescriptorRegistry(descriptors);
   const validatedDescriptors = Array.from(descriptorRegistry.values());
-  const codecRegistry = extractCodecLookup([
-    {
-      id: 'postgres-codecs',
-      types: { codecTypes: { codecDescriptors: validatedDescriptors } },
-    },
-  ]);
-  const dataTypes = assembleDataTypes(dataTypeContributors).lookup;
   for (const descriptor of validatedDescriptors) {
-    if (!dataTypes.has(descriptor.dataType)) {
+    if (!dataTypeLookup.has(descriptor.dataType)) {
       throw structuredError(
         'CONTRACT.DATA_TYPE_UNREGISTERED',
         `Codec "${descriptor.codecId}" represents data type "${descriptor.dataType}", which no component registers.`,
@@ -45,51 +38,69 @@ function buildPostgresCodecRegistry(
       );
     }
   }
+  const codecRegistry = extractCodecLookup([
+    {
+      id: 'postgres-codecs',
+      types: { codecTypes: { codecDescriptors: validatedDescriptors } },
+    },
+  ]);
   const registry: PostgresCodecRegistry = {
     ...codecRegistry,
     descriptorFor: (codecId) => descriptorRegistry.descriptorFor(codecId),
     values: () => descriptorRegistry.values(),
-    dataTypes,
   };
   return Object.freeze(registry);
 }
 
+/** The data types `components` register, refusing a data type id that two of them register. */
+export function assemblePostgresDataTypeLookup(
+  components: ReadonlyArray<DataTypeContributor>,
+): DataTypeLookup {
+  return assembleDataTypes(components).lookup;
+}
+
+/** The target's data types and those `extensions` register. */
+export function assemblePostgresDataTypeLookupWithBuiltins(
+  extensions: ReadonlyArray<DataTypeContributor>,
+): DataTypeLookup {
+  return assemblePostgresDataTypeLookup([postgresTargetDescriptorMetaRuntime, ...extensions]);
+}
+
+export function createPostgresBuiltinDataTypeLookup(): DataTypeLookup {
+  return assemblePostgresDataTypeLookupWithBuiltins([]);
+}
+
 export function assemblePostgresCodecRegistry(
-  components: ReadonlyArray<
-    Pick<ComponentMetadata, 'types' | 'dataTypes'> & { readonly id?: string }
-  >,
+  components: ReadonlyArray<CodecContributor>,
+  dataTypeLookup: Pick<DataTypeLookup, 'has'>,
 ): PostgresCodecRegistry {
   const descriptors = components.flatMap(
     (component) => component.types?.codecTypes?.codecDescriptors ?? [],
   );
-  return buildPostgresCodecRegistry(descriptors, components);
+  return buildPostgresCodecRegistry(descriptors, dataTypeLookup);
 }
 
 export function assemblePostgresCodecRegistryWithBuiltins(
-  extensions: ReadonlyArray<
-    Pick<ComponentMetadata, 'types' | 'dataTypes'> & { readonly id?: string }
-  >,
+  extensions: ReadonlyArray<CodecContributor>,
+  dataTypeLookup: Pick<DataTypeLookup, 'has'>,
 ): PostgresCodecRegistry {
   return buildPostgresCodecRegistry(
     [
       ...postgresCodecDescriptorRegistry.values(),
       ...extensions.flatMap((extension) => extension.types?.codecTypes?.codecDescriptors ?? []),
     ],
-    [postgresTargetDescriptorMetaRuntime, ...extensions],
+    dataTypeLookup,
   );
 }
 
-/**
- * A registry of the built-in codecs and `codecDescriptors`. `dataTypes` are the data types those
- * descriptors represent beyond the target's own.
- */
+/** A registry of the built-in codecs and `codecDescriptors`, whose data types `dataTypeLookup` has. */
 export function createPostgresCodecRegistryWithBuiltins(
   codecDescriptors: readonly AnyPostgresCodecDescriptor[] = [],
-  dataTypes: readonly DataType[] = [],
+  dataTypeLookup: Pick<DataTypeLookup, 'has'> = createPostgresBuiltinDataTypeLookup(),
 ): PostgresCodecRegistry {
   return buildPostgresCodecRegistry(
     [...postgresCodecDescriptorRegistry.values(), ...codecDescriptors],
-    [postgresTargetDescriptorMetaRuntime, { id: 'postgres-codec-registry', dataTypes }],
+    dataTypeLookup,
   );
 }
 

@@ -7,6 +7,7 @@ import { UNBOUND_NAMESPACE_ID } from '@internal/framework-components/ir';
 import { SqlStorage, type StorageColumn, type StorageTable } from '@internal/sql-contract/types';
 import {
   createPostgresBuiltinCodecLookup,
+  createPostgresBuiltinDataTypeLookup,
   postgresCodecDescriptorRegistry,
 } from '@internal/target-postgres/codecs';
 import { createPostgresMigrationPlanner } from '@internal/target-postgres/planner';
@@ -32,7 +33,10 @@ const emptySchema = new PostgresDatabaseSchemaNode({
   roles: [],
   existingSchemas: [],
 });
-const testAdapter = new PostgresControlAdapter(createPostgresBuiltinCodecLookup());
+const testAdapter = new PostgresControlAdapter(
+  createPostgresBuiltinCodecLookup(),
+  createPostgresBuiltinDataTypeLookup(),
+);
 
 const PG_TEXT_CODEC = 'pg/text@1';
 const HOOKED_CODEC = 'cs/string@1';

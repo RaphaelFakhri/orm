@@ -8,6 +8,7 @@ import type { Adapter, AnyQueryAst } from '@internal/sql-relational-core/ast';
 import type { SqlRuntimeAdapterDescriptor } from '@internal/sql-runtime';
 import {
   assemblePostgresCodecRegistry,
+  assemblePostgresDataTypeLookup,
   postgresCodecRegistry,
 } from '@internal/target-postgres/codecs';
 import {
@@ -58,8 +59,9 @@ const postgresRuntimeAdapterDescriptor: SqlRuntimeAdapterDescriptor<'postgres', 
     rawCodecInferer: postgresRawCodecInferer,
     create(stack): SqlRuntimeAdapter {
       const components = [stack.target, stack.adapter, ...stack.extensions];
-      const codecRegistry = assemblePostgresCodecRegistry(components);
-      return createPostgresAdapterWithCodecRegistry(codecRegistry);
+      const dataTypeLookup = assemblePostgresDataTypeLookup(components);
+      const codecRegistry = assemblePostgresCodecRegistry(components, dataTypeLookup);
+      return createPostgresAdapterWithCodecRegistry(codecRegistry, dataTypeLookup);
     },
   };
 
