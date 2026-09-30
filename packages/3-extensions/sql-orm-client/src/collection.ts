@@ -89,6 +89,7 @@ import {
   isIncludeCombine,
   isIncludeScalar,
 } from './include-descriptors';
+import { assertLockCompatible } from './lock-guards';
 import { createModelAccessor } from './model-accessor';
 import {
   buildRowIdentityFilterFromRow,
@@ -918,6 +919,7 @@ class CollectionImpl<
       ...(keyof DefaultModelRow<TContract, ModelName, State['nsId']> & string)[],
     ],
   >(...fields: Fields): GroupedCollection<TContract, ModelName, Fields, State['nsId']> {
+    assertLockCompatible(this.state, 'groupBy');
     const groupByColumns = mapFieldsToColumns(
       this.contract,
       this.namespaceId,
@@ -1358,6 +1360,7 @@ class CollectionImpl<
     fn: (aggregate: AggregateBuilder<TContract, ModelName, State['nsId']>) => Spec,
     configure?: (meta: MetaBuilder<'read'>) => void,
   ): Preparable<Record<string, unknown>, Promise<AggregateResult<Spec>>> {
+    assertLockCompatible(this.state, 'aggregate');
     const aggregateSpec = fn(
       createAggregateBuilder<TContract, ModelName, State['nsId']>(
         this.contract,
@@ -1496,6 +1499,7 @@ class CollectionImpl<
       | MutationCreateInputWithRelations<TContract, ModelName, State['nsId']>,
     configure?: (meta: MetaBuilder<'write'>) => void,
   ): Promise<Row> {
+    assertLockCompatible(this.state, 'mutation');
     assertReturningCapability(this.contract, 'create()');
     const annotationsMap = this.#collectAnnotationsFromMeta(configure, 'write', 'create');
 
@@ -1604,6 +1608,7 @@ class CollectionImpl<
     optionsOrConfigure?: CreateConflictOptions<TContract, ModelName> | WriteConfigure,
     configure?: WriteConfigure,
   ): AsyncIterableResult<Row> {
+    assertLockCompatible(this.state, 'mutation');
     const { options, configureCallback } = splitCreateArguments(optionsOrConfigure, configure);
     const conflictSkip = this.#resolveConflictSkip(options, 'createAll()');
     return this.#createAllWithAnnotations(
@@ -1985,6 +1990,7 @@ class CollectionImpl<
     optionsOrConfigure?: CreateConflictOptions<TContract, ModelName> | WriteConfigure,
     configure?: WriteConfigure,
   ): Promise<number> {
+    assertLockCompatible(this.state, 'mutation');
     const { options, configureCallback } = splitCreateArguments(optionsOrConfigure, configure);
     const conflictSkip = this.#resolveConflictSkip(options, 'createAndCount()');
 
@@ -2070,6 +2076,7 @@ class CollectionImpl<
     },
     configure?: (meta: MetaBuilder<'write'>) => void,
   ): Promise<Row> {
+    assertLockCompatible(this.state, 'mutation');
     assertReturningCapability(this.contract, 'upsert()');
     this.#assertNotMtiVariant('upsert()');
     const annotationsMap = this.#collectAnnotationsFromMeta(configure, 'write', 'upsert');
@@ -2204,6 +2211,7 @@ class CollectionImpl<
       : never,
     configure?: (meta: MetaBuilder<'write'>) => void,
   ): Promise<Row | null> {
+    assertLockCompatible(this.state, 'mutation');
     assertReturningCapability(this.contract, 'update()');
     const annotationsMap = this.#collectAnnotationsFromMeta(configure, 'write', 'update');
 
@@ -2293,6 +2301,7 @@ class CollectionImpl<
       : never,
     configure?: (meta: MetaBuilder<'write'>) => void,
   ): AsyncIterableResult<Row> {
+    assertLockCompatible(this.state, 'mutation');
     return this.#updateAllWithAnnotations(
       data,
       this.#collectAnnotationsFromMeta(configure, 'write', 'updateAll'),
@@ -2368,6 +2377,7 @@ class CollectionImpl<
       : never,
     configure?: (meta: MetaBuilder<'write'>) => void,
   ): Promise<number> {
+    assertLockCompatible(this.state, 'mutation');
     const mappedData = mapModelDataToStorageRow(
       this.contract,
       this.namespaceId,
@@ -2416,6 +2426,7 @@ class CollectionImpl<
     this: State['hasWhere'] extends true ? Collection<TContract, ModelName, Row, State> : never,
     configure?: (meta: MetaBuilder<'write'>) => void,
   ): Promise<Row | null> {
+    assertLockCompatible(this.state, 'mutation');
     assertReturningCapability(this.contract, 'delete()');
     const annotationsMap = this.#collectAnnotationsFromMeta(configure, 'write', 'delete');
     return withMutationScope(this.ctx.runtime, async (scope) => {
@@ -2457,6 +2468,7 @@ class CollectionImpl<
     this: State['hasWhere'] extends true ? Collection<TContract, ModelName, Row, State> : never,
     configure?: (meta: MetaBuilder<'write'>) => void,
   ): AsyncIterableResult<Row> {
+    assertLockCompatible(this.state, 'mutation');
     return blindCast<
       Collection<TContract, ModelName, Row, State>,
       'deleteAll() conditional this parameter is a filtered collection at runtime'
@@ -2570,6 +2582,7 @@ class CollectionImpl<
     this: State['hasWhere'] extends true ? Collection<TContract, ModelName, Row, State> : never,
     configure?: (meta: MetaBuilder<'write'>) => void,
   ): Promise<number> {
+    assertLockCompatible(this.state, 'mutation');
     const annotationsMap = this.#collectAnnotationsFromMeta(configure, 'write', 'deleteAndCount');
 
     const compiled = mergeAnnotations(

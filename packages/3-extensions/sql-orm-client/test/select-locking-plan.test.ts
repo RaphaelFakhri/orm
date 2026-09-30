@@ -1,0 +1,226 @@
+import { createPostgresAdapter } from '@internal/adapter-postgres/adapter';
+import type { SqlQueryPlan } from '@internal/sql-relational-core/plan';
+import { describe, expect, it } from 'vitest';
+import type { PostgresContract } from '../../../3-targets/6-adapters/postgres/src/core/types';
+import { Collection } from '../src/collection';
+import { baseContract, createCollectionFor } from './collection-fixtures';
+import {
+  buildMixedPolyContract,
+  createMockRuntime,
+  getTestContext,
+  type MockRuntime,
+} from './helpers';
+
+const adapter = createPostgresAdapter();
+
+function sqlOf(runtime: MockRuntime, contract = baseContract): string {
+  const plan = runtime.executions[0]!.plan as SqlQueryPlan<unknown>;
+  return adapter.lower(plan.ast, {
+    contract: contract as unknown as PostgresContract,
+    params: plan.params,
+  }).sql;
+}
+
+const postsSql =
+  'SELECT "posts"."embedding" AS "embedding", "posts"."id" AS "id", "posts"."title" AS "title", "posts"."user_id" AS "user_id", "posts"."views" AS "views" FROM "public"."posts"';
+
+const lockIncompatible = (conflict: string) =>
+  expect.objectContaining({
+    name: 'StructuredError',
+    code: 'ORM.LOCK_INCOMPATIBLE',
+    meta: { conflict },
+  });
+
+async function refusal(run: () => unknown): Promise<unknown> {
+  try {
+    const result = await run();
+    if (result !== null && typeof result === 'object' && 'toArray' in result) {
+      await (result as { toArray(): Promise<unknown> }).toArray();
+    }
+  } catch (error) {
+    return error;
+  }
+  return undefined;
+}
+
+describe('ORM row locking, rendered SQL', () => {
+  it.each([
+    ['forUpdate', 'FOR UPDATE'],
+    ['forNoKeyUpdate', 'FOR NO KEY UPDATE'],
+    ['forShare', 'FOR SHARE'],
+    ['forKeyShare', 'FOR KEY SHARE'],
+  ] as const)('%s renders %s OF the model table', async (method, keyword) => {
+    const { collection, runtime } = createCollectionFor('Post');
+
+    await collection[method]().all().toArray();
+
+    expect(sqlOf(runtime)).toBe(`${postsSql} ${keyword} OF "posts"`);
+  });
+
+  it('nowait and skipLocked render', async () => {
+    const nowait = createCollectionFor('Post');
+    const skipLocked = createCollectionFor('Post');
+
+    await nowait.collection.forUpdate({ nowait: true }).all().toArray();
+    await skipLocked.collection.forShare({ skipLocked: true }).all().toArray();
+
+    expect(sqlOf(nowait.runtime)).toBe(`${postsSql} FOR UPDATE OF "posts" NOWAIT`);
+    expect(sqlOf(skipLocked.runtime)).toBe(`${postsSql} FOR SHARE OF "posts" SKIP LOCKED`);
+  });
+
+  it('two calls render two clauses in order', async () => {
+    const { collection, runtime } = createCollectionFor('Post');
+
+    await collection.forUpdate().forKeyShare({ skipLocked: true }).all().toArray();
+
+    expect(sqlOf(runtime)).toBe(
+      `${postsSql} FOR UPDATE OF "posts" FOR KEY SHARE OF "posts" SKIP LOCKED`,
+    );
+  });
+
+  it('first() renders LIMIT 1 before the clause', async () => {
+    const { collection, runtime } = createCollectionFor('Post');
+
+    await collection
+      .where((post) => post.views.gt(40))
+      .orderBy((post) => post.views.asc())
+      .forUpdate({ skipLocked: true })
+      .first();
+
+    expect(sqlOf(runtime)).toBe(
+      `${postsSql} WHERE "posts"."views" > $1 ORDER BY "posts"."views" ASC LIMIT 1 FOR UPDATE OF "posts" SKIP LOCKED`,
+    );
+  });
+
+  it('the clause survives where, orderBy, cursor, limit and offset', async () => {
+    const { collection, runtime } = createCollectionFor('Post');
+
+    await collection
+      .forUpdate()
+      .where((post) => post.views.gt(40))
+      .orderBy((post) => post.id.asc())
+      .cursor({ id: 3 })
+      .limit(5)
+      .offset(2)
+      .all()
+      .toArray();
+
+    expect(sqlOf(runtime)).toBe(
+      `${postsSql} WHERE ("posts"."views" > $1 AND "posts"."id" > $2) ORDER BY "posts"."id" ASC LIMIT 5 OFFSET 2 FOR UPDATE OF "posts"`,
+    );
+  });
+
+  it('a polymorphic variant locks the base table', async () => {
+    const contract = buildMixedPolyContract();
+    const runtime = createMockRuntime();
+    const tasks = new Collection({ runtime, context: { ...getTestContext(), contract } }, 'Task', {
+      namespaceId: 'public',
+    });
+
+    await tasks
+      .variant('Feature' as never)
+      .forUpdate()
+      .all()
+      .toArray();
+
+    expect(sqlOf(runtime, contract)).toMatch(/ FROM "public"\."tasks" .* FOR UPDATE OF "tasks"$/);
+  });
+});
+
+describe('ORM row locking, refusals', () => {
+  const lockedPosts = () => createCollectionFor('Post').collection.forUpdate();
+  const lockedUsers = () => createCollectionFor('User').collection.forUpdate();
+
+  it('a lock with include', async () => {
+    expect(await refusal(() => lockedUsers().include('posts').all())).toEqual(
+      lockIncompatible('include'),
+    );
+  });
+
+  it('a lock inside an include refinement', async () => {
+    const { collection } = createCollectionFor('User');
+
+    expect(
+      await refusal(() => collection.include('posts', (posts) => posts.forUpdate()).all()),
+    ).toEqual(lockIncompatible('include'));
+  });
+
+  it('a lock inside an include scalar reducer', async () => {
+    const { collection } = createCollectionFor('User');
+
+    expect(
+      await refusal(() => collection.include('posts', (posts) => posts.forUpdate().count()).all()),
+    ).toEqual(lockIncompatible('include'));
+  });
+
+  it('a lock inside an include combine branch', async () => {
+    const { collection } = createCollectionFor('User');
+
+    expect(
+      await refusal(() =>
+        collection.include('posts', (posts) => posts.combine({ locked: posts.forUpdate() })).all(),
+      ),
+    ).toEqual(lockIncompatible('include'));
+  });
+
+  it('a lock with groupBy', async () => {
+    expect(await refusal(() => lockedPosts().groupBy('userId'))).toEqual(
+      lockIncompatible('groupBy'),
+    );
+  });
+
+  it('a lock with aggregate', async () => {
+    expect(await refusal(() => lockedPosts().aggregate((agg) => ({ n: agg.count() })))).toEqual(
+      lockIncompatible('aggregate'),
+    );
+  });
+
+  it('a lock with distinct', async () => {
+    expect(await refusal(() => lockedPosts().distinct('title').all())).toEqual(
+      lockIncompatible('distinct'),
+    );
+  });
+
+  it('a lock with distinctOn', async () => {
+    expect(
+      await refusal(() =>
+        lockedPosts()
+          .orderBy((post) => post.title.asc())
+          .distinctOn('title')
+          .all(),
+      ),
+    ).toEqual(lockIncompatible('distinctOn'));
+  });
+
+  describe('a mutation terminal on a locked collection', () => {
+    const lockedWhere = () => lockedPosts().where((post) => post.id.eq(1));
+
+    it.each([
+      ['create', () => lockedPosts().create({ title: 't' } as never)],
+      ['createAll', () => lockedPosts().createAll([{ title: 't' }] as never)],
+      ['createAndCount', () => lockedPosts().createAndCount([{ title: 't' }] as never)],
+      ['upsert', () => lockedPosts().upsert({ create: {}, update: {} } as never)],
+      ['update', () => lockedWhere().update({ title: 't' })],
+      ['updateAll', () => lockedWhere().updateAll({ title: 't' })],
+      ['updateAndCount', () => lockedWhere().updateAndCount({ title: 't' })],
+      ['delete', () => lockedWhere().delete()],
+      ['deleteAll', () => lockedWhere().deleteAll()],
+      ['deleteAndCount', () => lockedWhere().deleteAndCount()],
+    ] as const)('%s', async (_terminal, run) => {
+      expect(await refusal(run)).toEqual(lockIncompatible('mutation'));
+    });
+
+    it('update runs no statement, including its read-back', async () => {
+      const { collection, runtime } = createCollectionFor('Post');
+
+      await refusal(() =>
+        collection
+          .forUpdate()
+          .where((post) => post.id.eq(1))
+          .update({ title: 't' }),
+      );
+
+      expect(runtime.executions).toEqual([]);
+    });
+  });
+});
