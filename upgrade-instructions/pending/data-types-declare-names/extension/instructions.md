@@ -131,7 +131,7 @@ changes:
     detection:
       glob: "**/*.{ts,mts,cts}"
       matches:
-        - '\bbuildBoundContract\s*\('
+        - '\bbuildBoundContract\b[^;]*from\s*[''"]@internal/sql-contract-ts/'
   - id: contract-to-schema-takes-components
     summary: |
       The migrations capability's `contractToSchema(contract, frameworkComponents)` requires
