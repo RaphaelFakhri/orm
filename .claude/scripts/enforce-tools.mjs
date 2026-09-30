@@ -28,7 +28,7 @@ const rules = [
     reason: FULL_SUITE_REASON,
   },
   {
-    pattern: /\bpnpm\s+(-r|--recursive|-w|--workspace-root|--filter\s+integration-tests)\s+(run\s+)?test(\s|$)/,
+    pattern: /\bpnpm\s+(-r|--recursive|-w|--workspace-root|--filter\s+(integration-tests|e2e-tests))\s+(run\s+)?test(\s|$)/,
     reason: FULL_SUITE_REASON,
   },
   { pattern: /\bturbo run test(\s|$)/, reason: FULL_SUITE_REASON },

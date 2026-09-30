@@ -33,6 +33,22 @@ describe('rewriteSqlStrings', () => {
     );
   });
 
+  it('keeps treating // comments as comments after an unclosed backtick', () => {
+    const before = [
+      '  @@index([a], where: sql`open',
+      '  // where: "commented out"',
+      '  @@check(expression: "total > 0", name: "positive")',
+    ].join('\n');
+    strictEqual(
+      rewriteSqlStrings(before),
+      [
+        '  @@index([a], where: sql`open',
+        '  // where: "commented out"',
+        '  @@check(expression: sql`total > 0`, name: "positive")',
+      ].join('\n'),
+    );
+  });
+
   it('rewrites @@fullTextIndex(where:) and @@check(expression:), in single quotes too', () => {
     const before = [
       '  @@fullTextIndex([body], where: \'post_id = 1\', name: "body_search")',

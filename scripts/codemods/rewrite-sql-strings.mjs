@@ -54,7 +54,7 @@ function commentRanges(source) {
     }
     if (ch === '`') {
       const end = source.indexOf('`', i + 1);
-      if (end === -1) break;
+      if (end === -1) continue;
       i = end;
       continue;
     }
