@@ -167,7 +167,7 @@ Every text below is complete: no other text is declared. `W` marks written, `C` 
 
 ## 3. Who registers, readers, and what is deleted
 
-1. The Postgres and SQLite targets' descriptor metadata register `dataTypes`; the adapters stop. The scalar type constructors move from `packages/3-targets/6-adapters/*/src/core/control-mutation-defaults.ts` to each target's `src/core/authoring.ts`. TypeScript column helpers keep their public import paths.
+1. The Postgres and SQLite targets' descriptor metadata register `dataTypes`, in the control and runtime planes; the adapters stop. The scalar type constructors move from `packages/3-targets/6-adapters/*/src/core/control-mutation-defaults.ts` to each target's `src/core/authoring.ts`, and the data type authoring entries (`authoring.dataTypes`: the tags, the plain entries and the number classifier) move with them, because the pack that owns a data type contributes its PSL support. TypeScript column helpers keep their public import paths.
 2. Each SQL target exports its data types from `./data-types`, which both targets have. Slice 1 adds `packages/3-targets/3-targets/postgres/src/core/**` and `src/exports/data-types.ts` to `architecture.config.json` with plane `shared`. Runtime target and extension descriptors register the same `dataTypes`. `createSqlExecutionContext` assembles a `DataTypeLookup` with the owner check of `assembleDataTypes` and passes it to the Postgres SQL renderer next to `codecDescriptorRegistry`.
 3. Deleted, with every reader moved to the data type: `targetTypes` on `CodecDescriptorTemplate` and every declaration; `targetTypesFor`; `byTargetType`; the Postgres codec hook `nativeType(params)` and `nativeTypeFor`; `controlPlaneHooks[codecId].expandNativeType`, `expandLength`, `expandPrecision`, `expandNumeric`, the pgvector, postgis and arktype-json hooks; `buildNativeTypeExpander`; `buildSqlTypeMetadataRegistry` and `typeMetadataRegistry`; `ControlAdapter.normalizeNativeType`; `deriveAnnotations`' `storageTypes`; `validateScalarTypeCodecIds`. Pack metadata `types.storage[].nativeType` stays until slice 2, because it is copied into 15 committed contracts. `inventory/change-list.md`'s "Becomes" text binds for every file it lists, including `examples/prisma-8-demo/src/app/ContractView.tsx` and the language server. The released `stamp-storage-types-kind.ts` upgrade scripts are not changed.
 4. `ContractToSchemaIROptions` replaces `expandNativeType` with `dataTypes: DataTypeLookup` and `codecLookup: CodecLookup`, both required. The contract side's type text is `renderSqlTypeName` of the column's data type and `dataTypeParams`, plus `[]` for lists.
@@ -296,7 +296,7 @@ The function contains no type name, no target name and no branch on the data typ
 
 ### 11.3 Enums
 
-`pg/enum` declares `claimsKind: 'enum'`. `fromReported` returns `{ typeName }`: `name` when `schema` is `public`, otherwise `schema + '.' + name`. `render({ typeName })` splits on the first dot and double-quotes each part, as `quoteQualifiedName` does today. A column in the unbound namespace whose enum type lives outside `public` does not compare equal; this is a documented limit.
+`pg/enum` declares `claimsKind: 'enum'`. `fromReported` returns `{ typeName }`: `name` when `schema` is `public` or undefined, otherwise `schema + '.' + name`. `render({ typeName })` splits on the first dot and double-quotes each part, as `quoteQualifiedName` does today. A column in the unbound namespace whose enum type lives outside `public` does not compare equal; this is a documented limit.
 
 ## 12. Comparing
 
