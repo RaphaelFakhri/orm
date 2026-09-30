@@ -1625,7 +1625,7 @@ function checkLockCompatible(options: SelectAstOptions): void {
   const field = Object.entries(conflicts).find(([, present]) => present)?.[0];
   if (field !== undefined) {
     throw structuredError(
-      'AST.LOCK_INCOMPATIBLE',
+      'RUNTIME.LOCK_INCOMPATIBLE',
       `A locking clause cannot be combined with ${field}`,
       { meta: { node: 'select', field } },
     );

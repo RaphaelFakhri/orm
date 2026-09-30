@@ -106,7 +106,7 @@ describe('ast/builders', () => {
     const lockIncompatible = (field: string) =>
       expect.objectContaining({
         name: 'StructuredError',
-        code: 'AST.LOCK_INCOMPATIBLE',
+        code: 'RUNTIME.LOCK_INCOMPATIBLE',
         message: `A locking clause cannot be combined with ${field}`,
         meta: { node: 'select', field },
       });

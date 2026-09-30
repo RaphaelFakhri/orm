@@ -1083,6 +1083,10 @@ An `AsyncIterableResult` (the return value of `query()`) was iterated a second t
 
 The `arktype-json` codec rejected a JSON value that does not satisfy the column's arktype schema, on encode (writing) or decode (reading). Also thrown when the schema itself cannot be rehydrated from the contract's stored JSON IR. Payload: `codecId`, `issues` (validation) or `jsonIr` (rehydration).
 
+### RUNTIME.LOCK_INCOMPATIBLE
+
+A select AST node was constructed with a row-locking clause (`FOR UPDATE`, `FOR SHARE` and the like) together with `DISTINCT`, `DISTINCT ON`, `GROUP BY` or `HAVING`. Postgres refuses a locking clause on such a query, so the node refuses it at construction. Raised by `SelectAst` in relational-core. Payload: `node` (`select`), `field` (the first conflicting field).
+
 ### RUNTIME.MIDDLEWARE_FAMILY_MISMATCH
 
 A middleware registered on the runtime declares a `familyId` (e.g. `sql`) that differs from the runtime's family, e.g. a SQL-only middleware added to a Mongo runtime. Checked when the runtime validates its middleware list. Payload: `middleware`, `middlewareFamilyId`, `runtimeFamilyId`.
