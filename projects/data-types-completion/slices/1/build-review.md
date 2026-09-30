@@ -26,6 +26,7 @@ Reviewer-maintained. Contract: `projects/data-types-completion/design.md` sectio
 | review fixes 1 | 1 (`01925ee865..f4e89409e0`) | ANOTHER ROUND NEEDED: 2 low |
 | review fixes 1 | 2 (`c409a672b8`, `ca0de95478`) | SATISFIED: S1-rf1-R1-1 and S1-rf1-R1-2 closed, no new finding |
 | review fixes 2 | 1 (`5a6f37bfaa..7bece37e1a`) | ANOTHER ROUND NEEDED: 1 must-fix, 2 low |
+| review fixes 2 | 2 (`9d4437193f`, `6b99abad7d`) | SATISFIED: S1-rf2-R1-1 to S1-rf2-R1-3 closed, no new finding |
 
 ## Findings log
 
@@ -239,6 +240,13 @@ Reviewer-maintained. Contract: `projects/data-types-completion/design.md` sectio
 - Where: `projects/data-types-completion/slices/1/plan.md`, "Review fixes round 1 rulings".
 - What is wrong: it says an enum column that references a `types {}` entry is now unquoted in the postcheck. Item 1 changed that, and the plan does not say so.
 - Change: add a line to the round 2 ruling that the postcheck now quotes an enum name as `format_type` prints it, replacing the round 1 ruling.
+
+### Review fixes 2 round 2 status of the round 1 findings
+
+- S1-rf2-R1-1: closed by `9d4437193f`. `POSTGRES_QUOTED_KEYWORDS` in `postgres-keywords.ts` has 164 words and equals the set `quote_ident` quotes in PGlite 0.5.4 (Postgres 18.3), with nothing missing and nothing extra (`wip/rf2-review/probe/kw2.log`). A test compares it with `pg_get_keywords()` where `catcode <> 'U'`. The planner cases `select` and `position` expect the quoted names. The PGlite dev dependency is `0.5.4`, a version the lockfile already has; the lockfile diff adds only the importer entry. The new file has a shared-plane map entry.
+- S1-rf2-R1-2: closed by `6b99abad7d`, a line in `deferred.md`.
+- S1-rf2-R1-3: closed by `6b99abad7d`, a line in `plan.md` saying the round 1 ruling is replaced.
+- Checks, logs under `wip/rf2-review/`: `lint:deps` exits 0; the Postgres target typechecks, and its tests pass (142 files, 2,784 tests). Both commits carry both sign-offs and no AI attribution.
 
 ### Review fixes round 1 status of the code review findings
 
