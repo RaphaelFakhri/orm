@@ -6,6 +6,7 @@ import polyContractJson from '../../../../test/integration/test/sql-orm-client/f
 };
 import { Collection } from '../src/collection';
 import { orm } from '../src/orm';
+import type { DefaultCollectionTypeState, InferRootRow, WithNsId } from '../src/types';
 import executionContractJson from './fixtures/root-variant-hashes/execution/contract.json' with {
   type: 'json',
 };
@@ -58,7 +59,7 @@ describe('Collection.variant() root arguments', () => {
     expectInvalidVariant(() => db.public.Task.variant('Bug' as never));
   });
 
-  it('accepts another orm owner with identical context and runtime hashes', () => {
+  it('accepts another orm root with identical context and runtime hashes', () => {
     const { db, runtime, context } = createPolyDb();
     const other = orm({ runtime, context });
 
@@ -133,6 +134,38 @@ describe('Collection.variant() root arguments', () => {
     expect(argument.runtime.executions).toEqual([]);
   });
 
+  it('executes detached compatible receivers through their own runtime', async () => {
+    const argument = createPolyDbFromContract(deserializePolyContract());
+    const receiverRuntime = createMockRuntime();
+    const receiver = new Collection<
+      PolyContract,
+      'Task',
+      InferRootRow<PolyContract, 'Task', 'public'>,
+      WithNsId<DefaultCollectionTypeState, 'public'>
+    >(
+      {
+        runtime: receiverRuntime,
+        context: buildTestContextFromContract(deserializePolyContract()),
+      },
+      'Task',
+      {
+        namespaceId: 'public',
+      },
+    );
+    receiverRuntime.setNextResults([[{ id: 1, title: 'Detached', type: 'bug' }]]);
+    argument.runtime.setNextResults([[{ id: 2, title: 'Wrong', type: 'bug' }]]);
+
+    const rows = await receiver
+      .variant(argument.db.public.Bug)
+      .select('id', 'title', 'type')
+      .all()
+      .toArray();
+
+    expect(rows).toEqual([{ id: 1, title: 'Detached', type: 'bug' }]);
+    expect(receiverRuntime.executions).toHaveLength(1);
+    expect(argument.runtime.executions).toEqual([]);
+  });
+
   it('rejects forged and detached arguments', () => {
     const { db } = createPolyDb();
     const forged = { namespaceId: 'public', modelName: 'Bug' };
@@ -166,7 +199,7 @@ describe('Collection.variant() root arguments', () => {
     expect(db.public.Task.variant(db.public.Bug).state.variantName).toBe('Bug');
   });
 
-  it('keeps receiver owner through chains and runtime swaps', async () => {
+  it('keeps receiver runtime through chains and runtime swaps', async () => {
     const { db, runtime } = createPolyDb();
     runtime.setNextResults([[{ id: 1, title: 'Crash', type: 'bug' }]]);
 

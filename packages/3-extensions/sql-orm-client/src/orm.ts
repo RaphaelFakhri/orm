@@ -12,7 +12,11 @@ import {
   registerModelRoot,
   reservedCollectionMemberNames,
 } from './collection';
-import type { CollectionRootOwner, ModelRootIdentity } from './collection-internal-types';
+import type {
+  CollectionConstructor,
+  CollectionInit,
+  ModelRootIdentity,
+} from './collection-internal-types';
 import { ormError } from './orm-errors';
 import { domainModelNamesInNamespace, domainModelTableInNamespace } from './storage-resolution';
 import type {
@@ -134,7 +138,6 @@ export function orm<
   const contract = context.contract;
   const ctx: CollectionContext<TContract> = { runtime, context };
   const collectionRegistry = createCollectionRegistry(contract, collections);
-  const rootOwner: CollectionRootOwner = { id: Symbol() };
 
   type AnyCollection = Collection<TContract, string, unknown, CollectionTypeState>;
 
@@ -148,14 +151,13 @@ export function orm<
       new (
         ctx: CollectionContext<TContract>,
         modelName: string,
-        options?: Record<string, unknown>,
+        options: CollectionInit<TContract>,
       ) => AnyCollection,
       'a registered collection class is a Collection subclass constructor'
     >(CollectionClass);
     const collection = new CollectionCtor(ctx, modelName, {
       registry: collectionRegistry,
       namespaceId,
-      rootOwner,
       ...(tableName !== undefined ? { tableName } : {}),
     });
     registerModelRoot(collection);
@@ -223,8 +225,11 @@ export function orm<
 function createCollectionRegistry<
   TContract extends Contract<SqlStorage>,
   Collections extends Partial<Record<string, AnyCollectionClass>>,
->(contract: TContract, collections: Collections | undefined): Map<string, AnyCollectionClass> {
-  const registry = new Map<string, AnyCollectionClass>();
+>(
+  contract: TContract,
+  collections: Collections | undefined,
+): Map<string, CollectionConstructor<TContract>> {
+  const registry = new Map<string, CollectionConstructor<TContract>>();
   if (!collections) {
     return registry;
   }
@@ -248,7 +253,13 @@ function createCollectionRegistry<
         { meta: { method: 'orm', argument: 'collections', key } },
       );
     }
-    registry.set(key, collectionClass);
+    registry.set(
+      key,
+      blindCast<
+        CollectionConstructor<TContract>,
+        'custom collection constructor passed the CollectionBase prototype guard and is invoked with the active contract context'
+      >(collectionClass),
+    );
   }
 
   return registry;
@@ -258,12 +269,9 @@ function isCollectionClass(value: unknown): value is AnyCollectionClass {
   if (typeof value !== 'function') {
     return false;
   }
-  const candidate = blindCast<
-    { prototype?: unknown },
-    'collection class guard only reads prototype after function validation'
-  >(value);
-  if (!candidate.prototype || typeof candidate.prototype !== 'object') {
+  const prototype = value.prototype;
+  if (!prototype || typeof prototype !== 'object') {
     return false;
   }
-  return candidate.prototype instanceof CollectionBase;
+  return prototype instanceof CollectionBase;
 }

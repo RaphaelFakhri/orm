@@ -40,13 +40,12 @@ export function createAggregateBuilder<
 }
 
 export function isAggregateSelector(value: unknown): value is AggregateSelector<unknown> {
-  if (!value || typeof value !== 'object') {
-    return false;
-  }
-
-  const candidate = blindCast<
-    { kind?: unknown; fn?: unknown },
-    'aggregate selector guard only reads optional shape fields after object validation'
-  >(value);
-  return candidate.kind === 'aggregate' && typeof candidate.fn === 'string';
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    'kind' in value &&
+    value.kind === 'aggregate' &&
+    'fn' in value &&
+    typeof value.fn === 'string'
+  );
 }

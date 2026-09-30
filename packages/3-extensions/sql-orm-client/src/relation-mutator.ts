@@ -63,23 +63,12 @@ export function createRelationMutator<
 export function isRelationMutationDescriptor(
   value: unknown,
 ): value is RelationMutation<Contract<SqlStorage>, string> {
-  if (!value || typeof value !== 'object') {
-    return false;
-  }
-
-  const candidate = blindCast<
-    { kind?: unknown },
-    'relation mutation descriptor guard only reads optional kind after object validation'
-  >(value);
-  if (
-    candidate.kind !== 'create' &&
-    candidate.kind !== 'connect' &&
-    candidate.kind !== 'disconnect'
-  ) {
-    return false;
-  }
-
-  return true;
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    'kind' in value &&
+    (value.kind === 'create' || value.kind === 'connect' || value.kind === 'disconnect')
+  );
 }
 
 export function isRelationMutationCallback(

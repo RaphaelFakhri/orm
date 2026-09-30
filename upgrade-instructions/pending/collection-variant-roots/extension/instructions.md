@@ -18,12 +18,13 @@ const bugs = db.public.Task.variant(db.public.Bug)
 
 A string is no longer a valid SQL ORM variant argument. The runtime also rejects values that were not registered as unmodified roots or whose contract hash tuple is incompatible with the receiver, including `new Collection(...)`, object literals with matching `namespaceId`/`modelName`, and builder results such as `db.public.Bug.where({})`. Roots from another `orm({ runtime, context })` are valid when `storage.storageHash`, `profileHash`, and optional `execution.executionHash` presence/value match.
 
-If a test previously constructed a bare polymorphic receiver with `new Collection(...)` and then called `.variant('Bug')`, construct the receiver through `orm({ runtime, context })` and pass the sibling root from that same returned ORM value:
+If a test constructs a bare polymorphic receiver with `new Collection(...)`, update only the argument: pass a registered unmodified root from `orm({ runtime, context })` or another compatible ORM client. The receiver does not need to be an ORM-created root; it still executes through its own runtime or transaction.
 
 ```ts
 const db = orm({ runtime, context })
+const receiver = new Collection({ runtime: otherRuntime, context }, 'Task', { namespaceId: 'public' })
 
-const selected = db.public.Task.where({ title: 'Crash' }).variant(db.public.Bug)
+const selected = receiver.where({ title: 'Crash' }).variant(db.public.Bug)
 ```
 
 Keep Mongo extension or app code on string variant names. Do not apply a global `variant('Name')` rewrite unless the file is known to use the SQL ORM client.

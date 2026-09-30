@@ -22,11 +22,6 @@ export interface CollectionInit<TContract extends Contract<SqlStorage>> {
   readonly state?: import('./types').CollectionState | undefined;
   readonly registry?: ReadonlyMap<string, CollectionConstructor<TContract>> | undefined;
   readonly includeRefinementMode?: boolean | undefined;
-  readonly rootOwner?: CollectionRootOwner | undefined;
-}
-
-export interface CollectionRootOwner {
-  readonly id: symbol;
 }
 
 export const ModelRootIdentitySymbol: unique symbol = Symbol();
