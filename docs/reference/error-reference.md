@@ -441,7 +441,7 @@ Introspection read an unrecognized or malformed database shape: an unknown refer
 
 ### CONTRACT.INVALID_JSON_LITERAL
 
-The body of a JSON default is not a JSON document, or holds a number outside the range a JSON number holds (`JSON.parse` reads such a numeral as `Infinity`, which `JSON.stringify` writes back as `null`). Raised while canonicalizing a JSON default body. Contract sources report it to the author as the PSL diagnostic `PSL_INVALID_LITERAL`. Payload: `why`, `fix`.
+The text of a JSON default is not a JSON document, or holds a number outside the range a JSON number holds (`JSON.parse` reads such a numeral as `Infinity`, which `JSON.stringify` writes back as `null`). Raised while reading the text of a JSON default. Contract sources report it to the author as the PSL diagnostic `PSL_INVALID_LITERAL`. Payload: `why`, `fix`.
 
 ### CONTRACT.MARKER_MISMATCH
 
@@ -799,7 +799,7 @@ Reported at the `@default` attribute. See [ADR 254](../architecture%20docs/adrs/
 
 ### PSL_INVALID_LITERAL
 
-A written value that the authoring entry's parse or a cast refused: a magnitude no double holds written on a `Float` column, a body a tag's parse cannot read, such as a `json` body that is not a JSON document, a list holding another list, or a number no data type of the target holds — `no data type of this target holds the number <text>`, which is how SQLite refuses a whole number past 64 bits. The message is `Field "<Model>.<field>": <the message of whatever refused it>`, with ` at element <n>` after the field path when it is one element of a written list. Reported at the `@default` attribute. See [ADR 254](../architecture%20docs/adrs/ADR%20254%20-%20Data%20types%20and%20casts.md).
+A written value that the authoring entry's parse or a cast refused: a magnitude no double holds written on a `Float` column, a text a tag's parse cannot read, such as the text of a `json` literal that is not a JSON document, or a number no data type of the target holds — `no data type of this target holds the number <text>`, which is how SQLite refuses a whole number past 64 bits. The message is `Field "<Model>.<field>": <the message of whatever refused it>`, with ` at element <n>` after the field path when it is one element of a written list. Reported at the `@default` attribute. See [ADR 254](../architecture%20docs/adrs/ADR%20254%20-%20Data%20types%20and%20casts.md).
 
 ### PSL_DEFAULT_LIST_EXPECTED
 
@@ -815,7 +815,7 @@ A tagged literal's body contains a NUL character: `Tagged literals must not cont
 
 ### PSL_TAGGED_LITERAL_TOO_LARGE
 
-A tagged literal's canonical body is larger than 65536 UTF-8 bytes: `Tagged literal exceeds 65536 bytes.` Reported at the literal, at every place that takes a tagged literal.
+A tagged literal's text, which is its body after canonicalization, is larger than 65536 UTF-8 bytes: `Tagged literal exceeds 65536 bytes.` Reported at the literal, at every place that takes a tagged literal.
 
 ### PSL_LIST_AUTOINCREMENT_UNSUPPORTED
 
