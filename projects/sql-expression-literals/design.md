@@ -388,13 +388,13 @@ export function printTaggedLiteral(tag: string, text: string): string {
 }
 ```
 
-`escapeQuotedText` is private: it replaces `\` with `\\`, `"` with `\"`, a newline with `\n` and a carriage return with `\r`, in that order. The PSL printer indents every continuation line inside a namespace block (`wrapNamespaceBlock`, `psl-printer/src/serialize-print-document.ts:160-170`), which is why a multi-line text starts on its own line.
+`escapeQuotedText` is private: it replaces `\` with `\\`, `"` with `\"`, a newline with `\n` and a carriage return with `\r`, in that order. The PSL printer indents every continuation line inside a namespace block (`wrapNamespaceBlock`, `psl-printer/src/serialize-print-document.ts:155-165`), which is why a multi-line text starts on its own line.
 
 `packages/2-sql/9-family/src/core/psl-build/default-mapping.ts` (slice 2a):
 
 - Delete `sqlLiteralText`. A function default that is not a named function prints `` `@default(${printSqlExpressionLiteral(expression)})` ``.
 - `literalText` prints a tag entry's text with `printTaggedLiteral(written.tag, text)`, imported from `@internal/framework-components/authoring`. A `json` text holding a backtick now prints in the double-quote form.
-- `writingSurface` skips the entry keyed `SQL_EXPRESSION_DATA_TYPE_ID`; the raw-expression fallback prints SQL.
+- `writingSurface` has no special case for `sql/expression`. The cast rule keeps its entry out of literal defaults, because no column has the type and no type casts from it. The raw-expression fallback prints SQL.
 
 ### 11.2 `contract infer` prints the six places (slice 2b)
 

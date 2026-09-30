@@ -224,7 +224,7 @@ describe('mapDefault prints a stored value as the literal its column takes', () 
     });
   });
 
-  it('prints text on a text column as a string, never as a sql literal', () => {
+  it('prints a text default on a text column as a string', () => {
     expect(mapDefault({ kind: 'literal', value: 'now()' }, forColumn(text))).toEqual({
       attribute: '@default("now()")',
     });

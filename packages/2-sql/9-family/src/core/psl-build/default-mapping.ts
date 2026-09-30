@@ -18,10 +18,7 @@ import type { DataTypeAuthoringEntry } from '@internal/framework-components/auth
 import { printTaggedLiteral } from '@internal/framework-components/authoring';
 import type { DataTypeId, DataTypeLookup } from '@internal/framework-components/codec';
 import { dataTypeId } from '@internal/framework-components/codec';
-import {
-  printSqlExpressionLiteral,
-  SQL_EXPRESSION_DATA_TYPE_ID,
-} from '@internal/sql-contract/sql-expression';
+import { printSqlExpressionLiteral } from '@internal/sql-contract/sql-expression';
 import { escapePslString, numeralText } from '@internal/sql-relational-core/ast';
 
 const DEFAULT_FUNCTION_ATTRIBUTES: Readonly<Record<string, string>> = {
@@ -94,7 +91,6 @@ function writingSurface(entries: Readonly<Record<string, DataTypeAuthoringEntry>
   let plainBooleanType: DataTypeId | undefined;
   const tagTypes: DataTypeId[] = [];
   for (const [key, entry] of Object.entries(entries)) {
-    if (key === SQL_EXPRESSION_DATA_TYPE_ID) continue;
     const written = entry.written;
     if (written.kind === 'tag') {
       entryOf.set(key, entry);
