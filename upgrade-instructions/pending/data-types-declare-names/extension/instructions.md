@@ -704,7 +704,7 @@ contractToSchemaIR(contract, { annotationNamespace: 'pg', expandNativeType });
 contractToSchemaIR(contract, { annotationNamespace: 'pg', dataTypeLookup, codecLookup });
 ```
 
-`dataTypeLookup` and `codecLookup` come from the assembled stack: `sqlComponentTypes(frameworkComponents)` from `@internal/family-sql/control` returns both. Every field or parameter that holds a `DataTypeLookup` is now named `dataTypeLookup`; `dataTypes` names only a list of data types.
+`dataTypeLookup` and `codecLookup` come from the assembled stack: `sqlTypeLookupsOf(frameworkComponents)` from `@internal/family-sql/control` returns both. Every field or parameter that holds a `DataTypeLookup` is now named `dataTypeLookup`; `dataTypes` names only a list of data types.
 
 ## `data-type-lookup-lists-all`
 

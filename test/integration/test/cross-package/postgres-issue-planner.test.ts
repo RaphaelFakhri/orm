@@ -3,7 +3,7 @@ import postgresAdapterControl, {
   PostgresControlAdapter,
 } from '@internal/adapter-postgres/control';
 import { type Contract, coreHash, profileHash } from '@internal/contract/types';
-import { sqlComponentTypes } from '@internal/family-sql/control';
+import { sqlTypeLookupsOf } from '@internal/family-sql/control';
 import { UNBOUND_NAMESPACE_ID } from '@internal/framework-components/ir';
 import {
   SqlStorage,
@@ -96,7 +96,7 @@ function planAgainst(
     fromContract: options.fromContract ?? null,
     schemaName: 'public',
     codecHooks: new Map(),
-    types: sqlComponentTypes(frameworkComponents),
+    types: sqlTypeLookupsOf(frameworkComponents),
     storageTypes: contract.storage.types ?? {},
     ...(options.strategies !== undefined ? { strategies: options.strategies } : {}),
   });

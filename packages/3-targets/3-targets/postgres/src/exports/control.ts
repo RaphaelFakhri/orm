@@ -1,6 +1,6 @@
 import type { ColumnDefault } from '@internal/contract/types';
 import type { SqlControlTargetDescriptor } from '@internal/family-sql/control';
-import { sqlComponentTypes } from '@internal/family-sql/control';
+import { sqlTypeLookupsOf } from '@internal/family-sql/control';
 import type { SqlControlAdapter } from '@internal/family-sql/control-adapter';
 import type {
   ControlTargetInstance,
@@ -66,7 +66,7 @@ const postgresTargetDescriptor: SqlControlTargetDescriptor<'postgres', PostgresP
         >(createPostgresMigrationRunner(family));
       },
       contractToSchema(contract, frameworkComponents) {
-        const types = sqlComponentTypes(frameworkComponents);
+        const types = sqlTypeLookupsOf(frameworkComponents);
         const postgresContract = blindCast<
           PostgresContract | null,
           'the family resolver only binds this hook for a Postgres-target contract'

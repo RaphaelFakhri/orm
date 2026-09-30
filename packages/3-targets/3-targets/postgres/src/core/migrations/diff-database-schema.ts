@@ -1,6 +1,6 @@
 import type { Contract, ControlPolicy } from '@internal/contract/types';
 import type { SqlSchemaDiffResult } from '@internal/family-sql/control';
-import { sqlComponentTypes } from '@internal/family-sql/control';
+import { sqlTypeLookupsOf } from '@internal/family-sql/control';
 import { classifyDiffSubjectGranularity } from '@internal/family-sql/diff';
 import type { TargetBoundComponentDescriptor } from '@internal/framework-components/components';
 import type { DiffableNode, SchemaDiffIssue } from '@internal/framework-components/control';
@@ -131,7 +131,7 @@ export function diffPostgresSchema(input: {
   >(input.contract);
   PostgresDatabaseSchemaNode.assert(input.schema);
   const actual = input.schema;
-  const types = sqlComponentTypes(input.frameworkComponents);
+  const types = sqlTypeLookupsOf(input.frameworkComponents);
   const fullExpected = contractToPostgresDatabaseSchemaNode(postgresContract, {
     annotationNamespace: 'pg',
     dataTypeLookup: types.dataTypeLookup,
@@ -228,7 +228,7 @@ export function buildPostgresPlanDiff(input: {
   >(input.contract);
   PostgresDatabaseSchemaNode.assert(input.actualSchema);
   const actual = input.actualSchema;
-  const types = sqlComponentTypes(input.frameworkComponents);
+  const types = sqlTypeLookupsOf(input.frameworkComponents);
   const projectionOptions = {
     annotationNamespace: 'pg',
     dataTypeLookup: types.dataTypeLookup,

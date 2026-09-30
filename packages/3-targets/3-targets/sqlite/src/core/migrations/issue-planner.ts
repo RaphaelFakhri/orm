@@ -19,7 +19,7 @@ import type {
   SqlPlannerConflict,
   SqlPlannerConflictLocation,
 } from '@internal/family-sql/control';
-import { sqlComponentTypes } from '@internal/family-sql/control';
+import { sqlTypeLookupsOf } from '@internal/family-sql/control';
 import type { TargetBoundComponentDescriptor } from '@internal/framework-components/components';
 import type { SchemaDiffIssue } from '@internal/framework-components/control';
 import { issueOutcome, orderIssuesByDependencies } from '@internal/framework-components/control';
@@ -444,7 +444,7 @@ export function planIssues(
     actual: options.actual ?? emptySchemaIR(),
     policy,
     frameworkComponents,
-    types: sqlComponentTypes(frameworkComponents),
+    types: sqlTypeLookupsOf(frameworkComponents),
   };
 
   const strategies = options.strategies ?? sqlitePlannerStrategies;

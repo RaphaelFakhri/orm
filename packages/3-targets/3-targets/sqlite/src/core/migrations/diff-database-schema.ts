@@ -1,6 +1,6 @@
 import type { ColumnDefault, Contract, ControlPolicy } from '@internal/contract/types';
 import type { SqlSchemaDiffResult } from '@internal/family-sql/control';
-import { contractToSchemaIR, sqlComponentTypes } from '@internal/family-sql/control';
+import { contractToSchemaIR, sqlTypeLookupsOf } from '@internal/family-sql/control';
 import { verifySqlSchemaByDiff } from '@internal/family-sql/diff';
 import type { TargetBoundComponentDescriptor } from '@internal/framework-components/components';
 import type {
@@ -124,7 +124,7 @@ export function diffSqliteSchema(input: {
 }): SqlSchemaDiffResult {
   const expected = sqliteContractToSchema(
     input.contract,
-    sqlComponentTypes(input.frameworkComponents),
+    sqlTypeLookupsOf(input.frameworkComponents),
   );
   const actual =
     input.schema instanceof SqlSchemaIR
@@ -166,7 +166,7 @@ export function buildSqlitePlanDiff(input: {
 }): SqlitePlanDiff {
   const expected = sqliteContractToSchema(
     input.contract,
-    sqlComponentTypes(input.frameworkComponents),
+    sqlTypeLookupsOf(input.frameworkComponents),
   );
   // The differ dispatches polymorphically (`.isEqualTo()` / `.children()`), so
   // the actual tree must be genuine `SqlSchemaIR`/`SqlTableIR`/`SqlColumnIR`

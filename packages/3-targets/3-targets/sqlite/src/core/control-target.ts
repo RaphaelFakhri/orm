@@ -1,5 +1,5 @@
 import type { Contract } from '@internal/contract/types';
-import { type SqlControlTargetDescriptor, sqlComponentTypes } from '@internal/family-sql/control';
+import { type SqlControlTargetDescriptor, sqlTypeLookupsOf } from '@internal/family-sql/control';
 import type { SqlControlAdapter } from '@internal/family-sql/control-adapter';
 import type {
   ControlTargetInstance,
@@ -52,7 +52,7 @@ const sqliteControlTargetDescriptor: SqlControlTargetDescriptor<'sqlite', Sqlite
             'sqliteControlTargetDescriptor.contractToSchema received a non-SQL contract; expected Contract<SqlStorage>',
           );
         }
-        return sqliteContractToSchema(contract, sqlComponentTypes(frameworkComponents));
+        return sqliteContractToSchema(contract, sqlTypeLookupsOf(frameworkComponents));
       },
     },
     create(): ControlTargetInstance<'sql', 'sqlite'> {

@@ -11,7 +11,7 @@ import type {
 import {
   contractToSchemaIR as contractToSchemaIRImpl,
   detectDestructiveChanges,
-  sqlComponentTypes,
+  sqlTypeLookupsOf,
 } from '@internal/family-sql/control';
 import type { AnyCodecDescriptor } from '@internal/framework-components/codec';
 import type { TargetBoundComponentDescriptor } from '@internal/framework-components/components';
@@ -51,7 +51,7 @@ const postgresComponents: ReadonlyArray<TargetBoundComponentDescriptor<'sql', 'p
 ];
 
 function typeOptions(components: ReadonlyArray<TargetBoundComponentDescriptor<'sql', string>>) {
-  return sqlComponentTypes(components);
+  return sqlTypeLookupsOf(components);
 }
 
 const postgresTypeOptions = typeOptions(postgresComponents);
