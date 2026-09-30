@@ -6,7 +6,7 @@ import { mongoCodecDescriptors } from '../src/core/codecs';
 import { mongoVector } from '../src/core/data-types';
 import { mongoTargetDescriptorMetaRuntime } from '../src/core/descriptor-meta-runtime';
 
-/** Design 2.6: each type's BSON types are today's `targetTypes` of its codec. */
+/** Design 2.6: each type's BSON types are the ones its codec stored values as before slice 1. */
 const EXPECTED_BSON_TYPES: Readonly<Record<string, readonly string[]>> = {
   'mongo/objectid': ['objectId'],
   'mongo/string': ['string'],

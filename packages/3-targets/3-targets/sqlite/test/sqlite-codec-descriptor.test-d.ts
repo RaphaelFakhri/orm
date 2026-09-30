@@ -145,8 +145,6 @@ test('sqliteCodec requires explicit scalar projection behavior', () => {
 });
 
 test('SQLite protocol remains scalar-only', () => {
-  // @ts-expect-error -- SQLite descriptors do not expose native-type behavior
-  adaptedDescriptor.nativeTypeFor;
   sqliteCodec(genericDescriptor, {
     jsonProjection: (expression) => expression,
     // @ts-expect-error -- SQLite descriptors do not define an array-projection hook

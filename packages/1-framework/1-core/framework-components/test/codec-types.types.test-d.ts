@@ -1,8 +1,7 @@
 import type { JsonValue } from '@internal/contract/types';
 import { expectTypeOf, test } from 'vitest';
 import type { Codec } from '../src/shared/codec';
-import type { CodecDescriptorTemplate } from '../src/shared/codec-descriptor';
-import type { CodecLookup, CodecTrait } from '../src/shared/codec-types';
+import type { CodecTrait } from '../src/shared/codec-types';
 
 test('encode is required and Promise-returning', () => {
   expectTypeOf<Codec>().toHaveProperty('encode');
@@ -71,9 +70,4 @@ test('TInput drives both write input and read output (no asymmetric output)', ()
   expectTypeOf<ReturnType<WireSeparateFromInput['encode']>>().toExtend<Promise<number>>();
   expectTypeOf<Parameters<WireSeparateFromInput['decode']>[0]>().toEqualTypeOf<number>();
   expectTypeOf<ReturnType<WireSeparateFromInput['decode']>>().toExtend<Promise<string>>();
-});
-
-test('a codec descriptor names no database type; its data type does', () => {
-  expectTypeOf<CodecDescriptorTemplate>().not.toHaveProperty('targetTypes');
-  expectTypeOf<CodecLookup>().not.toHaveProperty('targetTypesFor');
 });

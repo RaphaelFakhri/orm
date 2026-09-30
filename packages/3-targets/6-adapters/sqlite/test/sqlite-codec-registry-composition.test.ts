@@ -367,7 +367,6 @@ describe('SQLite adapter codec registry composition', () => {
       isParameterized: raw.isParameterized,
       factory: raw.factory.bind(raw),
       descriptorKind: 'postgres-codec',
-      nativeTypeFor: () => 'text',
       projectJson: (expression: ProjectionExpr) => expression,
     } as const;
     const malformed = {
