@@ -1,9 +1,15 @@
 import { type Contract, coreHash, profileHash } from '@internal/contract/types';
 import type { SchemaDiffIssue } from '@internal/framework-components/control';
 import { index } from '@internal/sql-contract/factories';
-import { SqlStorage, StorageTable } from '@internal/sql-contract/types';
+import {
+  SqlStorage,
+  StorageTable,
+  type StorageTypeInstance,
+  toStorageTypeInstance,
+} from '@internal/sql-contract/types';
 import { parseNaming } from '@internal/sql-schema-ir/naming';
 import { SqlForeignKeyIR } from '@internal/sql-schema-ir/types';
+import { ifDefined } from '@internal/utils/defined';
 import { applicationDomainOf } from '@repo/test-utils';
 import { describe, expect, it } from 'vitest';
 import { buildPostgresPlanDiff } from '../../src/core/migrations/diff-database-schema';
@@ -12,7 +18,7 @@ import {
   mapNodeIssueToCall,
   planIssues as planNodeIssues,
 } from '../../src/core/migrations/issue-planner';
-import { RenameIndexCall } from '../../src/core/migrations/op-factory-call';
+import { AlterColumnTypeCall, RenameIndexCall } from '../../src/core/migrations/op-factory-call';
 import { PostgresSchema } from '../../src/core/postgres-schema';
 import { PostgresDatabaseSchemaNode } from '../../src/core/schema-ir/postgres-database-schema-node';
 import { PostgresNamespaceSchemaNode } from '../../src/core/schema-ir/postgres-namespace-schema-node';
@@ -32,7 +38,10 @@ import { postgresTypeComponents, postgresTypeLookups } from '../postgres-type-lo
 
 type TableSpec = ConstructorParameters<typeof StorageTable>[0];
 
-function makeContract(tables: Record<string, TableSpec>): Contract<SqlStorage> {
+function makeContract(
+  tables: Record<string, TableSpec>,
+  types?: Record<string, StorageTypeInstance>,
+): Contract<SqlStorage> {
   const publicSchema = new PostgresSchema({
     id: 'public',
     entries: {
@@ -47,6 +56,7 @@ function makeContract(tables: Record<string, TableSpec>): Contract<SqlStorage> {
     profileHash: profileHash('node-planner'),
     storage: new SqlStorage({
       storageHash: coreHash('node-planner'),
+      ...ifDefined('types', types),
       namespaces: { public: publicSchema },
     }),
     roots: {},
@@ -242,6 +252,56 @@ describe('buildPostgresPlanDiff + planNodeIssues (one-differ path)', () => {
     });
     const calls = planFor(contract, actual);
     expect(calls.map((c) => c.factoryName)).toEqual(['alterColumnType', 'setNotNull']);
+  });
+
+  it('checks a type change of a column that references a storage type against the catalog text of the referenced type', () => {
+    const contract = makeContract(
+      {
+        user: {
+          columns: {
+            id: { nativeType: 'uuid', codecId: 'pg/uuid@1', nullable: false },
+            visits: {
+              nativeType: 'int8',
+              codecId: 'pg/int8@1',
+              nullable: false,
+              typeRef: 'Count',
+            },
+          },
+          primaryKey: { columns: ['id'] },
+          foreignKeys: [],
+          uniques: [],
+          indexes: [],
+        },
+      },
+      { Count: toStorageTypeInstance({ codecId: 'pg/int8@1', nativeType: 'int8' }) },
+    );
+    const actual = rootOf({
+      user: new PostgresTableSchemaNode({
+        name: 'user',
+        columns: {
+          id: { name: 'id', nativeType: 'uuid', nullable: false, resolvedNativeType: 'uuid' },
+          visits: {
+            name: 'visits',
+            nativeType: 'int4',
+            nullable: false,
+            resolvedNativeType: 'int4',
+          },
+        },
+        primaryKey: { columns: ['id'] },
+        foreignKeys: [],
+        uniques: [],
+        indexes: [],
+        policies: [],
+        rlsEnabled: false,
+      }),
+    });
+    const [call] = planFor(contract, actual);
+    expect(call).toBeInstanceOf(AlterColumnTypeCall);
+    expect(call instanceof AlterColumnTypeCall && call.options).toEqual({
+      qualifiedTargetType: 'int8',
+      formatTypeExpected: 'bigint',
+      rawTargetTypeForLabel: 'int8',
+    });
   });
 
   it('an extra live table becomes DropTable (strict)', () => {

@@ -48,53 +48,6 @@ describe('buildExpectedFormatType', () => {
     });
   });
 
-  describe('user-defined types (typeRef path)', () => {
-    it('returns simple lowercase UDT name unquoted', () => {
-      expect(
-        buildExpectedFormatType(
-          {
-            nativeType: 'my_status',
-            codecId: 'pg/enum@1',
-            nullable: false,
-            typeParams: { typeName: 'my_status' },
-            typeRef: 'MyStatus',
-          },
-          types,
-        ),
-      ).toBe('my_status');
-    });
-
-    it('quotes reserved word used as UDT name', () => {
-      expect(
-        buildExpectedFormatType(
-          {
-            nativeType: 'user',
-            codecId: 'pg/enum@1',
-            nullable: false,
-            typeParams: { typeName: 'user' },
-            typeRef: 'User',
-          },
-          types,
-        ),
-      ).toBe('"user"');
-    });
-
-    it('quotes mixed-case identifier', () => {
-      expect(
-        buildExpectedFormatType(
-          {
-            nativeType: 'OrderStatus',
-            codecId: 'pg/enum@1',
-            nullable: false,
-            typeParams: { typeName: 'OrderStatus' },
-            typeRef: 'OrderStatus',
-          },
-          types,
-        ),
-      ).toBe('"OrderStatus"');
-    });
-  });
-
   describe('parameterized data types', () => {
     it('renders the data type with its parameters', () => {
       expect(
@@ -140,14 +93,14 @@ describe('buildExpectedFormatType', () => {
   });
 
   describe('typeRef resolution against a storage type catalog', () => {
-    it('resolves nativeType/codecId from the referenced storage type, then formats as a UDT name (typeRef wins over the display map)', () => {
+    it('resolves nativeType/codecId from the referenced storage type, then applies the display map', () => {
       expect(
         buildExpectedFormatType(
           { nativeType: 'unused', codecId: 'unused', nullable: false, typeRef: 'MyStatus' },
           types,
           { MyStatus: toStorageTypeInstance({ codecId: 'pg/int4@1', nativeType: 'int4' }) },
         ),
-      ).toBe('int4');
+      ).toBe('integer');
     });
   });
 });

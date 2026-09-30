@@ -6,7 +6,6 @@ import {
 } from '@internal/sql-contract/data-type';
 import type { StorageColumn, StorageTypeInstance } from '@internal/sql-contract/types';
 import { postgresCreateNamespace } from '../postgres-schema';
-import { quoteIdentifier } from '../sql-utils';
 import { resolveColumnTypeMetadata } from './planner-type-resolution';
 
 /**
@@ -37,117 +36,6 @@ const FORMAT_TYPE_DISPLAY: ReadonlyMap<string, string> = new Map([
   ['timetz', 'time with time zone'],
 ]);
 
-const UNQUOTED_POSTGRES_IDENTIFIER_PATTERN = /^[a-z_][a-z0-9_$]*$/;
-
-const POSTGRES_RESERVED_IDENTIFIER_WORDS = new Set([
-  'all',
-  'analyse',
-  'analyze',
-  'and',
-  'any',
-  'array',
-  'as',
-  'asc',
-  'asymmetric',
-  'authorization',
-  'between',
-  'binary',
-  'both',
-  'case',
-  'cast',
-  'check',
-  'collate',
-  'column',
-  'constraint',
-  'create',
-  'current_catalog',
-  'current_date',
-  'current_role',
-  'current_time',
-  'current_timestamp',
-  'current_user',
-  'default',
-  'deferrable',
-  'desc',
-  'distinct',
-  'do',
-  'else',
-  'end',
-  'except',
-  'false',
-  'fetch',
-  'for',
-  'foreign',
-  'freeze',
-  'from',
-  'full',
-  'grant',
-  'group',
-  'having',
-  'ilike',
-  'in',
-  'initially',
-  'inner',
-  'intersect',
-  'into',
-  'is',
-  'isnull',
-  'join',
-  'lateral',
-  'leading',
-  'left',
-  'like',
-  'limit',
-  'localtime',
-  'localtimestamp',
-  'natural',
-  'not',
-  'notnull',
-  'null',
-  'offset',
-  'on',
-  'only',
-  'or',
-  'order',
-  'outer',
-  'overlaps',
-  'placing',
-  'primary',
-  'references',
-  'right',
-  'select',
-  'session_user',
-  'similar',
-  'some',
-  'symmetric',
-  'table',
-  'then',
-  'to',
-  'trailing',
-  'true',
-  'union',
-  'unique',
-  'user',
-  'using',
-  'variadic',
-  'verbose',
-  'when',
-  'where',
-  'window',
-  'with',
-]);
-
-function formatUserDefinedTypeName(identifier: string): string {
-  if (
-    UNQUOTED_POSTGRES_IDENTIFIER_PATTERN.test(identifier) &&
-    !POSTGRES_RESERVED_IDENTIFIER_WORDS.has(identifier)
-  ) {
-    return identifier;
-  }
-
-  return quoteIdentifier(identifier);
-}
-
 export function buildExpectedFormatType(
   column: StorageColumn,
   types: SqlTypeLookups,
@@ -159,10 +47,6 @@ export function buildExpectedFormatType(
   const params = dataTypeParams(dataType, resolved.typeParams);
   if (dataType.sql.claimsKind === undefined && Object.keys(params).length > 0) {
     return renderSqlTypeName(dataType, params);
-  }
-
-  if (column.typeRef) {
-    return formatUserDefinedTypeName(resolved.nativeType);
   }
 
   return FORMAT_TYPE_DISPLAY.get(resolved.nativeType) ?? resolved.nativeType;
