@@ -40,12 +40,18 @@ const stubLowerer: ExecuteRequestLowerer = {
 };
 
 type Naming = 'wire' | 'exact';
+type SqlObject = 'index' | 'check' | 'policy';
+const EVERY_OBJECT: readonly SqlObject[] = ['index', 'check', 'policy'];
 
 function naming(kind: Naming, prefix: string, hash: string): SqlObjectNaming {
   return kind === 'wire' ? { kind, prefix, hash } : { kind, name: `${prefix}_adopted` };
 }
 
-function contractWith(text: string, kind: Naming): PostgresContract {
+function contractWith(
+  text: string,
+  kind: Naming,
+  objects: readonly SqlObject[] = EVERY_OBJECT,
+): PostgresContract {
   const indexHash = computeIndexContentHash({ columns: ['owner_id'], where: text, unique: false });
   const index = indexInputFromSerialized({
     ...(kind === 'wire'
@@ -87,11 +93,11 @@ function contractWith(text: string, kind: Naming): PostgresContract {
           primaryKey: { columns: ['id'] },
           foreignKeys: [],
           uniques: [],
-          indexes: [index],
-          checks: [check],
+          indexes: objects.includes('index') ? [index] : [],
+          checks: objects.includes('check') ? [check] : [],
         }),
       },
-      policy: { [policy.name]: policy },
+      policy: objects.includes('policy') ? { [policy.name]: policy } : {},
       rls: { [TABLE]: new PostgresRlsEnablement({ tableName: TABLE, namespaceId: 'public' }) },
     },
   });
@@ -112,9 +118,9 @@ function contractWith(text: string, kind: Naming): PostgresContract {
   return contract as PostgresContract;
 }
 
-function plan(kind: Naming) {
-  const from = contractWith(WRITTEN, kind);
-  const to = contractWith(CANONICAL, kind);
+function plan(kind: Naming, objects: readonly SqlObject[] = EVERY_OBJECT) {
+  const from = contractWith(WRITTEN, kind, objects);
+  const to = contractWith(CANONICAL, kind, objects);
   return createPostgresMigrationPlanner(stubLowerer).plan({
     contract: to,
     schema: contractToPostgresDatabaseSchemaNode(from, {
@@ -152,8 +158,8 @@ describe('a stored text that becomes canonical', () => {
     expect(await Promise.all(result.plan.operations)).toEqual([]);
   });
 
-  it('stops with a conflict for an exact-named index and check, and none for the policy', () => {
-    expect(plan('exact')).toEqual({
+  it('stops with a conflict for an exact-named index and check', () => {
+    expect(plan('exact', ['index', 'check'])).toEqual({
       kind: 'failure',
       conflicts: [
         expect.objectContaining({
@@ -168,5 +174,22 @@ describe('a stored text that becomes canonical', () => {
         }),
       ],
     });
+  });
+
+  it('drops and creates again an exact-named policy', async () => {
+    const result = plan('exact', ['policy']);
+    if (result.kind !== 'success') throw new Error(`planning failed: ${JSON.stringify(result)}`);
+    expect(await Promise.all(result.plan.operations)).toEqual([
+      expect.objectContaining({
+        id: 'rlsPolicy.public.posts.posts_owner_read_adopted.drop',
+        label: 'Drop RLS policy "posts_owner_read_adopted" on "posts"',
+        operationClass: 'destructive',
+      }),
+      expect.objectContaining({
+        id: 'rlsPolicy.public.posts.posts_owner_read_adopted',
+        label: 'Create RLS policy "posts_owner_read_adopted" on "posts"',
+        operationClass: 'additive',
+      }),
+    ]);
   });
 });
