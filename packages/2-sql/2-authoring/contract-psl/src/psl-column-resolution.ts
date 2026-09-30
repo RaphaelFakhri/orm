@@ -560,11 +560,7 @@ const TAGGED_LITERAL_CANONICALIZATION_CODES = {
 } as const;
 
 function defaultValueExpression(node: FieldAttributeAst): ExpressionAst | undefined {
-  const args = [...(node.argList()?.args() ?? [])];
-  const argument =
-    args.find((arg) => arg.colon() === undefined) ??
-    args.find((arg) => arg.name()?.name() === 'value');
-  return argument?.value();
+  return [...(node.argList()?.args() ?? [])].find((arg) => arg.colon() === undefined)?.value();
 }
 
 function listElements(expression: ExpressionAst | undefined): readonly ExpressionAst[] {
