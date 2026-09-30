@@ -18,11 +18,11 @@
  */
 import {
   createPostgresBuiltinCodecLookup,
-  createPostgresBuiltinDataTypeLookup,
   PostgresControlAdapter,
 } from '@internal/adapter-postgres/control';
 import { Collection } from '@internal/sql-orm-client';
 import type { SqlQueryPlan } from '@internal/sql-relational-core/plan';
+import { createPostgresBuiltinDataTypeLookup } from '@internal/target-postgres/data-types';
 import { tsquery, websearchToTsquery } from '@internal/target-postgres/full-text';
 import { CreateIndexCall } from '@internal/target-postgres/op-factory-call';
 import { blindCast } from '@internal/utils/casts';

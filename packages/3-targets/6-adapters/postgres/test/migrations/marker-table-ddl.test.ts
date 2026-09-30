@@ -1,8 +1,6 @@
-import {
-  createPostgresBuiltinCodecLookup,
-  createPostgresBuiltinDataTypeLookup,
-} from '@internal/target-postgres/codecs';
+import { createPostgresBuiltinCodecLookup } from '@internal/target-postgres/codecs';
 import { buildSignMarkerBootstrapQueries } from '@internal/target-postgres/contract-free';
+import { createPostgresBuiltinDataTypeLookup } from '@internal/target-postgres/data-types';
 import type { PostgresDdlNode } from '@internal/target-postgres/ddl';
 import { describe, expect, test } from 'vitest';
 import { PostgresControlAdapter } from '../../src/core/control-adapter';

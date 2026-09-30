@@ -1,7 +1,6 @@
 import { MongoControlAdapterImpl } from '@internal/adapter-mongo/control';
 import {
   createPostgresBuiltinCodecLookup,
-  createPostgresBuiltinDataTypeLookup,
   PostgresControlAdapter,
 } from '@internal/adapter-postgres/control';
 import {
@@ -18,6 +17,7 @@ import { EMPTY_CONTRACT_HASH } from '@internal/migration-tools/constants';
 import type { MongoContract } from '@internal/mongo-contract';
 import { MongoMigrationRunner, serializeMongoOps } from '@internal/target-mongo/control';
 import { createCollection, createIndex } from '@internal/target-mongo/migration';
+import { createPostgresBuiltinDataTypeLookup } from '@internal/target-postgres/data-types';
 import type { PostgresPlanTargetDetails } from '@internal/target-postgres/planner-target-details';
 import { timeouts } from '@repo/test-utils';
 import { type Db, MongoClient } from 'mongodb';

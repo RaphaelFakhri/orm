@@ -1,7 +1,5 @@
-import {
-  createPostgresBuiltinCodecLookup,
-  createPostgresBuiltinDataTypeLookup,
-} from '@internal/target-postgres/codecs';
+import { createPostgresBuiltinCodecLookup } from '@internal/target-postgres/codecs';
+import { createPostgresBuiltinDataTypeLookup } from '@internal/target-postgres/data-types';
 import {
   PostgresAlterPolicyRename,
   PostgresCreatePolicy,

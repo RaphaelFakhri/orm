@@ -30,9 +30,9 @@ import type { StorageColumn } from '@internal/sql-contract/types';
 import { col } from '@internal/sql-relational-core/contract-free';
 import {
   createPostgresBuiltinCodecLookup,
-  createPostgresBuiltinDataTypeLookup,
   postgresCodecDescriptorRegistry,
 } from '@internal/target-postgres/codecs';
+import { createPostgresBuiltinDataTypeLookup } from '@internal/target-postgres/data-types';
 import {
   AddColumnCall,
   AddForeignKeyCall,

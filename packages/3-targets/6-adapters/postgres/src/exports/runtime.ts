@@ -1,5 +1,6 @@
 import type { GeneratedValueSpec } from '@internal/contract/types';
 import { timestampNowRuntimeGenerator } from '@internal/family-sql/runtime';
+import { assembleDataTypes } from '@internal/framework-components/codec';
 import type { RuntimeAdapterInstance } from '@internal/framework-components/execution';
 import type { RuntimeMutationDefaultGenerator } from '@internal/framework-components/runtime';
 import { builtinGeneratorIds } from '@internal/ids';
@@ -8,7 +9,6 @@ import type { Adapter, AnyQueryAst } from '@internal/sql-relational-core/ast';
 import type { SqlRuntimeAdapterDescriptor } from '@internal/sql-runtime';
 import {
   assemblePostgresCodecRegistry,
-  assemblePostgresDataTypeLookup,
   postgresCodecRegistry,
 } from '@internal/target-postgres/codecs';
 import {
@@ -59,7 +59,7 @@ const postgresRuntimeAdapterDescriptor: SqlRuntimeAdapterDescriptor<'postgres', 
     rawCodecInferer: postgresRawCodecInferer,
     create(stack): SqlRuntimeAdapter {
       const components = [stack.target, stack.adapter, ...stack.extensions];
-      const dataTypeLookup = assemblePostgresDataTypeLookup(components);
+      const dataTypeLookup = assembleDataTypes(components).lookup;
       const codecRegistry = assemblePostgresCodecRegistry(components, dataTypeLookup);
       return createPostgresAdapterWithCodecRegistry(codecRegistry, dataTypeLookup);
     },

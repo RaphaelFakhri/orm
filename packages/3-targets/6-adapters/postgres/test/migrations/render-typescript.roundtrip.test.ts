@@ -19,10 +19,8 @@ import { promisify } from 'node:util';
 import { APP_SPACE_ID, storageHashHex } from '@internal/framework-components/control';
 import { keepInternalSpecifiers } from '@internal/framework-components/emission';
 import { col, primaryKey } from '@internal/sql-relational-core/contract-free';
-import {
-  createPostgresBuiltinCodecLookup,
-  createPostgresBuiltinDataTypeLookup,
-} from '@internal/target-postgres/codecs';
+import { createPostgresBuiltinCodecLookup } from '@internal/target-postgres/codecs';
+import { createPostgresBuiltinDataTypeLookup } from '@internal/target-postgres/data-types';
 import {
   AddColumnCall,
   CreateExtensionCall,

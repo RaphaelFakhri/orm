@@ -1,6 +1,5 @@
 import postgresAdapterDescriptor, {
   createPostgresBuiltinCodecLookup,
-  createPostgresBuiltinDataTypeLookup,
   PostgresControlAdapter,
 } from '@internal/adapter-postgres/control';
 import { type Contract, coreHash, profileHash } from '@internal/contract/types';
@@ -12,6 +11,7 @@ import { APP_SPACE_ID } from '@internal/framework-components/control';
 import { UNBOUND_NAMESPACE_ID } from '@internal/framework-components/ir';
 import { SqlStorage } from '@internal/sql-contract/types';
 import postgresTargetDescriptor from '@internal/target-postgres/control';
+import { createPostgresBuiltinDataTypeLookup } from '@internal/target-postgres/data-types';
 import { createPostgresMigrationPlanner } from '@internal/target-postgres/planner';
 import type { PostgresPlanTargetDetails } from '@internal/target-postgres/planner-target-details';
 import {

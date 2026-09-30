@@ -8,13 +8,10 @@ import type { SqlStorage } from '@internal/sql-contract/types';
 import type { ContractCodecRegistry, ProjectionExpr } from '@internal/sql-relational-core/ast';
 import type { SqlQueryPlan } from '@internal/sql-relational-core/plan';
 import { postgresCodec } from '@internal/target-postgres/codec-descriptor';
-import {
-  createPostgresBuiltinDataTypeLookup,
-  createPostgresCodecRegistryWithBuiltins,
-} from '@internal/target-postgres/codecs';
+import { createPostgresCodecRegistryWithBuiltins } from '@internal/target-postgres/codecs';
 import { pgTable } from '@internal/target-postgres/contract-free';
 import { dataTransform } from '@internal/target-postgres/data-transform';
-import { pgText } from '@internal/target-postgres/data-types';
+import { createPostgresBuiltinDataTypeLookup, pgText } from '@internal/target-postgres/data-types';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { PostgresControlAdapter } from '../../src/core/control-adapter';
 import { encodeControlQueryParams } from '../../src/core/control-codecs';

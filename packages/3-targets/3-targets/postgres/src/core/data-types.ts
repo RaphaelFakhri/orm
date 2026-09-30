@@ -10,7 +10,12 @@
  */
 
 import type { JsonValue } from '@internal/contract/types';
-import type { Cast, DataType } from '@internal/framework-components/codec';
+import {
+  assembleDataTypes,
+  type Cast,
+  type DataType,
+  type DataTypeLookup,
+} from '@internal/framework-components/codec';
 import {
   isNonFiniteText,
   numeralText,
@@ -307,3 +312,8 @@ export const postgresDataTypes: readonly DataType[] = [
   pgTimestamp,
   pgTimestamptz,
 ];
+
+/** A lookup of the data types this target registers. */
+export function createPostgresBuiltinDataTypeLookup(): DataTypeLookup {
+  return assembleDataTypes([{ id: 'postgres', dataTypes: postgresDataTypes }]).lookup;
+}

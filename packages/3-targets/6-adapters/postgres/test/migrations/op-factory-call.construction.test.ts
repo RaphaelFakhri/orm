@@ -7,10 +7,8 @@
  */
 
 import { col, fn, primaryKey } from '@internal/sql-relational-core/contract-free';
-import {
-  createPostgresBuiltinCodecLookup,
-  createPostgresBuiltinDataTypeLookup,
-} from '@internal/target-postgres/codecs';
+import { createPostgresBuiltinCodecLookup } from '@internal/target-postgres/codecs';
+import { createPostgresBuiltinDataTypeLookup } from '@internal/target-postgres/data-types';
 import {
   AddColumnCall,
   CreateSchemaCall,

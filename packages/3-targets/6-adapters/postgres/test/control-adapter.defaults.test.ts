@@ -1,8 +1,6 @@
 import type { SqlControlDriverInstance } from '@internal/sql-contract/types';
-import {
-  createPostgresBuiltinCodecLookup,
-  createPostgresBuiltinDataTypeLookup,
-} from '@internal/target-postgres/codecs';
+import { createPostgresBuiltinCodecLookup } from '@internal/target-postgres/codecs';
+import { createPostgresBuiltinDataTypeLookup } from '@internal/target-postgres/data-types';
 import { parsePostgresDefault } from '@internal/target-postgres/default-normalizer';
 import { timeouts } from '@repo/test-utils';
 import { describe, expect, it } from 'vitest';

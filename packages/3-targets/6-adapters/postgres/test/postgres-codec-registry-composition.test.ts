@@ -1,10 +1,12 @@
 import type { JsonValue } from '@internal/contract/types';
-import type {
-  AnyCodecDescriptor,
-  AnyCodecDescriptorTemplate,
-  DataType,
+import {
+  type AnyCodecDescriptor,
+  type AnyCodecDescriptorTemplate,
+  assembleDataTypes,
+  type DataType,
+  dataType,
+  dataTypeId,
 } from '@internal/framework-components/codec';
-import { dataType, dataTypeId } from '@internal/framework-components/codec';
 import type { ControlExtensionDescriptor } from '@internal/framework-components/control';
 import type { RuntimeExtensionDescriptor } from '@internal/framework-components/execution';
 import { sqlDataType } from '@internal/sql-contract/data-type';
@@ -26,11 +28,10 @@ import {
 } from '@internal/target-postgres/codec-descriptor';
 import {
   assemblePostgresCodecRegistry,
-  assemblePostgresDataTypeLookup,
-  assemblePostgresDataTypeLookupWithBuiltins,
   postgresCodecDescriptorRegistry,
 } from '@internal/target-postgres/codecs';
 import postgresTargetControlDescriptor from '@internal/target-postgres/control';
+import { postgresDataTypes } from '@internal/target-postgres/data-types';
 import postgresRuntimeTargetDescriptor from '@internal/target-postgres/runtime';
 import { applicationDomainOf } from '@repo/test-utils';
 import { describe, expect, it } from 'vitest';
@@ -229,11 +230,11 @@ describe('PostgreSQL adapter codec registry composition', () => {
     ];
     const runtimeRegistry = assemblePostgresCodecRegistry(
       runtimeComponents,
-      assemblePostgresDataTypeLookup(runtimeComponents),
+      assembleDataTypes(runtimeComponents).lookup,
     );
     const controlRegistry = assemblePostgresCodecRegistry(
       controlComponents,
-      assemblePostgresDataTypeLookup(controlComponents),
+      assembleDataTypes(controlComponents).lookup,
     );
     const expectedIds = [
       ...Array.from(postgresCodecDescriptorRegistry.values(), (descriptor) => descriptor.codecId),
@@ -331,9 +332,10 @@ describe('PostgreSQL adapter codec registry composition', () => {
 
   it('derives direct control materialization and native-type rendering from one descriptor contribution', async () => {
     const descriptor = transformingPostgresDescriptor('app/direct-control@1', 'citext');
-    const dataTypeLookup = assemblePostgresDataTypeLookupWithBuiltins([
-      { dataTypes: fixtureDataTypes([descriptor]) },
-    ]);
+    const dataTypeLookup = assembleDataTypes([
+      { id: 'postgres', dataTypes: postgresDataTypes },
+      { id: 'fixture', dataTypes: fixtureDataTypes([descriptor]) },
+    ]).lookup;
     const codecRegistry = createPostgresCodecRegistryWithBuiltins([descriptor], dataTypeLookup);
     const adapter = new PostgresControlAdapter(codecRegistry, dataTypeLookup);
     const ast = selectWithParam('document', descriptor.codecId, 'Ada');

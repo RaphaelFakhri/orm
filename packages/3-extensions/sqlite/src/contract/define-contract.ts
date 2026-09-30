@@ -1,7 +1,10 @@
 import sqlFamilyPack from '@internal/family-sql/pack';
-import type { CodecLookup, DataTypeLookup } from '@internal/framework-components/codec';
+import {
+  assembleDataTypes,
+  type CodecLookup,
+  type DataTypeLookup,
+} from '@internal/framework-components/codec';
 import type { ExtensionPackRef, TargetPackRef } from '@internal/framework-components/components';
-import { assembleDataTypes } from '@internal/framework-components/control';
 import type {
   SqlNamespaceBase,
   SqlNamespaceInput,

@@ -3,12 +3,17 @@ import { type Type, type } from 'arktype';
 import { describe, expect, it } from 'vitest';
 import {
   assembleAuthoringDataTypes,
-  assembleDataTypes,
   type ContributedConstructor,
   enforceDataTypeInvariants,
 } from '../src/control/control-stack';
 import type { AnyCodecDescriptor } from '../src/shared/codec-descriptor';
-import { type DataType, type DataTypeId, dataType, dataTypeId } from '../src/shared/data-type';
+import {
+  assembleDataTypes,
+  type DataType,
+  type DataTypeId,
+  dataType,
+  dataTypeId,
+} from '../src/shared/data-type';
 import { loweringEntryKey } from '../src/shared/framework-authoring';
 import { isRuntimeError } from '../src/shared/runtime-error';
 

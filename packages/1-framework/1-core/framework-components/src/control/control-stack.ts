@@ -9,7 +9,7 @@ import type { Codec } from '../shared/codec';
 import type { AnyCodecDescriptor } from '../shared/codec-descriptor';
 import type { CodecRef, CodecRegistry } from '../shared/codec-types';
 import type { DataType, DataTypeId, DataTypeLookup } from '../shared/data-type';
-import { createDataTypeLookup, objectSchemaKeys } from '../shared/data-type';
+import { assembleDataTypes, objectSchemaKeys } from '../shared/data-type';
 import type {
   AuthoringAttributeSpecContributions,
   AuthoringContributions,
@@ -335,36 +335,6 @@ export function assembleAuthoringContributions(
       ? { valueObjectStorageType: valueObjectStorageDeclaration.name }
       : {}),
   };
-}
-
-/** Collect every data type the composed components register, refusing two declarations of one id. */
-export function assembleDataTypes(
-  descriptors: ReadonlyArray<Pick<ComponentMetadata, 'dataTypes'> & { readonly id?: string }>,
-): {
-  readonly lookup: DataTypeLookup;
-  readonly declared: ReadonlyArray<{ readonly type: DataType; readonly contributedBy: string }>;
-} {
-  const declared: { type: DataType; contributedBy: string }[] = [];
-  const owners = new Map<string, string>();
-
-  for (const descriptor of descriptors) {
-    const contributedBy = descriptor.id ?? '<unknown>';
-    for (const type of descriptor.dataTypes ?? []) {
-      const existingOwner = owners.get(type.id);
-      if (existingOwner !== undefined) {
-        throw runtimeError(
-          'CONTRACT.DATA_TYPE_DUPLICATE',
-          `Duplicate data type "${type.id}". Component "${contributedBy}" conflicts with "${existingOwner}". ` +
-            'Each data type has exactly one owner across the composed stack.',
-          { dataType: type.id, contributedBy, owner: existingOwner },
-        );
-      }
-      owners.set(type.id, contributedBy);
-      declared.push({ type, contributedBy });
-    }
-  }
-
-  return { lookup: createDataTypeLookup(declared.map((entry) => entry.type)), declared };
 }
 
 /** Merge every component's PSL support for its data types, refusing two claims on one key. */

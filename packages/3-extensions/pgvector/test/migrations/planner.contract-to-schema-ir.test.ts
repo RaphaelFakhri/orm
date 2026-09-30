@@ -1,6 +1,5 @@
 import postgresAdapterDescriptor, {
   createPostgresBuiltinCodecLookup,
-  createPostgresBuiltinDataTypeLookup,
   PostgresControlAdapter,
 } from '@internal/adapter-postgres/control';
 import { asNamespaceId, type Contract, coreHash, profileHash } from '@internal/contract/types';
@@ -26,6 +25,7 @@ import {
 } from '@internal/sql-contract/types';
 import { SqlForeignKeyIR } from '@internal/sql-schema-ir/types';
 import postgresTargetDescriptor, { postgresRenderDefault } from '@internal/target-postgres/control';
+import { createPostgresBuiltinDataTypeLookup } from '@internal/target-postgres/data-types';
 import { createPostgresMigrationPlanner } from '@internal/target-postgres/planner';
 import type { PostgresPlanTargetDetails } from '@internal/target-postgres/planner-target-details';
 import { resolveDdlSchemaForNamespaceStorage } from '@internal/target-postgres/schema-ir-annotations';

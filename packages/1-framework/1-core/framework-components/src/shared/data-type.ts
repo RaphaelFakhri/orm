@@ -156,3 +156,36 @@ export function createDataTypeLookup(types: readonly DataType[]): DataTypeLookup
     all: () => inOrder,
   };
 }
+
+/** Collect every data type the composed components register, refusing two declarations of one id. */
+export function assembleDataTypes(
+  descriptors: ReadonlyArray<{
+    readonly id?: string;
+    readonly dataTypes?: ReadonlyArray<DataType>;
+  }>,
+): {
+  readonly lookup: DataTypeLookup;
+  readonly declared: ReadonlyArray<{ readonly type: DataType; readonly contributedBy: string }>;
+} {
+  const declared: { type: DataType; contributedBy: string }[] = [];
+  const owners = new Map<string, string>();
+
+  for (const descriptor of descriptors) {
+    const contributedBy = descriptor.id ?? '<unknown>';
+    for (const type of descriptor.dataTypes ?? []) {
+      const existingOwner = owners.get(type.id);
+      if (existingOwner !== undefined) {
+        throw runtimeError(
+          'CONTRACT.DATA_TYPE_DUPLICATE',
+          `Duplicate data type "${type.id}". Component "${contributedBy}" conflicts with "${existingOwner}". ` +
+            'Each data type has exactly one owner across the composed stack.',
+          { dataType: type.id, contributedBy, owner: existingOwner },
+        );
+      }
+      owners.set(type.id, contributedBy);
+      declared.push({ type, contributedBy });
+    }
+  }
+
+  return { lookup: createDataTypeLookup(declared.map((entry) => entry.type)), declared };
+}

@@ -1,4 +1,4 @@
-import type { DataTypeLookup } from '@internal/framework-components/codec';
+import { assembleDataTypes, type DataTypeLookup } from '@internal/framework-components/codec';
 import { APP_SPACE_ID } from '@internal/framework-components/control';
 import type {
   Adapter,
@@ -11,10 +11,8 @@ import type {
 import { isDdlNode } from '@internal/sql-relational-core/ast';
 import type { RawCodecInferer } from '@internal/sql-relational-core/expression';
 import type { PostgresCodecRegistry } from '@internal/target-postgres/codecs';
-import {
-  assemblePostgresDataTypeLookupWithBuiltins,
-  createPostgresCodecRegistryWithBuiltins,
-} from '@internal/target-postgres/codecs';
+import { createPostgresCodecRegistryWithBuiltins } from '@internal/target-postgres/codecs';
+import { postgresDataTypes } from '@internal/target-postgres/data-types';
 import type { PostgresDdlNode } from '@internal/target-postgres/ddl';
 import { adapterError } from './adapter-errors';
 import { PostgresControlAdapter } from './control-adapter';
@@ -149,9 +147,10 @@ export const postgresRawCodecInferer: RawCodecInferer = {
 };
 
 export function createPostgresAdapter(options?: PostgresAdapterOptions) {
-  const dataTypeLookup = assemblePostgresDataTypeLookupWithBuiltins([
+  const dataTypeLookup = assembleDataTypes([
+    { id: 'postgres', dataTypes: postgresDataTypes },
     { id: 'createPostgresAdapter', dataTypes: options?.dataTypes ?? [] },
-  ]);
+  ]).lookup;
   const codecRegistry = createPostgresCodecRegistryWithBuiltins(
     options?.codecDescriptors,
     dataTypeLookup,

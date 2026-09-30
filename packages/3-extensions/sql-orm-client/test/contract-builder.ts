@@ -1,5 +1,9 @@
 import sqlFamilyPack from '@internal/family-sql/pack';
-import type { CodecLookup, DataTypeLookup } from '@internal/framework-components/codec';
+import {
+  assembleDataTypes,
+  type CodecLookup,
+  type DataTypeLookup,
+} from '@internal/framework-components/codec';
 import type {
   ComponentMetadata,
   ExtensionPackRef,
@@ -17,10 +21,7 @@ import {
   rel,
   type ScalarFieldBuilder,
 } from '@internal/sql-contract-ts/contract-builder';
-import {
-  assemblePostgresCodecRegistryWithBuiltins,
-  assemblePostgresDataTypeLookupWithBuiltins,
-} from '@internal/target-postgres/codecs';
+import { assemblePostgresCodecRegistryWithBuiltins } from '@internal/target-postgres/codecs';
 import postgresPack from '@internal/target-postgres/pack';
 import { postgresCreateNamespace } from '@internal/target-postgres/types';
 
@@ -131,7 +132,7 @@ export function defineContract(
   const extensionPacks: readonly Pick<ComponentMetadata, 'types' | 'dataTypes'>[] = Object.values(
     definition.extensions ?? {},
   );
-  const dataTypeLookup = assemblePostgresDataTypeLookupWithBuiltins(extensionPacks);
+  const dataTypeLookup = assembleDataTypes([postgresPack, ...extensionPacks]).lookup;
   const bound = {
     ...definition,
     createNamespace: postgresCreateNamespace,

@@ -40,6 +40,7 @@ export type {
   ListCast,
 } from '../shared/data-type';
 export {
+  assembleDataTypes,
   createDataTypeLookup,
   dataType,
   dataTypeId,

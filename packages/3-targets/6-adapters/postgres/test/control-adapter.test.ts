@@ -6,10 +6,8 @@ import {
   SqlIndexIR,
   SqlUniqueIR,
 } from '@internal/sql-schema-ir/types';
-import {
-  createPostgresBuiltinCodecLookup,
-  createPostgresBuiltinDataTypeLookup,
-} from '@internal/target-postgres/codecs';
+import { createPostgresBuiltinCodecLookup } from '@internal/target-postgres/codecs';
+import { createPostgresBuiltinDataTypeLookup } from '@internal/target-postgres/data-types';
 import { normalizeSchemaNativeType } from '@internal/target-postgres/native-type-normalizer';
 import type {
   PostgresDatabaseSchemaNode,

@@ -61,7 +61,10 @@ import {
 } from '@internal/sql-relational-core/ast';
 import type { AnyPostgresCodecDescriptor } from '@internal/target-postgres/codec-descriptor';
 import { postgresCodecDescriptorRegistry } from '@internal/target-postgres/codecs';
-import { postgresDataTypes } from '@internal/target-postgres/data-types';
+import {
+  createPostgresBuiltinDataTypeLookup,
+  postgresDataTypes,
+} from '@internal/target-postgres/data-types';
 import { ifDefined } from '@internal/utils/defined';
 import { structuredError } from '@internal/utils/structured-error';
 
@@ -250,7 +253,7 @@ function descriptorFor(conformanceCase: PostgresCodecConformanceCase) {
  * Builds `SELECT CAST(json_build_object('value', <projection>) AS text)`, so the
  * document arrives as text and the harness — not the driver — owns the parse.
  */
-const postgresDataTypeLookup = createDataTypeLookup(postgresDataTypes);
+const postgresDataTypeLookup = createPostgresBuiltinDataTypeLookup();
 
 /** The base name of the data type the case's codec represents, for the storage column. */
 function columnBaseName(

@@ -1,6 +1,5 @@
 import postgresAdapterDescriptor, {
   createPostgresBuiltinCodecLookup,
-  createPostgresBuiltinDataTypeLookup,
   PostgresControlAdapter,
 } from '@internal/adapter-postgres/control';
 import {
@@ -19,6 +18,7 @@ import { UNBOUND_NAMESPACE_ID } from '@internal/framework-components/ir';
 import { sqlDataType } from '@internal/sql-contract/data-type';
 import { SqlStorage, type SqlStorageInput, type StorageTable } from '@internal/sql-contract/types';
 import postgresTargetDescriptor from '@internal/target-postgres/control';
+import { createPostgresBuiltinDataTypeLookup } from '@internal/target-postgres/data-types';
 import { createPostgresMigrationPlanner } from '@internal/target-postgres/planner';
 import { buildBuiltinIdentityValue } from '@internal/target-postgres/planner-identity-values';
 import type { PostgresPlanTargetDetails } from '@internal/target-postgres/planner-target-details';

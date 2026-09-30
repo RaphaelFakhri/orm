@@ -17,12 +17,10 @@ import {
 } from '@internal/migration-tools/aggregate';
 import { SqlStorage } from '@internal/sql-contract/types';
 import type { SqlExecuteRequest } from '@internal/sql-relational-core/ast';
-import {
-  createPostgresBuiltinCodecLookup,
-  createPostgresBuiltinDataTypeLookup,
-} from '@internal/target-postgres/codecs';
+import { createPostgresBuiltinCodecLookup } from '@internal/target-postgres/codecs';
 import { buildControlTableBootstrapQueries } from '@internal/target-postgres/contract-free';
 import postgresTargetDescriptor from '@internal/target-postgres/control';
+import { createPostgresBuiltinDataTypeLookup } from '@internal/target-postgres/data-types';
 import type { PostgresDdlNode } from '@internal/target-postgres/ddl';
 import type { PostgresPlanTargetDetails } from '@internal/target-postgres/planner-target-details';
 import {

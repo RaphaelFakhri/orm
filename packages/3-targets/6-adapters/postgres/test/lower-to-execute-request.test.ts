@@ -7,11 +7,10 @@ import { col, fn, lit } from '@internal/sql-relational-core/contract-free';
 import { postgresCodec } from '@internal/target-postgres/codec-descriptor';
 import {
   createPostgresBuiltinCodecLookup,
-  createPostgresBuiltinDataTypeLookup,
   createPostgresCodecRegistryWithBuiltins,
 } from '@internal/target-postgres/codecs';
 import { jsonb, pgTable, text } from '@internal/target-postgres/contract-free';
-import { pgText } from '@internal/target-postgres/data-types';
+import { createPostgresBuiltinDataTypeLookup, pgText } from '@internal/target-postgres/data-types';
 import { PostgresCreateTable } from '@internal/target-postgres/ddl';
 import { postgresCreateNamespace } from '@internal/target-postgres/types';
 import { createContract } from '@repo/test-utils';

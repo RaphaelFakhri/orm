@@ -1,9 +1,7 @@
 import postgresAdapterControl, {
   createPostgresBuiltinCodecLookup,
-  createPostgresBuiltinDataTypeLookup,
   PostgresControlAdapter,
 } from '@internal/adapter-postgres/control';
-
 import { type Contract, coreHash, profileHash } from '@internal/contract/types';
 import { sqlComponentTypes } from '@internal/family-sql/control';
 import { UNBOUND_NAMESPACE_ID } from '@internal/framework-components/ir';
@@ -13,6 +11,7 @@ import {
   type StorageTableInput,
 } from '@internal/sql-contract/types';
 import postgresTargetControl from '@internal/target-postgres/control';
+import { createPostgresBuiltinDataTypeLookup } from '@internal/target-postgres/data-types';
 import { buildPostgresPlanDiff } from '@internal/target-postgres/diff-database-schema';
 import { coalesceSubtreeIssues, planIssues } from '@internal/target-postgres/issue-planner';
 import type { CreateTableCall } from '@internal/target-postgres/op-factory-call';

@@ -7,9 +7,9 @@ import { UNBOUND_NAMESPACE_ID } from '@internal/framework-components/ir';
 import { SqlStorage, type StorageColumn, type StorageTable } from '@internal/sql-contract/types';
 import {
   createPostgresBuiltinCodecLookup,
-  createPostgresBuiltinDataTypeLookup,
   postgresCodecDescriptorRegistry,
 } from '@internal/target-postgres/codecs';
+import { createPostgresBuiltinDataTypeLookup } from '@internal/target-postgres/data-types';
 import { createPostgresMigrationPlanner } from '@internal/target-postgres/planner';
 import {
   PostgresDatabaseSchemaNode,

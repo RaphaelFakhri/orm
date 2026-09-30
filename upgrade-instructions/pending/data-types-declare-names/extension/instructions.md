@@ -565,16 +565,16 @@ export const contract = defineContract({}, () => ({
 }));
 
 // after
-import {
-  assemblePostgresCodecRegistryWithBuiltins,
-  assemblePostgresDataTypeLookupWithBuiltins,
-} from '@internal/target-postgres/codecs';
+import { assembleDataTypes } from '@internal/framework-components/codec';
+import { assemblePostgresCodecRegistryWithBuiltins } from '@internal/target-postgres/codecs';
+import { postgresDataTypes } from '@internal/target-postgres/data-types';
 import { pgvectorDataTypes } from './core/data-types';
 import { pgvectorCodecRegistry } from './core/registry';
 
-const dataTypeLookup = assemblePostgresDataTypeLookupWithBuiltins([
-  { dataTypes: pgvectorDataTypes },
-]);
+const dataTypeLookup = assembleDataTypes([
+  { id: 'postgres', dataTypes: postgresDataTypes },
+  { id: 'pgvector', dataTypes: pgvectorDataTypes },
+]).lookup;
 const codecLookup = assemblePostgresCodecRegistryWithBuiltins(
   [{ types: { codecTypes: { codecDescriptors: [...pgvectorCodecRegistry.values()] } } }],
   dataTypeLookup,
@@ -602,10 +602,14 @@ A column whose codec the lookup lacks fails with `CONTRACT.CODEC_DESCRIPTOR_MISS
 
 A package that exposes its own `defineContract` over `buildBoundContract`, as the Postgres and SQLite facades do, makes four edits.
 
-1. Directly after the first import, import the lookup types:
+1. Directly after the first import, import the lookup types and the data type assembly:
 
    ```ts
-   import type { CodecLookup, DataTypeLookup } from '@internal/framework-components/codec';
+   import {
+     assembleDataTypes,
+     type CodecLookup,
+     type DataTypeLookup,
+   } from '@internal/framework-components/codec';
    ```
 
 2. In the result type, the object passed to `ContractInput`'s build gains both lookups directly after `createNamespace`:
@@ -626,14 +630,14 @@ A package that exposes its own `defineContract` over `buildBoundContract`, as th
      readonly dataTypeLookup?: DataTypeLookup;
    ```
 
-4. In the implementation, assemble the data type lookup once and build the codec lookup against it. On Postgres, import `assemblePostgresDataTypeLookupWithBuiltins` beside `assemblePostgresCodecRegistryWithBuiltins`, which now takes the data type lookup as its second argument:
+4. In the implementation, assemble the data type lookup once, with the target pack as the first contributor, and build the codec lookup against it. On Postgres, `assemblePostgresCodecRegistryWithBuiltins` now takes the data type lookup as its second argument:
 
    ```ts
    const extensions: readonly ExtensionPackRef<'sql', string>[] = Object.values(
      definition.extensions ?? {},
    );
    const dataTypeLookup =
-     definition.dataTypeLookup ?? assemblePostgresDataTypeLookupWithBuiltins(extensions);
+     definition.dataTypeLookup ?? assembleDataTypes([postgresPack, ...extensions]).lookup;
    const bound = {
      ...definition,
      createNamespace: postgresCreateNamespace,
@@ -644,7 +648,7 @@ A package that exposes its own `defineContract` over `buildBoundContract`, as th
    };
    ```
 
-   On SQLite, import `assembleDataTypes` from `@internal/framework-components/control` directly after the `@internal/framework-components/components` import, and use the target constant as the first contributor:
+   On SQLite, the target constant is the first contributor:
 
    ```ts
    const extensionPacks: readonly ExtensionPackRef<'sql', string>[] = Object.values(
@@ -663,7 +667,7 @@ A package that exposes its own `defineContract` over `buildBoundContract`, as th
 
 ## `postgres-codec-registry-takes-data-type-lookup`
 
-The Postgres codec registry no longer carries the data types. Each function that builds one takes the data type lookup its codecs are checked against, and refuses a codec whose data type the lookup lacks with `CONTRACT.DATA_TYPE_UNREGISTERED`. Build the lookup first, from the same components, with `assemblePostgresDataTypeLookup(components)`, `assemblePostgresDataTypeLookupWithBuiltins(extensions)` or `createPostgresBuiltinDataTypeLookup()` from `@internal/target-postgres/codecs`:
+The Postgres codec registry no longer carries the data types. Each function that builds one takes the data type lookup its codecs are checked against, and refuses a codec whose data type the lookup lacks with `CONTRACT.DATA_TYPE_UNREGISTERED`. Build the lookup first, from the same components, with `assembleDataTypes(components).lookup` from `@internal/framework-components/codec`, or take the target's own with `createPostgresBuiltinDataTypeLookup()` from `@internal/target-postgres/data-types`:
 
 ```ts
 // before
@@ -671,7 +675,7 @@ const codecRegistry = assemblePostgresCodecRegistry(components);
 const adapter = new PostgresControlAdapter(codecRegistry);
 
 // after
-const dataTypeLookup = assemblePostgresDataTypeLookup(components);
+const dataTypeLookup = assembleDataTypes(components).lookup;
 const codecRegistry = assemblePostgresCodecRegistry(components, dataTypeLookup);
 const adapter = new PostgresControlAdapter(codecRegistry, dataTypeLookup);
 ```

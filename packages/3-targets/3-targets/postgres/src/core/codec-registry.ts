@@ -1,19 +1,18 @@
 import type { CodecRegistry, DataTypeLookup } from '@internal/framework-components/codec';
 import type { ComponentMetadata } from '@internal/framework-components/components';
-import { assembleDataTypes, extractCodecLookup } from '@internal/framework-components/control';
+import { extractCodecLookup } from '@internal/framework-components/control';
 import { structuredError } from '@internal/utils/structured-error';
 import {
   type AnyPostgresCodecDescriptor,
   buildPostgresCodecDescriptorRegistry,
   type PostgresCodecDescriptorRegistry,
 } from './codec-descriptor';
-import { postgresTargetDescriptorMetaRuntime } from './descriptor-meta-runtime';
+import { createPostgresBuiltinDataTypeLookup } from './data-types';
 import { postgresCodecDescriptorRegistry } from './registry';
 
 export type PostgresCodecRegistry = CodecRegistry & PostgresCodecDescriptorRegistry;
 
 type CodecContributor = Pick<ComponentMetadata, 'types'>;
-type DataTypeContributor = Pick<ComponentMetadata, 'dataTypes'> & { readonly id?: string };
 
 /**
  * A registry of `descriptors`, refusing a codec whose data type `dataTypeLookup` does not have: the
@@ -50,24 +49,6 @@ function buildPostgresCodecRegistry(
     values: () => descriptorRegistry.values(),
   };
   return Object.freeze(registry);
-}
-
-/** The data types `components` register, refusing a data type id that two of them register. */
-export function assemblePostgresDataTypeLookup(
-  components: ReadonlyArray<DataTypeContributor>,
-): DataTypeLookup {
-  return assembleDataTypes(components).lookup;
-}
-
-/** The target's data types and those `extensions` register. */
-export function assemblePostgresDataTypeLookupWithBuiltins(
-  extensions: ReadonlyArray<DataTypeContributor>,
-): DataTypeLookup {
-  return assemblePostgresDataTypeLookup([postgresTargetDescriptorMetaRuntime, ...extensions]);
-}
-
-export function createPostgresBuiltinDataTypeLookup(): DataTypeLookup {
-  return assemblePostgresDataTypeLookupWithBuiltins([]);
 }
 
 export function assemblePostgresCodecRegistry(
