@@ -4,7 +4,7 @@ Which model tier should this dispatch run on? Per [`docs/drive/principles/decomp
 
 ## Operator override (2026-09-24)
 
-Every subagent dispatch in this repo runs on **Opus**: implementers, reviewers, and spikes. Pass `model: "opus"` explicitly on every dispatch. The routing table below records the earlier trial of cheaper tiers and is kept for history; it does not govern dispatches until the operator lifts this override.
+Every subagent dispatch in this repo runs on **Opus**: implementers, reviewers, and spikes. Pass `model: "opus"` explicitly on every dispatch. Never dispatch on Fable (2026-09-30): Fable implementers were cut off by its usage limit partway through slices and had to be resumed. This applies whatever an operator's global agent instructions say about Fable. The routing table below records the earlier trial of cheaper tiers and is kept for history; it does not govern dispatches until the operator lifts this override.
 
 ## Routing table
 
