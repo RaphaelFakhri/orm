@@ -141,5 +141,5 @@ Facts read on `main`:
 
 - The contract IR already stores a control policy on each column (`storage-column.ts`) and each table.
 - PSL has only a model-level `@@control`. There is no field-level `@control`.
-- A model whose control policy is not `managed` gets no derived CHECK constraints (`psl-field-resolution.ts`). This bears on the enum membership check during adoption.
+- A model whose control policy is not `managed` gets no derived CHECK constraints (`psl-field-resolution.ts`). Using this during adoption, so that no enum membership check is expected, was rejected: it weakens what signing guarantees.
 - The TypeScript contract builder describes table details in a `.sql({ ... })` section on the model, apart from the fields. A `sql { }` block in a PSL model would mirror it.

@@ -78,6 +78,8 @@ Update every record that contradicts the code. Known so far: the non-portable an
 | `relationMode = "prisma"` | Never. Prisma 8 will not imitate foreign keys in the client. The upgrade guide tells those users to add foreign keys. |
 | Referential actions on MongoDB | After GA. |
 
+Adopting a Prisma 7 database must not require a database change before cutover, and must not weaken what signing guarantees. Rejected on 2026-09-30: marking the contract as not managed during side-by-side running, so that no derived CHECK constraints are expected. Will: it compromises the guarantees that signing makes, and a user may well move to Prisma 8 migrations while still running Prisma 7 queries. The task stays open in the plan.
+
 Superseded if the external-column proposal is adopted: when `contract infer` or the Prisma 7 source meets a column type with no codec, it fails and names the column and the missing codec. It does not leave the column out. Today `contract infer` prints `Unsupported(...)` instead, which must change.
 
 Stopping point for the open upgrade issues: every urgent and high issue is closed before GA. Medium and low issues may remain. The issues are in two Linear projects: "Prisma 7 contract source: gaps and defects" and "Contract print and Prisma 7 source follow-ups".
@@ -88,7 +90,7 @@ Transaction options: isolation levels, timeouts, and transactions inside transac
 
 ## Query features: build when there is time
 
-The needs that `increment`, `decrement` and `firstOrThrow` met in Prisma 7. Prisma 8 need not copy their API (Will, 2026-09-30). Expressions in updates meet the first two. `firstOrThrow` is a separate need.
+The needs that `increment`, `decrement` and `firstOrThrow` met in Prisma 7. Prisma 8 need not copy their API (Will, 2026-09-30). Expressions in updates meet the first two. `firstOrThrow` is a separate need. Serhii's plan for it is a new collection method, `whereUnique()`. That design is his, not part of this planning discussion.
 
 ## Query features: high priority
 

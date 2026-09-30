@@ -30,7 +30,7 @@ Test: an existing Prisma 7 database can be signed by Prisma 8.
 | 3 | Upgrade guide rewrite | Must | Not tracked | 2 |
 | 4 | Codecs for `citext`, `bit`, `varbit`, `xml`, `oid` (TML-3270) | Must | Backlog | |
 | 5 | Design: columns Prisma 8 does not manage, including columns of unknown type, in PSL and the Prisma 7 source (proposed: `@control(external)` on a column, and an `unknown` type) | Must | Proposed 2026-09-30. Not designed. The contract IR already has a control policy per column. PSL only has `@@control` per model. | Design |
-| 6 | Adopting a Prisma 7 database without changing it: the enum membership check must not require a database change before cutover | Must | Not designed. Today a model with a non-managed control policy gets no derived checks, which may be the answer. | Design |
+| 6 | Adopting a Prisma 7 database without changing it: the enum membership check must not require a database change before cutover | Must | Not designed. Rejected: marking the contract as not managed during side-by-side running (see decisions.md). | Design |
 | 7 | Medium and low upgrade issues | Later | Backlog | |
 | 8 | `money` codec | Later | Backlog | |
 | 9 | Views | Later | | |
@@ -54,7 +54,7 @@ Everything here is additive, so nothing here can block a breaking change.
 | 2 | Nested writes on relations: `update`, `delete`, `upsert`, `set`, `connectOrCreate` (TML-2781) | Aim | Not started. Large. | Spec |
 | 3 | Design the replacement for `omit` | Must (design only) | Not started | |
 | 4 | Expressions in updates, which cover what `increment` and `decrement` did in Prisma 7 | When there is time | Not designed. `update` takes plain values only today. | |
-| 5 | A query that fails when nothing matches, which covers what `firstOrThrow` did in Prisma 7 | When there is time | Exists only as `.all().firstOrThrow()`, which reads every row | |
+| 5 | A query that fails when nothing matches, which covers what `firstOrThrow` did in Prisma 7 | When there is time | Serhii has a plan based on a new collection method, `whereUnique()`. Today it exists only as `.all().firstOrThrow()`, which reads every row. | Serhii's design |
 | 6 | JSON filters and list filters | Later | prisma/orm#29834 stalled | |
 
 ## Stream 5: Docs and the new user's first hour
