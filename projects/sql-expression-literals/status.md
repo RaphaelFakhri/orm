@@ -220,6 +220,10 @@ Brief: `dispatches/2b-review-fixes-brief.md`. Reviews: `slice-reviews/2b/`. Comm
 
 Verification at HEAD (F01), logs in `wip/2b-review-fixes/`: `build`, `typecheck`, `lint`, `lint:deps`, `lint:skills`, `check:error-reference`, `lint:framework-vocabulary`, `fixtures:check` (tree clean) pass; `lint:casts` and `lint:throws` delta 0. `test:scripts`: 590 pass. `test:packages`: 1452 files pass, 7 fail; the three tarball tests are the known failures, and the other four pass alone (`rerun-failed.log`). Integration files alone: 60 files, 982 tests pass (`integration.log`). Supabase pack: 18 files pass (`supabase-tests.log`). `check:upgrade-coverage` after committing: pass (`upgrade-coverage.log`).
 
+## Slice 1, 2026-09-30
+
+Built in the linked worktree `wip/wt-1` from `main`, since it depends on no other slice. Briefs: `dispatches/1-implementer-brief.md`, `dispatches/1-review-fixes-brief.md`. Reviews: `slice-reviews/1/` and `slice-reviews/1-round-2/`. Round 1 found a real bug: the SQLite migration-file renderer passed the `OpaqueSql` object to the JSON printer. Round 2 corrected the app fragment: only the wire name changes, not a policy's stored body, and the plan drops and recreates the object. PR https://github.com/prisma/orm/pull/30546.
+
 ## Slice order and tickets
 
 | Order | Plan slice | Ticket | State |
@@ -228,7 +232,7 @@ Verification at HEAD (F01), logs in `wip/2b-review-fixes/`: `build`, `typecheck`
 | 2 | 2t: an argument declares the data type it receives | TML-3367 | PR #30539 open against the 2a branch; two review rounds done, all findings fixed |
 | 3 | 2b: the six places take `sql` literals | TML-3288 | Dispatches (a) to (d) done on `tml-3288-sql-expression-places`; review next |
 | 4 | 3: the TypeScript builder takes `sql` values | TML-3289 | Waiting for 2b |
-| On the side | 1: line comments in raw SQL | TML-3287 | Not started; depends on nothing |
+| On the side | 1: line comments in raw SQL | TML-3287 | PR #30546 open against `main` (2026-09-30); two review rounds done, all findings fixed; awaits Will's approval |
 | Last | 4: migration files write template literals | TML-3290 | Waiting for 1 |
 | Stretch | 5: migration files write `sql` values | TML-3297 | Waiting for 3 and 4 |
 
