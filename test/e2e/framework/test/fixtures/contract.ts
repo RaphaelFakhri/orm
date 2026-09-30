@@ -29,9 +29,10 @@ import postgresTargetPack from '@prisma/orm-postgres/target/pack';
 import { type } from 'arktype';
 
 const postgresCodecLookup = extractCodecLookup([postgresAdapter, pgvectorPack, arktypeJsonPack]);
-const postgresDataTypeLookup = createDataTypeLookup(
-  [postgresTargetPack, pgvectorPack, arktypeJsonPack].flatMap((pack) => pack.dataTypes ?? []),
-);
+const postgresDataTypeLookup = createDataTypeLookup([
+  ...postgresTargetPack.dataTypes,
+  ...pgvectorPack.dataTypes,
+]);
 
 const profileSchema = type({
   name: 'string',
