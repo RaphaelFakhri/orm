@@ -171,13 +171,42 @@ Logs in the gitignored `wip/2b/`.
 - Dispatch (d): ADR 256, the ADR 129/231/249/234/236/243/244 amendments (ADR 249 still names `ControlDefaultRegistries`), docs and skills from the grep above, the error reference, the upgrade fragments' prose and codemod copies, and the manual QA script for the new messages.
 - Findings 1 and 2 need decisions.
 
+## Slice 2b, dispatches (c) and (d), 2026-09-30
+
+Same branch, not pushed, no pull request. Brief: `dispatches/2b-tooling-docs-brief.md`. Commits `1b66c15bad` to the status commit.
+
+### What was built
+
+- **Finding 1** (`1940a65a24`): `contract print` refuses an index, check or policy whose SQL a `sql` literal cannot write back unchanged, with `CONTRACT.PRINT_UNSUPPORTED` from `refuseSqlTextThatDoesNotReadBack`. Test: `postgres/test/psl-print/refusals-sql-text.test.ts`. Listed in the error reference.
+- **Finding 2** (`2437389302`): slice 1 adds the `--` case to the journey test; `plan.md` moved it. Both decisions are recorded in `dispatches/2b-findings.md`.
+- **Dispatch (c)** (`13e27e6cfd`, `9931bbbea7`): the language server colours a tagged literal (namespace, keyword tag, string per line), completes `sql` at every argument typed by a data type, and completes `@@check(` to ``check(expression: sql`${1:expression}`)``. Tests in `completion-provider.test.ts` and `semantic-tokens.test.ts`.
+- **ADR 260** (`558f77e1fa`), "Raw SQL is a value of the data type `sql/expression`". Numbered 260, not 256: `main` has ADRs 256 and 257, and open branches use 258 and 259. Every "ADR 256" reference in code, design, plan, spec and README now says 260. ADRs 129, 231, 234, 236, 243, 244, 249, 254 and 255 are amended; ADR 255's policy example now matches the code. `ADR-INDEX.md` has rows for 129, 254 and 260.
+- **Docs** (`738289a20e`): the error reference, the editor tooling brief, the extensions subsystem doc, `docs/README.md`, the contract-psl and Postgres READMEs, and the `prisma-8` skill references.
+- **Upgrade fragments** (`6287c89999`): full prose for `raw-sql-is-a-sql-literal` (with the codemod as `script:`), `storage-hash-may-change-once`, `spec-contexts-carry-data-types` and `supabase-contract-writes-sql-literals`. The codemod copies are byte-identical to `scripts/codemods/rewrite-sql-strings.mjs`.
+- **Manual QA** (`0d43e333de`): slice 2b script and run in `manual-qa.md`; every case gave the expected result.
+
+### Verification
+
+Logs in the gitignored `wip/2b-cd/`.
+
+- `build`, `typecheck`, `lint`, `lint:deps`, `lint:skills`, `check:error-reference` (361 codes), `fixtures:check` (tree clean), `test:scripts` (577 pass): pass. `lint:casts` delta 0, `lint:throws` delta 0, `lint:framework-vocabulary` 272 of 272.
+- `test:packages` (`test-packages.log`): 1449 files pass, 6 fail. The three tarball tests fail on the registry refusal. `render-typescript.roundtrip.test.ts` and the two `cli-telemetry` files pass alone (`rerun-render-roundtrip.log`, `rerun-cli-telemetry.log`).
+- Integration, alone: the new journey and `test/authoring` (`integration.log`, 30 files); `test/psl-print` and the `contract-print` journey (`integration-psl-print.log`, 16 files). Supabase pack tests pass (`supabase-tests.log`, 18 files).
+- Fragments (`fragment-validation.log`): the codemod copies, run on `examples/` and `packages/3-extensions/` as they were at the merge base, reproduce the committed files exactly; those are the only non-test changes in either directory. Detection patterns tested against true positives and nearest false positives (`detection-check.log`).
+- Done-condition grep (`grep-done-condition.log`): what remains is the preserved historical example in ADR 126, the refused form quoted on purpose in ADR 129 and ADR 260, a TypeScript schema in the codec guide, the Prisma 6 and Prisma 7 fixtures, and the TypeScript examples in the contract-ts README, which are slice 3's.
+
+### Still owed
+
+- The wording of a number of the wrong size (`pg/int4 has no cast from pg/int8; write a number`) and of `write no written form`, carried over from slice 2t. No place in slice 2b receives a number-typed or formless data type, so neither message can appear yet.
+- `/drive-code-review` of slice 2b.
+
 ## Slice order and tickets
 
 | Order | Plan slice | Ticket | State |
 | --- | --- | --- | --- |
 | 1 | 2a: `sql` is the data type `sql/expression` | TML-3296 | PR #30534 open; two review rounds done, all findings fixed |
 | 2 | 2t: an argument declares the data type it receives | TML-3367 | PR #30539 open against the 2a branch; two review rounds done, all findings fixed |
-| 3 | 2b: the six places take `sql` literals | TML-3288 | Dispatches (a) and (b) done on `tml-3288-sql-expression-places`; (c) and (d) next |
+| 3 | 2b: the six places take `sql` literals | TML-3288 | Dispatches (a) to (d) done on `tml-3288-sql-expression-places`; review next |
 | 4 | 3: the TypeScript builder takes `sql` values | TML-3289 | Waiting for 2b |
 | On the side | 1: line comments in raw SQL | TML-3287 | Not started; depends on nothing |
 | Last | 4: migration files write template literals | TML-3290 | Waiting for 1 |
