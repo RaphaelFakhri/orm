@@ -17,7 +17,8 @@ import { dataTypeValue, funcCall, oneOf, str } from '../src/exports';
 import { Cursor, parseAttribute } from '../src/parse';
 import { PslSources } from '../src/source-file';
 import { FieldAttributeAst } from '../src/syntax/ast/attributes';
-import type { ExpressionAst } from '../src/syntax/ast/expressions';
+import { type ExpressionAst, NumberLiteralExprAst } from '../src/syntax/ast/expressions';
+import { type GreenElement, greenNode, greenToken } from '../src/syntax/green';
 import { createSyntaxTree } from '../src/syntax/red';
 import { supportBinder } from './support';
 
@@ -27,7 +28,7 @@ const sqlExpression = dataType('sql/expression', {});
 const pgText = dataType('pg/text', {});
 const pgBool = dataType('pg/bool', {});
 const pgInt2 = dataType('pg/int2', {});
-const pgInt4 = dataType('pg/int4', { casts: { [pgInt2.id]: unchanged } });
+const pgInt4 = dataType('pg/int4', { casts: { [pgInt2.id]: (value) => String(value) } });
 const pgNumeric = dataType('pg/numeric', {});
 const pgJson = dataType('pg/json', {});
 const pgUuid = dataType('pg/uuid', {
@@ -109,6 +110,32 @@ function argOf(source: string): { expr: ExpressionAst; ctx: AttributeCtx } {
   };
 }
 
+/**
+ * An argument whose callee is colon-qualified. Source text cannot place one there, because `a:` opens a named argument, so the tree of the dotted form gets a colon in place of its dot.
+ */
+function colonQualifiedArgOf(source: string): { expr: ExpressionAst; ctx: AttributeCtx } {
+  const dotted = parseAttribute(new Cursor('schema.prisma', `@x(${source.replace(':', '.')})`));
+  const withColon = (element: GreenElement): GreenElement =>
+    element.type === 'token'
+      ? element.kind === 'Dot'
+        ? greenToken('Colon', ':')
+        : element
+      : greenNode(element.kind, element.children.map(withColon));
+  const green = withColon(dotted);
+  if (green.type === 'token') throw new Error('expected an attribute node');
+  const root = createSyntaxTree(green);
+  const expr = [...(FieldAttributeAst.cast(root)?.argList()?.args() ?? [])][0]?.value();
+  if (expr === undefined) throw new Error('expected an argument expression');
+  const sources = new PslSources([[root, new Cursor('schema.prisma', `@x(${source})`).sourceFile]]);
+  const symbols = {
+    topLevel: { namespaces: {}, models: {}, compositeTypes: {}, namedTypes: {}, blocks: {} },
+  };
+  return {
+    expr,
+    ctx: { sources, symbols, binder: supportBinder({ sources, symbolTable: symbols }) },
+  };
+}
+
 function parse(type: DataTypeId, source: string, over: DataTypeSupport = support) {
   const { expr, ctx } = argOf(source);
   return dataTypeValue(type, over).parse(expr, ctx);
@@ -147,7 +174,7 @@ describe('dataTypeValue', () => {
     });
   });
 
-  it('describes a type without a tag by its id', () => {
+  it('describes a type without a tag by the forms it admits', () => {
     const type = dataTypeValue(pgInt4.id, support);
     expect({
       kind: type.kind,
@@ -157,10 +184,31 @@ describe('dataTypeValue', () => {
       documentation: type.documentation,
     }).toEqual({
       kind: 'dataTypeValue',
-      label: 'pg/int4',
+      label: 'a number',
       dataType: 'pg/int4',
       tags: [],
       documentation: '',
+    });
+    expect(dataTypeValue(pgBool.id, support).label).toBe('true or false');
+  });
+
+  it('labels a type by its own tag before the tags of its cast sources', () => {
+    const geo = dataType('pg/geo', { casts: { [pgJson.id]: unchanged } });
+    const withGeo: DataTypeSupport = {
+      entries: {
+        ...entries,
+        [geo.id]: {
+          written: { kind: 'tag', tag: 'geo', parse: (text) => text },
+          print: (value) => String(value),
+          documentation: 'A geometry.',
+        },
+      },
+      lookup: createDataTypeLookup([pgJson, geo]),
+    };
+    const type = dataTypeValue(geo.id, withGeo);
+    expect({ label: type.label, tags: type.tags }).toEqual({
+      label: 'geo`...`',
+      tags: ['geo', 'json'],
     });
   });
 
@@ -174,11 +222,11 @@ describe('dataTypeValue', () => {
     );
   });
 
-  it('takes a value of a type the receiving type casts from', () => {
+  it('takes a value of a type the receiving type casts from, returning the cast value', () => {
     expect(parse(pgInt4.id, '8')).toEqual(
       ok({
         type: 'pg/int4',
-        value: 8,
+        value: '8',
         span: { start: { offset: 3, line: 1, column: 4 }, end: { offset: 4, line: 1, column: 5 } },
       }),
     );
@@ -192,6 +240,27 @@ describe('dataTypeValue', () => {
   ])('refuses %s as invalid syntax', (found, source) => {
     expect(parse(sqlExpression.id, source)).toEqual(
       refusal(source, 'PSL_INVALID_ATTRIBUTE_SYNTAX', `Expected sql\`...\`, got ${found}`),
+    );
+  });
+
+  it('refuses an expression that is not a literal', () => {
+    const { ctx } = argOf('1');
+    const root = createSyntaxTree(greenNode('NumberLiteralExpr', []));
+    const sources = new PslSources([[root, new Cursor('schema.prisma', '').sourceFile]]);
+    expect(
+      dataTypeValue(sqlExpression.id, support).parse(new NumberLiteralExprAst(root), {
+        ...ctx,
+        sources,
+      }),
+    ).toEqual(
+      notOk([
+        {
+          code: 'PSL_INVALID_ATTRIBUTE_SYNTAX',
+          message: 'Expected sql`...`, got an expression',
+          filename: 'schema.prisma',
+          range: { start: { line: 0, character: 0 }, end: { line: 0, character: 0 } },
+        },
+      ]),
     );
   });
 
@@ -298,7 +367,7 @@ describe('dataTypeValue', () => {
     const missing = dataTypeId('postgis/geometry');
     const type = dataTypeValue(missing, support);
     expect({ label: type.label, tags: type.tags, documentation: type.documentation }).toEqual({
-      label: 'postgis/geometry',
+      label: 'no written form',
       tags: [],
       documentation: '',
     });
@@ -338,7 +407,7 @@ describe('dataTypeValue', () => {
           args: {
             length: {
               type: 'pg/int4',
-              value: 8,
+              value: '8',
               span: {
                 start: { offset: 10, line: 1, column: 11 },
                 end: { offset: 11, line: 1, column: 12 },
@@ -409,7 +478,7 @@ describe('oneOf given a call to a function one arm names', () => {
         args: {
           length: {
             type: 'pg/int4',
-            value: 8,
+            value: '8',
             span: {
               start: { offset: 10, line: 1, column: 11 },
               end: { offset: 11, line: 1, column: 12 },
@@ -423,6 +492,22 @@ describe('oneOf given a call to a function one arm names', () => {
   it('lists the arms for a call to a function no arm names', () => {
     const source = 'other(1)';
     const { expr, ctx } = argOf(source);
+    expect(value.parse(expr, ctx)).toEqual(
+      refusal(source, 'PSL_INVALID_ATTRIBUTE_SYNTAX', 'Expected one of: nanoid() | string'),
+    );
+  });
+
+  it('lists the arms for a dotted callee', () => {
+    const source = 'foo.nanoid("8")';
+    const { expr, ctx } = argOf(source);
+    expect(value.parse(expr, ctx)).toEqual(
+      refusal(source, 'PSL_INVALID_ATTRIBUTE_SYNTAX', 'Expected one of: nanoid() | string'),
+    );
+  });
+
+  it('lists the arms for a colon-qualified callee', () => {
+    const source = 'a:nanoid("8")';
+    const { expr, ctx } = colonQualifiedArgOf(source);
     expect(value.parse(expr, ctx)).toEqual(
       refusal(source, 'PSL_INVALID_ATTRIBUTE_SYNTAX', 'Expected one of: nanoid() | string'),
     );
