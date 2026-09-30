@@ -227,6 +227,12 @@ describe('sql', () => {
     ]);
   });
 
+  it('keeps a dollar-brace sequence in the raw text: only a JavaScript interpolation is a value', () => {
+    const raw = 'a $' + '{x} b';
+    const strings = Object.assign([raw], { raw: [raw] });
+    expect(sql(strings).text).toBe(raw);
+  });
+
   it('resolves the three escapes a template tag understands', () => {
     expect([sql`\``.text, sql`a\\b`.text, sql`'Home | \${user}'`.text, sql`\\$x`.text]).toEqual([
       '`',

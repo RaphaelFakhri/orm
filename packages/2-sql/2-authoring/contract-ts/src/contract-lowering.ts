@@ -11,6 +11,7 @@ import {
   type ResolvedPackEntityHandle,
 } from '@internal/sql-contract/entity-handle-lowering-hook';
 import type { AuthoredIndexMethod } from '@internal/sql-contract/index-naming';
+import { isSqlExpression, requireSqlExpression } from '@internal/sql-contract/sql-expression';
 import type { StorageTypeInstance } from '@internal/sql-contract/types';
 import { blindCast } from '@internal/utils/casts';
 import { ifDefined } from '@internal/utils/defined';
@@ -36,6 +37,7 @@ import {
   type FieldStateOf,
   type ForeignKeyConstraint,
   type IdConstraint,
+  type IndexExpressionInput,
   isCrossSpaceHandle,
   type ModelAttributesSpec,
   normalizeRelationFieldNames,
@@ -842,6 +844,22 @@ function resolveDeferredColumns(
   });
 }
 
+/**
+ * The text of an index expression. A string has no `render`, and `'render' in` a string throws a
+ * `TypeError`, so the `sql` value is recognized first and anything else is refused last.
+ */
+function indexExpressionText(
+  spec: Pick<RuntimeModelSpec, 'modelName' | 'fieldToColumn'>,
+  expression: IndexExpressionInput,
+  fieldCodecIds: Readonly<Record<string, string>>,
+): string {
+  if (isSqlExpression(expression)) return expression.text;
+  if (typeof expression === 'object' && expression !== null && 'render' in expression) {
+    return expression.render(resolveDeferredColumns(spec, expression, fieldCodecIds));
+  }
+  return requireSqlExpression(expression, 'Index "expression"').text;
+}
+
 function resolveModelNode(
   spec: RuntimeModelSpec,
   allSpecs: ReadonlyMap<string, RuntimeModelSpec>,
@@ -901,7 +919,10 @@ function resolveModelNode(
       'the constraint type carries the union; reading the two fields separately loses the correlation'
     >({ type: index.type, options: index.options });
     const carried = {
-      where: index.where,
+      where:
+        index.where === undefined
+          ? undefined
+          : requireSqlExpression(index.where, 'Index "where"').text,
       unique: index.unique,
       name: index.name,
       map: index.map,
@@ -910,12 +931,7 @@ function resolveModelNode(
     return index.expression !== undefined
       ? {
           ...carried,
-          expression:
-            typeof index.expression === 'string'
-              ? index.expression
-              : index.expression.render(
-                  resolveDeferredColumns(spec, index.expression, fieldCodecIds),
-                ),
+          expression: indexExpressionText(spec, index.expression, fieldCodecIds),
         }
       : {
           ...carried,
@@ -928,7 +944,7 @@ function resolveModelNode(
   });
   const checks = (spec.sqlSpec?.checks ?? []).map(
     (authoredCheck): CheckNode => ({
-      expression: authoredCheck.expression,
+      expression: requireSqlExpression(authoredCheck.expression, 'Check "expression"').text,
       name: authoredCheck.name,
       map: authoredCheck.map,
     }),
