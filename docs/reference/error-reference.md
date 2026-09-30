@@ -325,6 +325,7 @@ A model declares an empty unique constraint (a unique with no fields), raised du
   - a check or index has a prefix, but its name is not that prefix followed by the hash of its content (meta: `namespaceId`, `table`, `name`, `prefix`);
   - a managed table lacks a check the PSL source derives for an enum or list column, or has a check with that check's name but not its prefix and expression (meta: `namespaceId`, `table`, `name`);
   - an index has options but no type (meta: `namespaceId`, `table`, `index`), or an option whose value is not a string (meta: `namespaceId`, `table`, `index`, `key`).
+  - an index's `expression` or `where`, a check's `expression` other than a derived check's, or a policy's `using` or `withCheck` holds SQL that a `sql` literal cannot write back unchanged, because reading the literal removes indentation shared by every line, a blank first or last line, a carriage return or a whitespace-only line. Write the SQL in that canonical form in the contract's source (meta: `namespaceId`, `table`, `name`; for a policy `namespaceId`, `table`, `policy`).
 - Relations:
   - a to-one relation has no foreign key behind it (meta: `model`, `field`);
   - a foreign key has no relation that travels it (meta: `namespaceId`, `table`, `columns`);

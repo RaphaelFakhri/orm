@@ -17,6 +17,7 @@ import { UNBOUND_NAMESPACE_ID } from '@internal/framework-components/ir';
 import { UNBOUND_PSL_NAMESPACE_NAME } from '@internal/framework-components/psl-ast';
 import { canonicalizeJson } from '@internal/framework-components/utils';
 import { isPslIdentifier, NAME_THE_PSL_SOURCE_LOSES } from '@internal/psl-parser';
+import { sqlTextReadsBack } from '@internal/sql-contract/sql-expression';
 import {
   type ForeignKey,
   type Index,
@@ -599,6 +600,27 @@ export function refuseUnwritableIndexOptions(entry: ModelWithTable, index: Index
       { ...meta, key },
     );
   }
+}
+
+/**
+ * Refuses an index, check or policy whose SQL a `sql` literal cannot write back unchanged, because
+ * reading the literal canonicalizes it into different text.
+ */
+export function refuseSqlTextThatDoesNotReadBack(input: {
+  readonly kind: 'index' | 'check' | 'policy';
+  readonly namespaceId: string;
+  readonly table: string;
+  readonly name: string;
+  readonly texts: readonly (string | undefined)[];
+}): void {
+  if (input.texts.every((text) => text === undefined || sqlTextReadsBack(text))) return;
+  const { kind, namespaceId, table, name } = input;
+  throw unsupported(
+    `${kind} "${name}" on "${namespaceId}"."${table}" holds SQL that a sql literal cannot write back unchanged, so it cannot be written in Prisma 8 PSL.`,
+    'A sql literal is canonicalized when it is read: indentation shared by every line, a blank first or last line, a carriage return and a whitespace-only line are removed, so this text would read back as different SQL.',
+    "Write the SQL in that canonical form in the contract's source, or keep authoring this contract in its current source.",
+    kind === 'policy' ? { namespaceId, table, policy: name } : { namespaceId, table, name },
+  );
 }
 
 // Relations

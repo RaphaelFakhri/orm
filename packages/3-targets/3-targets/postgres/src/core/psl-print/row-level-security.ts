@@ -16,6 +16,7 @@ import {
   refusePolicyWithoutModel,
   refusePolicyWithoutRls,
   refuseRoleOutsideUnbound,
+  refuseSqlTextThatDoesNotReadBack,
   refuseUnwritableName,
 } from './refusals';
 
@@ -129,6 +130,13 @@ export function buildPolicyBlocks(input: {
     if (!input.rlsTables.has(policy.tableName)) refusePolicyWithoutRls(policy);
     if (!policyNameReadsBack(head, policy)) refusePolicyNameNotDerived(policy);
     for (const role of policy.roles) refuseUnwritableName('role', role);
+    refuseSqlTextThatDoesNotReadBack({
+      kind: 'policy',
+      namespaceId: policy.namespaceId,
+      table: policy.tableName,
+      name: policy.name,
+      texts: [policy.using, policy.withCheck],
+    });
 
     return {
       kind: 'policy',
