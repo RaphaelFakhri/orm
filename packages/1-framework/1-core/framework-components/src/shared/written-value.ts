@@ -9,7 +9,7 @@ import { notOk, ok, type Result } from '@internal/utils/result';
 import { type DataTypeId, type DataTypeLookup, dataTypeId } from './data-type';
 import type { DataTypeAuthoringEntry } from './framework-authoring';
 
-/** One written value, in the syntax a contract source wrote it in. ADR 254. */
+/** One written value, in the syntax a contract source wrote it in. The framework defines the list shape, and the family's default reader is the only reader of it. ADR 254. */
 export type WrittenValue =
   | { readonly kind: 'tag'; readonly tag: string; readonly text: string }
   | { readonly kind: 'string'; readonly text: string }
