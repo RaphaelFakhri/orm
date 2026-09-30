@@ -1,0 +1,65 @@
+import type { Collection } from '../src/collection';
+import { fragment, rowFragment, sortField, stateFragment, when } from '../src/pipe-fragments';
+import type { FieldExpression } from '../src/types';
+import { type SoftDeleteContract, softDeleteSetup } from './pipe-fragments-fixture';
+
+const { db, custom } = softDeleteSetup();
+const Post = db.public.Post;
+declare const search: string | undefined;
+declare const input: { sort: string; direction: 'asc' | 'desc' };
+
+const deletedAt = { deletedAt: { codecId: 'pg/timestamptz-date@1', nullable: true } } as const;
+const notDeleted = fragment<SoftDeleteContract>()(deletedAt, (c) =>
+  c.where((p) => p.deletedAt.isNull()),
+);
+const notDeletedState = stateFragment<SoftDeleteContract>()(deletedAt, (c) =>
+  c.where((p) => p.deletedAt.isNull()),
+);
+type DeletedAt = FieldExpression<SoftDeleteContract, 'pg/timestamptz-date@1', true>;
+const rowNotDeleted = (p: { readonly deletedAt: DeletedAt }) => p.deletedAt.isNull();
+const summary = rowFragment<SoftDeleteContract, 'Post'>()((c) =>
+  c.select('id', 'title').include('author'),
+);
+const summaryPick = (c: Pick<typeof Post, 'select'>) => c.select('id', 'title').include('author');
+const summaryRoot = (c: typeof Post) => c.select('id', 'title').include('author');
+const summaryDefault = (c: Collection<SoftDeleteContract, 'Post'>) =>
+  c.select('id', 'title').include('author');
+
+export function printQ1() {
+  Post.pipe(when(search, (c) => c.select('id')));
+  let q = custom.public.Post;
+  if (search) q = q.where((p) => p.title.eq(search));
+  const y = Post as typeof Post | ReturnType<(typeof Post)['where']>;
+  y.include('author');
+  const d = Post.pipe(when(search, (c, s) => c.where((p) => p.title.eq(s))));
+  d.update({ title: 'x' });
+  d.cursor({ id: 1 });
+  const printD: string = d;
+  return [q, printD];
+}
+
+export function printQ2() {
+  db.public.Tag.where(rowNotDeleted);
+  db.public.Tag.pipe(notDeleted);
+  db.public.Tag.pipe(notDeletedState);
+  fragment<SoftDeleteContract>()(deletedAt, (c) => c.select('id'));
+  db.public.User.include('posts', (posts) => posts.pipe(notDeletedState));
+  const printFragment: string = notDeleted;
+  const printField: string = null as unknown as DeletedAt;
+  return [printFragment, printField];
+}
+
+export function printQ3Q5() {
+  db.public.Comment.pipe(summary);
+  db.public.Comment.pipe(summaryPick);
+  Post.select('views').pipe(summaryRoot);
+  db.public.User.include('posts', (posts) => posts.pipe(summaryRoot));
+  Post.pipe(summaryDefault);
+  sortField(Post, input.sort, 'asc', ['nope']);
+  sortField(Post, input.sort, 'asc', ['embedding']);
+  db.public.Tag.orderBy(sortField(Post, input.sort, 'asc', ['title']));
+  const printSummary: string = summary;
+  const printPipe: string = Post.pipe(summary);
+  const printSort: string = sortField(Post, input.sort);
+  return [printSummary, printPipe, printSort];
+}

@@ -1,6 +1,6 @@
 import { describe, expectTypeOf, test } from 'vitest';
 import { Collection } from '../src/collection';
-import { rowFragment } from '../src/pipe-fragments';
+import { type RowOf, rowFragment } from '../src/pipe-fragments';
 import type { CollectionTypeState } from '../src/types';
 import { type SoftDeleteContract, softDeleteSetup } from './pipe-fragments-fixture';
 
@@ -46,6 +46,25 @@ describe('rowFragment', () => {
     expectTypeOf(users).not.toBeAny();
     const instance = null as unknown as SummaryPosts;
     expectTypeOf(instance.summary()).toEqualTypeOf(root);
+  });
+
+  test('the row type can be named from the fragment', () => {
+    type PostSummary = RowOf<ReturnType<typeof summary>>;
+    expectTypeOf<PostSummary>().toEqualTypeOf<{
+      id: number;
+      title: string;
+      author: {
+        name: string;
+        id: number;
+        invitedById: number | null;
+        address: {
+          readonly city: string;
+          readonly street: string;
+          readonly zip: string | null;
+        } | null;
+        email: string;
+      };
+    }>();
   });
 
   test('the caller state is not kept', () => {

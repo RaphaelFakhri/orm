@@ -6,6 +6,7 @@ import {
   sortField,
   when,
 } from '@prisma/orm-postgres/orm-client';
+import { websearchToTsquery } from '@prisma/orm-postgres/target/full-text';
 import { describe, expectTypeOf, test } from 'vitest';
 import type { createOrmClient } from '../src/orm-client/client';
 import type { PostCollection } from '../src/orm-client/collections';
@@ -63,6 +64,12 @@ describe('demo through dist', () => {
 
   test('field fragments', () => {
     expectTypeOf(Post.where(rowNotDeleted).all()).not.toBeAny();
+    const titleMatches = (p: { readonly title: FieldExpression<Contract, 'pg/text@1'> }, q: string) =>
+      p.title.fullTextMatches(websearchToTsquery(q));
+    expectTypeOf(Post.where((p) => titleMatches(p, 'hello')).all()).not.toBeAny();
+    expectTypeOf(custom.User.where((u) => titleMatches({ title: u.email }, 'x'))).not.toBeAny();
+    // @ts-expect-error Tag has no title field
+    db.orm.public.Tag.where((t) => titleMatches(t, 'x'));
     // @ts-expect-error User has no deletedAt
     db.orm.public.User.where(rowNotDeleted);
     // @ts-expect-error Tag has no deletedAt

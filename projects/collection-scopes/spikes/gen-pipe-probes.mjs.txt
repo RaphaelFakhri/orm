@@ -94,6 +94,16 @@ const notDeleted = (p: { readonly deletedAt: DeletedAt }) => p.deletedAt.isNull(
     use: (t, src) => `${t}.orderBy(sortField(${src}, input.sort, input.direction))`,
     plain: (t) => `${t}.orderBy((p) => p.title.desc())`,
   },
+  q2d: {
+    experiment: true,
+    defs: `const notDeleted = fragment<ProbeContract>()(
+  { deletedAt: { codecId: 'pg/timestamptz-date@1', nullable: true } },
+  (c) => c.where((p) => p.deletedAt.isNull()).orderBy((p) => p.deletedAt.desc()),
+);
+`,
+    use: (t) => `notDeleted(${t})`,
+    plain: (t) => `${t}.where((p) => p.deletedAt.isNull()).orderBy((p) => p.deletedAt.desc())`,
+  },
   // Experiments: they compile only in the state that adds the method or overload.
   q1e: {
     experiment: true,

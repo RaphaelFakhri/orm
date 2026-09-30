@@ -1,0 +1,309 @@
+# state	run	instantiations	errors
+branch point 8641d5420e	demo-base-1	745201	0
+branch point 8641d5420e	demo-base-2	745201	0
+branch point 8641d5420e	pkg-base-1	1516673	0
+branch point 8641d5420e	pkg-base-2	1516673	0
+branch point with pipe removed	demo-base-1	744593	0
+branch point with pipe removed	demo-base-2	744593	0
+branch point with pipe removed	pkg-base-1	1514560	0
+branch point with pipe removed	pkg-base-2	1514560	0
+spike helpers cfa8961584	demo-base-1	745201	0
+spike helpers cfa8961584	demo-base-2	745201	0
+spike helpers cfa8961584	pkg-base-1	1527498	0
+spike helpers cfa8961584	pkg-base-2	1527498	0
+spike helpers cfa8961584	demo-base-1	745201	0
+spike helpers cfa8961584	demo-base-2	745201	0
+spike helpers cfa8961584	demo-q1a-0-1	760541	0
+spike helpers cfa8961584	demo-q1a-0-2	760541	0
+spike helpers cfa8961584	demo-q1a-1-1	784139	0
+spike helpers cfa8961584	demo-q1a-1-2	784139	0
+spike helpers cfa8961584	demo-q1a-10-1	886601	0
+spike helpers cfa8961584	demo-q1a-10-2	886601	0
+spike helpers cfa8961584	demo-q1b-1-1	776557	0
+spike helpers cfa8961584	demo-q1b-1-2	776557	0
+spike helpers cfa8961584	demo-q1b-10-1	844512	0
+spike helpers cfa8961584	demo-q1b-10-2	844512	0
+spike helpers cfa8961584	demo-q1d-1-1	760714	0
+spike helpers cfa8961584	demo-q1d-1-2	760714	0
+spike helpers cfa8961584	demo-q1d-10-1	809945	0
+spike helpers cfa8961584	demo-q1d-10-2	809945	0
+spike helpers cfa8961584	demo-q2a-0-1	762968	0
+spike helpers cfa8961584	demo-q2a-0-2	762968	0
+spike helpers cfa8961584	demo-q2a-1-1	763320	0
+spike helpers cfa8961584	demo-q2a-1-2	763320	0
+spike helpers cfa8961584	demo-q2a-10-1	763330	0
+spike helpers cfa8961584	demo-q2a-10-2	763330	0
+spike helpers cfa8961584	demo-q2b-0-1	760563	0
+spike helpers cfa8961584	demo-q2b-0-2	760563	0
+spike helpers cfa8961584	demo-q2b-1-1	771400	0
+spike helpers cfa8961584	demo-q2b-1-2	771400	0
+spike helpers cfa8961584	demo-q2b-10-1	820452	0
+spike helpers cfa8961584	demo-q2b-10-2	820452	0
+spike helpers cfa8961584	demo-q3-0-1	765215	0
+spike helpers cfa8961584	demo-q3-0-2	765215	0
+spike helpers cfa8961584	demo-q3-1-1	765485	0
+spike helpers cfa8961584	demo-q3-1-2	765485	0
+spike helpers cfa8961584	demo-q3-10-1	755966	0
+spike helpers cfa8961584	demo-q3-10-2	755966	0
+spike helpers cfa8961584	demo-q3pick-1-1	765234	0
+spike helpers cfa8961584	demo-q3pick-1-2	765234	0
+spike helpers cfa8961584	demo-q3pick-10-1	808493	0
+spike helpers cfa8961584	demo-q3pick-10-2	808493	0
+spike helpers cfa8961584	demo-q4-direct-1	746483	0
+spike helpers cfa8961584	demo-q4-direct-2	746483	0
+spike helpers cfa8961584	demo-q4-none-1	746084	0
+spike helpers cfa8961584	demo-q4-none-2	746084	0
+spike helpers cfa8961584	demo-q4-pipe-1	746551	0
+spike helpers cfa8961584	demo-q4-pipe-2	746551	0
+spike helpers cfa8961584	demo-q5-0-1	758884	0
+spike helpers cfa8961584	demo-q5-0-2	758884	0
+spike helpers cfa8961584	demo-q5-1-1	760123	0
+spike helpers cfa8961584	demo-q5-1-2	760123	0
+spike helpers cfa8961584	demo-q5-10-1	760992	0
+spike helpers cfa8961584	demo-q5-10-2	760992	0
+spike helpers cfa8961584	pkg-base-1	1527498	0
+spike helpers cfa8961584	pkg-base-2	1527498	0
+spike helpers cfa8961584	pkg-q1a-0-1	1570671	0
+spike helpers cfa8961584	pkg-q1a-0-2	1570671	0
+spike helpers cfa8961584	pkg-q1a-1-1	1599490	0
+spike helpers cfa8961584	pkg-q1a-1-2	1599490	0
+spike helpers cfa8961584	pkg-q1a-10-1	1740811	0
+spike helpers cfa8961584	pkg-q1a-10-2	1740811	0
+spike helpers cfa8961584	pkg-q1b-1-1	1590299	0
+spike helpers cfa8961584	pkg-q1b-1-2	1590299	0
+spike helpers cfa8961584	pkg-q1b-10-1	1666483	0
+spike helpers cfa8961584	pkg-q1b-10-2	1666483	0
+spike helpers cfa8961584	pkg-q1d-1-1	1570961	0
+spike helpers cfa8961584	pkg-q1d-1-2	1570961	0
+spike helpers cfa8961584	pkg-q1d-10-1	1581561	0
+spike helpers cfa8961584	pkg-q1d-10-2	1581561	0
+spike helpers cfa8961584	pkg-q2a-0-1	1568190	0
+spike helpers cfa8961584	pkg-q2a-0-2	1568190	0
+spike helpers cfa8961584	pkg-q2a-1-1	1568522	0
+spike helpers cfa8961584	pkg-q2a-1-2	1568522	0
+spike helpers cfa8961584	pkg-q2a-10-1	1568551	0
+spike helpers cfa8961584	pkg-q2a-10-2	1568551	0
+spike helpers cfa8961584	pkg-q2b-0-1	1570679	0
+spike helpers cfa8961584	pkg-q2b-0-2	1570679	0
+spike helpers cfa8961584	pkg-q2b-1-1	1571480	0
+spike helpers cfa8961584	pkg-q2b-1-2	1571480	0
+spike helpers cfa8961584	pkg-q2b-10-1	1581690	0
+spike helpers cfa8961584	pkg-q2b-10-2	1581690	0
+spike helpers cfa8961584	pkg-q3-0-1	1584906	0
+spike helpers cfa8961584	pkg-q3-0-2	1584906	0
+spike helpers cfa8961584	pkg-q3-1-1	1585212	0
+spike helpers cfa8961584	pkg-q3-1-2	1585212	0
+spike helpers cfa8961584	pkg-q3-10-1	1564123	0
+spike helpers cfa8961584	pkg-q3-10-2	1564123	0
+spike helpers cfa8961584	pkg-q3pick-1-1	1584925	0
+spike helpers cfa8961584	pkg-q3pick-1-2	1584925	0
+spike helpers cfa8961584	pkg-q3pick-10-1	1626818	0
+spike helpers cfa8961584	pkg-q3pick-10-2	1626818	0
+spike helpers cfa8961584	pkg-q4-direct-1	1531332	0
+spike helpers cfa8961584	pkg-q4-direct-2	1531332	0
+spike helpers cfa8961584	pkg-q4-none-1	1529416	0
+spike helpers cfa8961584	pkg-q4-none-2	1529416	0
+spike helpers cfa8961584	pkg-q4-pipe-1	1531400	0
+spike helpers cfa8961584	pkg-q4-pipe-2	1531400	0
+spike helpers cfa8961584	pkg-q5-0-1	1569470	0
+spike helpers cfa8961584	pkg-q5-0-2	1569470	0
+spike helpers cfa8961584	pkg-q5-1-1	1570722	0
+spike helpers cfa8961584	pkg-q5-1-2	1570722	0
+spike helpers cfa8961584	pkg-q5-10-1	1571414	0
+spike helpers cfa8961584	pkg-q5-10-2	1571414	0
+spike helpers cfa8961584, one site at a time	demo-base-1	745201	0
+spike helpers cfa8961584, one site at a time	demo-base-2	745201	0
+spike helpers cfa8961584, one site at a time	demo-q1a-0-1	760541	0
+spike helpers cfa8961584, one site at a time	demo-q1a-0-2	760541	0
+spike helpers cfa8961584, one site at a time	demo-q1a-1-1	784139	0
+spike helpers cfa8961584, one site at a time	demo-q1a-1-2	784139	0
+spike helpers cfa8961584, one site at a time	demo-q1a-10-1	886601	0
+spike helpers cfa8961584, one site at a time	demo-q1a-10-2	886601	0
+spike helpers cfa8961584, one site at a time	demo-q1d-site1-1	760714	0
+spike helpers cfa8961584, one site at a time	demo-q1d-site1-2	760714	0
+spike helpers cfa8961584, one site at a time	demo-q1d-site10-1	760720	0
+spike helpers cfa8961584, one site at a time	demo-q1d-site10-2	760720	0
+spike helpers cfa8961584, one site at a time	demo-q1d-site2-1	760689	0
+spike helpers cfa8961584, one site at a time	demo-q1d-site2-2	760689	0
+spike helpers cfa8961584, one site at a time	demo-q1d-site3-1	760720	0
+spike helpers cfa8961584, one site at a time	demo-q1d-site3-2	760720	0
+spike helpers cfa8961584, one site at a time	demo-q1d-site4-1	759889	0
+spike helpers cfa8961584, one site at a time	demo-q1d-site4-2	759889	0
+spike helpers cfa8961584, one site at a time	demo-q1d-site5-1	760627	0
+spike helpers cfa8961584, one site at a time	demo-q1d-site5-2	760627	0
+spike helpers cfa8961584, one site at a time	demo-q1d-site6-1	760701	0
+spike helpers cfa8961584, one site at a time	demo-q1d-site6-2	760701	0
+spike helpers cfa8961584, one site at a time	demo-q1d-site7-1	771188	0
+spike helpers cfa8961584, one site at a time	demo-q1d-site7-2	771188	0
+spike helpers cfa8961584, one site at a time	demo-q1d-site8-1	760658	0
+spike helpers cfa8961584, one site at a time	demo-q1d-site8-2	760658	0
+spike helpers cfa8961584, one site at a time	demo-q1d-site9-1	760715	0
+spike helpers cfa8961584, one site at a time	demo-q1d-site9-2	760715	0
+spike helpers cfa8961584, one site at a time	demo-q2b-0-1	760563	0
+spike helpers cfa8961584, one site at a time	demo-q2b-0-2	760563	0
+spike helpers cfa8961584, one site at a time	demo-q2b-1-1	771400	0
+spike helpers cfa8961584, one site at a time	demo-q2b-1-2	771400	0
+spike helpers cfa8961584, one site at a time	demo-q2b-10-1	820452	0
+spike helpers cfa8961584, one site at a time	demo-q2b-10-2	820452	0
+spike helpers cfa8961584, one site at a time	demo-q2b-site1-1	771400	0
+spike helpers cfa8961584, one site at a time	demo-q2b-site1-2	771400	0
+spike helpers cfa8961584, one site at a time	demo-q2b-site10-1	771402	0
+spike helpers cfa8961584, one site at a time	demo-q2b-site10-2	771402	0
+spike helpers cfa8961584, one site at a time	demo-q2b-site2-1	771371	0
+spike helpers cfa8961584, one site at a time	demo-q2b-site2-2	771371	0
+spike helpers cfa8961584, one site at a time	demo-q2b-site3-1	771371	0
+spike helpers cfa8961584, one site at a time	demo-q2b-site3-2	771371	0
+spike helpers cfa8961584, one site at a time	demo-q2b-site4-1	770584	0
+spike helpers cfa8961584, one site at a time	demo-q2b-site4-2	770584	0
+spike helpers cfa8961584, one site at a time	demo-q2b-site5-1	771315	0
+spike helpers cfa8961584, one site at a time	demo-q2b-site5-2	771315	0
+spike helpers cfa8961584, one site at a time	demo-q2b-site6-1	771339	0
+spike helpers cfa8961584, one site at a time	demo-q2b-site6-2	771339	0
+spike helpers cfa8961584, one site at a time	demo-q2b-site7-1	781887	0
+spike helpers cfa8961584, one site at a time	demo-q2b-site7-2	781887	0
+spike helpers cfa8961584, one site at a time	demo-q2b-site8-1	771346	0
+spike helpers cfa8961584, one site at a time	demo-q2b-site8-2	771346	0
+spike helpers cfa8961584, one site at a time	demo-q2b-site9-1	771401	0
+spike helpers cfa8961584, one site at a time	demo-q2b-site9-2	771401	0
+spike helpers cfa8961584, one site at a time	pkg-base-1	1527498	0
+spike helpers cfa8961584, one site at a time	pkg-base-2	1527498	0
+spike helpers cfa8961584, one site at a time	pkg-q1a-0-1	1570671	0
+spike helpers cfa8961584, one site at a time	pkg-q1a-0-2	1570671	0
+spike helpers cfa8961584, one site at a time	pkg-q1a-1-1	1599490	0
+spike helpers cfa8961584, one site at a time	pkg-q1a-1-2	1599490	0
+spike helpers cfa8961584, one site at a time	pkg-q1a-10-1	1740811	0
+spike helpers cfa8961584, one site at a time	pkg-q1a-10-2	1740811	0
+spike helpers cfa8961584, one site at a time	pkg-q1d-site1-1	1570961	0
+spike helpers cfa8961584, one site at a time	pkg-q1d-site1-2	1570961	0
+spike helpers cfa8961584, one site at a time	pkg-q1d-site10-1	1570967	0
+spike helpers cfa8961584, one site at a time	pkg-q1d-site10-2	1570967	0
+spike helpers cfa8961584, one site at a time	pkg-q1d-site2-1	1570945	0
+spike helpers cfa8961584, one site at a time	pkg-q1d-site2-2	1570945	0
+spike helpers cfa8961584, one site at a time	pkg-q1d-site3-1	1570967	0
+spike helpers cfa8961584, one site at a time	pkg-q1d-site3-2	1570967	0
+spike helpers cfa8961584, one site at a time	pkg-q1d-site4-1	1569596	0
+spike helpers cfa8961584, one site at a time	pkg-q1d-site4-2	1569596	0
+spike helpers cfa8961584, one site at a time	pkg-q1d-site5-1	1570766	0
+spike helpers cfa8961584, one site at a time	pkg-q1d-site5-2	1570766	0
+spike helpers cfa8961584, one site at a time	pkg-q1d-site6-1	1570959	0
+spike helpers cfa8961584, one site at a time	pkg-q1d-site6-2	1570959	0
+spike helpers cfa8961584, one site at a time	pkg-q1d-site7-1	1575384	0
+spike helpers cfa8961584, one site at a time	pkg-q1d-site7-2	1575384	0
+spike helpers cfa8961584, one site at a time	pkg-q1d-site8-1	1570766	0
+spike helpers cfa8961584, one site at a time	pkg-q1d-site8-2	1570766	0
+spike helpers cfa8961584, one site at a time	pkg-q1d-site9-1	1570962	0
+spike helpers cfa8961584, one site at a time	pkg-q1d-site9-2	1570962	0
+spike helpers cfa8961584, one site at a time	pkg-q2b-0-1	1570679	0
+spike helpers cfa8961584, one site at a time	pkg-q2b-0-2	1570679	0
+spike helpers cfa8961584, one site at a time	pkg-q2b-1-1	1571480	0
+spike helpers cfa8961584, one site at a time	pkg-q2b-1-2	1571480	0
+spike helpers cfa8961584, one site at a time	pkg-q2b-10-1	1581690	0
+spike helpers cfa8961584, one site at a time	pkg-q2b-10-2	1581690	0
+spike helpers cfa8961584, one site at a time	pkg-q2b-site1-1	1571480	0
+spike helpers cfa8961584, one site at a time	pkg-q2b-site1-2	1571480	0
+spike helpers cfa8961584, one site at a time	pkg-q2b-site10-1	1571482	0
+spike helpers cfa8961584, one site at a time	pkg-q2b-site10-2	1571482	0
+spike helpers cfa8961584, one site at a time	pkg-q2b-site2-1	1571460	0
+spike helpers cfa8961584, one site at a time	pkg-q2b-site2-2	1571460	0
+spike helpers cfa8961584, one site at a time	pkg-q2b-site3-1	1571451	0
+spike helpers cfa8961584, one site at a time	pkg-q2b-site3-2	1571451	0
+spike helpers cfa8961584, one site at a time	pkg-q2b-site4-1	1570124	0
+spike helpers cfa8961584, one site at a time	pkg-q2b-site4-2	1570124	0
+spike helpers cfa8961584, one site at a time	pkg-q2b-site5-1	1571263	0
+spike helpers cfa8961584, one site at a time	pkg-q2b-site5-2	1571263	0
+spike helpers cfa8961584, one site at a time	pkg-q2b-site6-1	1571419	0
+spike helpers cfa8961584, one site at a time	pkg-q2b-site6-2	1571419	0
+spike helpers cfa8961584, one site at a time	pkg-q2b-site7-1	1575916	0
+spike helpers cfa8961584, one site at a time	pkg-q2b-site7-2	1575916	0
+spike helpers cfa8961584, one site at a time	pkg-q2b-site8-1	1571263	0
+spike helpers cfa8961584, one site at a time	pkg-q2b-site8-2	1571263	0
+spike helpers cfa8961584, one site at a time	pkg-q2b-site9-1	1571481	0
+spike helpers cfa8961584, one site at a time	pkg-q2b-site9-2	1571481	0
+spike helpers cfa8961584, fragment called directly	demo-base-1	745201	0
+spike helpers cfa8961584, fragment called directly	demo-base-2	745201	0
+spike helpers cfa8961584, fragment called directly	demo-q2d-0-1	760563	0
+spike helpers cfa8961584, fragment called directly	demo-q2d-0-2	760563	0
+spike helpers cfa8961584, fragment called directly	demo-q2d-1-1	771386	0
+spike helpers cfa8961584, fragment called directly	demo-q2d-1-2	771386	0
+spike helpers cfa8961584, fragment called directly	demo-q2d-10-1	820633	0
+spike helpers cfa8961584, fragment called directly	demo-q2d-10-2	820633	0
+spike helpers cfa8961584, fragment called directly	demo-q2d-site7-1	781815	0
+spike helpers cfa8961584, fragment called directly	demo-q2d-site7-2	781815	0
+spike helpers cfa8961584, fragment called directly	pkg-base-1	1527498	0
+spike helpers cfa8961584, fragment called directly	pkg-base-2	1527498	0
+spike helpers cfa8961584, fragment called directly	pkg-q2d-0-1	1570679	0
+spike helpers cfa8961584, fragment called directly	pkg-q2d-0-2	1570679	0
+spike helpers cfa8961584, fragment called directly	pkg-q2d-1-1	1571466	0
+spike helpers cfa8961584, fragment called directly	pkg-q2d-1-2	1571466	0
+spike helpers cfa8961584, fragment called directly	pkg-q2d-10-1	1581874	0
+spike helpers cfa8961584, fragment called directly	pkg-q2d-10-2	1581874	0
+spike helpers cfa8961584, fragment called directly	pkg-q2d-site7-1	1575845	0
+spike helpers cfa8961584, fragment called directly	pkg-q2d-site7-2	1575845	0
+spike helpers cfa8961584, definitions only	demo-base-1	745201	0
+spike helpers cfa8961584, definitions only	demo-base-2	745201	0
+spike helpers cfa8961584, definitions only	demo-q2bdefonly-0-1	760563	0
+spike helpers cfa8961584, definitions only	demo-q2bdefonly-0-2	760563	0
+spike helpers cfa8961584, definitions only	demo-q2bdefonly-1-1	770837	0
+spike helpers cfa8961584, definitions only	demo-q2bdefonly-1-2	770837	0
+spike helpers cfa8961584, definitions only	demo-q3defonly-0-1	765215	0
+spike helpers cfa8961584, definitions only	demo-q3defonly-0-2	765215	0
+spike helpers cfa8961584, definitions only	demo-q3defonly-1-1	765379	0
+spike helpers cfa8961584, definitions only	demo-q3defonly-1-2	765379	0
+spike helpers cfa8961584, definitions only	pkg-base-1	1527498	0
+spike helpers cfa8961584, definitions only	pkg-base-2	1527498	0
+spike helpers cfa8961584, definitions only	pkg-q2bdefonly-0-1	1570679	0
+spike helpers cfa8961584, definitions only	pkg-q2bdefonly-0-2	1570679	0
+spike helpers cfa8961584, definitions only	pkg-q2bdefonly-1-1	1570924	0
+spike helpers cfa8961584, definitions only	pkg-q2bdefonly-1-2	1570924	0
+spike helpers cfa8961584, definitions only	pkg-q3defonly-0-1	1584906	0
+spike helpers cfa8961584, definitions only	pkg-q3defonly-0-2	1584906	0
+spike helpers cfa8961584, definitions only	pkg-q3defonly-1-1	1584964	0
+spike helpers cfa8961584, definitions only	pkg-q3defonly-1-2	1584964	0
+when method 840d372bb8	demo-base-1	745811	0
+when method 840d372bb8	demo-base-2	745811	0
+when method 840d372bb8	demo-q1a-0-1	761194	0
+when method 840d372bb8	demo-q1a-0-2	761194	0
+when method 840d372bb8	demo-q1a-1-1	784844	0
+when method 840d372bb8	demo-q1a-1-2	784844	0
+when method 840d372bb8	demo-q1a-10-1	887554	0
+when method 840d372bb8	demo-q1a-10-2	887554	0
+when method 840d372bb8	demo-q1e-1-1	761250	0
+when method 840d372bb8	demo-q1e-1-2	761250	0
+when method 840d372bb8	demo-q1e-10-1	762036	0
+when method 840d372bb8	demo-q1e-10-2	762036	0
+when method 840d372bb8	pkg-base-1	1529624	0
+when method 840d372bb8	pkg-base-2	1529624	0
+when method 840d372bb8	pkg-q1a-0-1	1572871	0
+when method 840d372bb8	pkg-q1a-0-2	1572871	0
+when method 840d372bb8	pkg-q1a-1-1	1601742	0
+when method 840d372bb8	pkg-q1a-1-2	1601742	0
+when method 840d372bb8	pkg-q1a-10-1	1743345	0
+when method 840d372bb8	pkg-q1a-10-2	1743345	0
+when method 840d372bb8	pkg-q1e-1-1	1572920	0
+when method 840d372bb8	pkg-q1e-1-2	1572920	0
+when method 840d372bb8	pkg-q1e-10-1	1570126	0
+when method 840d372bb8	pkg-q1e-10-2	1570126	0
+where/orderBy accept undefined 942acd62ee	demo-base-1	746985	0
+where/orderBy accept undefined 942acd62ee	demo-base-2	746985	0
+where/orderBy accept undefined 942acd62ee	demo-q1a-0-1	762718	0
+where/orderBy accept undefined 942acd62ee	demo-q1a-0-2	762718	0
+where/orderBy accept undefined 942acd62ee	demo-q1a-1-1	782558	0
+where/orderBy accept undefined 942acd62ee	demo-q1a-1-2	782558	0
+where/orderBy accept undefined 942acd62ee	demo-q1a-10-1	837618	0
+where/orderBy accept undefined 942acd62ee	demo-q1a-10-2	837618	0
+where/orderBy accept undefined 942acd62ee	demo-q1f-1-1	762759	0
+where/orderBy accept undefined 942acd62ee	demo-q1f-1-2	762759	0
+where/orderBy accept undefined 942acd62ee	demo-q1f-10-1	762996	0
+where/orderBy accept undefined 942acd62ee	demo-q1f-10-2	762996	0
+where/orderBy accept undefined 942acd62ee	pkg-base-1	1641662	0
+where/orderBy accept undefined 942acd62ee	pkg-base-2	1641662	0
+where/orderBy accept undefined 942acd62ee	pkg-q1a-0-1	1685651	0
+where/orderBy accept undefined 942acd62ee	pkg-q1a-0-2	1685651	0
+where/orderBy accept undefined 942acd62ee	pkg-q1a-1-1	1709575	0
+where/orderBy accept undefined 942acd62ee	pkg-q1a-1-2	1709575	0
+where/orderBy accept undefined 942acd62ee	pkg-q1a-10-1	1796948	0
+where/orderBy accept undefined 942acd62ee	pkg-q1a-10-2	1796948	0
+where/orderBy accept undefined 942acd62ee	pkg-q1f-1-1	1685692	0
+where/orderBy accept undefined 942acd62ee	pkg-q1f-1-2	1685692	0
+where/orderBy accept undefined 942acd62ee	pkg-q1f-10-1	1682365	0
+where/orderBy accept undefined 942acd62ee	pkg-q1f-10-2	1682365	0

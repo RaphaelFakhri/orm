@@ -97,7 +97,7 @@ describe('b: the plain chain with let', () => {
 
   test('a custom class cannot take the filtered collection back', () => {
     let q = custom.public.Post;
-    // @ts-expect-error TS2739: the filtered collection lacks the custom methods
+    // @ts-expect-error TS2741: the filtered collection lacks the custom method
     if (search) q = q.where((p) => p.title.eq(search));
     q.popular();
   });
