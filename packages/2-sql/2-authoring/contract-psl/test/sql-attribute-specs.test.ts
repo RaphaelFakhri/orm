@@ -314,15 +314,15 @@ describe('sqlAttributeSpecs.field.default', () => {
     ).toEqual(['autoincrement', 'now', 'uuid', 'cuid', 'ulid', 'nanoid']);
     expect(value.alternatives.filter((alt) => alt.kind === 'taggedLiteral')).toMatchObject([
       {
-        label: 'json`...`',
-        tags: ['json'],
-        documentation: 'Reads the body as a JSON document and stores it as the default value.',
-      },
-      {
         label: 'sql`...`',
         tags: ['sql'],
         documentation:
           "A SQL expression in the target database's language. Prisma passes it to the database unchanged.",
+      },
+      {
+        label: 'json`...`',
+        tags: ['json'],
+        documentation: 'Reads the body as a JSON document and stores it as the default value.',
       },
     ]);
   });

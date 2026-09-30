@@ -17,7 +17,6 @@ const sourcesOf = (type: { readonly casts: Readonly<Record<string, unknown>> }) 
 describe('the data types this target registers', () => {
   it('registers the types it distinguishes, not one per storage class', () => {
     expect(sqliteDataTypes.map((type) => type.id).sort()).toEqual([
-      'sql/expression',
       'sqlite/bigint',
       'sqlite/blob',
       'sqlite/datetime',

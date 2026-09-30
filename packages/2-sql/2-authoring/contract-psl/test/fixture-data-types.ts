@@ -1,8 +1,9 @@
 /**
  * The data types and PSL support a Postgres-like fixture stack registers.
  *
- * Mirrors what the Postgres target and adapter declare, exactly as `fixture-codec-descriptors.ts`
- * mirrors their codecs, so interpreter tests stay isolated from the target packages. ADR 254.
+ * Mirrors what the SQL family, the Postgres target and the adapter declare, in the order a stack
+ * assembles them, exactly as `fixture-codec-descriptors.ts` mirrors their codecs, so interpreter
+ * tests stay isolated from the target packages. ADR 254.
  */
 
 import type { JsonValue } from '@internal/contract/types';
@@ -87,6 +88,7 @@ export const pgvectorVector: DataType = dataType('pgvector/vector', {
 });
 
 export const fixtureDataTypes: readonly DataType[] = [
+  sqlExpressionDataType,
   pgText,
   pgBool,
   pgJson,
@@ -107,7 +109,6 @@ export const fixtureDataTypes: readonly DataType[] = [
   pgTimestamptz,
   pgEnum,
   pgvectorVector,
-  sqlExpressionDataType,
 ];
 
 function classifyNumber(
@@ -148,6 +149,7 @@ function parseJson(text: string): JsonValue {
 }
 
 export const fixtureDataTypeEntries: Readonly<Record<string, DataTypeAuthoringEntry>> = {
+  [SQL_EXPRESSION_DATA_TYPE_ID]: sqlExpressionAuthoringEntry,
   [pgText.id]: {
     written: { kind: 'plain', syntax: 'string', parse: (text) => text },
     print: (value) => String(value),
@@ -173,7 +175,6 @@ export const fixtureDataTypeEntries: Readonly<Record<string, DataTypeAuthoringEn
     print: (value) => JSON.stringify(value),
     documentation: 'Reads the body as a JSON document and stores it as the default value.',
   },
-  [SQL_EXPRESSION_DATA_TYPE_ID]: sqlExpressionAuthoringEntry,
 };
 
 export const fixtureDataTypeSupport: DataTypeSupport = {

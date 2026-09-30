@@ -563,7 +563,8 @@ export type DataTypeWrittenForm =
     };
 
 /**
- * PSL support for one data type, contributed by the pack that owns the type and keyed by its id.
+ * PSL support for one data type, keyed by its id and contributed by the component that registers
+ * the type.
  *
  * The written form reads text into the type's canonical form, throwing a structured error for text
  * it cannot read; `print` is the reverse.
@@ -600,7 +601,7 @@ export interface AuthoringContributions {
    */
   readonly modelAttributes?: AuthoringModelAttributeDescriptorNamespace;
   readonly attributeSpecs?: AuthoringAttributeSpecContributions;
-  /** PSL support for the data types this contribution owns, keyed by data type id. ADR 254. */
+  /** PSL support for the data types this contribution registers, keyed by data type id. ADR 254. */
   readonly dataTypes?: Readonly<Record<string, DataTypeAuthoringEntry>>;
   /**
    * Names the top-level type constructor that stores embedded value-object

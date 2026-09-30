@@ -9,12 +9,12 @@ describe('the adapter descriptor authoring data types', () => {
     expect(Object.keys(registered)).toEqual(Object.keys(sqliteDataTypeEntries()));
   });
 
-  it('has sql/expression as its last key and the tags json and sql', () => {
+  it('registers the json tag and leaves sql/expression and its tag to the family', () => {
     expect({
-      lastKey: Object.keys(registered).at(-1),
+      hasSqlExpression: Object.hasOwn(registered, 'sql/expression'),
       tags: Object.values(registered).flatMap((entry) =>
         entry.written.kind === 'tag' ? [entry.written.tag] : [],
       ),
-    }).toEqual({ lastKey: 'sql/expression', tags: ['json', 'sql'] });
+    }).toEqual({ hasSqlExpression: false, tags: ['json'] });
   });
 });

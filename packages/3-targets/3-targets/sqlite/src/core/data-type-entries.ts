@@ -8,10 +8,6 @@
 import type { JsonValue } from '@internal/contract/types';
 import type { DataTypeAuthoringEntry } from '@internal/framework-components/authoring';
 import {
-  SQL_EXPRESSION_DATA_TYPE_ID,
-  sqlExpressionAuthoringEntry,
-} from '@internal/sql-contract/sql-expression';
-import {
   createNumberClassifier,
   numeralText,
   parseJsonBody,
@@ -61,6 +57,5 @@ export function sqliteDataTypeEntries(): Readonly<Record<string, DataTypeAuthori
       print: printJsonBody,
       documentation: 'Reads the body as a JSON document and stores it as the default value.',
     },
-    [SQL_EXPRESSION_DATA_TYPE_ID]: sqlExpressionAuthoringEntry,
   };
 }

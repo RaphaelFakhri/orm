@@ -10,7 +10,6 @@
 
 import type { JsonValue } from '@internal/contract/types';
 import { type Cast, type DataType, dataType } from '@internal/framework-components/codec';
-import { sqlExpressionDataType } from '@internal/sql-contract/sql-expression';
 import { isNonFiniteText, numeralText } from '@internal/sql-relational-core/ast';
 import { structuredError } from '@internal/utils/structured-error';
 
@@ -146,5 +145,4 @@ export const postgresDataTypes: readonly DataType[] = [
   pgTime,
   pgTimestamp,
   pgTimestamptz,
-  sqlExpressionDataType,
 ];

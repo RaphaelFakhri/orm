@@ -249,6 +249,11 @@ interface ActualSqliteDataTypesModule {
   sqliteDataTypeEntries(): Readonly<Record<string, DataTypeAuthoringEntry>>;
 }
 
+interface ActualSqlExpressionModule {
+  readonly SQL_EXPRESSION_DATA_TYPE_ID: string;
+  readonly sqlExpressionAuthoringEntry: DataTypeAuthoringEntry;
+}
+
 interface ActualMongoAttributeModule {
   readonly mongoAttributeSpecs: AttributeSpecNamespace;
 }
@@ -1348,14 +1353,23 @@ describe('providePslCompletionItems', () => {
 
   it('offers each registered tag inside @default( with its own documentation', async () => {
     const stack = await actualSqlStack();
-    const [postgres, sqlite] = await Promise.all([
+    const [postgres, sqlite, family] = await Promise.all([
       importFromPackageRoot<ActualPostgresDataTypesModule>(
         '../../../3-targets/3-targets/postgres/src/exports/data-types.ts',
       ),
       importFromPackageRoot<ActualSqliteDataTypesModule>(
         '../../../3-targets/3-targets/sqlite/src/exports/data-types.ts',
       ),
+      importFromPackageRoot<ActualSqlExpressionModule>(
+        '../../../2-sql/1-core/contract/src/exports/sql-expression.ts',
+      ),
     ]);
+    const withFamilyEntry = (
+      targetEntries: Readonly<Record<string, DataTypeAuthoringEntry>>,
+    ): Readonly<Record<string, DataTypeAuthoringEntry>> => ({
+      [family.SQL_EXPRESSION_DATA_TYPE_ID]: family.sqlExpressionAuthoringEntry,
+      ...targetEntries,
+    });
     const complete = (
       dataTypes: Readonly<Record<string, DataTypeAuthoringEntry>>,
       clientSupportsSnippets: boolean,
@@ -1370,7 +1384,7 @@ describe('providePslCompletionItems', () => {
         newText: item.textEdit?.newText,
         insertTextFormat: item.insertTextFormat,
       }));
-    const postgresEntries = postgres.postgresDataTypeEntries();
+    const postgresEntries = withFamilyEntry(postgres.postgresDataTypeEntries());
     const documentationOf = (
       entries: Readonly<Record<string, DataTypeAuthoringEntry>>,
       tag: string,
@@ -1398,21 +1412,21 @@ describe('providePslCompletionItems', () => {
     expect(complete(postgresEntries, true)).toEqual([
       value('true'),
       value('false'),
-      tag(postgresEntries, 'json', true),
       tag(postgresEntries, 'sql', true),
+      tag(postgresEntries, 'json', true),
     ]);
-    const sqliteEntries = sqlite.sqliteDataTypeEntries();
+    const sqliteEntries = withFamilyEntry(sqlite.sqliteDataTypeEntries());
     expect(complete(sqliteEntries, true)).toEqual([
       value('true'),
       value('false'),
-      tag(sqliteEntries, 'json', true),
       tag(sqliteEntries, 'sql', true),
+      tag(sqliteEntries, 'json', true),
     ]);
     expect(complete(postgresEntries, false)).toEqual([
       value('true'),
       value('false'),
-      tag(postgresEntries, 'json', false),
       tag(postgresEntries, 'sql', false),
+      tag(postgresEntries, 'json', false),
     ]);
 
     // Each tag carries the text of the tag it names, not every registered tag's text.

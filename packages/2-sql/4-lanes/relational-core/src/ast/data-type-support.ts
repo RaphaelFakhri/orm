@@ -2,7 +2,7 @@
  * Shared implementations every SQL target uses to declare its data types and their PSL support.
  *
  * Most data types are database types, which belong to a target or an extension. The family defines
- * one, `sql/expression`, in `@internal/sql-contract/sql-expression`. This file holds the arithmetic
+ * and registers one, `sql/expression`, in `@internal/sql-contract/sql-expression`. This file holds the arithmetic
  * every SQL target repeats: how a written number is canonicalised, which integer type holds it, and
  * how a JSON text is read and written.
  *

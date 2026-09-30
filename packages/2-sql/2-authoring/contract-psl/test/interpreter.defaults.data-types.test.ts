@@ -264,7 +264,7 @@ describe('written defaults a column refuses', () => {
     expect(diagnostics(model(`  meta Jsonb @default(${tagged('sqlite.sql', 'x')})`))).toEqual([
       expect.objectContaining({
         code: 'PSL_UNKNOWN_LITERAL_TAG',
-        message: 'Unknown literal tag "sqlite.sql". Known tags: json, sql.',
+        message: 'Unknown literal tag "sqlite.sql". Known tags: sql, json.',
       }),
     ]);
   });

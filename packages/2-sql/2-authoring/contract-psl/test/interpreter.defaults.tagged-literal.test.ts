@@ -145,7 +145,7 @@ describe('interpretPslDocumentToSqlContract tagged literal defaults', () => {
       {
         code: 'PSL_INVALID_ATTRIBUTE_SYNTAX',
         message:
-          'Expected one of: string | number | boolean | autoincrement() | now() | uuid() | cuid() | ulid() | nanoid() | json`...` | sql`...` | list of (string | number | boolean | json`...` | sql`...`)',
+          'Expected one of: string | number | boolean | autoincrement() | now() | uuid() | cuid() | ulid() | nanoid() | sql`...` | json`...` | list of (string | number | boolean | sql`...` | json`...`)',
         sourceId: 'schema.prisma',
         span: lineThreeSpan(21, 'gen_random_uuid()'.length),
       },
@@ -156,7 +156,7 @@ describe('interpretPslDocumentToSqlContract tagged literal defaults', () => {
     expect(diagnostics('v String @default(pg.sql`x`)')).toEqual([
       {
         code: 'PSL_UNKNOWN_LITERAL_TAG',
-        message: 'Unknown literal tag "pg.sql". Known tags: json, sql.',
+        message: 'Unknown literal tag "pg.sql". Known tags: sql, json.',
         sourceId: 'schema.prisma',
         span: lineThreeSpan(21, 'pg.sql`x`'.length),
       },
