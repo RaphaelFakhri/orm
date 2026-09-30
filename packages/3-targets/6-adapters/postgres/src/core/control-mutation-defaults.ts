@@ -304,8 +304,7 @@ export const postgresNativeAuthoringTypes = {
   },
   // The representation-explicit spellings. Same columns, same precision, same native types — the
   // only difference is that a read hands back PostgreSQL's own text instead of a `Temporal.*`, so a
-  // value Temporal cannot express still round-trips. `contract infer` and the Prisma 7 source write
-  // these, so their contracts need no `Temporal`.
+  // value Temporal cannot express still round-trips.
   DateString: {
     kind: 'typeConstructor',
     documentation: 'A PostgreSQL date represented as database text rather than Temporal.PlainDate.',
