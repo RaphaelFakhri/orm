@@ -296,10 +296,7 @@ export type CreateIndexElements =
   | { readonly expression: string };
 
 /**
- * The element list between the parens of CREATE INDEX: either a column
- * tuple (each identifier quoted by the renderer) or one opaque expression
- * covering the entire list — the same opaque-SQL stance as RLS policy
- * predicates (ADR 234).
+ * The element list between the parens of CREATE INDEX: either a column tuple (each identifier quoted by the renderer) or one `OpaqueSql` value covering the entire list.
  */
 export type DdlIndexElements =
   | { readonly columns: readonly string[] }
