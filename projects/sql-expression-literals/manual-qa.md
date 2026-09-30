@@ -107,3 +107,37 @@ CONTRACT.SOURCE_LOAD_FAILED: Failed to resolve contract source
 CONTRACT.SOURCE_LOAD_FAILED: Failed to resolve contract source
   PSL_DEFAULT_TYPE_INCOMPATIBLE [{"offset":51,"line":4,"column":13}] Field "T.v": this column holds a list, so its default is a list literal, as in [1, 2]
 ```
+
+### Run on 2026-09-30, after the review fixes
+
+Result: every case gave the expected code and message. Case 9 now reports `PSL_DEFAULT_LIST_EXPECTED`, the new name of `PSL_DEFAULT_TYPE_INCOMPATIBLE`; its message did not change. Every other case gave the same code, position and message as the run of 2026-09-29. The reserved-name message of case 3 is now built from the tag constant and reads the same.
+
+```text
+=== case 1: v String @default(sql`gen_random_uuid()`)
+ok
+  stored default: ["\"default\":{\"expression\":\"gen_random_uuid()\",\"kind\":\"function\"}"]
+=== case 2: v String @default(pg.sql`gen_random_uuid()`)
+CONTRACT.SOURCE_LOAD_FAILED: Failed to resolve contract source
+  PSL_UNKNOWN_LITERAL_TAG [{"offset":59,"line":4,"column":21}] Unknown literal tag "pg.sql". Known tags: json, sql.
+=== case 3: v DateTime @default(sql`now()`)
+CONTRACT.SOURCE_LOAD_FAILED: Failed to resolve contract source
+  PSL_INVALID_DEFAULT_SQL [{"offset":61,"line":4,"column":23}] Write @default(now()) instead of sql`now()`; now() is a Prisma default function, not raw SQL.
+=== case 4: v String @default(sql`x; drop table t`)
+CONTRACT.SOURCE_LOAD_FAILED: Failed to resolve contract source
+  PSL_INVALID_DEFAULT_SQL [{"offset":59,"line":4,"column":21}] Default SQL must not contain semicolons, SQL comment tokens, dollar-quoting, or subqueries.
+=== case 5: tags String[] @default([sql`md5(x)`])
+CONTRACT.SOURCE_LOAD_FAILED: Failed to resolve contract source
+  PSL_VALUE_TYPE_INCOMPATIBLE [{"offset":55,"line":4,"column":17}] Field "T.tags" at element 1: pg/text has no cast from sql/expression; it casts from nothing
+=== case 6: v Int @default(json`1`)
+CONTRACT.SOURCE_LOAD_FAILED: Failed to resolve contract source
+  PSL_VALUE_TYPE_INCOMPATIBLE [{"offset":47,"line":4,"column":9}] Field "T.v": pg/int4 has no cast from pg/json; it casts from pg/int2
+=== case 7: v Jsonb @default(json`{ plan }`)
+CONTRACT.SOURCE_LOAD_FAILED: Failed to resolve contract source
+  PSL_INVALID_LITERAL [{"offset":49,"line":4,"column":11}] Field "T.v": Expected property name or '}' in JSON at position 2 (line 1 column 3)
+=== case 8: v Int @default(100000000000000099)
+CONTRACT.SOURCE_LOAD_FAILED: Failed to resolve contract source
+  PSL_VALUE_TYPE_INCOMPATIBLE [{"offset":47,"line":4,"column":9}] Field "T.v": pg/int4 has no cast from pg/int8; it casts from pg/int2
+=== case 9: v Jsonb[] @default(json`{}`)
+CONTRACT.SOURCE_LOAD_FAILED: Failed to resolve contract source
+  PSL_DEFAULT_LIST_EXPECTED [{"offset":51,"line":4,"column":13}] Field "T.v": this column holds a list, so its default is a list literal, as in [1, 2]
+```
