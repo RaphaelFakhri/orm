@@ -64,6 +64,7 @@ import type {
   RowSelection,
   // biome-ignore lint/correctness/noUnusedImports: used in `declare` property
   RowType,
+  StateType,
   WhereInput,
   WithOrderByState,
   WithVariantState,
@@ -259,6 +260,7 @@ class CollectionImpl<
   State extends CollectionTypeState = DefaultCollectionTypeState,
 > implements RowSelection<Row>
 {
+  declare readonly [StateType]: State;
   declare readonly [RowType]: Row;
   declare readonly _row?: Row;
   /** @internal */

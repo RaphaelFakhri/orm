@@ -394,7 +394,7 @@ export type GeneratedContractTypeAssertions = [
   Assert<Equal<FilteredUsersState['hasWhere'], true>>,
   Assert<Equal<OrderedUsersState['hasOrderBy'], true>>,
   Assert<Equal<CursorPagedUsersState['hasOrderBy'], true>>,
-  Assert<Equal<DistinctUsersState['hasOrderBy'], false>>,
+  Assert<Equal<DistinctUsersState['hasOrderBy'], boolean>>,
   Assert<Equal<DistinctOnUsersState['hasOrderBy'], true>>,
   // `count` types as the contract's aggregate map declares it — this map names
   // `pg/int8@1`, whose application value is a bigint.

@@ -53,20 +53,22 @@ describe('a: conditional steps inside pipe', () => {
     expectTypeOf(bare).toEqualTypeOf<Base>();
   });
 
-  test('a custom class collapses to the filtered base type: custom methods are lost and update is unlocked', () => {
+  test('with a checked state, a custom class keeps a union of the class and the filtered base type', () => {
     const c = custom.public.Post.pipe((q) => (search ? q.where((p) => p.title.eq(search)) : q));
-    expectTypeOf(c).toEqualTypeOf<CustomFiltered>();
-    // @ts-expect-error popular is a method of the custom class
+    expectTypeOf(c).toEqualTypeOf<SoftPostCollection | CustomFiltered>();
+    // @ts-expect-error popular is a method of the custom class only
     c.popular();
-    expectTypeOf<Parameters<typeof c.update>[0]>().not.toBeNever();
+    // @ts-expect-error update is locked on one member
+    c.update({ title: 'x' });
     const bare = search ? custom.public.Post.where((p) => p.title.eq(search)) : custom.public.Post;
-    expectTypeOf(bare).toEqualTypeOf<CustomFiltered>();
+    expectTypeOf(bare).toEqualTypeOf<SoftPostCollection | CustomFiltered>();
   });
 
-  test('where in one branch and orderBy in the other collapses to the filtered type', () => {
+  test('with a checked state, where in one branch and orderBy in the other keeps a union', () => {
     const x = flag ? Post.where({ id: 1 }) : Post.orderBy((p) => p.id.asc());
-    expectTypeOf(x).toEqualTypeOf<Filtered>();
-    expectTypeOf<Parameters<typeof x.update>[0]>().not.toBeNever();
+    expectTypeOf(x).toEqualTypeOf<Filtered | Ordered>();
+    // @ts-expect-error update is locked on one member
+    x.update({ title: 'x' });
   });
 
   test('a union that is not reduced breaks include only', () => {
@@ -102,9 +104,10 @@ describe('b: the plain chain with let', () => {
     q.popular();
   });
 
-  test('assignment does not check the type state', () => {
+  test('with a checked state, assignment checks the type state', () => {
+    // @ts-expect-error TS2322: the root collection has no filter
     const unfiltered: Filtered = Post;
-    expectTypeOf<Parameters<typeof unfiltered.update>[0]>().not.toBeNever();
+    expectTypeOf(unfiltered).not.toBeAny();
   });
 });
 

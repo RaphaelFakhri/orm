@@ -160,9 +160,9 @@ export interface CollectionTypeState {
 export type RelationCardinalityTag = '1:1' | 'N:1' | '1:N' | 'N:M';
 
 export type DefaultCollectionTypeState = {
-  readonly hasOrderBy: false;
-  readonly hasWhere: false;
-  readonly hasUniqueFilter: false;
+  readonly hasOrderBy: boolean;
+  readonly hasWhere: boolean;
+  readonly hasUniqueFilter: boolean;
   readonly variantName: undefined;
   readonly nsId: never;
 };

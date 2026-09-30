@@ -111,6 +111,8 @@ export type IncludeRefinementResult<
 
 export declare const RowType: unique symbol;
 
+export declare const StateType: unique symbol;
+
 export interface RowSelection<T> {
   [RowType]: T;
 }
