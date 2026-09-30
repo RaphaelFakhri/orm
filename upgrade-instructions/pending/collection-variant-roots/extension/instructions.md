@@ -1,7 +1,7 @@
 ---
 changes:
   - id: sql-orm-variant-takes-model-root
-    summary: "`@internal/sql-orm-client` `Collection.variant(...)` now takes an unmodified variant model root instead of a string variant name. Roots from another SQL ORM instance are accepted when the existing storage/profile/execution contract hash tuple matches; modified/query result collections, incompatible roots, detached `new Collection(...)` values, unrelated roots, non-polymorphic receivers, and string arguments are rejected with `ORM.ARGUMENT_INVALID`."
+    summary: "`@internal/sql-orm-client` `Collection.variant(...)` now takes a genuine, unmodified variant model collection instead of a string variant name. Directly constructed collections and roots from another SQL ORM instance are accepted when the existing storage/profile/execution contract hash tuple matches; modified/query result collections, incompatible roots, unrelated roots, non-polymorphic receivers, forged objects, and string arguments are rejected with `ORM.ARGUMENT_INVALID`."
   - id: sql-orm-custom-collection-namespace-state
     summary: "Custom SQL collection subclasses used as ORM roots may need namespace-aware generic annotations, and helper methods that select variants can stay zero-argument by capturing sibling roots during client initialization."
 ---
@@ -16,9 +16,9 @@ const db = orm({ runtime, context })
 const bugs = db.public.Task.variant(db.public.Bug)
 ```
 
-A string is no longer a valid SQL ORM variant argument. The runtime also rejects values that were not registered as unmodified roots or whose contract hash tuple is incompatible with the receiver, including `new Collection(...)`, object literals with matching `namespaceId`/`modelName`, and builder results such as `db.public.Bug.where({})`. Roots from another `orm({ runtime, context })` are valid when `storage.storageHash`, `profileHash`, and optional `execution.executionHash` presence/value match.
+A string is no longer a valid SQL ORM variant argument. The runtime also rejects forged values such as object literals with matching `namespaceId`/`modelName`, collections whose contract hash tuple is incompatible with the receiver, and builder results such as `db.public.Bug.where({})`. No-op builder calls are still modified query state, so `db.public.Bug.where({})` and empty `cursor({})` results are rejected rather than treated as unchanged roots. Roots from another `orm({ runtime, context })` and directly constructed genuine collections are valid when `storage.storageHash`, `profileHash`, and optional `execution.executionHash` presence/value match.
 
-If a test constructs a bare polymorphic receiver with `new Collection(...)`, update only the argument: pass a registered unmodified root from `orm({ runtime, context })` or another compatible ORM client. The receiver does not need to be an ORM-created root; it still executes through its own runtime or transaction.
+If a test constructs a bare polymorphic receiver with `new Collection(...)`, update only the argument: pass an unmodified genuine collection from `orm({ runtime, context })`, another compatible ORM client, or direct construction with compatible contract hashes. The receiver does not need to be an ORM-created root; it still executes through its own runtime or transaction.
 
 ```ts
 const db = orm({ runtime, context })
@@ -31,7 +31,7 @@ Keep Mongo extension or app code on string variant names. Do not apply a global 
 
 ## `sql-orm-custom-collection-namespace-state`
 
-Custom SQL collection roots still work, but root identity is attached to the root objects created by `orm(...)`. If a custom helper narrows to a variant, capture the sibling roots while initializing the client and forward those roots to `this.variant(...)`:
+Custom SQL collection roots still work. If a custom helper narrows to a variant, capture the sibling collections while initializing the client and forward those unmodified collections to `this.variant(...)`:
 
 ```ts
 type DemoOrm = ReturnType<typeof orm<Contract>>['public']

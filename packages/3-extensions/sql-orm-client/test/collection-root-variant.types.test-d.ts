@@ -7,7 +7,13 @@ import type {
 } from '../../../../test/integration/test/sql-orm-client/fixtures/polymorphism/generated/contract';
 import { Collection } from '../src/collection';
 import { orm } from '../src/orm';
-import type { VariantModelRow } from '../src/types';
+import type {
+  CollectionTypeState,
+  DefaultCollectionTypeState,
+  InferRootRow,
+  VariantModelRow,
+  WithNsId,
+} from '../src/types';
 import { createMockRuntime } from './helpers';
 
 declare const context: ExecutionContext<PolyContract>;
@@ -20,16 +26,81 @@ const projectRoot = db.public.Project;
 const variantName = Math.random() > 0.5 ? 'Bug' : 'Feature';
 const variantRoot = Math.random() > 0.5 ? bugRoot : featureRoot;
 const bugBuilderResult = bugRoot.where({});
+const bugIncludeResult = bugRoot.include('assignee');
+const bugSelectResult = bugRoot.select('severity');
+const bugOrderResult = bugRoot.orderBy((bug) => bug.severity.asc());
+const bugCursorResult = bugRoot.orderBy((bug) => bug.severity.asc()).cursor({});
+const bugDistinctResult = bugRoot.distinct('severity');
+const bugDistinctOnResult = bugRoot.orderBy((bug) => bug.severity.asc()).distinctOn('severity');
+const bugLimitResult = bugRoot.limit(1);
+const bugOffsetResult = bugRoot.offset(1);
+const selectedVariantResult = taskRoot.variant(bugRoot);
+const cleanOrModifiedVariantRoot = Math.random() > 0.5 ? bugRoot : bugBuilderResult;
+declare const directBugRoot: Collection<
+  PolyContract,
+  'Bug',
+  InferRootRow<PolyContract, 'Bug', 'public'>,
+  WithNsId<DefaultCollectionTypeState, 'public'>
+>;
+declare const unknownModifiedBugRoot: Collection<
+  PolyContract,
+  'Bug',
+  InferRootRow<PolyContract, 'Bug', 'public'>,
+  Omit<WithNsId<DefaultCollectionTypeState, 'public'>, 'queryModified'> & {
+    readonly queryModified: boolean;
+  }
+>;
 
 test('variant accepts same-namespace model roots and rejects non-root arguments', () => {
   type VariantArg = Parameters<typeof taskRoot.variant>[0];
+  type QueryModifiedOf<Root> =
+    Root extends Collection<PolyContract, string, unknown, infer State extends CollectionTypeState>
+      ? State['queryModified']
+      : never;
 
+  taskRoot.variant(bugRoot);
+  taskRoot.variant(featureRoot);
+  taskRoot.variant(directBugRoot);
   expectTypeOf<typeof bugRoot>().toExtend<VariantArg>();
   expectTypeOf<typeof featureRoot>().toExtend<VariantArg>();
+  expectTypeOf<typeof directBugRoot>().toExtend<VariantArg>();
   expectTypeOf<string>().not.toExtend<VariantArg>();
   expectTypeOf<typeof variantName>().not.toExtend<VariantArg>();
-  expectTypeOf<typeof bugBuilderResult>().not.toExtend<VariantArg>();
+  expectTypeOf<QueryModifiedOf<typeof bugBuilderResult>>().toEqualTypeOf<true>();
+  expectTypeOf<QueryModifiedOf<typeof bugIncludeResult>>().toEqualTypeOf<true>();
+  expectTypeOf<QueryModifiedOf<typeof bugSelectResult>>().toEqualTypeOf<true>();
+  expectTypeOf<QueryModifiedOf<typeof bugOrderResult>>().toEqualTypeOf<true>();
+  expectTypeOf<QueryModifiedOf<typeof bugCursorResult>>().toEqualTypeOf<true>();
+  expectTypeOf<QueryModifiedOf<typeof bugDistinctResult>>().toEqualTypeOf<true>();
+  expectTypeOf<QueryModifiedOf<typeof bugDistinctOnResult>>().toEqualTypeOf<true>();
+  expectTypeOf<QueryModifiedOf<typeof bugLimitResult>>().toEqualTypeOf<true>();
+  expectTypeOf<QueryModifiedOf<typeof bugOffsetResult>>().toEqualTypeOf<true>();
   expectTypeOf<typeof projectRoot>().not.toExtend<VariantArg>();
+
+  // @ts-expect-error variant requires an unmodified model root
+  taskRoot.variant(bugBuilderResult);
+  // @ts-expect-error variant requires an unmodified model root
+  taskRoot.variant(bugIncludeResult);
+  // @ts-expect-error variant requires an unmodified model root
+  taskRoot.variant(bugSelectResult);
+  // @ts-expect-error variant requires an unmodified model root
+  taskRoot.variant(bugOrderResult);
+  // @ts-expect-error variant requires an unmodified model root
+  taskRoot.variant(bugCursorResult);
+  // @ts-expect-error variant requires an unmodified model root
+  taskRoot.variant(bugDistinctResult);
+  // @ts-expect-error variant requires an unmodified model root
+  taskRoot.variant(bugDistinctOnResult);
+  // @ts-expect-error variant requires an unmodified model root
+  taskRoot.variant(bugLimitResult);
+  // @ts-expect-error variant requires an unmodified model root
+  taskRoot.variant(bugOffsetResult);
+  // @ts-expect-error variant requires an unmodified model root
+  taskRoot.variant(selectedVariantResult);
+  // @ts-expect-error variant requires every union member to be an unmodified model root
+  taskRoot.variant(cleanOrModifiedVariantRoot);
+  // @ts-expect-error variant requires queryModified to be statically false
+  taskRoot.variant(unknownModifiedBugRoot);
 });
 
 test('variant narrows rows with the receiver namespace', () => {

@@ -22,8 +22,8 @@ export interface TaskVariantRoots {
 
 type TaskBaseCollection = Collection<Contract, 'Task', DemoRow<'Task'>, PublicRootState>;
 declare const taskBaseCollection: TaskBaseCollection;
-type TaskBugCollection = ReturnType<typeof taskBaseCollection.variant<BugRoot, 'Bug'>>;
-type TaskFeatureCollection = ReturnType<typeof taskBaseCollection.variant<FeatureRoot, 'Feature'>>;
+type TaskBugCollection = ReturnType<typeof taskBaseCollection.variant<'Bug'>>;
+type TaskFeatureCollection = ReturnType<typeof taskBaseCollection.variant<'Feature'>>;
 type TaskWhereCollection = ReturnType<typeof taskBaseCollection.where>;
 
 export interface TaskCollectionSurface extends TaskBaseCollection {

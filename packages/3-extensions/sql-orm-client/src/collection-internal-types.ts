@@ -24,21 +24,6 @@ export interface CollectionInit<TContract extends Contract<SqlStorage>> {
   readonly includeRefinementMode?: boolean | undefined;
 }
 
-export const ModelRootIdentitySymbol: unique symbol = Symbol();
-
-export type ModelRootIdentity<NsId extends string, ModelName extends string> = {
-  readonly [ModelRootIdentitySymbol]: {
-    readonly nsId: NsId;
-    readonly modelName: ModelName;
-  };
-};
-
-export type ModelRootNamespace<Root> =
-  Root extends ModelRootIdentity<infer NsId, string> ? NsId : never;
-
-export type ModelRootModel<Root> =
-  Root extends ModelRootIdentity<string, infer ModelName> ? ModelName : never;
-
 export type CollectionConstructor<TContract extends Contract<SqlStorage>> = new (
   ctx: CollectionContext<TContract>,
   modelName: string,
@@ -58,6 +43,13 @@ export type WithVariantState<State extends CollectionTypeState, V extends string
   'variantName'
 > & {
   readonly variantName: V;
+};
+
+export type WithQueryModifiedState<State extends CollectionTypeState> = Omit<
+  State,
+  'queryModified'
+> & {
+  readonly queryModified: true;
 };
 
 export type IncludedRelationsForRow<
@@ -103,6 +95,7 @@ export type IncludeRefinementCollection<
   IsToMany extends boolean,
 > = Omit<
   Collection<TContract, ModelName, Row, State>,
+  | 'state'
   | IncludeRefinementTerminals
   | (IsToMany extends true ? never : IncludeRefinementScalarMethods<TContract>)
 >;

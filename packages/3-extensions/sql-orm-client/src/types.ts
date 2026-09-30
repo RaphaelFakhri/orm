@@ -97,6 +97,7 @@ export interface CollectionState {
   readonly limit: LimitOffsetValue | undefined;
   readonly offset: LimitOffsetValue | undefined;
   readonly variantName: string | undefined;
+  readonly queryModified: boolean;
   /**
    * Annotations attached to this query at terminal-call time.
    * Populated transiently by the read terminals `all` and `first` just before dispatch. Terminals
@@ -121,6 +122,7 @@ export function emptyState(): CollectionState {
     limit: undefined,
     offset: undefined,
     variantName: undefined,
+    queryModified: false,
     annotations: new Map(),
   };
 }
@@ -145,6 +147,7 @@ export interface CollectionTypeState {
   readonly hasOrderBy: boolean;
   readonly hasWhere: boolean;
   readonly hasUniqueFilter: boolean;
+  readonly queryModified: boolean;
   readonly variantName: string | undefined;
   /**
    * The namespace coordinate this collection resolves at — set by the
@@ -163,6 +166,7 @@ export type DefaultCollectionTypeState = {
   readonly hasOrderBy: false;
   readonly hasWhere: false;
   readonly hasUniqueFilter: false;
+  readonly queryModified: false;
   readonly variantName: undefined;
   readonly nsId: never;
 };

@@ -6,7 +6,12 @@ import polyContractJson from '../../../../test/integration/test/sql-orm-client/f
 };
 import { Collection } from '../src/collection';
 import { orm } from '../src/orm';
-import type { DefaultCollectionTypeState, InferRootRow, WithNsId } from '../src/types';
+import {
+  type DefaultCollectionTypeState,
+  emptyState,
+  type InferRootRow,
+  type WithNsId,
+} from '../src/types';
 import executionContractJson from './fixtures/root-variant-hashes/execution/contract.json' with {
   type: 'json',
 };
@@ -134,6 +139,29 @@ describe('Collection.variant() root arguments', () => {
     expect(argument.runtime.executions).toEqual([]);
   });
 
+  it('accepts a directly constructed matching root argument', () => {
+    const { db } = createPolyDb();
+    const directRoot = new Collection<
+      PolyContract,
+      'Bug',
+      InferRootRow<PolyContract, 'Bug', 'public'>,
+      WithNsId<DefaultCollectionTypeState, 'public'>
+    >(
+      {
+        runtime: createMockRuntime(),
+        context: buildTestContextFromContract(deserializePolyContract()),
+      },
+      'Bug',
+      {
+        namespaceId: 'public',
+      },
+    );
+
+    const narrowed = db.public.Task.variant(directRoot);
+
+    expect(narrowed.state.variantName).toBe('Bug');
+  });
+
   it('executes detached compatible receivers through their own runtime', async () => {
     const argument = createPolyDbFromContract(deserializePolyContract());
     const receiverRuntime = createMockRuntime();
@@ -166,22 +194,12 @@ describe('Collection.variant() root arguments', () => {
     expect(argument.runtime.executions).toEqual([]);
   });
 
-  it('rejects forged and detached arguments', () => {
+  it('rejects forged and structurally unrelated arguments', () => {
     const { db } = createPolyDb();
     const forged = { namespaceId: 'public', modelName: 'Bug' };
-    const detached = new Collection(
-      {
-        runtime: createMockRuntime(),
-        context: buildTestContextFromContract(deserializePolyContract()),
-      },
-      'Bug',
-      {
-        namespaceId: 'public',
-      },
-    );
 
     expectInvalidVariant(() => db.public.Task.variant(forged as never));
-    expectInvalidVariant(() => db.public.Task.variant(detached as never));
+    expectInvalidVariant(() => db.public.Task.variant(new Date() as never));
   });
 
   it('rejects non-polymorphic receivers and undeclared roots', () => {
@@ -191,12 +209,46 @@ describe('Collection.variant() root arguments', () => {
     expectInvalidVariant(() => db.public.Task.variant(db.public.Project as never));
   });
 
-  it('rejects no-op builder results while preserving the original root', () => {
+  it('rejects query builder results while preserving the original root', () => {
     const { db } = createPolyDb();
-    const builderResult = db.public.Bug.where({});
+    const modifiedRoots = [
+      db.public.Bug.where({}),
+      db.public.Bug.include('assignee'),
+      db.public.Bug.select('severity'),
+      db.public.Bug.orderBy((bug) => bug.severity.asc()),
+      db.public.Bug.orderBy((bug) => bug.severity.asc()).cursor({}),
+      db.public.Bug.distinct('severity'),
+      db.public.Bug.orderBy((bug) => bug.severity.asc()).distinctOn('severity'),
+      db.public.Bug.limit(1),
+      db.public.Bug.offset(1),
+    ];
 
-    expectInvalidVariant(() => db.public.Task.variant(builderResult as never));
+    for (const root of modifiedRoots) {
+      expectInvalidVariant(() => db.public.Task.variant(root as never));
+    }
     expect(db.public.Task.variant(db.public.Bug).state.variantName).toBe('Bug');
+  });
+
+  it('rejects directly constructed roots with preconfigured query state', () => {
+    const { db } = createPolyDb();
+    const directRoot = new Collection<
+      PolyContract,
+      'Bug',
+      InferRootRow<PolyContract, 'Bug', 'public'>,
+      WithNsId<DefaultCollectionTypeState, 'public'>
+    >(
+      {
+        runtime: createMockRuntime(),
+        context: buildTestContextFromContract(deserializePolyContract()),
+      },
+      'Bug',
+      {
+        namespaceId: 'public',
+        state: { ...emptyState(), limit: 1, queryModified: false },
+      },
+    );
+
+    expectInvalidVariant(() => db.public.Task.variant(directRoot));
   });
 
   it('keeps receiver runtime through chains and runtime swaps', async () => {

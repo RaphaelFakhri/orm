@@ -68,7 +68,7 @@ SQL ORM polymorphic selection uses model roots, not strings:
 const bugs = await db.public.Task.variant(db.public.Bug).all();
 ```
 
-The argument must be an unmodified root created by `orm(...)`. Roots from another ORM client are accepted when the existing contract hash tuple matches: `storage.storageHash`, `profileHash`, and the optional `execution.executionHash` presence/value. Execution stays on the receiver collection's runtime or transaction; the argument only identifies the declared model. Forged objects, detached `new Collection(...)` values, builder results such as `db.public.Bug.where({})`, incompatible contract hashes, undeclared variants, and non-polymorphic receivers are rejected with `ORM.ARGUMENT_INVALID`.
+The argument must be a genuine, unmodified `Collection` for the desired variant model. A "root" here means query-unmodified collection state, whether the collection came from `orm(...)`, another compatible ORM client, or direct `new Collection(...)` construction. Compatible collections have the same existing contract hash tuple: `storage.storageHash`, `profileHash`, and the optional `execution.executionHash` presence/value. Execution stays on the receiver collection's runtime or transaction; the argument only identifies the declared model. Forged objects, builder results such as `db.public.Bug.where({})` or even no-op `where({})` / empty `cursor({})` clones, incompatible contract hashes, undeclared variants, and non-polymorphic receivers are rejected with `ORM.ARGUMENT_INVALID` rather than treated as an unchanged selection.
 
 ## Skipping rows that collide with a unique constraint
 

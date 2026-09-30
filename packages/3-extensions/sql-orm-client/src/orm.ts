@@ -6,17 +6,8 @@ import type {
 } from '@internal/sql-relational-core/query-lane-context';
 import { blindCast } from '@internal/utils/casts';
 import { aggregateOperationNames } from './aggregate-operations';
-import {
-  type Collection,
-  CollectionBase,
-  registerModelRoot,
-  reservedCollectionMemberNames,
-} from './collection';
-import type {
-  CollectionConstructor,
-  CollectionInit,
-  ModelRootIdentity,
-} from './collection-internal-types';
+import { type Collection, CollectionBase, reservedCollectionMemberNames } from './collection';
+import type { CollectionConstructor, CollectionInit } from './collection-internal-types';
 import { ormError } from './orm-errors';
 import { domainModelNamesInNamespace, domainModelTableInNamespace } from './storage-resolution';
 import type {
@@ -66,9 +57,8 @@ type ModelCollection<
       ModelName,
       InferRootRow<TContract, ModelName, NsId>,
       WithNsId<DefaultCollectionTypeState, NsId>
-    > &
-      ModelRootIdentity<NsId, ModelName>
-  : CustomCollectionForKey<Collections, ModelName> & ModelRootIdentity<NsId, ModelName>;
+    >
+  : CustomCollectionForKey<Collections, ModelName>;
 
 type NamespaceModelNames<
   TContract extends Contract<SqlStorage>,
@@ -99,7 +89,7 @@ type NamespacedClientMap<
   [Ns in keyof TContract['domain']['namespaces']]: OrmNamespace<TContract, Collections, Ns>;
 };
 
-type OrmClient<
+export type OrmClient<
   TContract extends Contract<SqlStorage>,
   Collections extends Partial<Record<string, AnyCollectionClass>>,
 > = NamespacedClientMap<TContract, Collections>;
@@ -155,13 +145,11 @@ export function orm<
       ) => AnyCollection,
       'a registered collection class is a Collection subclass constructor'
     >(CollectionClass);
-    const collection = new CollectionCtor(ctx, modelName, {
+    return new CollectionCtor(ctx, modelName, {
       registry: collectionRegistry,
       namespaceId,
       ...(tableName !== undefined ? { tableName } : {}),
     });
-    registerModelRoot(collection);
-    return collection;
   }
 
   const namespaceFacets = new Map<string, object>();

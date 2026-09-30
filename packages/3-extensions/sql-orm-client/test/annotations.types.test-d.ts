@@ -183,6 +183,7 @@ declare const userCollectionWithWhere: Collection<
     readonly hasOrderBy: false;
     readonly hasWhere: true;
     readonly hasUniqueFilter: false;
+    readonly queryModified: false;
     readonly variantName: undefined;
     readonly nsId: never;
   }

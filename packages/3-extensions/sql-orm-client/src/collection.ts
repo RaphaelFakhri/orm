@@ -61,13 +61,10 @@ import type {
   IncludeRefinementResult,
   IncludeRefinementValue,
   IsToManyRelation,
-  ModelRootIdentity,
-  ModelRootModel,
   RowSelection,
-  // biome-ignore lint/correctness/noUnusedImports: used in `declare` property
-  RowType,
   WhereInput,
   WithOrderByState,
+  WithQueryModifiedState,
   WithVariantState,
   WithWhereState,
 } from './collection-internal-types';
@@ -263,14 +260,6 @@ interface ContractHashTuple {
     | undefined;
 }
 
-interface RegisteredRoot {
-  readonly namespaceId: string;
-  readonly modelName: string;
-  readonly hashes: ContractHashTuple;
-}
-
-const registeredRoots = new WeakMap<object, RegisteredRoot>();
-
 function contractHashTuple(contract: Contract<SqlStorage>): ContractHashTuple {
   return {
     storageHash: contract.storage.storageHash,
@@ -287,15 +276,19 @@ function contractHashTuplesEqual(left: ContractHashTuple, right: ContractHashTup
   );
 }
 
-export function registerModelRoot(collection: unknown): void {
-  if (!(collection instanceof CollectionImpl)) {
-    return;
-  }
-  registeredRoots.set(collection, {
-    namespaceId: collection.namespaceId,
-    modelName: collection.modelName,
-    hashes: contractHashTuple(collection.ctx.context.contract),
-  });
+function collectionStateHasQueryShape(state: CollectionState): boolean {
+  return (
+    state.filters.length > 0 ||
+    state.includes.length > 0 ||
+    state.orderBy !== undefined ||
+    state.cursor !== undefined ||
+    state.distinct !== undefined ||
+    state.distinctOn !== undefined ||
+    state.selectedFields !== undefined ||
+    state.limit !== undefined ||
+    state.offset !== undefined ||
+    state.variantName !== undefined
+  );
 }
 
 class CollectionImpl<
@@ -303,9 +296,7 @@ class CollectionImpl<
   ModelName extends string,
   Row = SimplifyDeep<InferRootRow<TContract, ModelName>>,
   State extends CollectionTypeState = DefaultCollectionTypeState,
-> implements RowSelection<Row>
-{
-  declare readonly [RowType]: Row;
+> {
   declare readonly _row?: Row;
   /** @internal */
   readonly ctx: CollectionContext<TContract>;
@@ -318,7 +309,7 @@ class CollectionImpl<
   /** @internal */
   readonly namespaceId: State['nsId'];
   /** @internal */
-  readonly state: CollectionState;
+  readonly state: CollectionState & Pick<State, 'queryModified'>;
   /** @internal */
   readonly registry: ReadonlyMap<string, CollectionConstructor<TContract>>;
   /** @internal */
@@ -335,7 +326,15 @@ class CollectionImpl<
     this.namespaceId = options.namespaceId;
     this.tableName =
       options.tableName ?? resolveModelTableName(this.contract, options.namespaceId, modelName);
-    this.state = options.state ?? emptyState();
+    const state = options.state ?? emptyState();
+    this.state = blindCast<
+      CollectionState & Pick<State, 'queryModified'>,
+      'runtime state queryModified matches the collection type state supplied by constructors and clone helpers'
+    >(
+      options.state === undefined
+        ? state
+        : { ...state, queryModified: state.queryModified || collectionStateHasQueryShape(state) },
+    );
     this.registry = options.registry ?? new Map<string, CollectionConstructor<TContract>>();
     this.includeRefinementMode = options.includeRefinementMode ?? false;
     this.#installAggregateReducers();
@@ -413,16 +412,18 @@ class CollectionImpl<
     fn: (
       model: VariantAwareModelAccessor<TContract, ModelName, State['variantName'], State['nsId']>,
     ) => WhereDirectInput,
-  ): Collection<TContract, ModelName, Row, WithWhereState<State>>;
-  where(input: WhereDirectInput): Collection<TContract, ModelName, Row, WithWhereState<State>>;
+  ): Collection<TContract, ModelName, Row, WithQueryModifiedState<WithWhereState<State>>>;
+  where(
+    input: WhereDirectInput,
+  ): Collection<TContract, ModelName, Row, WithQueryModifiedState<WithWhereState<State>>>;
   where(
     fn: (
       model: VariantAwareModelAccessor<TContract, ModelName, State['variantName'], State['nsId']>,
     ) => WhereArg,
-  ): Collection<TContract, ModelName, Row, WithWhereState<State>>;
+  ): Collection<TContract, ModelName, Row, WithQueryModifiedState<WithWhereState<State>>>;
   where(
     filters: ShorthandWhereFilter<TContract, State['nsId'], ModelName>,
-  ): Collection<TContract, ModelName, Row, WithWhereState<State>>;
+  ): Collection<TContract, ModelName, Row, WithQueryModifiedState<WithWhereState<State>>>;
   where(
     input:
       | WhereDirectInput
@@ -443,7 +444,7 @@ class CollectionImpl<
           >,
         ) => WhereArg)
       | ShorthandWhereFilter<TContract, State['nsId'], ModelName>,
-  ): Collection<TContract, ModelName, Row, WithWhereState<State>> {
+  ): Collection<TContract, ModelName, Row, WithQueryModifiedState<WithWhereState<State>>> {
     const whereArg =
       typeof input === 'function'
         ? input(
@@ -463,11 +464,12 @@ class CollectionImpl<
     });
 
     if (!filter) {
-      return this.#clone<WithWhereState<State>>({});
+      return this.#clone<WithQueryModifiedState<WithWhereState<State>>>({ queryModified: true });
     }
 
-    return this.#clone<WithWhereState<State>>({
+    return this.#clone<WithQueryModifiedState<WithWhereState<State>>>({
       filters: [...this.state.filters, filter],
+      queryModified: true,
     });
   }
 
@@ -490,22 +492,20 @@ class CollectionImpl<
    * await db.orm.User.variant(db.orm.Admin).create({ name: 'Ada', role: 'super' });
    * ```
    */
-  variant<
-    VariantRoot extends ModelRootIdentity<
-      State['nsId'],
-      VariantNames<TContract, ModelName, State['nsId']>
+  variant<V extends VariantNames<TContract, ModelName, State['nsId']>>(
+    variantRoot: Collection<
+      TContract,
+      V,
+      unknown,
+      WithNsId<DefaultCollectionTypeState, State['nsId']>
     >,
-    V extends VariantNames<TContract, ModelName, State['nsId']> = ModelRootModel<VariantRoot> &
-      VariantNames<TContract, ModelName, State['nsId']>,
-  >(
-    variantRoot: VariantRoot,
   ): Collection<
     TContract,
     ModelName,
     VariantModelRow<TContract, ModelName, V, State['nsId']>,
-    WithVariantState<WithWhereState<State>, V>
+    WithQueryModifiedState<WithVariantState<WithWhereState<State>, V>>
   > {
-    type ReturnState = WithVariantState<WithWhereState<State>, V>;
+    type ReturnState = WithQueryModifiedState<WithVariantState<WithWhereState<State>, V>>;
     const model = modelOf(this.contract, this.namespaceId, this.modelName);
     const discriminator = model?.discriminator;
     const variants = model?.variants;
@@ -516,20 +516,24 @@ class CollectionImpl<
       });
     }
 
-    if (typeof variantRoot !== 'object' || variantRoot === null) {
+    if (!(variantRoot instanceof CollectionImpl)) {
       throw ormError('ORM.ARGUMENT_INVALID', 'variant() requires an unmodified model root', {
         meta: { method: 'variant', argument: 'variant' },
       });
     }
 
-    const registeredRoot = registeredRoots.get(variantRoot);
-    if (!registeredRoot) {
+    if (variantRoot.state.queryModified || collectionStateHasQueryShape(variantRoot.state)) {
       throw ormError('ORM.ARGUMENT_INVALID', 'variant() requires an unmodified model root', {
         meta: { method: 'variant', argument: 'variant' },
       });
     }
 
-    if (!contractHashTuplesEqual(contractHashTuple(this.contract), registeredRoot.hashes)) {
+    if (
+      !contractHashTuplesEqual(
+        contractHashTuple(this.contract),
+        contractHashTuple(variantRoot.ctx.context.contract),
+      )
+    ) {
       throw ormError(
         'ORM.ARGUMENT_INVALID',
         'variant() requires a model root with compatible contract hashes',
@@ -539,7 +543,7 @@ class CollectionImpl<
       );
     }
 
-    if (registeredRoot.namespaceId !== this.namespaceId) {
+    if (variantRoot.namespaceId !== this.namespaceId) {
       throw ormError(
         'ORM.ARGUMENT_INVALID',
         'variant() requires a variant root from the receiver namespace',
@@ -547,22 +551,22 @@ class CollectionImpl<
           meta: {
             method: 'variant',
             receiverNamespace: this.namespaceId,
-            argumentNamespace: registeredRoot.namespaceId,
+            argumentNamespace: variantRoot.namespaceId,
           },
         },
       );
     }
 
-    const variantName = blindCast<
-      V,
-      'registered model root identity has already been validated against the receiver polymorphic variants'
-    >(registeredRoot.modelName);
-    const variantEntry = variants[variantName];
+    const variantEntry = variants[variantRoot.modelName];
     if (!variantEntry) {
       throw ormError('ORM.ARGUMENT_INVALID', 'variant() requires a declared variant root', {
-        meta: { method: 'variant', argument: 'variant', variant: registeredRoot.modelName },
+        meta: { method: 'variant', argument: 'variant', variant: variantRoot.modelName },
       });
     }
+    const variantName = blindCast<
+      V,
+      'runtime membership check validates modelName but TypeScript does not infer generic V from indexed object membership'
+    >(variantRoot.modelName);
 
     const columnName = resolveFieldToColumn(
       this.contract,
@@ -591,6 +595,7 @@ class CollectionImpl<
       {
         filters: [...filtersWithoutPreviousVariant, filter],
         variantName,
+        queryModified: true,
       },
     );
   }
@@ -662,7 +667,7 @@ class CollectionImpl<
         >;
       }
     >,
-    State
+    WithQueryModifiedState<State>
   >;
   include<
     RelName extends VariantAwareIncludeRelationNames<
@@ -726,7 +731,7 @@ class CollectionImpl<
         >;
       }
     >,
-    State
+    WithQueryModifiedState<State>
   >;
   include<
     RelName extends VariantAwareIncludeRelationNames<
@@ -790,7 +795,7 @@ class CollectionImpl<
         >;
       }
     >,
-    State
+    WithQueryModifiedState<State>
   > {
     const relation = resolveIncludeRelation(
       this.contract,
@@ -880,9 +885,10 @@ class CollectionImpl<
           >;
         }
       >,
-      State
+      WithQueryModifiedState<State>
     >({
       includes: [...this.state.includes, includeExpr],
+      queryModified: true,
     });
   }
 
@@ -914,7 +920,7 @@ class CollectionImpl<
       Pick<DefaultModelRow<TContract, ModelName>, Fields[number]> &
         IncludedRelationsForRow<TContract, ModelName, Row>
     >,
-    State
+    WithQueryModifiedState<State>
   > {
     const selectedFields = mapFieldsToColumns(
       this.contract,
@@ -928,9 +934,10 @@ class CollectionImpl<
         Pick<DefaultModelRow<TContract, ModelName>, Fields[number]> &
           IncludedRelationsForRow<TContract, ModelName, Row>
       >,
-      State
+      WithQueryModifiedState<State>
     >({
       selectedFields,
+      queryModified: true,
     });
   }
 
@@ -971,7 +978,7 @@ class CollectionImpl<
             >,
           ) => OrderByItem
         >,
-  ): Collection<TContract, ModelName, Row, WithOrderByState<State>> {
+  ): Collection<TContract, ModelName, Row, WithQueryModifiedState<WithOrderByState<State>>> {
     const accessor = createModelAccessor<TContract, ModelName, State['variantName'], State['nsId']>(
       this.ctx.context,
       this.namespaceId,
@@ -981,8 +988,9 @@ class CollectionImpl<
     const selectors = Array.isArray(selection) ? selection : [selection];
     const nextOrders = selectors.map((selector) => selector(accessor));
     const existing = this.state.orderBy ?? [];
-    return this.#clone<WithOrderByState<State>>({
+    return this.#clone<WithQueryModifiedState<WithOrderByState<State>>>({
       orderBy: [...existing, ...nextOrders],
+      queryModified: true,
     });
   }
 
@@ -1116,7 +1124,7 @@ class CollectionImpl<
     cursorValues: State['hasOrderBy'] extends true
       ? Partial<Record<keyof DefaultModelRow<TContract, ModelName> & string, unknown>>
       : never,
-  ): Collection<TContract, ModelName, Row, State> {
+  ): Collection<TContract, ModelName, Row, WithQueryModifiedState<State>> {
     assertCursorCompatibleOrder(this.state.orderBy);
     const mappedCursor = mapCursorValuesToColumns(
       this.contract,
@@ -1126,14 +1134,12 @@ class CollectionImpl<
     );
 
     if (Object.keys(mappedCursor).length === 0) {
-      return blindCast<
-        Collection<TContract, ModelName, Row, State>,
-        'the constructor installed the reducer members the surface type declares'
-      >(this);
+      return this.#clone<WithQueryModifiedState<State>>({ queryModified: true });
     }
 
-    return this.#clone({
+    return this.#clone<WithQueryModifiedState<State>>({
       cursor: mappedCursor,
+      queryModified: true,
     });
   }
 
@@ -1150,7 +1156,7 @@ class CollectionImpl<
       keyof DefaultModelRow<TContract, ModelName> & string,
       ...(keyof DefaultModelRow<TContract, ModelName> & string)[],
     ],
-  >(...fields: Fields): Collection<TContract, ModelName, Row, State> {
+  >(...fields: Fields): Collection<TContract, ModelName, Row, WithQueryModifiedState<State>> {
     const distinctFields = mapFieldsToColumns(
       this.contract,
       this.namespaceId,
@@ -1158,9 +1164,10 @@ class CollectionImpl<
       fields,
     );
 
-    return this.#clone({
+    return this.#clone<WithQueryModifiedState<State>>({
       distinct: distinctFields,
       distinctOn: undefined,
+      queryModified: true,
     });
   }
 
@@ -1191,7 +1198,7 @@ class CollectionImpl<
         ? Fields
         : never
       : never
-  ): Collection<TContract, ModelName, Row, State> {
+  ): Collection<TContract, ModelName, Row, WithQueryModifiedState<State>> {
     assertDistinctOnCapability(this.contract, 'distinctOn');
     assertDistinctOnCompatibleOrder(this.state.orderBy, fields.length);
     const distinctOnFields = mapFieldsToColumns(
@@ -1201,9 +1208,10 @@ class CollectionImpl<
       fields,
     );
 
-    return this.#clone({
+    return this.#clone<WithQueryModifiedState<State>>({
       distinct: undefined,
       distinctOn: distinctOnFields,
+      queryModified: true,
     });
   }
 
@@ -1216,8 +1224,11 @@ class CollectionImpl<
    */
   limit(
     n: number | TraitExpression<readonly ['numeric'], false, ExtractCodecTypes<TContract>>,
-  ): Collection<TContract, ModelName, Row, State> {
-    return this.#clone({ limit: typeof n === 'number' ? n : toExpr(n) });
+  ): Collection<TContract, ModelName, Row, WithQueryModifiedState<State>> {
+    return this.#clone<WithQueryModifiedState<State>>({
+      limit: typeof n === 'number' ? n : toExpr(n),
+      queryModified: true,
+    });
   }
 
   /**
@@ -1233,8 +1244,11 @@ class CollectionImpl<
    */
   offset(
     n: number | TraitExpression<readonly ['numeric'], false, ExtractCodecTypes<TContract>>,
-  ): Collection<TContract, ModelName, Row, State> {
-    return this.#clone({ offset: typeof n === 'number' ? n : toExpr(n) });
+  ): Collection<TContract, ModelName, Row, WithQueryModifiedState<State>> {
+    return this.#clone<WithQueryModifiedState<State>>({
+      offset: typeof n === 'number' ? n : toExpr(n),
+      queryModified: true,
+    });
   }
 
   /**
@@ -2970,6 +2984,7 @@ export type Collection<
   Row = SimplifyDeep<InferRootRow<TContract, ModelName>>,
   State extends CollectionTypeState = DefaultCollectionTypeState,
 > = CollectionImpl<TContract, ModelName, Row, State> &
+  RowSelection<Row> &
   AggregateIncludeReducers<TContract, ModelName, State['nsId']>;
 
 /**

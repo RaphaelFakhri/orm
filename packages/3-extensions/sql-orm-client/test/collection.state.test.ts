@@ -309,10 +309,11 @@ describe('Collection', () => {
       );
     });
 
-    it('keeps cursor() as identity when mapped cursor values are empty', () => {
+    it('marks cursor() as modified when mapped cursor values are empty', () => {
       const { collection } = createCollection();
       const ordered = collection.orderBy((user) => user.id.asc());
-      expect(ordered.cursor({ id: undefined } as never)).toBe(ordered);
+      const cursorCollection = ordered.cursor({ id: undefined } as never);
+      expect(cursorCollection.state).toEqual({ ...ordered.state, queryModified: true });
     });
   });
 

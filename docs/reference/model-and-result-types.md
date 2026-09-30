@@ -94,7 +94,7 @@ const projectsWithTasks = db.orm.public.Project.include('tasks');
 type ProjectWithTasks = ResultType<typeof projectsWithTasks>; // Shape<Models.public_Project, { '+': 'tasks' }>
 ```
 
-For SQL ORM clients, `.variant(...)` takes an unmodified variant root. It can come from another ORM client when the existing contract hash tuple matches (`storage.storageHash`, `profileHash`, and optional `execution.executionHash` presence/value), but the receiver's runtime and transaction execute the query.
+For SQL ORM clients, `.variant(...)` takes a genuine, unmodified variant collection. It can come from direct `Collection` construction or another ORM client when the existing contract hash tuple matches (`storage.storageHash`, `profileHash`, and optional `execution.executionHash` presence/value), but the receiver's runtime and transaction execute the query. Query-builder results are not accepted, including calls with no effective predicate such as `where({})` or empty `cursor({})`; this is reported as `ORM.ARGUMENT_INVALID` rather than silently ignoring the modified state.
 
 ## The row a default fetch returns
 

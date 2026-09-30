@@ -4,7 +4,6 @@ import type { SqlStorage } from '@internal/sql-contract/types';
 import type { ExecutionContext } from '@internal/sql-relational-core/query-lane-context';
 import { expectTypeOf, test } from 'vitest';
 import type { Collection } from '../src/collection';
-import type { ModelRootIdentity } from '../src/collection-internal-types';
 import { createModelAccessor } from '../src/model-accessor';
 import type {
   CreateInput,
@@ -455,8 +454,8 @@ type RowOfCollection<TCollection> = TCollection extends { all(): infer R }
   : never;
 
 declare const projects: Collection<PolyContract, 'Project'>;
-declare const bugRoot: ModelRootIdentity<never, 'Bug'>;
-declare const featureRoot: ModelRootIdentity<never, 'Feature'>;
+declare const bugRoot: Collection<PolyContract, 'Bug'>;
+declare const featureRoot: Collection<PolyContract, 'Feature'>;
 
 test('include of a polymorphic-target relation types the value as the variant union', () => {
   type Included = RowOfCollection<ReturnType<typeof projects.include<'tasks'>>>['tasks'];
@@ -717,8 +716,8 @@ test('include without narrowing rejects a variant-declared relation', () => {
 });
 
 declare const taskVariantRoot:
-  | ModelRootIdentity<never, 'Bug'>
-  | ModelRootIdentity<never, 'Feature'>;
+  | Collection<PolyContract, 'Bug'>
+  | Collection<PolyContract, 'Feature'>;
 
 test('include after union-valued narrowing keeps an unshadowed base relation', () => {
   const included = tasks.variant(taskVariantRoot).include('subtasks');
@@ -787,11 +786,11 @@ type CollisionContract = Omit<PolyContract, 'domain'> & {
 };
 
 declare const collisionTasks: Collection<CollisionContract, 'Task'>;
-declare const collisionBugRoot: ModelRootIdentity<never, 'Bug'>;
-declare const collisionFeatureRoot: ModelRootIdentity<never, 'Feature'>;
+declare const collisionBugRoot: Collection<CollisionContract, 'Bug'>;
+declare const collisionFeatureRoot: Collection<CollisionContract, 'Feature'>;
 declare const collisionVariantRoot:
-  | ModelRootIdentity<never, 'Bug'>
-  | ModelRootIdentity<never, 'Feature'>;
+  | Collection<CollisionContract, 'Bug'>
+  | Collection<CollisionContract, 'Feature'>;
 
 test('singleton variant include chooses its shadowing target and cardinality', () => {
   const included = collisionTasks.variant(collisionFeatureRoot).include('owner');

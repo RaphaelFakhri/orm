@@ -6,7 +6,6 @@ import type {
   Models as PolyModels,
 } from '../../../../test/integration/test/sql-orm-client/fixtures/polymorphism/generated/contract';
 import type { Collection } from '../src/collection';
-import type { ModelRootIdentity } from '../src/collection-internal-types';
 import type { DefaultModelRow, VariantModelRow } from '../src/types';
 import type { Contract, Models } from './fixtures/generated/contract';
 
@@ -32,7 +31,7 @@ declare const poly: {
   TaskComment: Collection<PolyContract, 'TaskComment'>;
   Ticket: Collection<PolyContract, 'Ticket'>;
   User: Collection<PolyContract, 'User'>;
-  Bug: ModelRootIdentity<never, 'Bug'>;
+  Bug: Collection<PolyContract, 'Bug'>;
 };
 
 test('DefaultModelRow equals Scalars of the emitted model for every non-polymorphic model', () => {
