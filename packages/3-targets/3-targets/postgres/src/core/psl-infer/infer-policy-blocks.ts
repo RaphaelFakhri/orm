@@ -1,11 +1,20 @@
 import type { PslExtensionBlock } from '@internal/framework-components/psl-ast';
 import { isPslIdentifier } from '@internal/psl-parser';
+import { printSqlExpressionLiteral, sqlTextReadsBack } from '@internal/sql-contract/sql-expression';
 import { escapePslString } from '@internal/sql-relational-core/ast';
 import { parseWireName } from '@internal/sql-schema-ir/naming';
 import { assertDefined } from '@internal/utils/assertions';
 import { POLICY_BLOCK_KEYWORDS } from '../authoring';
 import { SYNTHETIC_SPAN } from '../psl-build/psl-literals';
 import type { PostgresPolicySchemaNode } from '../schema-ir/postgres-policy-schema-node';
+
+/** Why `contract infer` skips an object whose SQL a `sql` literal would change. */
+export const SQL_DOES_NOT_READ_BACK =
+  'its SQL cannot be written as a sql literal that reads back unchanged';
+
+function readsBackOrAbsent(text: string | undefined): boolean {
+  return text === undefined || sqlTextReadsBack(text);
+}
 
 /** Replaces invalid character runs with `_`; prepends `_` when the first character is invalid. */
 function sanitizePolicyHead(raw: string): string {
@@ -68,13 +77,20 @@ export function buildIntrospectedPolicyBlocks(
       `buildIntrospectedPolicyBlocks: policy "${policy.name}" targets table "${tableName}" with no emitted model; tables and policies come from the same introspection walk`,
     );
 
+    const skipNote = (reason: string) => {
+      const notes = skipNotesByTable.get(tableName) ?? [];
+      notes.push(`// prisma: skipped policy "${policy.name}": ${reason}`);
+      skipNotesByTable.set(tableName, notes);
+    };
     const badRole = policy.roles.find((role) => !isPslIdentifier(role));
     if (badRole !== undefined) {
-      const notes = skipNotesByTable.get(tableName) ?? [];
-      notes.push(
-        `// prisma: skipped policy "${policy.name}": role "${badRole}" is not a valid PSL identifier and role references cannot be escaped`,
+      skipNote(
+        `role "${badRole}" is not a valid PSL identifier and role references cannot be escaped`,
       );
-      skipNotesByTable.set(tableName, notes);
+      continue;
+    }
+    if (![policy.using, policy.withCheck].every(readsBackOrAbsent)) {
+      skipNote(SQL_DOES_NOT_READ_BACK);
       continue;
     }
 
@@ -94,10 +110,20 @@ export function buildIntrospectedPolicyBlocks(
         target: { expression: modelName, span: SYNTHETIC_SPAN },
         roles: { expression: `[${policy.roles.join(', ')}]`, span: SYNTHETIC_SPAN },
         ...(policy.using !== undefined
-          ? { using: { expression: JSON.stringify(policy.using), span: SYNTHETIC_SPAN } }
+          ? {
+              using: {
+                expression: printSqlExpressionLiteral(policy.using),
+                span: SYNTHETIC_SPAN,
+              },
+            }
           : {}),
         ...(policy.withCheck !== undefined
-          ? { withCheck: { expression: JSON.stringify(policy.withCheck), span: SYNTHETIC_SPAN } }
+          ? {
+              withCheck: {
+                expression: printSqlExpressionLiteral(policy.withCheck),
+                span: SYNTHETIC_SPAN,
+              },
+            }
           : {}),
         ...(policy.permissive ? {} : { permissive: { expression: 'false', span: SYNTHETIC_SPAN } }),
       },

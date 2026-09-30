@@ -420,11 +420,12 @@ export function printTaggedLiteral(tag: string, text: string): string {
 
 ### 11.2 `contract infer` prints the six places (slice 2b)
 
-- `packages/3-targets/3-targets/postgres/src/core/psl-infer/infer-index-attributes.ts`: `buildIndexAttribute` prints `namedArg('expression', printSqlExpressionLiteral(index.expression))` and `namedArg('where', printSqlExpressionLiteral(index.where))`; `buildCheckAttribute` prints `namedArg('expression', printSqlExpressionLiteral(check.expression))`.
+- `packages/3-targets/3-targets/postgres/src/core/psl-build/index-attributes.ts` (corrected in slice 2b; the design named `psl-infer/infer-index-attributes.ts`): `buildIndexAttribute` prints `namedArg('expression', printSqlExpressionLiteral(index.expression))` and `namedArg('where', printSqlExpressionLiteral(index.where))`; `buildCheckAttribute` prints `namedArg('expression', printSqlExpressionLiteral(check.expression))`.
 - `packages/3-targets/3-targets/postgres/src/core/psl-infer/infer-policy-blocks.ts`: `{ expression: printSqlExpressionLiteral(policy.using), span: SYNTHETIC_SPAN }` and likewise `withCheck` (about lines 105-110).
+- `contract print` shares `buildIndexAttribute` and `buildCheckAttribute`, and `psl-print/row-level-security.ts` prints policy predicates with `printSqlExpressionLiteral` too (added in slice 2b; `contract print` does not yet check `sqlTextReadsBack`, see `dispatches/2b-findings.md` finding 1).
 - **Skipping bodies that do not read back.** An adopted object compares its body byte for byte with the database, so infer never prints a body that would read back changed:
   - In `buildModel` (`infer-model-blocks.ts`, about lines 124-135), for each index whose `expression` or `where` fails `sqlTextReadsBack`, and each non-derived check whose `expression` fails it, skip the attribute and add the note `` `// prisma: skipped ${kind} "${name}": its SQL cannot be written as a sql literal that reads back unchanged` `` (`kind` is `index` or `check`) to the model's comment lines, after any policy notes.
-  - In `buildPolicyBlocks` (`infer-policy-blocks.ts`), a policy whose `using` or `withCheck` fails `sqlTextReadsBack` is skipped with `` `// prisma: skipped policy "${policy.name}": its SQL cannot be written as a sql literal that reads back unchanged` ``, through the existing `skipNotesByTable`.
+  - In `buildIntrospectedPolicyBlocks` (`infer-policy-blocks.ts`; the design called it `buildPolicyBlocks`), a policy whose `using` or `withCheck` fails `sqlTextReadsBack` is skipped with `` `// prisma: skipped policy "${policy.name}": its SQL cannot be written as a sql literal that reads back unchanged` ``, through the existing `skipNotesByTable`.
   - Function defaults keep printing unconditionally: they are compared by parsing both sides, not byte for byte.
 
 ## 12. Language server (slice 2b)

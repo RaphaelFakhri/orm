@@ -1,4 +1,5 @@
 import type { PslExtensionBlock } from '@internal/framework-components/psl-ast';
+import { printSqlExpressionLiteral } from '@internal/sql-contract/sql-expression';
 import { escapePslString } from '@internal/sql-relational-core/ast';
 import { formatWireName } from '@internal/sql-schema-ir/naming';
 import { invariant } from '@internal/utils/assertions';
@@ -142,7 +143,7 @@ export function buildPolicyBlocks(input: {
         ...(policy.using !== undefined
           ? {
               using: {
-                expression: JSON.stringify(policy.using),
+                expression: printSqlExpressionLiteral(policy.using),
                 span: SYNTHETIC_SPAN,
               },
             }
@@ -150,7 +151,7 @@ export function buildPolicyBlocks(input: {
         ...(policy.withCheck !== undefined
           ? {
               withCheck: {
-                expression: JSON.stringify(policy.withCheck),
+                expression: printSqlExpressionLiteral(policy.withCheck),
                 span: SYNTHETIC_SPAN,
               },
             }
