@@ -20,6 +20,17 @@ changes:
       glob: "**/contract.d.ts"
       matches:
         - '^(?![\s\S]*[''"]sql/char@1[''"]\s*:\s*\{\s*readonly output)[\s\S]*@prisma/orm-(?:target-)?sqlite/'
+  - id: column-helpers-raise-type-params-invalid
+    summary: |
+      pgvector's `vector(length)` and PostGIS's `geometry({ srid })` and `pgGeometryColumn({ srid })`
+      check their arguments against the data type. An argument outside its bounds now throws
+      `CONTRACT.TYPE_PARAMS_INVALID` instead of `CONTRACT.ARGUMENT_INVALID`, and `srid: 0` is
+      refused when the contract is written, not later when a migration is planned.
+    detection:
+      glob: "**/*.{ts,mts,cts}"
+      matches:
+        - '\bCONTRACT\.ARGUMENT_INVALID\b'
+        - '\bsrid\s*:\s*0\b'
 ---
 
 ## `ts-contract-lists-extension-codecs`
@@ -50,3 +61,17 @@ readonly 'sql/varchar@1': { readonly output: 'sql/varchar@1'; readonly nullable:
 ```
 
 `contract.json`, `storageHash`, `profileHash` and migration snapshots do not change, so no migration or re-sign is needed.
+
+## `column-helpers-raise-type-params-invalid`
+
+Code that catches the error from these helpers by its code checks the new code:
+
+```ts
+// before
+if (error.code === 'CONTRACT.ARGUMENT_INVALID') { /* … */ }
+
+// after
+if (error.code === 'CONTRACT.TYPE_PARAMS_INVALID') { /* … */ }
+```
+
+The error's `meta` is `{ dataType, parameters }`, for example `{ dataType: 'postgis/geometry', parameters: ['srid'] }`, in place of `helperPath`, `expected` and `received`. A contract that passes `srid: 0` now fails when it is built; PostgreSQL refuses an SRID below 1, so such a column never migrated. Use a real SRID such as `4326`, or `geometryColumn` for a column with no SRID.
