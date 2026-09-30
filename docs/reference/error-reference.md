@@ -825,6 +825,10 @@ A list column declares `@default(autoincrement())`: `Field "<Model>.<field>" is 
 
 A `` @default(sql`...`) `` body fails the SQL family's body check: `Default SQL must not contain semicolons, SQL comment tokens, dollar-quoting, or subqueries.` (the rule the migration planners apply at DDL time, run at authoring time so it has a source span), or is exactly `now()` or `autoincrement()`: `` Write @default(now()) instead of sql`now()`; now() is a Prisma default function, not raw SQL. `` The message names the tag as written (`sql`, `pg.sql` or `sqlite.sql`). Reported at the literal.
 
+### PSL_ENUM_TYPE_NEEDS_PARAMETERS
+
+An `enum` block's `@@type` names a codec whose data type requires a parameter, which an enum block has no way to give: `enum "<Enum>" @@type codec "<codecId>" represents data type "<dataType>", which requires the parameter "<parameter>"; an enum block gives it none`. Reported by the SQL PSL reader at the `@@type` attribute. Choose a codec whose data type takes no required parameter, such as the target's text or integer codec.
+
 ### PSL_UNSUPPORTED_ENUM_MEMBER_ATTRIBUTE
 
 An enum member carries an attribute, as in `USER @map("user")`: `enum "<Enum>": member "<member>" carries @<attribute>, but an enum member takes no attributes`. Reported by the SQL and Mongo PSL readers, once per attribute, at the attribute. Remove the attribute. To store a value other than the member's name, write it as the member's value, as in `USER = "user"`.

@@ -55,7 +55,7 @@
         "execute": [
           {
             "description": "create table \"alias\"",
-            "sql": "CREATE TABLE \"public\".\"alias\" (\n  \"code\" \"character\" NOT NULL,\n  \"embedding\" vector(3) NOT NULL,\n  \"id\" \"uuid\" NOT NULL,\n  \"money\" numeric(10,2) NOT NULL,\n  \"shortText\" character varying(255) NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+            "sql": "CREATE TABLE \"public\".\"alias\" (\n  \"code\" character NOT NULL,\n  \"embedding\" vector(3) NOT NULL,\n  \"id\" uuid NOT NULL,\n  \"money\" numeric(10,2) NOT NULL,\n  \"shortText\" character varying(255) NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
             "params": []
           }
         ],

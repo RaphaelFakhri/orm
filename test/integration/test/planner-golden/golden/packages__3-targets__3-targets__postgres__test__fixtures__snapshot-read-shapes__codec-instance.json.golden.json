@@ -4,7 +4,7 @@
   "extensions": [],
   "planned": {
     "kind": "plannerError",
-    "code": "CONTRACT.PACK_CONTRIBUTION_INVALID",
-    "message": "Column declares typeParams for nativeType \"vector\" but no expandNativeType hook is registered for codecId \"pg/vector@1\". Ensure the extension providing this codec is included in extensions."
+    "code": "CONTRACT.CODEC_DESCRIPTOR_MISSING",
+    "message": "No codec \"pg/vector@1\" is registered, so its column type cannot be named."
   }
 }
