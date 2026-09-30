@@ -2,10 +2,9 @@ import type { JsonValue } from '@internal/contract/types';
 import type { AuthoringDataTypeEntry } from '@internal/framework-components/authoring';
 import type { Cast, DataType } from '@internal/framework-components/codec';
 import { createDataTypeLookup, dataType } from '@internal/framework-components/codec';
+import { isNonFiniteText, numeralText } from '@internal/sql-contract/data-type';
 import {
   createNumberClassifier,
-  isNonFiniteText,
-  numeralText,
   parseJsonBody,
   printJsonBody,
   signedRange,

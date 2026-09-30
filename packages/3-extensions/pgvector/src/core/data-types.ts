@@ -8,8 +8,7 @@
 
 import type { JsonValue } from '@internal/contract/types';
 import type { DataType } from '@internal/framework-components/codec';
-import { sqlDataType } from '@internal/sql-contract/data-type';
-import { isNonFiniteText } from '@internal/sql-relational-core/ast';
+import { isNonFiniteText, sqlDataType } from '@internal/sql-contract/data-type';
 import { pgInt2, pgInt4, pgInt8, pgNumeric } from '@internal/target-postgres/data-types';
 import { structuredError } from '@internal/utils/structured-error';
 import { type as arktype } from 'arktype';

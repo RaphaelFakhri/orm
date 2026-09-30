@@ -21,7 +21,8 @@ import type {
 import { isDataTypeLoweringEntry } from '@internal/framework-components/authoring';
 import type { DataTypeId, DataTypeLookup } from '@internal/framework-components/codec';
 import { dataTypeId } from '@internal/framework-components/codec';
-import { escapePslString, numeralText } from '@internal/sql-relational-core/ast';
+import { numeralText } from '@internal/sql-contract/data-type';
+import { escapePslString } from '@internal/sql-relational-core/ast';
 
 const DEFAULT_FUNCTION_ATTRIBUTES: Readonly<Record<string, string>> = {
   'autoincrement()': '@default(autoincrement())',

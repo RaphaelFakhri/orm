@@ -11,21 +11,16 @@
 
 import type { JsonValue } from '@internal/contract/types';
 import type { DataTypeId } from '@internal/framework-components/codec';
+import { isNonFiniteText } from '@internal/sql-contract/data-type';
 import { structuredError } from '@internal/utils/structured-error';
 
 const INTEGER_TEXT = /^-?\d+$/;
 const DECIMAL_TEXT = /^-?\d+\.\d+$/;
-const NON_FINITE_WORDS: ReadonlySet<string> = new Set(['NaN', 'Infinity', '-Infinity']);
 const DECIMAL_NUMERAL = /^(-?)0*(\d+)(\.\d+)?$/;
 
 /** Whether `text` is a whole number or a decimal as a contract source writes one. */
 export function isNumeralText(text: string): boolean {
   return INTEGER_TEXT.test(text) || DECIMAL_TEXT.test(text);
-}
-
-/** Whether `text` is one of the three words a floating-point value is written as. */
-export function isNonFiniteText(text: string): boolean {
-  return NON_FINITE_WORDS.has(text);
 }
 
 /**
@@ -38,22 +33,6 @@ export function canonicalNumeralText(text: string): string {
   const [, sign = '', whole = '', fraction = ''] = numeral;
   const digits = `${whole}${fraction}`;
   return /^[0.]+$/.test(digits) ? digits : `${sign}${digits}`;
-}
-
-/**
- * A number as a contract source writes it: no exponent, because no schema language has that syntax,
- * so the decimal point moves to where the exponent puts it. A non-finite number is its own word.
- */
-export function numeralText(value: number): string {
-  const [coefficient = '', exponent] = String(value).split('e');
-  if (exponent === undefined) return coefficient;
-  const sign = coefficient.startsWith('-') ? '-' : '';
-  const [whole = '', fraction = ''] = coefficient.slice(sign.length).split('.');
-  const digits = `${whole}${fraction}`;
-  const point = whole.length + Number(exponent);
-  if (point <= 0) return `${sign}0.${'0'.repeat(-point)}${digits}`;
-  if (point >= digits.length) return `${sign}${digits}${'0'.repeat(point - digits.length)}`;
-  return `${sign}${digits.slice(0, point)}.${digits.slice(point)}`;
 }
 
 /** A string as a contract source writes it, with the escapes its string reader resolves. */
@@ -109,7 +88,7 @@ export function createNumberClassifier(
     classification === undefined ? undefined : { type: classification.type, value };
 
   return (text) => {
-    if (NON_FINITE_WORDS.has(text)) {
+    if (isNonFiniteText(text)) {
       return as(spec.words, spec.words?.form === 'number' ? Number(text) : text);
     }
     if (DECIMAL_TEXT.test(text)) {

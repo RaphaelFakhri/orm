@@ -1,3 +1,4 @@
+export { isNonFiniteText, numeralText } from '../numeral-text';
 export type {
   ReportedSqlType,
   ResolvedSqlType,

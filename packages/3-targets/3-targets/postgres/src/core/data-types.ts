@@ -12,11 +12,12 @@
 import type { JsonValue } from '@internal/contract/types';
 import type { Cast, DataType } from '@internal/framework-components/codec';
 import {
+  isNonFiniteText,
+  numeralText,
   type ReportedSqlType,
   type SqlTypeText,
   sqlDataType,
 } from '@internal/sql-contract/data-type';
-import { isNonFiniteText, numeralText } from '@internal/sql-relational-core/ast';
 import { structuredError } from '@internal/utils/structured-error';
 import { type as arktype } from 'arktype';
 import { quoteIdentifier } from './sql-utils';

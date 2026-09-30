@@ -13,8 +13,7 @@
 
 import type { JsonValue } from '@internal/contract/types';
 import type { Cast, DataType } from '@internal/framework-components/codec';
-import { sqlDataType } from '@internal/sql-contract/data-type';
-import { numeralText } from '@internal/sql-relational-core/ast';
+import { numeralText, sqlDataType } from '@internal/sql-contract/data-type';
 import { structuredError } from '@internal/utils/structured-error';
 import { type as arktype } from 'arktype';
 

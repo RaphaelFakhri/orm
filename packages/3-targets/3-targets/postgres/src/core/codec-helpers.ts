@@ -9,7 +9,7 @@
  */
 
 import type { JsonValue } from '@internal/contract/types';
-import { isNonFiniteText, numeralText } from '@internal/sql-relational-core/ast';
+import { isNonFiniteText, numeralText } from '@internal/sql-contract/data-type';
 import { postgresError } from './errors';
 
 export type PrecisionParams = { readonly precision?: number };

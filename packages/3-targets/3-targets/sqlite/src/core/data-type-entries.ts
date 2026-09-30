@@ -7,9 +7,9 @@
 
 import type { JsonValue } from '@internal/contract/types';
 import type { AuthoringDataTypeEntry } from '@internal/framework-components/authoring';
+import { numeralText } from '@internal/sql-contract/data-type';
 import {
   createNumberClassifier,
-  numeralText,
   parseJsonBody,
   printJsonBody,
   signedRange,
