@@ -1,5 +1,6 @@
 import {
   admittedTags,
+  canonicalizeTaggedLiteralBody,
   castTypedValue,
   type DataTypeSupport,
   describeAdmittedForms,
@@ -23,7 +24,7 @@ const TAGGED_LITERAL_FAILURE_CODES = {
   'too-large': 'PSL_TAGGED_LITERAL_TOO_LARGE',
 } as const;
 
-/** An argument typed by a data type: any literal, admitted by the ADR 254 cast rule. Used as a parameter of a `funcCall`. ADR 231, ADR 254. */
+/** An argument typed by a data type: any literal, admitted by the ADR 254 cast rule. Used as a named attribute argument or a block parameter, and as a parameter of a `funcCall`, never as a bare arm of `oneOf`. ADR 231, ADR 254, ADR 256. */
 export function dataTypeValue(
   dataType: DataTypeId,
   support: DataTypeSupport,
@@ -76,7 +77,7 @@ function parseDataTypeValue(
   if (!cast.ok) {
     const rewrite =
       literal.written.kind === 'string' && firstTag !== undefined
-        ? `it as ${printTaggedLiteral(firstTag, literal.written.text)}`
+        ? rewriteAsTaggedLiteral(firstTag, literal.written.text)
         : forms;
     return refuse(describeRefusal(cast.failure, rewrite));
   }
@@ -86,4 +87,12 @@ function parseDataTypeValue(
     value: cast.value.value,
     span: nodePslSpan(arg.syntax, ctx.sources),
   });
+}
+
+/** What to write instead of a quoted string: the exact literal, when its text reads back unchanged. */
+function rewriteAsTaggedLiteral(tag: string, text: string): string {
+  const canonical = canonicalizeTaggedLiteralBody(text);
+  return canonical.ok && canonical.text === text
+    ? `it as ${printTaggedLiteral(tag, text)}`
+    : `it as a ${tag} literal`;
 }
