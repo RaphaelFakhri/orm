@@ -13,7 +13,7 @@ You take over the project in this folder from an agent whose session hit a usage
 
 1. Create a fresh worktree on `tml-3296-sql-expression-data-type`, run `pnpm install` and `pnpm build`.
 2. Merge `origin/main` into the branch (a merge commit; never rebase). Resolve conflicts.
-3. Run `pnpm test:integration`. It did not finish after the last change (the family registering `sql/expression`, commits `273731b288` to `d94c4db032`). Rerun every other command in plan.md "Done conditions for every slice" after the merge. Save each output under `wip/` once and read the file.
+3. Run the commands in plan.md "Done conditions for every slice" after the merge. Do not run `pnpm test:integration` in full; run the integration files the slice touches alone and leave the full suite to CI. Save each output under `wip/` once and read the file.
 4. Run `/drive-code-review` without the walkthrough on the commits after `f768a4e831` (the review fixes). The first review covered the commits before that. Write the reports to `slice-reviews/2a-round-2/` (the `reviews/` folder is gitignored). Fix what it finds.
 5. Push, open the pull request for TML-3296 with the `create-pr` skill, and turn on the CI monitor. The title is "TML-3296: <sentence>", with no conventional-commit prefix.
 6. Update status.md.

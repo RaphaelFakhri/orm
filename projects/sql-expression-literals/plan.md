@@ -25,13 +25,13 @@ flowchart LR
 
 ## Done conditions for every slice
 
-- `pnpm build`, `pnpm typecheck`, `pnpm test:packages`, `pnpm test:integration`, `pnpm lint`, `pnpm lint:deps`, `pnpm lint:casts`, `pnpm lint:throws`, `pnpm check:error-reference` pass.
+- `pnpm build`, `pnpm typecheck`, `pnpm test:packages`, `pnpm lint`, `pnpm lint:deps`, `pnpm lint:casts`, `pnpm lint:throws`, `pnpm check:error-reference` pass locally. The integration test files the slice touches or depends on pass when run alone (`pnpm test <file>` in `test/integration`). Never run `pnpm test:integration`, `pnpm test:e2e` or `pnpm test:all` in full locally: they are too heavy for the machine and time out unrelated tests. CI runs them in full.
 - `pnpm fixtures:check` passes and shows no `contract.json` change.
 - `pnpm lint:framework-vocabulary`: the count equals the committed threshold; lower the threshold when the slice removes counted sites.
 - `pnpm check:upgrade-coverage --mode pr --prev "$(git merge-base origin/main HEAD)" --head HEAD` passes after committing, and each new fragment has been validated by execution as `skills-contrib/record-upgrade-instructions/SKILL.md` requires.
 - Slices that change user-facing diagnostics (2a, 2b, 3) add a script to `projects/sql-expression-literals/manual-qa.md` that reads each new message as a user would, and record a run.
 - Slices 2a, 2b and 3: a grep over `docs/`, `skills/`, `skills-contrib/`, package READMEs and `src/` comments finds none of the forms the slice removes (`pg.sql`, `sqlite.sql` from 2a; `where: "`, `where: '`, `expression: "`, `expression: '`, `using = "`, `withCheck = "` from 2b, searched only in `.prisma` files and ` ```prisma ` blocks; string arguments to the TS raw-SQL fields from 3), excluding `CHANGELOG.md`, `docs/releases/` and `skills/prisma-8/upgrading/**/upgrades/`.
-- Slices 1, 4 and 5 also run `pnpm test:e2e`.
+- Slices 1, 4 and 5 also run the e2e test files they touch, alone; CI runs `pnpm test:e2e` in full.
 
 ## Slice 1 — Line comments in raw SQL are safe
 
