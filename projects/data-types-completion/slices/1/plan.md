@@ -26,3 +26,4 @@ After dispatch f: `/drive-code-review` without the walkthrough, fix its findings
 - Dispatch b accepted on 2026-09-30 after two rounds.
 - Dispatch f: `pnpm check:upgrade-coverage --mode pr` also requires an app-audience declaration when the pull request touches `examples/` (design 3.3 edits `ContractView.tsx`). Write one if the check requires it, saying what an application author must change, or that nothing changes for them.
 - Dispatch c accepted on 2026-09-30 after two rounds (the second applied design 2.7 item 9).
+- Dispatch d accepted on 2026-09-30 after two rounds. The framework vocabulary threshold followed the count down to 262. A TypeScript contract that uses an extension's codec must now list the extension (or pass its data types); dispatch f records this for both audiences if `check:upgrade-coverage` asks for the app one.
