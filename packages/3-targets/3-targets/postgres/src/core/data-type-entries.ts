@@ -1,10 +1,11 @@
 /**
  * How PSL writes a value of each of this target's data types, and how it reads the text back.
  *
- * One declaration serves both directions: the adapter contributes these to the assembled stack, so
+ * One declaration serves both directions: the target contributes these to the assembled stack, so
  * the interpreter reads a written default through them, and `contract infer` prints a stored value
  * back through the same ones. The `sql` and `pg.sql` tags lower their own bodies and name no data
- * type, so they sit beside these in the adapter, where the family's lowering entry is reachable.
+ * type, so they sit beside these in `data-type-authoring.ts`, where the family's lowering entry is
+ * reachable.
  *
  * ADR 254.
  */

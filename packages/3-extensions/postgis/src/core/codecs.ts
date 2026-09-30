@@ -12,14 +12,8 @@
  *      hands back for `geometry` columns. We parse it into a
  *      GeoJSON-shaped object so callers see structured data, not
  *      opaque hex.
- * 2. `PostgisGeometryDescriptor` extends {@link PostgresCodecDescriptor}
- *    with the codec id, traits, target types, params schema
- *    (`{ srid?: number }`, preserving unparameterized geometry while validating supplied SRIDs), explicit target behavior, and
- *    the emit-path `renderOutputType` producing `Geometry<${srid}>` /
- *    `Geometry` when no SRID is supplied.
- * 3. `pgGeometryColumn({ srid })` per-codec column helper invoking
- *    `descriptor.factory({ srid })` and passing the bare
- *    `nativeType: 'geometry'`.
+ * 2. `PostgisGeometryDescriptor` extends {@link PostgresCodecDescriptor} with the codec id, traits, the `postgis/geometry` data type and its params schema (`{ srid?: number }`), explicit target behavior, and the emit-path `renderOutputType` producing `Geometry<${srid}>` / `Geometry` when no SRID is supplied. The data type declares the type's name and the bound of `srid`.
+ * 3. `pgGeometryColumn({ srid })` per-codec column helper invoking `descriptor.factory({ srid })`.
  *
  * The geometry codec's encode/decode is parameter-independent — the
  * wire format already carries SRID inside the EWKT/EWKB payload, so the
