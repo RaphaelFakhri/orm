@@ -31,7 +31,7 @@ Code that constructs one of these nodes directly wraps the string:
 + new FunctionColumnDefault(opaqueSql('now()'))
 ```
 
-The factories `fn`, `checkExpression`, and the Postgres contract-free `createPolicy` and `createIndex` still take strings. Prefer them over the constructors:
+The factories `fn` and `checkExpression` still take strings, as do `createPolicy` and `createIndex` inside the Postgres target. Prefer a factory over a constructor where one is exported:
 
 ```diff
 - new CheckExpressionConstraint({ name: 'chk', expression: 'price > 0' })
