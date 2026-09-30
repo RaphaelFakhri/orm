@@ -77,7 +77,7 @@ function authoredContract(schema: string): Contract<SqlStorage> {
     sources,
     capabilities: {},
     target: postgresTargetDescriptorMeta,
-    dataTypeLookup: postgresDataTypeLookup,
+    dataTypes: { entries: assembled.dataTypes, lookup: postgresDataTypeLookup },
     scalarColumnDescriptors: new Map([
       ['Int', { codecId: 'pg/int4@1', nativeType: 'int4' }],
       ['String', { codecId: 'pg/text@1', nativeType: 'text' }],

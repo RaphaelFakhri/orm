@@ -14,7 +14,7 @@ import {
 } from './fixtures';
 
 const baseInput = {
-  dataTypeLookup: fixtureDataTypeSupport.lookup,
+  dataTypes: fixtureDataTypeSupport,
   target: postgresTarget,
   scalarColumnDescriptors: postgresScalarTypeDescriptors,
   composedExtensionContracts: new Map(),
@@ -583,7 +583,7 @@ namespace public {
     });
 
     const result = interpretPslDocumentToSqlContract({
-      dataTypeLookup: fixtureDataTypeSupport.lookup,
+      dataTypes: fixtureDataTypeSupport,
       ...symbolTableInput,
       target: postgresTarget,
       scalarColumnDescriptors: postgresScalarTypeDescriptors,
@@ -651,7 +651,7 @@ model Foo {
       });
 
       const result = interpretPslDocumentToSqlContract({
-        dataTypeLookup: fixtureDataTypeSupport.lookup,
+        dataTypes: fixtureDataTypeSupport,
         ...symbolTableInput,
         target: postgresTarget,
         scalarColumnDescriptors: postgresScalarTypeDescriptors,
@@ -698,7 +698,7 @@ namespace auth {
       });
 
       const result = interpretPslDocumentToSqlContract({
-        dataTypeLookup: fixtureDataTypeSupport.lookup,
+        dataTypes: fixtureDataTypeSupport,
         ...symbolTableInput,
         target: postgresTarget,
         scalarColumnDescriptors: postgresScalarTypeDescriptors,
@@ -746,7 +746,7 @@ namespace auth {
       });
 
       const result = interpretPslDocumentToSqlContract({
-        dataTypeLookup: fixtureDataTypeSupport.lookup,
+        dataTypes: fixtureDataTypeSupport,
         ...symbolTableInput,
         target: postgresTarget,
         scalarColumnDescriptors: postgresScalarTypeDescriptors,

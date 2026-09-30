@@ -523,7 +523,7 @@ export function createPostgresTestContext(
     },
     codecLookup: postgresCodecLookup,
     controlMutationDefaults: createBuiltinLikeControlMutationDefaults(),
-    dataTypeLookup: fixtureDataTypeSupport.lookup,
+    dataTypes: fixtureDataTypeSupport,
     resolvedInputs: [],
     capabilities: { sql: { scalarList: true } },
     ...overrides,

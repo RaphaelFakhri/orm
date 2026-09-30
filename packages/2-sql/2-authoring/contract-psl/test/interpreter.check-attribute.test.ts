@@ -26,7 +26,7 @@ function interpret(schema: string) {
     composedExtensionContracts: new Map(),
     controlMutationDefaults: builtinControlMutationDefaults,
     createNamespace: createTestSqlNamespace,
-    dataTypeLookup: fixtureDataTypeSupport.lookup,
+    dataTypes: fixtureDataTypeSupport,
     capabilities: { sql: { scalarList: true, checkConstraint: true } },
   });
 }
@@ -331,7 +331,7 @@ model Order {
       scalarColumnDescriptors: sqliteScalarColumnDescriptors,
       composedExtensionContracts: new Map(),
       createNamespace: createTestSqlNamespace,
-      dataTypeLookup: fixtureDataTypeSupport.lookup,
+      dataTypes: fixtureDataTypeSupport,
       capabilities: { sql: {} },
       ...document,
       controlMutationDefaults: builtinControlMutationDefaults,
@@ -368,7 +368,7 @@ model Order {
       scalarColumnDescriptors: postgresScalarTypeDescriptors,
       composedExtensionContracts: new Map(),
       createNamespace: createTestSqlNamespace,
-      dataTypeLookup: fixtureDataTypeSupport.lookup,
+      dataTypes: fixtureDataTypeSupport,
       capabilities: {},
       ...document,
       controlMutationDefaults: builtinControlMutationDefaults,

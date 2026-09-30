@@ -109,7 +109,7 @@ function buildContractFromPsl(psl: string, control: ControlPolicy): Contract<Sql
 
   const result = interpretPslDocumentToSqlContract({
     documents: [document],
-    dataTypeLookup: postgresDataTypeLookup,
+    dataTypes: { entries: assembled.dataTypes, lookup: postgresDataTypeLookup },
     symbolTable,
     sources,
     target: {

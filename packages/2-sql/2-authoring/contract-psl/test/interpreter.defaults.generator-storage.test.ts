@@ -41,7 +41,7 @@ describe('generator defaults never mutate storage — the type position is the o
 
   const interpret = (schema: string) =>
     interpretPslDocumentToSqlContractInternal({
-      dataTypeLookup: fixtureDataTypeSupport.lookup,
+      dataTypes: fixtureDataTypeSupport,
       ...symbolTableInputFromParseArgs({ schema, sourceId: 'schema.prisma' }),
       target: postgresTarget,
       scalarColumnDescriptors: collectScalarTypeConstructors(authoringTypes),

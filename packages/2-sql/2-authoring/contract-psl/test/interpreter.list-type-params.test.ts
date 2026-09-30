@@ -35,7 +35,7 @@ describe('interpretPslDocumentToSqlContract list fields with type parameters', (
       target: postgresTarget,
       scalarColumnDescriptors: postgresNativeScalarTypeDescriptors,
       authoringContributions: { type: authoringTypes, dataTypes: fixtureDataTypeSupport.entries },
-      dataTypeLookup: fixtureDataTypeSupport.lookup,
+      dataTypes: fixtureDataTypeSupport,
       composedExtensionContracts: new Map(),
       createNamespace: createTestSqlNamespace,
       capabilities: { sql: { scalarList: true } },

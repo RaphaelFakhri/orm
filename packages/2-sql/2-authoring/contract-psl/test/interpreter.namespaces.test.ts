@@ -98,7 +98,7 @@ function makeSupabaseExtensionContractUnbound(): Contract {
 }
 
 const baseInput = {
-  dataTypeLookup: fixtureDataTypeSupport.lookup,
+  dataTypes: fixtureDataTypeSupport,
   target: postgresTarget,
   scalarColumnDescriptors: postgresScalarTypeDescriptors,
   controlMutationDefaults: createBuiltinLikeControlMutationDefaults(),

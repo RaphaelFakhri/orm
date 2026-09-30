@@ -32,7 +32,7 @@ import {
   isAuthoringEntityTypeDescriptor,
   isAuthoringModelAttributeDescriptor,
 } from '@internal/framework-components/authoring';
-import type { CodecLookup, DataTypeLookup } from '@internal/framework-components/codec';
+import type { CodecLookup } from '@internal/framework-components/codec';
 import type {
   CapabilityMatrix,
   ExtensionPackRef,
@@ -147,8 +147,8 @@ export interface InterpretPslDocumentToSqlContractInput {
   readonly composedExtensions?: readonly string[];
   readonly composedExtensionPackRefs?: readonly ExtensionPackRef<'sql', string>[];
   readonly controlMutationDefaults?: ControlMutationDefaults;
-  /** The stack's data types; the PSL support for them travels in `authoringContributions`. ADR 254. */
-  readonly dataTypeLookup: DataTypeLookup;
+  /** The stack's data types with their authoring entries. ADR 254. */
+  readonly dataTypes: DataTypeSupport;
   readonly authoringContributions?: AuthoringContributions;
   /**
    * Extension contracts keyed by space ID. Required for cross-space FK
@@ -2059,10 +2059,7 @@ export function interpretPslDocumentToSqlContract(
   const modelAttributesByName = buildModelAttributesByName(input.authoringContributions);
   const contributedModelSpecs = modelAttributeSpecsFrom(modelAttributesByName);
   const composedPslBlockDescriptors = input.authoringContributions?.pslBlockDescriptors ?? {};
-  const dataTypes: DataTypeSupport = {
-    entries: input.authoringContributions?.dataTypes ?? {},
-    lookup: input.dataTypeLookup,
-  };
+  const { dataTypes } = input;
   const { binder, diagnostics: binderDiagnostics } = createSqlBinder({
     symbolTable: input.symbolTable,
     sources: input.sources,

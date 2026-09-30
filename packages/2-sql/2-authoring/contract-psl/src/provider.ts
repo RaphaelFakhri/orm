@@ -98,7 +98,7 @@ export function prismaContract(schemaPath: string, options: PrismaContractOption
         createNamespace: options.createNamespace,
         capabilities: context.capabilities,
         codecLookup: context.codecLookup,
-        dataTypeLookup: context.dataTypeLookup,
+        dataTypes: context.dataTypes,
         ...ifDefined('enumInferenceCodecs', options.enumInferenceCodecs),
       });
     },

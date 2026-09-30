@@ -97,7 +97,7 @@ function interpret(source: string) {
   const { symbolTable } = buildSymbolTable({ documents: [document], sources });
   return interpretPslDocumentToSqlContract({
     documents: [document],
-    dataTypeLookup: postgresDataTypeLookup,
+    dataTypes: { entries: assembled.dataTypes, lookup: postgresDataTypeLookup },
     symbolTable,
     sources,
     capabilities: {},

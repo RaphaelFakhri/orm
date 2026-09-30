@@ -10,6 +10,14 @@ changes:
         - '\b(AttributeSpecContext|FieldAttributeSpecContext|ControlDefaultRegistries)\b'
         - '\bcreateBinder\s*\('
         - '\binterpretPslDocumentToMongoContract\s*\('
+  - id: stack-and-source-context-carry-data-types
+    summary: |
+      `ControlStack` gains `dataTypes: DataTypeSupport`. `ContractSourceContext`, `InterpretPslDocumentToSqlContractInput` and `InterpretPrisma7DocumentsInput` replace `dataTypeLookup` with `dataTypes: DataTypeSupport`.
+    detection:
+      glob: "**/*.{ts,mts,cts}"
+      matches:
+        - '\bdataTypeLookup\s*:'
+        - '\bcontext\.dataTypeLookup\b'
   - id: cast-rule-moves-to-the-framework
     summary: |
       `entryForTag`, `WrittenValue` and `DataTypeSupport` are no longer exported from `@internal/sql-contract-psl/resolution`. Import them from `@internal/framework-components/authoring`, which also exports the cast rule for one written value.
@@ -63,7 +71,7 @@ Where code builds a spec context, a binder or a Mongo interpreter input, move th
     attributeSpecs,
 -   controlMutationDefaults: { defaultFunctionRegistry, dataTypeEntries: context.authoringContributions.dataTypes },
 +   controlMutationDefaults: { defaultFunctionRegistry },
-+   dataTypes: { entries: context.authoringContributions.dataTypes, lookup: context.dataTypeLookup },
++   dataTypes: context.dataTypes,
   });
 ```
 
@@ -72,6 +80,29 @@ Where code builds a spec context, a binder or a Mongo interpreter input, move th
 - A spec context literal (`{ symbols, model, controlMutationDefaults }`) adds `dataTypes`.
 - A stack that registers no data types, and a test that needs none, passes `EMPTY_DATA_TYPES` from `@internal/psl-parser`.
 - A spec factory that read `ctx.controlMutationDefaults.dataTypeEntries` reads `ctx.dataTypes.entries`.
+
+## The stack and the contract source context carry the data types as one pair
+
+`ControlStack` gains `dataTypes: DataTypeSupport`: its registered data types (`lookup`, the same object as `dataTypeLookup`) with their authoring entries (`entries`, the same object as `authoringContributions.dataTypes`). `ContractSourceContext` replaces `dataTypeLookup` with the same `dataTypes`, and so do the inputs of the SQL and Prisma 7 interpreters. The SQL interpreter no longer reads entries from `authoringContributions.dataTypes`.
+
+```diff
+  const context: ContractSourceContext = {
+    authoringContributions: stack.authoringContributions,
+-   dataTypeLookup: stack.dataTypeLookup,
++   dataTypes: stack.dataTypes,
+    ...
+  };
+
+  interpretPslDocumentToSqlContract({
+-   dataTypeLookup: lookup,
+-   authoringContributions: { ...contributions, dataTypes: entries },
++   dataTypes: { entries, lookup },
++   authoringContributions: contributions,
+    ...
+  });
+```
+
+A test that passed a lookup without entries passes `{ entries: {}, lookup }`. Code that read `context.dataTypeLookup` reads `context.dataTypes.lookup`.
 
 ## The cast rule for one written value is in the framework
 

@@ -67,7 +67,7 @@ describe('PSL → SqlStorage.namespaces qualifier routing (FR15 slice 3 + FR16a 
 `);
 
     const result = interpretPslDocumentToSqlContract({
-      dataTypeLookup: postgresDataTypeLookup,
+      dataTypes: { entries: {}, lookup: postgresDataTypeLookup },
       ...document,
       target: postgresTargetPackRef,
       scalarColumnDescriptors: postgresScalarTypeDescriptors,
@@ -105,7 +105,7 @@ describe('PSL → SqlStorage.namespaces qualifier routing (FR15 slice 3 + FR16a 
 `);
 
     const result = interpretPslDocumentToSqlContract({
-      dataTypeLookup: postgresDataTypeLookup,
+      dataTypes: { entries: {}, lookup: postgresDataTypeLookup },
       ...document,
       target: postgresTargetPackRef,
       scalarColumnDescriptors: postgresScalarTypeDescriptors,
@@ -136,7 +136,7 @@ describe('PSL → SqlStorage.namespaces qualifier routing (FR15 slice 3 + FR16a 
 `);
 
     const result = interpretPslDocumentToSqlContract({
-      dataTypeLookup: postgresDataTypeLookup,
+      dataTypes: { entries: {}, lookup: postgresDataTypeLookup },
       ...document,
       target: postgresTargetPackRef,
       scalarColumnDescriptors: postgresScalarTypeDescriptors,

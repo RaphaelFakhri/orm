@@ -22,12 +22,12 @@ export const interpretPslDocumentToSqlContract = (
     | 'composedExtensionContracts'
     | 'createNamespace'
     | 'capabilities'
-    | 'dataTypeLookup'
+    | 'dataTypes'
   > &
     Partial<
       Pick<
         InterpretPslDocumentToSqlContractInput,
-        'composedExtensionContracts' | 'scalarColumnDescriptors' | 'dataTypeLookup'
+        'composedExtensionContracts' | 'scalarColumnDescriptors' | 'dataTypes'
       >
     >,
 ) => {
@@ -42,13 +42,12 @@ export const interpretPslDocumentToSqlContract = (
     createNamespace: createTestSqlNamespace,
     capabilities: { sql: { scalarList: true } },
     ...interpreterInput,
-    dataTypeLookup: interpreterInput.dataTypeLookup ?? fixtureDataTypeSupport.lookup,
-    authoringContributions: {
-      ...interpreterInput.authoringContributions,
-      dataTypes: {
+    dataTypes: interpreterInput.dataTypes ?? {
+      entries: {
         ...fixtureDataTypeSupport.entries,
         ...interpreterInput.authoringContributions?.dataTypes,
       },
+      lookup: fixtureDataTypeSupport.lookup,
     },
   });
 };

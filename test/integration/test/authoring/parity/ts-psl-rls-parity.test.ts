@@ -60,7 +60,7 @@ function interpretWithRealPacks(schema: string) {
     sources,
     target: postgresPack,
     scalarColumnDescriptors,
-    dataTypeLookup: stack.dataTypeLookup,
+    dataTypes: stack.dataTypes,
     controlMutationDefaults: stack.controlMutationDefaults,
     authoringContributions: stack.authoringContributions,
     composedExtensionContracts: new Map(),

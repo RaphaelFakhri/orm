@@ -209,7 +209,7 @@ const authoringContributions: AuthoringContributions = {
 };
 
 const baseInput = {
-  dataTypeLookup: fixtureDataTypeSupport.lookup,
+  dataTypes: fixtureDataTypeSupport,
   target: postgresTarget,
   scalarColumnDescriptors: postgresScalarTypeDescriptors,
   composedExtensionContracts: new Map(),

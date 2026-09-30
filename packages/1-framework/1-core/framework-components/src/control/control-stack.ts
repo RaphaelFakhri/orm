@@ -41,6 +41,7 @@ import {
 } from '../shared/resolve-codec';
 import { runtimeError } from '../shared/runtime-error';
 import type { TypesImportSpec } from '../shared/types-import-spec';
+import type { DataTypeSupport } from '../shared/written-value';
 import type {
   ControlAdapterDescriptor,
   ControlDriverDescriptor,
@@ -85,6 +86,8 @@ export interface ControlStack<
   readonly authoringContributions: AssembledAuthoringContributions;
   /** Every data type the composed components register, by id. ADR 254. */
   readonly dataTypeLookup: DataTypeLookup;
+  /** Every data type the composed components register, with the authoring entries that write them. ADR 254. */
+  readonly dataTypes: DataTypeSupport;
   /** Every data type the composed components register, with the id of the component that registered it. ADR 254. */
   readonly declaredDataTypes: ReadonlyArray<{
     readonly type: DataType;
@@ -850,6 +853,7 @@ export function createControlStack<TFamilyId extends string, TTargetId extends s
     codecLookup,
     codecDescriptors,
     dataTypeLookup: dataTypes.lookup,
+    dataTypes: { entries: authoringContributions.dataTypes, lookup: dataTypes.lookup },
     declaredDataTypes: dataTypes.declared,
     aggregateDescriptors: collectAggregateDescriptors(allDescriptors),
     authoringContributions,

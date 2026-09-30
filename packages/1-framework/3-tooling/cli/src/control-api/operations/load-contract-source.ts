@@ -240,7 +240,7 @@ export async function loadContractSourceWithStack(inputs: {
     authoringContributions: stack.authoringContributions,
     codecLookup: stack.codecLookup,
     controlMutationDefaults: stack.controlMutationDefaults,
-    dataTypeLookup: stack.dataTypeLookup,
+    dataTypes: stack.dataTypes,
     resolvedInputs: await unlessAborted(expandContractInputs(source.inputs)),
     capabilities: stack.capabilities,
   };

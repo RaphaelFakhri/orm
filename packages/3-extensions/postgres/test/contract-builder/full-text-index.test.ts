@@ -79,7 +79,7 @@ function pslIndexes() {
     sources,
     capabilities: {},
     target: postgresPack,
-    dataTypeLookup: postgresDataTypeLookup,
+    dataTypes: { entries: assembled.dataTypes, lookup: postgresDataTypeLookup },
     scalarColumnDescriptors: new Map([
       ['Int', { codecId: 'pg/int4@1', nativeType: 'int4' }],
       ['String', { codecId: 'pg/text@1', nativeType: 'text' }],

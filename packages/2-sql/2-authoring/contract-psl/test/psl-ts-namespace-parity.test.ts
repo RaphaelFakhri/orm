@@ -61,7 +61,7 @@ namespace public {
       composedExtensionContracts: new Map(),
       controlMutationDefaults: createBuiltinLikeControlMutationDefaults(),
       createNamespace: createTestSqlNamespace,
-      dataTypeLookup: fixtureDataTypeSupport.lookup,
+      dataTypes: fixtureDataTypeSupport,
       capabilities: { sql: { scalarList: true } },
     });
 
@@ -189,7 +189,7 @@ namespace public {
       composedExtensions: ['supabase'],
       composedExtensionContracts: new Map([['supabase', syntheticExtensionContract]]),
       createNamespace: createTestSqlNamespace,
-      dataTypeLookup: fixtureDataTypeSupport.lookup,
+      dataTypes: fixtureDataTypeSupport,
       capabilities: { sql: { scalarList: true } },
     });
 
@@ -261,7 +261,7 @@ namespace public {
       composedExtensions: ['supabase'],
       composedExtensionContracts: new Map(),
       createNamespace: createTestSqlNamespace,
-      dataTypeLookup: fixtureDataTypeSupport.lookup,
+      dataTypes: fixtureDataTypeSupport,
       capabilities: { sql: { scalarList: true } },
     });
 

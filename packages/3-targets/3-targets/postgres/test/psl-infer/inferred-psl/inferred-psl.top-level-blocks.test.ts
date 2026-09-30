@@ -120,7 +120,7 @@ function parseAndInterpret(source: string) {
   });
   const interpreted = interpretPslDocumentToSqlContract({
     documents: [document],
-    dataTypeLookup: postgresDataTypeLookup,
+    dataTypes: { entries: assembled.dataTypes, lookup: postgresDataTypeLookup },
     symbolTable,
     sources,
     capabilities: {},

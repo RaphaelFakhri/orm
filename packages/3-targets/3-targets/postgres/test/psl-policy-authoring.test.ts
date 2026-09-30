@@ -230,7 +230,7 @@ namespace public {
       sources,
     });
     return interpretPslDocumentToSqlContract({
-      dataTypeLookup: postgresDataTypeLookup,
+      dataTypes: { entries: assembled.dataTypes, lookup: postgresDataTypeLookup },
       documents: [document],
       symbolTable,
       sources,
@@ -265,7 +265,7 @@ namespace public {
 
     const result = interpretPslDocumentToSqlContract({
       documents: [document],
-      dataTypeLookup: postgresDataTypeLookup,
+      dataTypes: { entries: assembled.dataTypes, lookup: postgresDataTypeLookup },
       symbolTable,
       sources,
       target: postgresTarget,

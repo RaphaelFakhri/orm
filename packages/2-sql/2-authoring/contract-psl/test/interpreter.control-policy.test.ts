@@ -25,7 +25,7 @@ function interpretSchema(schema: string) {
     composedExtensionContracts: new Map(),
     controlMutationDefaults: builtinControlMutationDefaults,
     createNamespace: createTestSqlNamespace,
-    dataTypeLookup: fixtureDataTypeSupport.lookup,
+    dataTypes: fixtureDataTypeSupport,
     capabilities: { sql: { scalarList: true } },
   });
 }

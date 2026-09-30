@@ -206,10 +206,7 @@ describe('assembled attribute specs are consumable from a resolved project', () 
       controlMutationDefaults: {
         ...interpretation.context.controlMutationDefaults,
       },
-      dataTypes: {
-        entries: interpretation.context.authoringContributions.dataTypes,
-        lookup: interpretation.context.dataTypeLookup,
-      },
+      dataTypes: interpretation.context.dataTypes,
     });
     expect(spec).toMatchObject({
       name: 'marker',
@@ -242,10 +239,7 @@ describe('assembled attribute specs are consumable from a resolved project', () 
       controlMutationDefaults: {
         ...interpretation.context.controlMutationDefaults,
       },
-      dataTypes: {
-        entries: interpretation.context.authoringContributions.dataTypes,
-        lookup: interpretation.context.dataTypeLookup,
-      },
+      dataTypes: interpretation.context.dataTypes,
     };
 
     const spec = assembleAttributeSpecs(interpretation.context.authoringContributions).model[

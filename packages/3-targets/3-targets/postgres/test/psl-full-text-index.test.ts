@@ -78,7 +78,7 @@ function interpret(source: string) {
     symbolTable,
     sources,
     target: postgresTarget,
-    dataTypeLookup: postgresDataTypeLookup,
+    dataTypes: { entries: assembled.dataTypes, lookup: postgresDataTypeLookup },
     scalarColumnDescriptors: scalarTypeDescriptors,
     authoringContributions: assembled,
     composedExtensionContracts: new Map(),

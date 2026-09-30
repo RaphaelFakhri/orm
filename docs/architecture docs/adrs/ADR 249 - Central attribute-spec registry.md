@@ -34,7 +34,7 @@ const spec = sqlAttributeSpecs.field.default(
     model,
     field,
     controlMutationDefaults: { defaultFunctionRegistry: input.defaultFunctionRegistry },
-    dataTypes: input.dataTypeSupport,
+    dataTypes: input.dataTypes,
   }),
 );
 ```
@@ -47,10 +47,7 @@ const spec = specs.model['rls']?.({
   symbols: pipeline.symbolTable,
   model,
   controlMutationDefaults: interpretation.context.controlMutationDefaults,
-  dataTypes: {
-    entries: interpretation.context.authoringContributions.dataTypes,
-    lookup: interpretation.context.dataTypeLookup,
-  },
+  dataTypes: interpretation.context.dataTypes,
 });
 ```
 

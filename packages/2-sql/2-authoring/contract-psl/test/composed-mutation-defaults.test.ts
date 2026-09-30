@@ -24,7 +24,7 @@ describe('composed mutation default registries', () => {
       | 'composedExtensionContracts'
       | 'createNamespace'
       | 'capabilities'
-      | 'dataTypeLookup'
+      | 'dataTypes'
     > &
       Partial<Pick<InterpretPslDocumentToSqlContractInput, 'composedExtensionContracts'>>,
   ) =>
@@ -33,7 +33,7 @@ describe('composed mutation default registries', () => {
       scalarColumnDescriptors: postgresScalarTypeDescriptors,
       composedExtensionContracts: new Map(),
       createNamespace: createTestSqlNamespace,
-      dataTypeLookup: fixtureDataTypeSupport.lookup,
+      dataTypes: fixtureDataTypeSupport,
       capabilities: { sql: { scalarList: true } },
       ...input,
     });

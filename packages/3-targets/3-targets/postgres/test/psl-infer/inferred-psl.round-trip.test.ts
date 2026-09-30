@@ -147,7 +147,7 @@ function roundTrippedDefaults(columns: readonly SqlColumnIRInput[]) {
     composedExtensionContracts: new Map(),
     createNamespace: postgresCreateNamespace,
     codecLookup,
-    dataTypeLookup: createDataTypeLookup(postgresDataTypes),
+    dataTypes: { entries: assembled.dataTypes, lookup: createDataTypeLookup(postgresDataTypes) },
     controlMutationDefaults: {
       defaultFunctionRegistry: new Map(),
       generatorDescriptors: [],

@@ -28,7 +28,7 @@ describe('interpretPslDocumentToSqlContract — polymorphism', () => {
       | 'composedExtensionContracts'
       | 'createNamespace'
       | 'capabilities'
-      | 'dataTypeLookup'
+      | 'dataTypes'
     > &
       Partial<Pick<InterpretPslDocumentToSqlContractInput, 'composedExtensionContracts'>>,
   ) =>
@@ -37,7 +37,7 @@ describe('interpretPslDocumentToSqlContract — polymorphism', () => {
       scalarColumnDescriptors: postgresScalarTypeDescriptors,
       composedExtensionContracts: new Map(),
       createNamespace: createTestSqlNamespace,
-      dataTypeLookup: fixtureDataTypeSupport.lookup,
+      dataTypes: fixtureDataTypeSupport,
       capabilities: { sql: { scalarList: true } },
       ...input,
     });

@@ -62,7 +62,7 @@ function createMongoTestContext(overrides?: Partial<ContractSourceContext>): Con
   return {
     composedExtensions: [],
     composedExtensionContracts: new Map(),
-    dataTypeLookup: createDataTypeLookup([]),
+    dataTypes: { entries: {}, lookup: createDataTypeLookup([]) },
     authoringContributions: {
       dataTypes: {},
       field: {},

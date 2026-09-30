@@ -79,7 +79,7 @@ function interpret(schema: string) {
     authoringContributions,
     codecLookup: testCodecLookup,
     createNamespace: createTestSqlNamespace,
-    dataTypeLookup: fixtureDataTypeSupport.lookup,
+    dataTypes: fixtureDataTypeSupport,
     enumInferenceCodecs: postgresEnumInferenceCodecs,
     capabilities: { sql: { scalarList: true } },
   });

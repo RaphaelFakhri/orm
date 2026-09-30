@@ -102,7 +102,7 @@ function interpret(source: string, capabilities: Record<string, Record<string, b
   });
   return interpretPslDocumentToSqlContract({
     documents: [document],
-    dataTypeLookup: postgresDataTypeLookup,
+    dataTypes: { entries: assembled.dataTypes, lookup: postgresDataTypeLookup },
     symbolTable,
     sources,
     capabilities,

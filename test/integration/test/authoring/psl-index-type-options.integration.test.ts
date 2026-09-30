@@ -23,7 +23,7 @@ function interpret(schema: string) {
   });
   return interpretPslDocumentToSqlContract({
     documents: [document],
-    dataTypeLookup: createDataTypeLookup(postgresDataTypes),
+    dataTypes: { entries: {}, lookup: createDataTypeLookup(postgresDataTypes) },
     symbolTable,
     sources,
     target: postgresPack,
