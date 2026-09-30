@@ -2,6 +2,7 @@
 # before: branch point 9947eac755
 # after: first version: CollectionStateOf<this> in select, include, variant
 # tip: tip: select, include, variant infer the state from a this parameter
+# include-this: include through this (commit 492fa62bb1)
 # bisect: package only, one run, each a variant of the first version (see this-typed-chaining.md)
 before	demo-base-1	745802	0
 before	demo-base-2	745802	0
@@ -73,3 +74,23 @@ bisect	partial-fallbacks-2	1523198	0
 bisect	partial-fallbacks	1523205	0
 bisect	select-inferred	1634859	0
 bisect	tip	1701672	0
+include-this	demo-base-1	675347	0
+include-this	demo-base-2	675347	0
+include-this	demo-custom-1	675412	0
+include-this	demo-custom-2	675412	0
+include-this	demo-customBase-1	675436	0
+include-this	demo-customBase-2	675436	0
+include-this	demo-empty-1	675355	0
+include-this	demo-empty-2	675355	0
+include-this	demo-plain-1	675462	0
+include-this	demo-plain-2	675462	0
+include-this	pkg-base-1	1249149	0
+include-this	pkg-base-2	1249149	0
+include-this	pkg-custom-1	1249374	0
+include-this	pkg-custom-2	1249374	0
+include-this	pkg-customBase-1	1249420	0
+include-this	pkg-customBase-2	1249420	0
+include-this	pkg-empty-1	1249301	0
+include-this	pkg-empty-2	1249301	0
+include-this	pkg-plain-1	1249460	0
+include-this	pkg-plain-2	1249460	0
