@@ -1,0 +1,68 @@
+// usage: node gen-chain-probes.mjs <out-dir> <state>
+// Writes the probes for the this-typed chaining spike, for the package (pkg-*) and the demo (demo-*).
+// empty: the declarations only. plain: ten chained calls on a plain collection.
+// custom: the same ten calls on a custom collection class, through its own methods.
+// customBase: the same ten calls on the custom class, through the base methods only.
+// With <state> = before, the custom probe is skipped: it does not compile at the branch point.
+import { mkdirSync, writeFileSync } from 'node:fs';
+
+const [out, state] = process.argv.slice(2);
+mkdirSync(out, { recursive: true });
+
+const targets = {
+  pkg: {
+    header: `import { Collection } from '../src/collection';
+import { orm } from '../src/orm';
+import { createMockRuntime, getTestContext, type TestContract } from './helpers';
+
+export class ProbePosts extends Collection<TestContract, 'Post'> {
+  published() {
+    return this.where((p) => p.views.gte(100));
+  }
+  recent() {
+    return this.orderBy((p) => p.views.desc());
+  }
+}
+const custom = orm({ runtime: createMockRuntime(), context: getTestContext(), collections: { Post: ProbePosts } }).public.Post;
+const plain = orm({ runtime: createMockRuntime(), context: getTestContext() }).public.Post;
+`,
+    where: '(p) => p.views.gte(100)',
+    order: '(p) => p.views.desc()',
+  },
+  demo: {
+    header: `import type { Runtime } from '@prisma/orm-postgres/family-runtime';
+import { orm } from '@prisma/orm-postgres/orm-client';
+import type { ExecutionContext } from '@prisma/orm-postgres/relational-core/query-lane-context';
+import { createOrmClient } from '../src/orm-client/client';
+import type { Contract } from '../src/prisma/contract.d';
+import { db } from '../src/prisma/db';
+
+declare const runtime: Runtime;
+const custom = createOrmClient(runtime).User;
+const plain = orm({ runtime, context: db.context as ExecutionContext<Contract> }).public.User;
+`,
+    where: "{ kind: 'admin' }",
+    order: '(u) => u.createdAt.desc()',
+    customWhere: 'admins',
+    customOrder: 'newestFirst',
+  },
+};
+
+function chain(root, w, o) {
+  return `${root}.${w}.${o}.limit(10).${w}.${o}.offset(1).${w}.${o}.limit(5).${w}`;
+}
+
+for (const [name, t] of Object.entries(targets)) {
+  const cw = t.customWhere ?? 'published';
+  const co = t.customOrder ?? 'recent';
+  const base = [`where(${t.where})`, `orderBy(${t.order})`];
+  const probes = {
+    empty: '',
+    plain: `export const r = ${chain('plain', ...base)}.all();\n`,
+    customBase: `export const r = ${chain('custom', ...base)}.all();\n`,
+  };
+  if (state !== 'before') probes.custom = `export const r = ${chain('custom', `${cw}()`, `${co}()`)}.all();\n`;
+  for (const [probe, body] of Object.entries(probes)) {
+    writeFileSync(`${out}/${name}-${probe}.test-d.ts`, `${t.header}export { custom, plain };\n${body}`);
+  }
+}

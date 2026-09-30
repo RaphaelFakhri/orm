@@ -113,6 +113,9 @@ export declare const RowType: unique symbol;
 
 export declare const StateType: unique symbol;
 
+export type CollectionStateOf<C extends { readonly [StateType]: CollectionTypeState }> =
+  C[typeof StateType];
+
 export interface HasWhere {
   readonly [StateType]: { readonly hasWhere: true };
 }

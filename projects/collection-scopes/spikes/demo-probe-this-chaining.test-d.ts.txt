@@ -1,0 +1,46 @@
+import type { Runtime } from '@prisma/orm-postgres/family-runtime';
+import { orm } from '@prisma/orm-postgres/orm-client';
+import type { ExecutionContext } from '@prisma/orm-postgres/relational-core/query-lane-context';
+import type { Contract } from '../src/prisma/contract.d';
+import { db as demoDb } from '../src/prisma/db';
+import { expectTypeOf, test } from 'vitest';
+import { createOrmClient } from '../src/orm-client/client';
+import type { PostCollection, UserCollection } from '../src/orm-client/collections';
+
+declare const runtime: Runtime;
+declare const flag: boolean;
+const db = createOrmClient(runtime);
+
+export const exportedChain = db.User.admins().newestFirst().limit(10);
+export const exportedCustomWhere = db.Tag.where({ label: 'x' });
+const plain = orm({ runtime, context: demoDb.context as ExecutionContext<Contract> }).public;
+export const exportedPlainWhere = plain.Tag.where({ label: 'x' });
+export const exportedPlainOrdered = plain.User.where({ kind: 'admin' }).orderBy((u) => u.createdAt.desc());
+
+test('custom classes chain against dist', () => {
+  expectTypeOf(db.User.admins().newestFirst().emailDomain('x.io')).toExtend<UserCollection>();
+  expectTypeOf(db.User.where({ kind: 'admin' }).newestFirst()).toExtend<UserCollection>();
+  expectTypeOf(
+    db.Post.forUser('u1').withTitle('t').newestFirst().limit(5),
+  ).toExtend<PostCollection>();
+  expectTypeOf(db.User.admins().newestFirst().limit(10).admins().all()).not.toBeAny();
+  expectTypeOf(db.User.admins().delete()).not.toBeAny();
+  expectTypeOf(db.User.newestFirst().cursor({ createdAt: new Date() })).toExtend<UserCollection>();
+  // @ts-expect-error delete needs a where
+  db.User.delete();
+  // @ts-expect-error cursor needs an orderBy
+  db.User.admins().cursor({ id: 'u1' });
+  const r = flag ? db.User.admins() : db.User;
+  expectTypeOf(r).toEqualTypeOf<UserCollection>();
+  // @ts-expect-error update needs a where on every branch
+  r.update({ email: 'x' });
+  let q = db.Post;
+  if (flag) q = q.withTitle('t');
+  expectTypeOf(q).toEqualTypeOf<PostCollection>();
+  expectTypeOf(db.Post.pipe((c) => (flag ? c.withTitle('t') : c))).toEqualTypeOf<PostCollection>();
+  expectTypeOf(db.Task.bugs().all()).not.toBeAny();
+  // @ts-expect-error include returns a plain Collection
+  db.User.include('posts').admins();
+  // @ts-expect-error the refinement collection is not the registered class
+  db.User.include('posts', (posts) => posts.withTitle('t'));
+});

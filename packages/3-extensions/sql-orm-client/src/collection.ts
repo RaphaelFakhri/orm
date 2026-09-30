@@ -56,6 +56,7 @@ import {
 import type {
   CollectionConstructor,
   CollectionInit,
+  CollectionStateOf,
   HasOrderBy,
   HasWhere,
   IncludedRelationsForRow,
@@ -461,9 +462,9 @@ export class CollectionImpl<
     TContract,
     ModelName,
     VariantModelRow<TContract, ModelName, V>,
-    WithVariantState<WithWhereState<this[typeof StateType]>, V>
+    WithVariantState<WithWhereState<CollectionStateOf<this>>, V>
   > {
-    type ReturnState = WithVariantState<WithWhereState<this[typeof StateType]>, V>;
+    type ReturnState = WithVariantState<WithWhereState<CollectionStateOf<this>>, V>;
     const model = modelOf(this.contract, this.namespaceId, this.modelName);
     const discriminator = model?.discriminator;
     const variants = model?.variants;
@@ -579,7 +580,7 @@ export class CollectionImpl<
         >;
       }
     >,
-    this[typeof StateType]
+    CollectionStateOf<this>
   >;
   include<
     RelName extends VariantAwareIncludeRelationNames<
@@ -642,7 +643,7 @@ export class CollectionImpl<
         >;
       }
     >,
-    this[typeof StateType]
+    CollectionStateOf<this>
   >;
   include<
     RelName extends VariantAwareIncludeRelationNames<
@@ -705,7 +706,7 @@ export class CollectionImpl<
         >;
       }
     >,
-    this[typeof StateType]
+    CollectionStateOf<this>
   > {
     const relation = resolveIncludeRelation(
       this.contract,
@@ -795,7 +796,7 @@ export class CollectionImpl<
           >;
         }
       >,
-      this[typeof StateType]
+      CollectionStateOf<this>
     >({
       includes: [...this.state.includes, includeExpr],
     });
@@ -829,7 +830,7 @@ export class CollectionImpl<
       Pick<DefaultModelRow<TContract, ModelName>, Fields[number]> &
         IncludedRelationsForRow<TContract, ModelName, Row>
     >,
-    this[typeof StateType]
+    CollectionStateOf<this>
   > {
     const selectedFields = mapFieldsToColumns(
       this.contract,
@@ -843,7 +844,7 @@ export class CollectionImpl<
         Pick<DefaultModelRow<TContract, ModelName>, Fields[number]> &
           IncludedRelationsForRow<TContract, ModelName, Row>
       >,
-      this[typeof StateType]
+      CollectionStateOf<this>
     >({
       selectedFields,
     });
@@ -1028,8 +1029,9 @@ export class CollectionImpl<
    * ```
    */
   cursor(
-    this: this & HasOrderBy,
-    cursorValues: Partial<Record<keyof DefaultModelRow<TContract, ModelName> & string, unknown>>,
+    cursorValues: CollectionStateOf<this>['hasOrderBy'] extends true
+      ? Partial<Record<keyof DefaultModelRow<TContract, ModelName> & string, unknown>>
+      : never,
   ): this {
     assertCursorCompatibleOrder(this.state.orderBy);
     const mappedCursor = mapCursorValuesToColumns(
@@ -1097,8 +1099,11 @@ export class CollectionImpl<
       ...(keyof DefaultModelRow<TContract, ModelName> & string)[],
     ],
   >(
-    this: this & HasOrderBy,
-    ...fields: TContract['capabilities'] extends { postgres: { distinctOn: true } } ? Fields : never
+    ...fields: TContract['capabilities'] extends { postgres: { distinctOn: true } }
+      ? CollectionStateOf<this>['hasOrderBy'] extends true
+        ? Fields
+        : never
+      : never
   ): this {
     assertDistinctOnCapability(this.contract, 'distinctOn');
     assertDistinctOnCompatibleOrder(this.state.orderBy, fields.length);
@@ -1184,7 +1189,7 @@ export class CollectionImpl<
     return this.#withAnnotationsFromMeta(configure, 'all').#dispatch();
   }
 
-  get prepared(): PreparedCollection<TContract, ModelName, Row, this[typeof StateType]> {
+  get prepared(): PreparedCollection<TContract, ModelName, Row, CollectionStateOf<this>> {
     return {
       aggregate: (fn, configure) => this.#describeAggregate(fn, configure),
       all: (configure) => {
@@ -2138,8 +2143,9 @@ export class CollectionImpl<
    * statements nor the read-back query carry them.
    */
   async update(
-    this: this & HasWhere,
-    data: MutationUpdateInput<TContract, ModelName, State['nsId']>,
+    data: CollectionStateOf<this>['hasWhere'] extends true
+      ? MutationUpdateInput<TContract, ModelName, State['nsId']>
+      : never,
     configure?: (meta: MetaBuilder<'write'>) => void,
   ): Promise<Row | null> {
     assertReturningCapability(this.contract, 'update()');
@@ -2224,8 +2230,9 @@ export class CollectionImpl<
    * `MetaBuilder<'write'>` for attaching typed annotations.
    */
   updateAll(
-    this: this & HasWhere,
-    data: Partial<DefaultModelRow<TContract, ModelName, State['nsId']>>,
+    data: CollectionStateOf<this>['hasWhere'] extends true
+      ? Partial<DefaultModelRow<TContract, ModelName, State['nsId']>>
+      : never,
     configure?: (meta: MetaBuilder<'write'>) => void,
   ): AsyncIterableResult<Row> {
     return this.#updateAllWithAnnotations(
@@ -2296,8 +2303,9 @@ export class CollectionImpl<
    * ```
    */
   async updateAndCount(
-    this: this & HasWhere,
-    data: Partial<DefaultModelRow<TContract, ModelName, State['nsId']>>,
+    data: CollectionStateOf<this>['hasWhere'] extends true
+      ? Partial<DefaultModelRow<TContract, ModelName, State['nsId']>>
+      : never,
     configure?: (meta: MetaBuilder<'write'>) => void,
   ): Promise<number> {
     const mappedData = mapModelDataToStorageRow(

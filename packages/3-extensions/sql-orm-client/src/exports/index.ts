@@ -1,4 +1,10 @@
-export { Collection } from '../collection';
+export { Collection, type CollectionImpl } from '../collection';
+export type {
+  CollectionStateOf,
+  HasOrderBy,
+  HasWhere,
+  StateType,
+} from '../collection-internal-types';
 export { all, and, not, or } from '../filters';
 export {
   type CollectionCoordinates,
@@ -46,6 +52,7 @@ export {
 } from '../prepared-row-query';
 export type {
   AggregateBuilder,
+  AggregateIncludeReducers,
   AggregateResult,
   AggregateSpec,
   CollectionContext,
@@ -58,6 +65,7 @@ export type {
   DefaultModelRow,
   FieldExpression,
   IncludeExpr,
+  IncludeScalar,
   ModelAccessor,
   ModelFieldCodec,
   NumericFieldNames,
