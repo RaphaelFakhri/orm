@@ -8,7 +8,7 @@ import type {
   PslNamedTypeDeclaration,
   PslTypesBlock,
 } from '@internal/framework-components/psl-ast';
-import { isSqlDataType, unquotedSqlBaseName } from '@internal/sql-contract/data-type';
+import { isSqlDataType } from '@internal/sql-contract/data-type';
 import type { SqlStorage } from '@internal/sql-contract/types';
 import { StorageColumn } from '@internal/sql-contract/types';
 import { ifDefined } from '@internal/utils/defined';
@@ -24,10 +24,10 @@ import {
 } from './refusals';
 
 /**
- * The type name a value-object field's codec stores, from the data type the codec represents. The
- * field has no column of its own, and no type parameters, which the PSL source would not keep.
+ * The data type a value-object field's codec represents. The field has no column of its own, and no
+ * type parameters, which the PSL source would not keep.
  */
-function nativeTypeOfValueObjectField(
+function dataTypeOfValueObjectField(
   field: ContractField & { readonly type: ScalarFieldType },
   coordinate: string,
   context: SqlPslBuildContext,
@@ -42,7 +42,7 @@ function nativeTypeOfValueObjectField(
   if (requiredParamKeys(dataType).length > 0) {
     refuseValueObjectFieldCodecNeedingTypeParameters(codecId, coordinate);
   }
-  return unquotedSqlBaseName(dataType, {});
+  return dataType.id;
 }
 
 /** The PSL type position of a domain field: a value object by name, or a scalar as a column would print. */
@@ -62,13 +62,14 @@ export function buildDomainFieldType(input: {
   refuseValueObjectFieldPartsTheSourceDrops({ ...field, type }, coordinate);
   return buildColumnType({
     column: new StorageColumn({
-      nativeType: nativeTypeOfValueObjectField({ ...field, type }, coordinate, input.context),
+      dataType: dataTypeOfValueObjectField({ ...field, type }, coordinate, input.context),
       codecId: type.codecId,
       nullable: field.nullable,
       ...ifDefined('many', field.many),
     }),
     typeMap: input.typeMap,
     authoringTypes: input.context.authoringContributions.type,
+    dataTypeLookup: input.context.dataTypeLookup,
     enumBlockNames: input.enumBlockNames,
     coordinate,
   });
@@ -126,13 +127,14 @@ export function buildTypesBlock(
     refuseUnwritableName('named type', name);
     const { typeName, typeConstructor } = buildColumnType({
       column: new StorageColumn({
-        nativeType: instance.nativeType,
+        dataType: instance.dataType,
         codecId: instance.codecId,
         nullable: false,
         ...ifDefined('typeParams', instance.typeParams),
       }),
       typeMap,
       authoringTypes: context.authoringContributions.type,
+      dataTypeLookup: context.dataTypeLookup,
       enumBlockNames: new Map(),
       coordinate: `types.${name}`,
     });

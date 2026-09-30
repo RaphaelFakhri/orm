@@ -41,7 +41,7 @@ const mongoTargetPack = {
   types: { codecTypes: { codecDescriptors: [identityDescriptor('mongo/string@1')] } },
 } as const satisfies TargetPackRef<'mongo', 'mongo'>;
 
-const mongoString = { codecId: 'mongo/string@1' as const, nativeType: 'string' } as const;
+const mongoString = { codecId: 'mongo/string@1' as const } as const;
 
 describe('member()', () => {
   it('preserves name and value as literal types', () => {
@@ -262,7 +262,7 @@ describe('defineContract() — enum declaration key mismatch', () => {
 });
 
 describe('defineContract() — codec-encoded value set', () => {
-  const upperCodec = { codecId: 'test/upper@1' as const, nativeType: 'string' } as const;
+  const upperCodec = { codecId: 'test/upper@1' as const } as const;
   const upperDescriptor: AnyCodecDescriptor = {
     codecId: 'test/upper@1',
     dataType: dataTypeId('test/upper'),

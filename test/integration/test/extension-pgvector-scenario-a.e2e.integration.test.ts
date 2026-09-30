@@ -136,7 +136,7 @@ function buildAppContractPojo(opts: { readonly withEmbedding: boolean }): Contra
             table: {
               [APP_TABLE]: {
                 columns: {
-                  id: { codecId: 'pg/text@1', nativeType: 'text', nullable: false },
+                  id: { codecId: 'pg/text@1', dataType: 'pg/text', nullable: false },
                   ...(opts.withEmbedding ? { [APP_FIELD]: embeddingColumn } : {}),
                 },
                 primaryKey: { columns: ['id'] },

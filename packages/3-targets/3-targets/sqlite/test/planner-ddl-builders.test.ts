@@ -12,7 +12,7 @@ import { sqliteTestTypes } from './sqlite-test-types';
 
 function makeColumn(overrides: Partial<StorageColumn> = {}): StorageColumn {
   return {
-    nativeType: 'text',
+    dataType: 'sqlite/text',
     nullable: true,
     codecId: 'sqlite/text@1',
     ...overrides,
@@ -47,7 +47,6 @@ describe('buildColumnTypeSql', () => {
 
   it('resolves typeRef against storageTypes', () => {
     const column = makeColumn({
-      nativeType: 'unused',
       codecId: 'unused/codec@1',
       typeRef: 'my_type',
     });
@@ -55,7 +54,7 @@ describe('buildColumnTypeSql', () => {
       my_type: {
         kind: 'codec-instance',
         codecId: 'sqlite/text@1',
-        nativeType: 'text',
+        dataType: 'sqlite/text',
         typeParams: {},
       },
     });

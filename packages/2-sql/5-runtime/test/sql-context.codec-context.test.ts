@@ -57,9 +57,7 @@ describe('buildContractCodecRegistry — per-column codec instance context', () 
     };
   }
 
-  function contractWith(
-    columns: Record<string, { codecId: string; nativeType: string }>,
-  ): Contract<SqlStorage> {
+  function contractWith(columns: Record<string, { codecId: string }>): Contract<SqlStorage> {
     const tables: Record<string, StorageTable> = {};
     for (const [tableName, columnSpec] of Object.entries(columns)) {
       tables[tableName] = {
@@ -100,7 +98,7 @@ describe('buildContractCodecRegistry — per-column codec instance context', () 
     const { descriptor, instances } = createCtxCapturingExtension(captures);
 
     const contract = contractWith({
-      users: { codecId: 'test/captures-ctx@1', nativeType: 'captures' },
+      users: { codecId: 'test/captures-ctx@1' },
     });
 
     const context = createTestContext(contract, createStubAdapter(), {
@@ -178,7 +176,7 @@ describe('buildContractCodecRegistry — forCodecRef content-keyed cache', () =>
       tables[tableName] = {
         columns: {
           embedding: {
-            nativeType: 'vector',
+            dataType: 'pgvector/vector',
             codecId: 'pgvector/vector@1',
             nullable: false,
             ...ifDefined('typeRef', spec.typeRef),
@@ -206,7 +204,7 @@ describe('buildContractCodecRegistry — forCodecRef content-keyed cache', () =>
                 {
                   kind: 'codec-instance' as const,
                   codecId: 'pgvector/vector@1',
-                  nativeType: 'vector',
+                  dataType: 'pgvector/vector',
                   typeParams: params as Record<string, unknown>,
                 },
               ]),
@@ -416,9 +414,7 @@ describe('buildContractCodecRegistry — forColumn delegates to forCodecRef', ()
     };
   }
 
-  function contractWith(
-    columns: Record<string, { codecId: string; nativeType: string }>,
-  ): Contract<SqlStorage> {
+  function contractWith(columns: Record<string, { codecId: string }>): Contract<SqlStorage> {
     const tables: Record<string, StorageTable> = {};
     for (const [tableName, columnSpec] of Object.entries(columns)) {
       tables[tableName] = {
@@ -456,7 +452,7 @@ describe('buildContractCodecRegistry — forColumn delegates to forCodecRef', ()
   it('forColumn(ns, t, c) and forCodecRef(codecRefForColumn(ns, t, c)) return the same codec instance', () => {
     const { descriptor } = createSharedCodecExtension();
     const contract = contractWith({
-      users: { codecId: 'test/shared@1', nativeType: 'shared' },
+      users: { codecId: 'test/shared@1' },
     });
 
     const context = createTestContext(contract, createStubAdapter(), {
@@ -475,8 +471,8 @@ describe('buildContractCodecRegistry — forColumn delegates to forCodecRef', ()
   it('two columns sharing one non-parameterized codec id share one codec instance with aggregated usedAt', () => {
     const { descriptor, instances } = createSharedCodecExtension();
     const contract = contractWith({
-      users: { codecId: 'test/shared@1', nativeType: 'shared' },
-      orders: { codecId: 'test/shared@1', nativeType: 'shared' },
+      users: { codecId: 'test/shared@1' },
+      orders: { codecId: 'test/shared@1' },
     });
 
     const context = createTestContext(contract, createStubAdapter(), {

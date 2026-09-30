@@ -104,7 +104,6 @@ test('coarse satisfies catches wrong typeParams shape on arktypeJsonColumn', () 
         })(),
       arktypeJsonDescriptor.codecId,
       { wrongKey: 'oops' },
-      'jsonb',
     );
   // @ts-expect-error -- typeParams shape doesn't satisfy ArktypeJsonTypeParams (missing `expression`/`jsonIr`)
   brokenHelper satisfies ColumnHelperFor<ArktypeJsonDescriptor>;

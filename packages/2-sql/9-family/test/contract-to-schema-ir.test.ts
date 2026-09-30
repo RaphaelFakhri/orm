@@ -241,12 +241,10 @@ describe('contractToSchemaIR', () => {
               T: table({
                 columns: {
                   a: col({
-                    nativeType: 'vector',
                     codecId: 'pgvector/vector@1',
                     typeParams: { dimensions: 1536 },
                   }),
                   b: col({
-                    nativeType: 'vector',
                     codecId: 'pgvector/vector@1',
                     typeRef: 'MyVector',
                   }),
@@ -260,7 +258,7 @@ describe('contractToSchemaIR', () => {
         MyVector: {
           kind: 'codec-instance',
           codecId: 'pgvector/vector@1',
-          nativeType: 'vector',
+          dataType: 'pgvector/vector',
           typeParams: { dimensions: 1536 },
         },
       },
@@ -298,9 +296,9 @@ describe('contractToSchemaIR', () => {
     const storage = unboundStorage('test' as StorageHashBase<string>, {
       T: table({
         columns: {
-          id: col({ nativeType: 'character', codecId: 'sql/char@1', typeParams: { length: 36 } }),
-          code: col({ nativeType: 'character', codecId: 'sql/char@1' }),
-          name: col({ nativeType: 'text', codecId: 'pg/text@1' }),
+          id: col({ codecId: 'sql/char@1', typeParams: { length: 36 } }),
+          code: col({ codecId: 'sql/char@1' }),
+          name: col({ codecId: 'pg/text@1' }),
         },
       }),
     });
@@ -317,7 +315,7 @@ describe('contractToSchemaIR', () => {
     const storage = unboundStorage('test' as StorageHashBase<string>, {
       T: table({
         columns: {
-          mood: col({ nativeType: 'Mood', codecId: 'pg/enum@1', typeParams: { typeName: 'Mood' } }),
+          mood: col({ codecId: 'pg/enum@1', typeParams: { typeName: 'Mood' } }),
         },
       }),
     });
@@ -331,7 +329,7 @@ describe('contractToSchemaIR', () => {
 
   it('refuses a column whose codec the stack does not register', () => {
     const storage = unboundStorage('test' as StorageHashBase<string>, {
-      T: table({ columns: { id: col({ nativeType: 'int4', codecId: 'test/unknown@1' }) } }),
+      T: table({ columns: { id: col({ codecId: 'test/unknown@1' }) } }),
     });
 
     expect(() => contractToSchemaIR(wrap(storage))).toThrow(
@@ -350,7 +348,7 @@ describe('contractToSchemaIR', () => {
               Post: table({
                 columns: {
                   embedding: col({
-                    nativeType: 'vector',
+                    dataType: 'pgvector/vector',
                     codecId: 'pg/vector@1',
                     nullable: true,
                     typeRef: 'Embedding1536',
@@ -365,7 +363,7 @@ describe('contractToSchemaIR', () => {
         Embedding1536: {
           kind: 'codec-instance',
           codecId: 'pg/vector@1',
-          nativeType: 'vector',
+          dataType: 'pgvector/vector',
           typeParams: { length: 1536 },
         },
       },
@@ -864,7 +862,7 @@ describe('contractToSchemaIR', () => {
         Embedding: {
           kind: 'codec-instance',
           codecId: 'pg/vector@1',
-          nativeType: 'vector',
+          dataType: 'pgvector/vector',
           typeParams: { length: 1536 },
         },
       },
@@ -1232,7 +1230,7 @@ describe('contractToSchemaIR — resolved leaf values', () => {
     const storage = unboundStorage('test' as StorageHashBase<string>, {
       T: table({
         columns: {
-          id: col({ nativeType: 'character', codecId: 'sql/char@1', typeParams: { length: 36 } }),
+          id: col({ codecId: 'sql/char@1', typeParams: { length: 36 } }),
         },
       }),
     });

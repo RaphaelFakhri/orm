@@ -9,7 +9,6 @@ describe('Postgres Date adapter wiring', () => {
     expect(columnTypes).not.toHaveProperty('timestamptzDateColumn');
     expect(columnTypes).toHaveProperty('timestamptzJsDateColumn', {
       codecId,
-      nativeType: 'timestamptz',
     });
   });
 
@@ -18,7 +17,6 @@ describe('Postgres Date adapter wiring', () => {
       typeId: codecId,
       familyId: 'sql',
       targetId: 'postgres',
-      nativeType: 'timestamptz',
     });
   });
 });

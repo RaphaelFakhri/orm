@@ -152,7 +152,6 @@ describe('mongoFamilyEnumEntityDescriptor: @@type omitted, inferred from members
     expect(diagnostics).toEqual([]);
     expect(handle).toMatchObject({
       codecId: TEXT_CODEC_ID,
-      nativeType: 'text',
       members: { admin: 'admin', user: 'user' },
     });
   });
@@ -167,7 +166,6 @@ describe('mongoFamilyEnumEntityDescriptor: @@type omitted, inferred from members
     expect(diagnostics).toEqual([]);
     expect(handle).toMatchObject({
       codecId: TEXT_CODEC_ID,
-      nativeType: 'text',
       members: { admin: 'admin', user: 'user' },
     });
   });
@@ -180,7 +178,7 @@ describe('mongoFamilyEnumEntityDescriptor: @@type omitted, inferred from members
     );
 
     expect(diagnostics).toEqual([]);
-    expect(handle).toMatchObject({ codecId: TEXT_CODEC_ID, nativeType: 'text' });
+    expect(handle).toMatchObject({ codecId: TEXT_CODEC_ID });
   });
 
   it('integer members infer the int codec', () => {
@@ -193,7 +191,6 @@ describe('mongoFamilyEnumEntityDescriptor: @@type omitted, inferred from members
     expect(diagnostics).toEqual([]);
     expect(handle).toMatchObject({
       codecId: INT_CODEC_ID,
-      nativeType: 'int',
       members: { low: 1, high: 2 },
     });
   });
@@ -284,7 +281,7 @@ describe('mongoFamilyEnumEntityDescriptor: explicit @@type bypasses inference, n
     );
 
     expect(diagnostics).toEqual([]);
-    expect(handle).toMatchObject({ codecId: TEXT_CODEC_ID, nativeType: 'text' });
+    expect(handle).toMatchObject({ codecId: TEXT_CODEC_ID });
   });
 
   it('an explicit codec receives structured JSON media through the shared grammar', () => {

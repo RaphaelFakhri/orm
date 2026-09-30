@@ -364,7 +364,7 @@ export class PgTextDescriptor extends PostgresCodecDescriptor<void> {
 export const pgTextDescriptor = new PgTextDescriptor();
 
 export const pgTextColumn = () =>
-  column(pgTextDescriptor.factory(), pgTextDescriptor.codecId, undefined, 'text');
+  column(pgTextDescriptor.factory(), pgTextDescriptor.codecId, undefined);
 
 pgTextColumn satisfies ColumnHelperFor<PgTextDescriptor>;
 pgTextColumn satisfies ColumnHelperForStrict<PgTextDescriptor>;
@@ -588,7 +588,7 @@ export class PgInt4Descriptor extends PostgresCodecDescriptor<void> {
 export const pgInt4Descriptor = new PgInt4Descriptor();
 
 export const pgInt4Column = () =>
-  column(pgInt4Descriptor.factory(), pgInt4Descriptor.codecId, undefined, 'int4');
+  column(pgInt4Descriptor.factory(), pgInt4Descriptor.codecId, undefined);
 
 pgInt4Column satisfies ColumnHelperFor<PgInt4Descriptor>;
 pgInt4Column satisfies ColumnHelperForStrict<PgInt4Descriptor>;
@@ -634,7 +634,7 @@ export class PgInt2Descriptor extends PostgresCodecDescriptor<void> {
 export const pgInt2Descriptor = new PgInt2Descriptor();
 
 export const pgInt2Column = () =>
-  column(pgInt2Descriptor.factory(), pgInt2Descriptor.codecId, undefined, 'int2');
+  column(pgInt2Descriptor.factory(), pgInt2Descriptor.codecId, undefined);
 
 pgInt2Column satisfies ColumnHelperFor<PgInt2Descriptor>;
 pgInt2Column satisfies ColumnHelperForStrict<PgInt2Descriptor>;
@@ -691,7 +691,7 @@ export class PgInt8Descriptor extends PostgresCodecDescriptor<void> {
 export const pgInt8Descriptor = new PgInt8Descriptor();
 
 export const pgInt8Column = () =>
-  column(pgInt8Descriptor.factory(), pgInt8Descriptor.codecId, undefined, 'int8');
+  column(pgInt8Descriptor.factory(), pgInt8Descriptor.codecId, undefined);
 
 pgInt8Column satisfies ColumnHelperFor<PgInt8Descriptor>;
 pgInt8Column satisfies ColumnHelperForStrict<PgInt8Descriptor>;
@@ -743,7 +743,7 @@ export class PgInt8NumberDescriptor extends PostgresCodecDescriptor<void> {
 export const pgInt8NumberDescriptor = new PgInt8NumberDescriptor();
 
 export const pgInt8NumberColumn = () =>
-  column(pgInt8NumberDescriptor.factory(), pgInt8NumberDescriptor.codecId, undefined, 'int8');
+  column(pgInt8NumberDescriptor.factory(), pgInt8NumberDescriptor.codecId, undefined);
 
 pgInt8NumberColumn satisfies ColumnHelperFor<PgInt8NumberDescriptor>;
 pgInt8NumberColumn satisfies ColumnHelperForStrict<PgInt8NumberDescriptor>;
@@ -787,7 +787,7 @@ export class PgFloat4Descriptor extends PostgresCodecDescriptor<void> {
 export const pgFloat4Descriptor = new PgFloat4Descriptor();
 
 export const pgFloat4Column = () =>
-  column(pgFloat4Descriptor.factory(), pgFloat4Descriptor.codecId, undefined, 'float4');
+  column(pgFloat4Descriptor.factory(), pgFloat4Descriptor.codecId, undefined);
 
 pgFloat4Column satisfies ColumnHelperFor<PgFloat4Descriptor>;
 pgFloat4Column satisfies ColumnHelperForStrict<PgFloat4Descriptor>;
@@ -831,7 +831,7 @@ export class PgFloat8Descriptor extends PostgresCodecDescriptor<void> {
 export const pgFloat8Descriptor = new PgFloat8Descriptor();
 
 export const pgFloat8Column = () =>
-  column(pgFloat8Descriptor.factory(), pgFloat8Descriptor.codecId, undefined, 'float8');
+  column(pgFloat8Descriptor.factory(), pgFloat8Descriptor.codecId, undefined);
 
 pgFloat8Column satisfies ColumnHelperFor<PgFloat8Descriptor>;
 pgFloat8Column satisfies ColumnHelperForStrict<PgFloat8Descriptor>;
@@ -875,7 +875,7 @@ export class PgBoolDescriptor extends PostgresCodecDescriptor<void> {
 export const pgBoolDescriptor = new PgBoolDescriptor();
 
 export const pgBoolColumn = () =>
-  column(pgBoolDescriptor.factory(), pgBoolDescriptor.codecId, undefined, 'bool');
+  column(pgBoolDescriptor.factory(), pgBoolDescriptor.codecId, undefined);
 
 pgBoolColumn satisfies ColumnHelperFor<PgBoolDescriptor>;
 pgBoolColumn satisfies ColumnHelperForStrict<PgBoolDescriptor>;
@@ -933,7 +933,7 @@ export class PgNumericDescriptor extends PostgresCodecDescriptor<NumericParams> 
 export const pgNumericDescriptor = new PgNumericDescriptor();
 
 export const pgNumericColumn = (params: NumericParams = {}) =>
-  column(pgNumericDescriptor.factory(params), pgNumericDescriptor.codecId, params, 'numeric');
+  column(pgNumericDescriptor.factory(params), pgNumericDescriptor.codecId, params);
 
 pgNumericColumn satisfies ColumnHelperFor<PgNumericDescriptor>;
 pgNumericColumn satisfies ColumnHelperForStrict<PgNumericDescriptor>;
@@ -990,12 +990,7 @@ export class PgUnboundedIntDescriptor extends PostgresCodecDescriptor<NumericPar
 export const pgUnboundedIntDescriptor = new PgUnboundedIntDescriptor();
 
 export const pgUnboundedIntColumn = () =>
-  column(
-    pgUnboundedIntDescriptor.factory(),
-    pgUnboundedIntDescriptor.codecId,
-    undefined,
-    'numeric',
-  );
+  column(pgUnboundedIntDescriptor.factory(), pgUnboundedIntDescriptor.codecId, undefined);
 
 pgUnboundedIntColumn satisfies ColumnHelperFor<PgUnboundedIntDescriptor>;
 pgUnboundedIntColumn satisfies ColumnHelperForStrict<PgUnboundedIntDescriptor>;
@@ -1041,7 +1036,7 @@ export class PgTimetzDescriptor extends PostgresCodecDescriptor<PrecisionParams>
 export const pgTimetzDescriptor = new PgTimetzDescriptor();
 
 export const pgTimetzColumn = (params: PrecisionParams = {}) =>
-  column(pgTimetzDescriptor.factory(params), pgTimetzDescriptor.codecId, params, 'timetz');
+  column(pgTimetzDescriptor.factory(params), pgTimetzDescriptor.codecId, params);
 
 pgTimetzColumn satisfies ColumnHelperFor<PgTimetzDescriptor>;
 pgTimetzColumn satisfies ColumnHelperForStrict<PgTimetzDescriptor>;
@@ -1087,7 +1082,7 @@ export class PgBitDescriptor extends PostgresCodecDescriptor<LengthParams> {
 export const pgBitDescriptor = new PgBitDescriptor();
 
 export const pgBitColumn = (params: LengthParams = {}) =>
-  column(pgBitDescriptor.factory(params), pgBitDescriptor.codecId, params, 'bit');
+  column(pgBitDescriptor.factory(params), pgBitDescriptor.codecId, params);
 
 pgBitColumn satisfies ColumnHelperFor<PgBitDescriptor>;
 pgBitColumn satisfies ColumnHelperForStrict<PgBitDescriptor>;
@@ -1133,7 +1128,7 @@ export class PgVarbitDescriptor extends PostgresCodecDescriptor<LengthParams> {
 export const pgVarbitDescriptor = new PgVarbitDescriptor();
 
 export const pgVarbitColumn = (params: LengthParams = {}) =>
-  column(pgVarbitDescriptor.factory(params), pgVarbitDescriptor.codecId, params, 'bit varying');
+  column(pgVarbitDescriptor.factory(params), pgVarbitDescriptor.codecId, params);
 
 pgVarbitColumn satisfies ColumnHelperFor<PgVarbitDescriptor>;
 pgVarbitColumn satisfies ColumnHelperForStrict<PgVarbitDescriptor>;
@@ -1174,7 +1169,7 @@ export class PgByteaDescriptor extends PostgresCodecDescriptor<void> {
 export const pgByteaDescriptor = new PgByteaDescriptor();
 
 export const pgByteaColumn = () =>
-  column(pgByteaDescriptor.factory(), pgByteaDescriptor.codecId, undefined, 'bytea');
+  column(pgByteaDescriptor.factory(), pgByteaDescriptor.codecId, undefined);
 
 pgByteaColumn satisfies ColumnHelperFor<PgByteaDescriptor>;
 pgByteaColumn satisfies ColumnHelperForStrict<PgByteaDescriptor>;
@@ -1215,7 +1210,7 @@ export class PgUuidDescriptor extends PostgresCodecDescriptor<void> {
 export const pgUuidDescriptor = new PgUuidDescriptor();
 
 export const pgUuidColumn = () =>
-  column(pgUuidDescriptor.factory(), pgUuidDescriptor.codecId, undefined, 'uuid');
+  column(pgUuidDescriptor.factory(), pgUuidDescriptor.codecId, undefined);
 
 pgUuidColumn satisfies ColumnHelperFor<PgUuidDescriptor>;
 pgUuidColumn satisfies ColumnHelperForStrict<PgUuidDescriptor>;
@@ -1256,7 +1251,7 @@ export class PgInetDescriptor extends PostgresCodecDescriptor<void> {
 export const pgInetDescriptor = new PgInetDescriptor();
 
 export const pgInetColumn = () =>
-  column(pgInetDescriptor.factory(), pgInetDescriptor.codecId, undefined, 'inet');
+  column(pgInetDescriptor.factory(), pgInetDescriptor.codecId, undefined);
 
 pgInetColumn satisfies ColumnHelperFor<PgInetDescriptor>;
 pgInetColumn satisfies ColumnHelperForStrict<PgInetDescriptor>;
@@ -1373,7 +1368,7 @@ export class PgIntervalDescriptor extends PostgresCodecDescriptor<PrecisionParam
 export const pgIntervalDescriptor = new PgIntervalDescriptor();
 
 export const pgIntervalColumn = (params: PrecisionParams = {}) =>
-  column(pgIntervalDescriptor.factory(params), pgIntervalDescriptor.codecId, params, 'interval');
+  column(pgIntervalDescriptor.factory(params), pgIntervalDescriptor.codecId, params);
 
 pgIntervalColumn satisfies ColumnHelperFor<PgIntervalDescriptor>;
 pgIntervalColumn satisfies ColumnHelperForStrict<PgIntervalDescriptor>;
@@ -1414,7 +1409,7 @@ export class PgJsonDescriptor extends PostgresCodecDescriptor<void> {
 export const pgJsonDescriptor = new PgJsonDescriptor();
 
 export const pgJsonColumn = () =>
-  column(pgJsonDescriptor.factory(), pgJsonDescriptor.codecId, undefined, 'json');
+  column(pgJsonDescriptor.factory(), pgJsonDescriptor.codecId, undefined);
 
 pgJsonColumn satisfies ColumnHelperFor<PgJsonDescriptor>;
 pgJsonColumn satisfies ColumnHelperForStrict<PgJsonDescriptor>;
@@ -1455,7 +1450,7 @@ export class PgJsonbDescriptor extends PostgresCodecDescriptor<void> {
 export const pgJsonbDescriptor = new PgJsonbDescriptor();
 
 export const pgJsonbColumn = () =>
-  column(pgJsonbDescriptor.factory(), pgJsonbDescriptor.codecId, undefined, 'jsonb');
+  column(pgJsonbDescriptor.factory(), pgJsonbDescriptor.codecId, undefined);
 
 pgJsonbColumn satisfies ColumnHelperFor<PgJsonbDescriptor>;
 pgJsonbColumn satisfies ColumnHelperForStrict<PgJsonbDescriptor>;
@@ -1501,7 +1496,7 @@ export class PgCharDescriptor extends PostgresCodecDescriptor<LengthParams> {
 export const pgCharDescriptor = new PgCharDescriptor();
 
 export const pgCharColumn = (params: LengthParams = {}) =>
-  column(pgCharDescriptor.factory(params), pgCharDescriptor.codecId, params, 'character');
+  column(pgCharDescriptor.factory(params), pgCharDescriptor.codecId, params);
 
 pgCharColumn satisfies ColumnHelperFor<PgCharDescriptor>;
 
@@ -1527,12 +1522,7 @@ export class PgVarcharDescriptor extends PostgresCodecDescriptor<LengthParams> {
 export const pgVarcharDescriptor = new PgVarcharDescriptor();
 
 export const pgVarcharColumn = (params: LengthParams = {}) =>
-  column(
-    pgVarcharDescriptor.factory(params),
-    pgVarcharDescriptor.codecId,
-    params,
-    'character varying',
-  );
+  column(pgVarcharDescriptor.factory(params), pgVarcharDescriptor.codecId, params);
 
 pgVarcharColumn satisfies ColumnHelperFor<PgVarcharDescriptor>;
 
@@ -1555,7 +1545,7 @@ export class PgIntDescriptor extends PostgresCodecDescriptor<void> {
 export const pgIntDescriptor = new PgIntDescriptor();
 
 export const pgIntColumn = () =>
-  column(pgIntDescriptor.factory(), pgIntDescriptor.codecId, undefined, 'int4');
+  column(pgIntDescriptor.factory(), pgIntDescriptor.codecId, undefined);
 
 pgIntColumn satisfies ColumnHelperFor<PgIntDescriptor>;
 
@@ -1578,7 +1568,7 @@ export class PgFloatDescriptor extends PostgresCodecDescriptor<void> {
 export const pgFloatDescriptor = new PgFloatDescriptor();
 
 export const pgFloatColumn = () =>
-  column(pgFloatDescriptor.factory(), pgFloatDescriptor.codecId, undefined, 'float8');
+  column(pgFloatDescriptor.factory(), pgFloatDescriptor.codecId, undefined);
 
 pgFloatColumn satisfies ColumnHelperFor<PgFloatDescriptor>;
 

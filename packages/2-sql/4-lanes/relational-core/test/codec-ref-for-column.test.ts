@@ -14,7 +14,7 @@ const STORAGE_HASH = blindCast<SqlStorageType['storageHash'], 'test storage hash
 function usersTable(columnName: string, codecId: string): StorageTable {
   return new StorageTable({
     columns: {
-      id: { codecId: 'pg/int4@1', nativeType: 'int4', nullable: false },
+      id: { codecId: 'pg/int4@1', dataType: 'pg/int4', nullable: false },
       [columnName]: { codecId, nativeType: 'text', nullable: false },
     },
     primaryKey: { columns: ['id'] },
@@ -29,7 +29,7 @@ function enumTable(): StorageTable {
     columns: {
       status: {
         codecId: 'pg/enum@1',
-        nativeType: 'aal_level',
+        dataType: 'pg/enum',
         nullable: false,
         typeParams: { typeName: 'aal_level' },
       },
@@ -139,7 +139,7 @@ describe('codecRefForStorageColumn', () => {
                   columns: {
                     amount: {
                       codecId: 'pg/numeric@1',
-                      nativeType: 'numeric',
+                      dataType: 'pg/numeric',
                       nullable: false,
                       typeRef,
                     },
@@ -160,7 +160,7 @@ describe('codecRefForStorageColumn', () => {
       const storage = storageWithTypeRef({
         money: toStorageTypeInstance({
           codecId: 'pg/numeric@1',
-          nativeType: 'numeric',
+          dataType: 'pg/numeric',
           typeParams: { precision: 19 },
         }),
       });
@@ -173,7 +173,7 @@ describe('codecRefForStorageColumn', () => {
 
     it('omits type params when the referenced type declares none', () => {
       const storage = storageWithTypeRef({
-        money: toStorageTypeInstance({ codecId: 'pg/numeric@1', nativeType: 'numeric' }),
+        money: toStorageTypeInstance({ codecId: 'pg/numeric@1', dataType: 'pg/numeric' }),
       });
 
       expect(codecRefForStorageColumn(storage, 'public', 'invoice', 'amount')).toEqual({
@@ -191,7 +191,7 @@ describe('codecRefForStorageColumn', () => {
         ),
         danglingRef: codecRefForStorageColumn(
           storageWithTypeRef({
-            other: toStorageTypeInstance({ codecId: 'pg/numeric@1', nativeType: 'numeric' }),
+            other: toStorageTypeInstance({ codecId: 'pg/numeric@1', dataType: 'pg/numeric' }),
           }),
           'public',
           'invoice',

@@ -177,14 +177,14 @@ const expectedRefusals: ReadonlyMap<string, ExpectedRefusal> = new Map<string, E
     'packages/3-extensions/pgvector/src/contract.json',
     {
       reason: 'no PSL type in the configured stack',
-      meta: { coordinate: 'types.vector', nativeType: 'vector', codecId: 'pg/vector@1' },
+      meta: { coordinate: 'types.vector', codecId: 'pg/vector@1' },
     },
   ],
   [
     'packages/3-extensions/postgis/src/contract.json',
     {
       reason: 'no PSL type in the configured stack',
-      meta: { coordinate: 'types.geometry', nativeType: 'geometry', codecId: 'pg/geometry@1' },
+      meta: { coordinate: 'types.geometry', codecId: 'pg/geometry@1' },
     },
   ],
   [
@@ -256,7 +256,7 @@ const expectedRefusals: ReadonlyMap<string, ExpectedRefusal> = new Map<string, E
     'test/integration/test/ports/engines/queries/data_types/native/postgres/_fixture/string/generated/contract.json',
     {
       reason: 'no PSL type in the configured stack',
-      meta: { coordinate: '"public"."Child"."bit"', nativeType: 'bit', codecId: 'pg/bit@1' },
+      meta: { coordinate: '"public"."Child"."bit"', codecId: 'pg/bit@1' },
     },
   ],
   [

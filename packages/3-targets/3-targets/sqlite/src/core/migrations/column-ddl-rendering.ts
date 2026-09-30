@@ -28,18 +28,17 @@ import { buildColumnDefaultSql, buildColumnTypeSql } from './planner-ddl-builder
  */
 function columnLike(
   column: SqlColumnIR,
-): Pick<StorageColumn, 'nativeType' | 'codecId' | 'nullable' | 'many' | 'typeParams' | 'default'> {
+): Pick<StorageColumn, 'codecId' | 'nullable' | 'many' | 'typeParams' | 'default'> {
   if (column.codecRef === undefined || column.codecBaseNativeType === undefined) {
     throw new InternalError(
       `columnLike: expected column "${column.name}" carries no codec identity — the expected tree must be derived via contractToSchemaIR for planning`,
     );
   }
   return {
-    nativeType: column.codecBaseNativeType,
     codecId: column.codecRef.codecId,
     nullable: column.nullable,
     // `column.many` is unset on contract-derived columns (array-ness rides
-    // on the `nativeType` `[]` suffix there instead) — `codecRef.many`
+    // on the type text's `[]` suffix there instead) — `codecRef.many`
     // carries it. Hand-built/introspected columns set `column.many` directly.
     ...((column.many ?? column.codecRef.many) !== undefined
       ? { many: column.many ?? column.codecRef.many }

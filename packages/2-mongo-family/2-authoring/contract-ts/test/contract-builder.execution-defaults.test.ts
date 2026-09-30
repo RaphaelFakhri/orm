@@ -9,7 +9,7 @@ import { UNBOUND_NAMESPACE_ID } from '@internal/framework-components/ir';
 import { describe, expect, it } from 'vitest';
 import { defineContract } from '../src/contract-builder';
 
-const mongoDate = { codecId: 'mongo/date@1', nativeType: 'date' } as const;
+const mongoDate = { codecId: 'mongo/date@1' } as const;
 
 const mongoFamilyPack = {
   kind: 'family',

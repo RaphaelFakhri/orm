@@ -41,7 +41,7 @@ function assertSafeDefaultExpression(expression: string): void {
  * codec is written with, in upper case. Resolves `typeRef` against `storageTypes`.
  */
 export function buildColumnTypeSql(
-  column: StorageColumn,
+  column: Pick<StorageColumn, 'codecId' | 'typeParams' | 'typeRef'>,
   types: SqlTypeLookups,
   storageTypes: Record<string, StorageTypeInstance> = {},
 ): string {
@@ -118,10 +118,10 @@ export function isInlineAutoincrementPrimaryKey(table: StorageTable, columnName:
   return column?.default?.kind === 'function' && column.default.expression === 'autoincrement()';
 }
 
-type ResolvedColumnTypeMetadata = Pick<StorageColumn, 'nativeType' | 'codecId' | 'typeParams'>;
+type ResolvedColumnTypeMetadata = Pick<StorageColumn, 'codecId' | 'typeParams'>;
 
 export function resolveColumnTypeMetadata(
-  column: StorageColumn,
+  column: Pick<StorageColumn, 'codecId' | 'typeParams' | 'typeRef'>,
   storageTypes: Record<string, StorageTypeInstance>,
 ): ResolvedColumnTypeMetadata {
   if (!column.typeRef) {
@@ -137,7 +137,6 @@ export function resolveColumnTypeMetadata(
   }
   return {
     codecId: referencedType.codecId,
-    nativeType: referencedType.nativeType,
     typeParams: referencedType.typeParams,
   };
 }

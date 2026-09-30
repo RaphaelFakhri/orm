@@ -9,7 +9,7 @@ import { buildTestContextFromContract, createMockRuntime, type MockRuntime } fro
 function storageTable(columns: string[]) {
   const cols: Record<string, { codecId: string; nativeType: string; nullable: boolean }> = {};
   for (const column of columns) {
-    cols[column] = { codecId: 'pg/text@1', nativeType: 'text', nullable: false };
+    cols[column] = { codecId: 'pg/text@1', dataType: 'pg/text', nullable: false };
   }
   return {
     columns: cols,

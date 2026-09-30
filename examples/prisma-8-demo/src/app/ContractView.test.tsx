@@ -48,8 +48,8 @@ function buildContract(overrides?: Partial<Contract>): Contract {
               users: {
                 primaryKey: { columns: ['id'] },
                 columns: {
-                  id: { nativeType: 'uuid', nullable: false, codecId: 'pg/uuid@1' },
-                  email: { nativeType: 'text', nullable: false, codecId: 'pg/text@1' },
+                  id: { dataType: 'pg/uuid', nullable: false, codecId: 'pg/uuid@1' },
+                  email: { dataType: 'pg/text', nullable: false, codecId: 'pg/text@1' },
                 },
                 foreignKeys: [],
                 uniques: [],
@@ -83,6 +83,13 @@ describe('ContractView', () => {
     expect(screen.getByText('Extensions')).toBeDefined();
     expect(screen.getByText('sql/returning')).toBeDefined();
     expect(screen.getByText('pgvector')).toBeDefined();
+  });
+
+  it('shows the data type each column stores', () => {
+    render(<ContractView contract={buildContract()} />);
+
+    expect(screen.getAllByText('pg/uuid')).not.toHaveLength(0);
+    expect(screen.getAllByText('pg/text')).not.toHaveLength(0);
   });
 
   it('renders untrusted values as text content (no XSS)', () => {

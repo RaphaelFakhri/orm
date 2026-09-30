@@ -18,7 +18,7 @@ const stubLowerer: ExecuteRequestLowerer = {
 
 function makeColumn(overrides: Partial<StorageColumn> = {}): StorageColumn {
   return {
-    nativeType: 'text',
+    dataType: 'sqlite/text',
     nullable: true,
     codecId: 'sqlite/text@1',
     ...overrides,
@@ -91,7 +91,11 @@ function tightenedEmailContract() {
   return makeContract({
     users: makeTable({
       columns: {
-        id: makeColumn({ nativeType: 'integer', codecId: 'sqlite/integer@1', nullable: false }),
+        id: makeColumn({
+          dataType: 'sqlite/integer',
+          codecId: 'sqlite/integer@1',
+          nullable: false,
+        }),
         email: makeColumn({ nativeType: 'text', nullable: false }),
       },
       primaryKey: { columns: ['id'] },
@@ -183,7 +187,11 @@ describe('nullability-tightening backfill', async () => {
     const contract = makeContract({
       users: makeTable({
         columns: {
-          id: makeColumn({ nativeType: 'integer', codecId: 'sqlite/integer@1', nullable: false }),
+          id: makeColumn({
+            dataType: 'sqlite/integer',
+            codecId: 'sqlite/integer@1',
+            nullable: false,
+          }),
           email: makeColumn({ nativeType: 'text', nullable: true }),
         },
         primaryKey: { columns: ['id'] },

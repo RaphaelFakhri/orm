@@ -31,7 +31,6 @@ const arktypeJsonPackMetaBase = {
         typeId: ARKTYPE_JSON_CODEC_ID,
         familyId: 'sql' as const,
         targetId: 'postgres' as const,
-        nativeType: 'jsonb',
       },
     ],
   },

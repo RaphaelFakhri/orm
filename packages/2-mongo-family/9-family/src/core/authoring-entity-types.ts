@@ -152,7 +152,7 @@ export const mongoFamilyEnumEntityDescriptor = {
 
       return enumType(
         block.name,
-        { codecId, nativeType: bsonType },
+        { codecId },
         ...members.map((m) => ({ name: m.name, value: m.value })),
       );
     },

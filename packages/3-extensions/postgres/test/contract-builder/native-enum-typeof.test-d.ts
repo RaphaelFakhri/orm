@@ -21,7 +21,7 @@ import type { DefaultModelRow } from '@internal/sql-orm-client';
 import { expectTypeOf } from 'vitest';
 import { defineContract, field, model, nativeEnum, pg } from '../../src/exports/contract-builder';
 
-const intColumn = { codecId: 'pg/int4@1', nativeType: 'int4' } as const;
+const intColumn = { codecId: 'pg/int4@1' } as const;
 
 const AalLevel = nativeEnum('AalLevel', 'aal1', 'aal2', 'aal3').map('aal_level');
 

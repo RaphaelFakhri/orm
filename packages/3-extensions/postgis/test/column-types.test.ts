@@ -6,7 +6,6 @@ describe('postgis column-types', () => {
     it('has correct codecId and nativeType', () => {
       expect(geometryColumn).toMatchObject({
         codecId: 'pg/geometry@1',
-        nativeType: 'geometry',
       });
     });
 
@@ -19,7 +18,6 @@ describe('postgis column-types', () => {
     it('creates descriptor with typeParams.srid', () => {
       expect(geometry({ srid: 4326 })).toMatchObject({
         codecId: 'pg/geometry@1',
-        nativeType: 'geometry',
         typeParams: { srid: 4326 },
       });
     });

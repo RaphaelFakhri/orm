@@ -170,9 +170,7 @@ const postgisPackMetaBase = {
         alias: 'PostgisQueryOperationTypes',
       },
     },
-    storage: [
-      { typeId: postgisTypeId, familyId: 'sql', targetId: 'postgres', nativeType: 'geometry' },
-    ],
+    storage: [{ typeId: postgisTypeId, familyId: 'sql', targetId: 'postgres' }],
   },
 } as const;
 

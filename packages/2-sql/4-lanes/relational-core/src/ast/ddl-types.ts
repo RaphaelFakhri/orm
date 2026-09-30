@@ -8,14 +8,14 @@ import type { AnyParamRef } from './types';
 /**
  * Render-time context the column-default visitor needs to make dialect
  * decisions that depend on the parent column. Today only the parent
- * column's native type (`"jsonb"`, `"text"`, …) — the Postgres renderer
+ * column's type text (`"jsonb"`, `"text"`, …) — the Postgres renderer
  * uses it to decide whether to emit a `::jsonb` / `::json` cast on JSON
  * literal defaults so the emitted DDL matches the column type without
  * relying on Postgres's implicit text → jsonb cast at default-evaluation
  * time. Additional fields can join without re-shaping the interface.
  */
 export interface DdlColumnRenderContext {
-  readonly nativeType: string;
+  readonly typeText: string;
 }
 
 export interface DdlColumnDefaultVisitor<R> {

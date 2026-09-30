@@ -22,7 +22,7 @@ import { buildExpectedFormatType } from './planner-sql-checks';
  */
 function columnLike(
   column: SqlColumnIR,
-): Pick<StorageColumn, 'nativeType' | 'codecId' | 'nullable' | 'many' | 'typeParams' | 'default'> {
+): Pick<StorageColumn, 'codecId' | 'nullable' | 'many' | 'typeParams' | 'default'> {
   return {
     ...columnTypeLike(`column "${column.name}"`, column),
     nullable: column.nullable,
@@ -35,17 +35,16 @@ type ColumnCodecIdentity = Pick<SqlColumnIR, 'codecRef' | 'codecBaseNativeType' 
 function columnTypeLike(
   owner: string,
   identity: ColumnCodecIdentity,
-): Pick<StorageColumn, 'nativeType' | 'codecId' | 'many' | 'typeParams'> {
+): Pick<StorageColumn, 'codecId' | 'many' | 'typeParams'> {
   if (identity.codecRef === undefined || identity.codecBaseNativeType === undefined) {
     throw new InternalError(
       `columnTypeLike: expected ${owner} carries no codec identity — the expected tree must be derived via contractToSchemaIR for planning`,
     );
   }
   return {
-    nativeType: identity.codecBaseNativeType,
     codecId: identity.codecRef.codecId,
     // `column.many` is unset on contract-derived columns (array-ness rides
-    // on the `nativeType` `[]` suffix there instead) — `codecRef.many`
+    // on the type text's `[]` suffix there instead) — `codecRef.many`
     // carries it. Hand-built/introspected columns set `column.many` directly.
     ...ifDefined('many', identity.many ?? identity.codecRef.many),
     ...ifDefined(
@@ -119,7 +118,7 @@ export function renderColumnDefaultSql(
   if (columnDefault === undefined) return '';
   const typeLike = columnTypeLike('column default', defaultNode);
   return buildColumnDefaultSql(columnDefault, {
-    nativeType: buildColumnTypeSql(typeLike, types, {}, false),
+    typeText: buildColumnTypeSql(typeLike, types, {}, false),
     dataType: sqlDataTypeOfCodec(typeLike.codecId, types).id,
     ...ifDefined('many', typeLike.many),
   });

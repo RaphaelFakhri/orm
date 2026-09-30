@@ -39,7 +39,7 @@ const FORMAT_TYPE_DISPLAY: ReadonlyMap<string, string> = new Map([
 ]);
 
 export function buildExpectedFormatType(
-  column: StorageColumn,
+  column: Pick<StorageColumn, 'codecId' | 'typeParams' | 'typeRef'>,
   types: SqlTypeLookups,
   storageTypes: Record<string, StorageTypeInstance> = {},
 ): string {
@@ -57,5 +57,6 @@ export function buildExpectedFormatType(
     return renderSqlTypeName(dataType, params);
   }
 
-  return FORMAT_TYPE_DISPLAY.get(resolved.nativeType) ?? resolved.nativeType;
+  const baseName = unquotedSqlBaseName(dataType, params);
+  return FORMAT_TYPE_DISPLAY.get(baseName) ?? baseName;
 }

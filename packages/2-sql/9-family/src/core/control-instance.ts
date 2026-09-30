@@ -46,6 +46,7 @@ import { InternalError } from '@internal/utils/internal-error';
 import type { JsonObject } from '@internal/utils/json';
 import type { StructuredError } from '@internal/utils/structured-error';
 import { enforceSqlDataTypeInvariants } from './assembly';
+import { assertContractMatchesStack } from './contract-stack-checks';
 import type { SqlControlAdapter } from './control-adapter';
 import type {
   SqlControlTargetDescriptor,
@@ -585,7 +586,9 @@ export function createSqlFamilyInstance<TTargetId extends string>(
     extensionIds,
 
     deserializeContract(contractJson: unknown): Contract {
-      return deserializeWithTargetSerializer(contractJson);
+      const contract = deserializeWithTargetSerializer(contractJson);
+      assertContractMatchesStack(contract, stack);
+      return contract;
     },
 
     async verify(verifyOptions: {

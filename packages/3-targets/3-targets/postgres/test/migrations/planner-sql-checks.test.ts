@@ -21,7 +21,7 @@ describe('buildExpectedFormatType', () => {
     it('maps int2 to smallint', () => {
       expect(
         buildExpectedFormatType(
-          { nativeType: 'int2', codecId: 'pg/int2@1', nullable: false },
+          { dataType: 'pg/int2', codecId: 'pg/int2@1', nullable: false },
           types,
         ),
       ).toBe('smallint');
@@ -30,7 +30,7 @@ describe('buildExpectedFormatType', () => {
     it('maps timestamptz to timestamp with time zone', () => {
       expect(
         buildExpectedFormatType(
-          { nativeType: 'timestamptz', codecId: 'pg/timestamptz-temporal@1', nullable: false },
+          { dataType: 'pg/timestamptz', codecId: 'pg/timestamptz-temporal@1', nullable: false },
           types,
         ),
       ).toBe('timestamp with time zone');
@@ -41,7 +41,7 @@ describe('buildExpectedFormatType', () => {
     it('returns nativeType as-is for text', () => {
       expect(
         buildExpectedFormatType(
-          { nativeType: 'text', codecId: 'pg/text@1', nullable: false },
+          { dataType: 'pg/text', codecId: 'pg/text@1', nullable: false },
           types,
         ),
       ).toBe('text');
@@ -53,7 +53,7 @@ describe('buildExpectedFormatType', () => {
       expect(
         buildExpectedFormatType(
           {
-            nativeType: 'numeric',
+            dataType: 'pg/numeric',
             codecId: 'pg/numeric@1',
             nullable: false,
             typeParams: { precision: 10, scale: 2 },
@@ -67,7 +67,7 @@ describe('buildExpectedFormatType', () => {
       expect(
         buildExpectedFormatType(
           {
-            nativeType: 'int4',
+            dataType: 'pg/int4',
             codecId: 'pg/int4@1',
             nullable: false,
             typeParams: { someParam: true },
@@ -98,7 +98,7 @@ describe('buildExpectedFormatType', () => {
         buildExpectedFormatType(
           { nativeType: 'unused', codecId: 'unused', nullable: false, typeRef: 'MyStatus' },
           types,
-          { MyStatus: toStorageTypeInstance({ codecId: 'pg/int4@1', nativeType: 'int4' }) },
+          { MyStatus: toStorageTypeInstance({ codecId: 'pg/int4@1', dataType: 'pg/int4' }) },
         ),
       ).toBe('integer');
     });

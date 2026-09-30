@@ -314,7 +314,7 @@ const extTransformDescriptor = postgresCodec(new ExtTransformDescriptor(), {
 function buildExtContractAndTable() {
   const tableColumns: StorageTableInput['columns'] = {
     label: { codecId: EXT_CODEC_ID, nativeType: 'text', nullable: false },
-    name: { codecId: 'pg/text@1', nativeType: 'text', nullable: true },
+    name: { codecId: 'pg/text@1', dataType: 'pg/text', nullable: true },
   };
   const ns = postgresCreateNamespace({
     id: UNBOUND_NAMESPACE_ID,

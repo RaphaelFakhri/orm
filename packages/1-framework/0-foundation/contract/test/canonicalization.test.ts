@@ -345,7 +345,7 @@ describe('default omission', () => {
             columns: {
               done: {
                 codecId: 'pg/bool@1',
-                nativeType: 'bool',
+                dataType: 'pg/bool',
                 nullable: false,
                 default: { kind: 'literal', value: false },
               },

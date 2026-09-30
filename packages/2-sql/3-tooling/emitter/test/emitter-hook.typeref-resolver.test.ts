@@ -50,9 +50,9 @@ describe('sqlEmission.resolveFieldTypeParams (integration via generateContractDt
         tables: {
           post: {
             columns: {
-              id: { nativeType: 'int4', codecId: 'pg/int4@1', nullable: false },
+              id: { dataType: 'pg/int4', codecId: 'pg/int4@1', nullable: false },
               embedding: {
-                nativeType: 'vector',
+                dataType: 'pgvector/vector',
                 codecId: 'pg/vector@1',
                 nullable: true,
                 typeRef: 'Embedding1536',
@@ -67,7 +67,7 @@ describe('sqlEmission.resolveFieldTypeParams (integration via generateContractDt
         types: {
           Embedding1536: {
             codecId: 'pg/vector@1',
-            nativeType: 'vector',
+            dataType: 'pgvector/vector',
             typeParams: { length: 1536 },
           },
         },
@@ -122,7 +122,7 @@ describe('sqlEmission.resolveFieldTypeParams (integration via generateContractDt
           post: {
             columns: {
               embedding: {
-                nativeType: 'vector',
+                dataType: 'pgvector/vector',
                 codecId: 'pg/vector@1',
                 nullable: false,
                 typeRef: 'Embedding1536',
@@ -137,7 +137,7 @@ describe('sqlEmission.resolveFieldTypeParams (integration via generateContractDt
         types: {
           Embedding1536: {
             codecId: 'pg/vector@1',
-            nativeType: 'vector',
+            dataType: 'pgvector/vector',
             typeParams: { length: 1536 },
           },
         },

@@ -104,7 +104,7 @@ describe('postgres defineContract encodes literal defaults through the column co
   it('stores an enum member default in the form the enum codec produces', () => {
     const Level = enumType(
       'Level',
-      { codecId: 'pg/int8@1' as const, nativeType: 'int8' },
+      { codecId: 'pg/int8@1' as const },
       member('Low', 1n),
       member('High', 10n),
     );
@@ -126,7 +126,7 @@ describe('postgres defineContract encodes literal defaults through the column co
   it('stores an array of enum member values on an enum list field', () => {
     const Level = enumType(
       'Level',
-      { codecId: 'pg/int8@1' as const, nativeType: 'int8' },
+      { codecId: 'pg/int8@1' as const },
       member('Low', 1n),
       member('High', 10n),
     );

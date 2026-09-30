@@ -159,6 +159,7 @@ export function buildScalarFields(input: {
               column,
               typeMap,
               authoringTypes: context.authoringContributions.type,
+              dataTypeLookup: context.dataTypeLookup,
               enumBlockNames: enums.blockNamesByTypeName,
               coordinate,
             });

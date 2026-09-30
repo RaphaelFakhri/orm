@@ -73,10 +73,7 @@ export function createTestSchemaIR(tables: Record<string, SqlTableIR>): SqlSchem
  */
 const NO_INFERRED_CODEC = new Set(['date', 'timestamp', 'timestamptz', 'time']);
 
-function codecIdFor(
-  name: string,
-  col: { readonly codecId?: string; readonly nativeType: string },
-): string {
+function codecIdFor(name: string, col: { readonly codecId?: string }): string {
   if (col.codecId !== undefined) return col.codecId;
   if (NO_INFERRED_CODEC.has(col.nativeType)) {
     throw new Error(

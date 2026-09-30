@@ -35,7 +35,6 @@ describe('buildColumnTypeSql', () => {
 
   it('returns SERIAL for int4 with autoincrement', () => {
     const column = col({
-      nativeType: 'int4',
       codecId: 'pg/int4@1',
       default: { kind: 'function', expression: 'autoincrement()' },
     });
@@ -44,7 +43,6 @@ describe('buildColumnTypeSql', () => {
 
   it('returns BIGSERIAL for int8 with autoincrement', () => {
     const column = col({
-      nativeType: 'int8',
       codecId: 'pg/int8@1',
       default: { kind: 'function', expression: 'autoincrement()' },
     });
@@ -53,7 +51,6 @@ describe('buildColumnTypeSql', () => {
 
   it('returns SMALLSERIAL for int2 with autoincrement', () => {
     const column = col({
-      nativeType: 'int2',
       codecId: 'pg/int2@1',
       default: { kind: 'function', expression: 'autoincrement()' },
     });
@@ -65,7 +62,7 @@ describe('buildColumnTypeSql', () => {
     const storageTypes = {
       AalLevel: toStorageTypeInstance({
         codecId: 'pg/enum@1',
-        nativeType: 'auth.aal_level',
+        dataType: 'pg/enum',
         typeParams: { typeName: 'auth.aal_level' },
       }),
     };
@@ -74,7 +71,6 @@ describe('buildColumnTypeSql', () => {
 
   it('renders an unqualified named-type column as a single quoted identifier', () => {
     const column = col({
-      nativeType: 'order_status',
       codecId: 'pg/enum@1',
       typeParams: { typeName: 'order_status' },
     });
@@ -83,7 +79,6 @@ describe('buildColumnTypeSql', () => {
 
   it('renders a schema-qualified named-type column segment-by-segment', () => {
     const column = col({
-      nativeType: 'auth.aal_level',
       codecId: 'pg/enum@1',
       typeParams: { typeName: 'auth.aal_level' },
     });
@@ -92,7 +87,6 @@ describe('buildColumnTypeSql', () => {
 
   it('appends [] for a named-type array column', () => {
     const column = col({
-      nativeType: 'order_status',
       codecId: 'pg/enum@1',
       typeParams: { typeName: 'order_status' },
       many: true,
@@ -102,7 +96,6 @@ describe('buildColumnTypeSql', () => {
 
   it('writes the parameters of a parameterized data type', () => {
     const column = col({
-      nativeType: 'character varying',
       codecId: 'pg/varchar@1',
       typeParams: { length: 3 },
     });

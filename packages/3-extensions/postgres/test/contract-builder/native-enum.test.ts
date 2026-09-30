@@ -42,8 +42,8 @@ import {
   pg,
 } from '../../src/exports/contract-builder';
 
-const intColumn = { codecId: 'pg/int4@1', nativeType: 'int4' } as const;
-const pgText = { codecId: 'pg/text@1', nativeType: 'text' } as const;
+const intColumn = { codecId: 'pg/int4@1' } as const;
+const pgText = { codecId: 'pg/text@1' } as const;
 
 function namespace(namespaces: Record<string, unknown>, id: string): PostgresSchema {
   const ns = namespaces[id] as PostgresSchema | undefined;
@@ -77,7 +77,7 @@ describe('nativeEnum + pg.enum (TS native-enum authoring)', () => {
     const column = ns.table['accounts']?.columns['role'];
     expect(column).toMatchObject({
       codecId: 'pg/enum@1',
-      nativeType: 'Role',
+      dataType: 'pg/enum',
       typeParams: { typeName: 'Role' },
       nullable: false,
       valueSet: {
@@ -121,7 +121,7 @@ describe('nativeEnum + pg.enum (TS native-enum authoring)', () => {
     const column = ns.table['sessions']?.columns['aal'];
     expect(column).toMatchObject({
       codecId: 'pg/enum@1',
-      nativeType: 'aal_level',
+      dataType: 'pg/enum',
       typeParams: { typeName: 'aal_level' },
       nullable: true,
       valueSet: {
@@ -161,7 +161,6 @@ describe('nativeEnum + pg.enum (TS native-enum authoring)', () => {
     const column = ns.table['sessions']?.columns['aal'];
     expect(column).toMatchObject({
       codecId: 'pg/enum@1',
-      nativeType: 'auth.aal_level',
       typeParams: { typeName: 'auth.aal_level' },
       valueSet: {
         plane: 'storage',

@@ -259,7 +259,7 @@ withTempDir(({ createTempDir }) => {
           const contractJson = JSON.parse(await readFile(contractPath, 'utf-8'));
           contractJson.storage.namespaces.public.entries.table.user.columns.email = {
             codecId: 'pg/text@1',
-            nativeType: 'text',
+            dataType: 'pg/text',
             nullable: false,
           };
           await writeFile(contractPath, JSON.stringify(contractJson, null, 2), 'utf-8');
@@ -298,7 +298,7 @@ withTempDir(({ createTempDir }) => {
           const contractJson = JSON.parse(await readFile(contractPath, 'utf-8'));
           contractJson.storage.namespaces.public.entries.table.user.columns.email = {
             codecId: 'pg/text@1',
-            nativeType: 'text',
+            dataType: 'pg/text',
             nullable: false,
           };
           await writeFile(contractPath, JSON.stringify(contractJson, null, 2), 'utf-8');

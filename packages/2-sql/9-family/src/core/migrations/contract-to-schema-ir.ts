@@ -46,13 +46,13 @@ import { sqlFamilyError } from '../errors';
  *
  * Default value serialization is target-specific (quoting, casting, type syntax vary
  * between Postgres, MySQL, SQLite, …). The target provides its renderer when calling
- * `contractToSchemaIR`, keeping the family layer target-agnostic. `dataType` is the id of the
- * data type the column's codec represents.
+ * `contractToSchemaIR`, keeping the family layer target-agnostic. `type.dataType` is the id of
+ * the data type the column's codec represents, and `type.typeText` its name without parameters.
  */
 export type DefaultRenderer = (
   def: ColumnDefault,
   column: StorageColumn,
-  dataType: string,
+  type: { readonly dataType: string; readonly typeText: string },
 ) => string;
 
 /**
@@ -78,6 +78,7 @@ function convertColumn(
   // `storage.types` entry's codec and parameters.
   const resolved = resolveColumnTypeMetadata(column, storageTypes);
   const dataType = sqlDataTypeOfCodec(resolved.codecId, types);
+  const baseTypeName = unquotedSqlBaseName(dataType, dataTypeParams(dataType, resolved.typeParams));
   const baseNativeType = schemaTypeText(dataType, resolved.typeParams);
   // `many: true` columns keep `nativeType` as the bare element type (matching
   // how the introspected/"actual" side reports it — see the postgres control
@@ -105,7 +106,7 @@ function convertColumn(
     ...ifDefined(
       'default',
       column.default != null && renderDefault
-        ? renderDefault(column.default, column, dataType.id)
+        ? renderDefault(column.default, column, { dataType: dataType.id, typeText: baseTypeName })
         : undefined,
     ),
     // Contract-derived columns are resolved by construction: the computed
@@ -123,7 +124,7 @@ function convertColumn(
     // resolve DDL rendering from this at plan time (Decision 5), instead of
     // reading a derivation-precomputed render payload.
     codecRef: buildColumnCodecRef(resolved, column.many),
-    codecBaseNativeType: resolved.nativeType,
+    codecBaseNativeType: baseTypeName,
   };
 }
 
@@ -147,7 +148,7 @@ function schemaTypeText(
  * renderer already use (TML-2456, TML-2918).
  */
 function buildColumnCodecRef(
-  resolved: Pick<StorageColumn, 'codecId' | 'nativeType' | 'typeParams'>,
+  resolved: Pick<StorageColumn, 'codecId' | 'typeParams'>,
   many: boolean | undefined,
 ): CodecRef {
   return {
@@ -170,7 +171,7 @@ type ResolvedStorageTypes = Readonly<Record<string, StorageTypeInstance>>;
 function resolveColumnTypeMetadata(
   column: StorageColumn,
   storageTypes: ResolvedStorageTypes,
-): Pick<StorageColumn, 'codecId' | 'nativeType' | 'typeParams'> {
+): Pick<StorageColumn, 'codecId' | 'typeParams'> {
   if (!column.typeRef) {
     return column;
   }
@@ -189,7 +190,6 @@ function resolveColumnTypeMetadata(
   if (isStorageTypeInstance(referenced)) {
     return {
       codecId: referenced.codecId,
-      nativeType: referenced.nativeType,
       typeParams: referenced.typeParams,
     };
   }

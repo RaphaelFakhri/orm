@@ -52,12 +52,9 @@ pgVectorColumn satisfies ColumnHelperForStrict<PgVectorDescriptor>;
 
 test('coarse satisfies catches wrong typeParams shape on pgVectorColumn', () => {
   const brokenHelper = (length: number) =>
-    column(
-      pgVectorDescriptor.factory({ length }),
-      pgVectorDescriptor.codecId,
-      { wrongKey: length },
-      'vector',
-    );
+    column(pgVectorDescriptor.factory({ length }), pgVectorDescriptor.codecId, {
+      wrongKey: length,
+    });
   // @ts-expect-error -- typeParams shape doesn't satisfy ColumnHelperFor<PgVectorDescriptor>
   brokenHelper satisfies ColumnHelperFor<PgVectorDescriptor>;
   // @ts-expect-error -- strict shape catches the same mismatch

@@ -72,7 +72,7 @@ export function buildColumnTypeSql(
 /** The column shape a literal default is rendered for: its type as SQL, and its data type. */
 export interface DefaultLiteralColumn {
   readonly many?: boolean | undefined;
-  readonly nativeType: string;
+  readonly typeText: string;
   readonly dataType: string;
 }
 
@@ -104,7 +104,7 @@ export function renderDefaultLiteral(value: unknown, column?: DefaultLiteralColu
   const isJsonColumn = column !== undefined && JSON_DATA_TYPES.has(column.dataType);
 
   if (column?.many && Array.isArray(value)) {
-    return renderArrayLiteralDefault(value, column.nativeType);
+    return renderArrayLiteralDefault(value, column.typeText);
   }
 
   if (value instanceof Date) {
@@ -121,7 +121,7 @@ export function renderDefaultLiteral(value: unknown, column?: DefaultLiteralColu
   }
   const json = JSON.stringify(value);
   if (isJsonColumn) {
-    return `'${escapeLiteral(json)}'::${column.nativeType}`;
+    return `'${escapeLiteral(json)}'::${column.typeText}`;
   }
   return `'${escapeLiteral(json)}'`;
 }
@@ -130,14 +130,14 @@ export function renderDefaultLiteral(value: unknown, column?: DefaultLiteralColu
  * An `ARRAY[...]` of quoted elements has type `text[]`, which Postgres does not assign to a list of
  * numbers, decimals, timestamps or enums, so the constructor is cast to the list type. Each element
  * is the text Postgres reads for its type: an `int8` or `numeric` value as decimal text, a temporal
- * value as ISO text. `nativeType` is the element type or the list type, written as SQL, so a
+ * value as ISO text. `typeText` is the element type or the list type, written as SQL, so a
  * user-defined type name arrives already quoted.
  */
-export function renderArrayLiteralDefault(elements: unknown[], nativeType: string): string {
+export function renderArrayLiteralDefault(elements: unknown[], typeText: string): string {
   if (elements.length === 0) {
     return "'{}'";
   }
   const rendered = `ARRAY[${elements.map((el) => renderDefaultLiteral(el)).join(', ')}]`;
-  if (nativeType === '') return rendered;
-  return `${rendered}::${nativeType.endsWith('[]') ? nativeType : `${nativeType}[]`}`;
+  if (typeText === '') return rendered;
+  return `${rendered}::${typeText.endsWith('[]') ? typeText : `${typeText}[]`}`;
 }

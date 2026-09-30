@@ -344,7 +344,7 @@ describe('differ verdict — defaults (default is a child node of the column)', 
     const contract = createTestContract({
       user: createContractTable({
         created: {
-          nativeType: 'timestamptz',
+          dataType: 'pg/timestamptz',
           codecId: 'pg/timestamptz-temporal@1',
           nullable: false,
           default: { kind: 'function', expression: 'now()' },
@@ -958,7 +958,7 @@ describe('differ verdict — storage types (verifyType hook)', () => {
         user_status: {
           kind: 'codec-instance',
           codecId: 'app/enum@1',
-          nativeType: 'user_status',
+          dataType: 'app/enum',
           typeParams: { values: ['a'] },
         },
       },

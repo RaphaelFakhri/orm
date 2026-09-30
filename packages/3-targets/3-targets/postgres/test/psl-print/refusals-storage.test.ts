@@ -265,7 +265,7 @@ describe('value objects', () => {
   function addressContract(field: ContractField) {
     return deserialize(
       widgetContract({
-        columns: { address: { nativeType: 'jsonb', codecId: 'pg/jsonb@1', nullable: false } },
+        columns: { address: { dataType: 'pg/jsonb', codecId: 'pg/jsonb@1', nullable: false } },
         fields: { address: { nullable: false, type: { kind: 'valueObject', name: 'Address' } } },
         domain: { valueObjects: { Address: { fields: { street: field } } } },
       }),

@@ -14,8 +14,8 @@ import { PostgresContractSerializer } from '../../src/core/postgres-contract-ser
 import { buildPostgresPslContract } from '../../src/core/psl-print/psl-contract';
 import { testBuildContext } from './build-context';
 
-export const INT_COLUMN = { nativeType: 'int4', codecId: 'pg/int4@1', nullable: false } as const;
-export const TEXT_COLUMN = { nativeType: 'text', codecId: 'pg/text@1', nullable: false } as const;
+export const INT_COLUMN = { dataType: 'pg/int4', codecId: 'pg/int4@1', nullable: false } as const;
+export const TEXT_COLUMN = { dataType: 'pg/text', codecId: 'pg/text@1', nullable: false } as const;
 
 export function attributeText(attribute: PslAttribute): string {
   const prefix = attribute.target === 'model' ? '@@' : '@';

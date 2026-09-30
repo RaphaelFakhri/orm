@@ -30,12 +30,12 @@ import {
 export function postgresRenderDefault(
   def: ColumnDefault,
   column: StorageColumn,
-  dataType: string,
+  type: { readonly dataType: string; readonly typeText: string },
 ): string {
   if (def.kind === 'function') {
     return def.expression;
   }
-  return renderDefaultLiteral(def.value, { ...column, dataType });
+  return renderDefaultLiteral(def.value, { many: column.many, ...type });
 }
 
 const postgresTargetDescriptor: SqlControlTargetDescriptor<'postgres', PostgresPlanTargetDetails> =

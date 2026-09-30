@@ -26,25 +26,19 @@ describe('postgresAdapterDescriptorMeta capabilities', () => {
 describe('storage entries', () => {
   it('includes pg/uuid@1 with nativeType uuid', () => {
     expect(storage).toEqual(
-      expect.arrayContaining([
-        { typeId: 'pg/uuid@1', familyId: 'sql', targetId: 'postgres', nativeType: 'uuid' },
-      ]),
+      expect.arrayContaining([{ typeId: 'pg/uuid@1', familyId: 'sql', targetId: 'postgres' }]),
     );
   });
 
   it('includes pg/inet@1 with nativeType inet', () => {
     expect(storage).toEqual(
-      expect.arrayContaining([
-        { typeId: 'pg/inet@1', familyId: 'sql', targetId: 'postgres', nativeType: 'inet' },
-      ]),
+      expect.arrayContaining([{ typeId: 'pg/inet@1', familyId: 'sql', targetId: 'postgres' }]),
     );
   });
 
   it('includes pg/bytea@1 with nativeType bytea', () => {
     expect(storage).toEqual(
-      expect.arrayContaining([
-        { typeId: 'pg/bytea@1', familyId: 'sql', targetId: 'postgres', nativeType: 'bytea' },
-      ]),
+      expect.arrayContaining([{ typeId: 'pg/bytea@1', familyId: 'sql', targetId: 'postgres' }]),
     );
   });
 });

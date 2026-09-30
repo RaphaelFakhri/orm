@@ -83,7 +83,7 @@ describe('buildCodecDescriptorRegistry — codecRefForColumn', () => {
         Doc: {
           columns: {
             embedding: {
-              nativeType: 'vector',
+              dataType: 'pgvector/vector',
               codecId: 'pg/vector@1',
               nullable: false,
               typeRef: 'Vector1536',
@@ -99,7 +99,7 @@ describe('buildCodecDescriptorRegistry — codecRefForColumn', () => {
         Vector1536: {
           kind: 'codec-instance',
           codecId: 'pg/vector@1',
-          nativeType: 'vector',
+          dataType: 'pgvector/vector',
           typeParams: { length: 1536 },
         },
       },
@@ -118,7 +118,7 @@ describe('buildCodecDescriptorRegistry — codecRefForColumn', () => {
         Doc: {
           columns: {
             embedding: {
-              nativeType: 'vector',
+              dataType: 'pgvector/vector',
               codecId: 'pg/vector@1',
               nullable: false,
               typeParams: { length: 768 },
@@ -145,7 +145,7 @@ describe('buildCodecDescriptorRegistry — codecRefForColumn', () => {
         User: {
           columns: {
             email: {
-              nativeType: 'text',
+              dataType: 'pg/text',
               codecId: 'pg/text@1',
               nullable: false,
             },
@@ -169,7 +169,7 @@ describe('buildCodecDescriptorRegistry — codecRefForColumn', () => {
       tables: {
         User: {
           columns: {
-            email: { nativeType: 'text', codecId: 'pg/text@1', nullable: false },
+            email: { dataType: 'pg/text', codecId: 'pg/text@1', nullable: false },
           },
           primaryKey: { columns: ['email'] },
           uniques: [],
@@ -192,7 +192,7 @@ describe('buildCodecDescriptorRegistry — codecRefForColumn', () => {
         Doc: {
           columns: {
             embedding: {
-              nativeType: 'vector',
+              dataType: 'pgvector/vector',
               codecId: 'pg/vector@1',
               nullable: false,
               typeRef: 'Missing',

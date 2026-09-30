@@ -123,7 +123,7 @@ describe('PSL pg.enum(Ref) field resolution', () => {
     const aalColumn = authTable?.columns['aal'];
     expect(aalColumn).toMatchObject({
       codecId: 'pg/enum@1',
-      nativeType: 'auth.aal_level',
+      dataType: 'pg/enum',
       typeParams: { typeName: 'auth.aal_level' },
       nullable: false,
       valueSet: {
@@ -188,7 +188,7 @@ namespace auth {
     const aalsColumn = ns.table['AuthSession']?.columns['aals'];
     expect(aalsColumn).toMatchObject({
       codecId: 'pg/enum@1',
-      nativeType: 'auth.aal_level',
+      dataType: 'pg/enum',
       nullable: false,
       valueSet: {
         plane: 'storage',
@@ -316,7 +316,6 @@ namespace public {
     const aalColumn = ns.table['AuthSession']?.columns['aal'];
     expect(aalColumn).toMatchObject({
       codecId: 'pg/enum@1',
-      nativeType: 'aal_level',
       typeParams: { typeName: 'aal_level' },
       valueSet: {
         plane: 'storage',
