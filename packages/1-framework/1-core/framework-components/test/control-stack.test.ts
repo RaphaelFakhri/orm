@@ -1450,6 +1450,23 @@ describe('createControlStack', () => {
     expect(state.scalarTypes).toEqual([]);
   });
 
+  it('refuses a type constructor naming a codec no component registers', () => {
+    expect(() =>
+      createControlStack(
+        stubInput({
+          family: createDescriptor({ kind: 'family', id: 'fam' }),
+          target: createDescriptor({
+            kind: 'target',
+            id: 'tgt',
+            authoring: {
+              type: { Gone: { kind: 'typeConstructor', output: { codecId: 'demo/gone@1' } } },
+            },
+          }),
+        }),
+      ),
+    ).toThrow(/Gone.*tgt.*demo\/gone@1/s);
+  });
+
   it('derives scalarTypes from top-level zero-arg constructors in the assembled namespace', () => {
     const state = createControlStack(
       stubInput({
