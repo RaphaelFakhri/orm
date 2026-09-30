@@ -3,9 +3,11 @@ import {
   renderSqlTypeName,
   type SqlTypeLookups,
   sqlDataTypeOfCodec,
+  unquotedSqlBaseName,
 } from '@internal/sql-contract/data-type';
 import type { StorageColumn, StorageTypeInstance } from '@internal/sql-contract/types';
 import { postgresCreateNamespace } from '../postgres-schema';
+import { quoteIdentifierWhereNeeded } from '../sql-utils';
 import { resolveColumnTypeMetadata } from './planner-type-resolution';
 
 /**
@@ -44,8 +46,14 @@ export function buildExpectedFormatType(
   const resolved = resolveColumnTypeMetadata(column, storageTypes);
 
   const dataType = sqlDataTypeOfCodec(resolved.codecId, types);
+  if (dataType.sql.claimsKind !== undefined) {
+    return unquotedSqlBaseName(dataType, resolved.typeParams)
+      .split('.')
+      .map(quoteIdentifierWhereNeeded)
+      .join('.');
+  }
   const params = dataTypeParams(dataType, resolved.typeParams);
-  if (dataType.sql.claimsKind === undefined && Object.keys(params).length > 0) {
+  if (Object.keys(params).length > 0) {
     return renderSqlTypeName(dataType, params);
   }
 

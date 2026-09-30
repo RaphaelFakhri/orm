@@ -35,6 +35,9 @@ import { postgresTypeComponents, postgresTypeLookups } from '../postgres-type-lo
  * type-change, nullable-tightening, check constraints, codec storage types,
  * shared-temp-default add-column) is covered by the cross-package planner /
  * control-policy suites and `rls-planner.test.ts`.
+ *
+ * The `ALTER COLUMN TYPE` postcheck compares `format_type` text; TML-3387
+ * replaces it with a type identity comparison.
  */
 
 type TableSpec = ConstructorParameters<typeof StorageTable>[0];
@@ -304,6 +307,52 @@ describe('buildPostgresPlanDiff + planNodeIssues (one-differ path)', () => {
       rawTargetTypeForLabel: 'int8',
     });
   });
+
+  it.each([
+    { typeName: 'UserRole', typeRef: 'UserRole', formatTypeExpected: '"UserRole"' },
+    { typeName: 'UserRole', typeRef: undefined, formatTypeExpected: '"UserRole"' },
+    { typeName: 'user_role', typeRef: 'user_role', formatTypeExpected: 'user_role' },
+    { typeName: 'user_role', typeRef: undefined, formatTypeExpected: 'user_role' },
+  ])(
+    'checks a type change to enum $typeName (typeRef $typeRef) against $formatTypeExpected',
+    ({ typeName, typeRef, formatTypeExpected }) => {
+      const enumType = { codecId: 'pg/enum@1', nativeType: typeName, typeParams: { typeName } };
+      const contract = makeContract(
+        {
+          user: {
+            columns: {
+              id: { nativeType: 'uuid', codecId: 'pg/uuid@1', nullable: false },
+              role: { ...enumType, nullable: false, ...ifDefined('typeRef', typeRef) },
+            },
+            primaryKey: { columns: ['id'] },
+            foreignKeys: [],
+            uniques: [],
+            indexes: [],
+          },
+        },
+        typeRef === undefined ? undefined : { [typeRef]: toStorageTypeInstance(enumType) },
+      );
+      const actual = rootOf({
+        user: new PostgresTableSchemaNode({
+          name: 'user',
+          columns: {
+            id: { name: 'id', nativeType: 'uuid', nullable: false, resolvedNativeType: 'uuid' },
+            role: { name: 'role', nativeType: 'text', nullable: false, resolvedNativeType: 'text' },
+          },
+          primaryKey: { columns: ['id'] },
+          foreignKeys: [],
+          uniques: [],
+          indexes: [],
+          policies: [],
+          rlsEnabled: false,
+        }),
+      });
+      const call = planFor(contract, actual).find((c) => c instanceof AlterColumnTypeCall);
+      expect(call instanceof AlterColumnTypeCall && call.options.formatTypeExpected).toBe(
+        formatTypeExpected,
+      );
+    },
+  );
 
   it('refuses to plan a type change for a live column that carries no codec', () => {
     const contract = makeContract({
