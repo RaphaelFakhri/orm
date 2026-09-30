@@ -20,6 +20,7 @@ Reviewer-maintained. Contract: `projects/data-types-completion/design.md` sectio
 | d | 2 (`22fd1bc9de..bc2479e72f`) | SATISFIED: S1-d-R1-1 to S1-d-R1-3 closed, no new finding |
 | e | 1 (`f8903ee5dc..c7965f6d86`) | ANOTHER ROUND NEEDED: 2 low |
 | e | 2 (`6b28dbff21`, `511e3fd4b1`) | SATISFIED: S1-e-R1-1 and S1-e-R1-2 closed, no new finding |
+| f | 1 (`4b33205e76..ddb0814c42`) | ANOTHER ROUND NEEDED: 1 must-fix, 2 should-fix, 1 low |
 
 ## Findings log
 
@@ -154,7 +155,47 @@ Reviewer-maintained. Contract: `projects/data-types-completion/design.md` sectio
 - S1-e-R1-1: closed. The `CONTRACT.NATIVE_TYPE_INVALID` entry is deleted, and nothing outside `projects/` names the code. `check:error-reference` lists all 360 codes.
 - S1-e-R1-2: closed. The header now says only the plan test's `Doc` table has the `vector(N)` column, and why the applied table has only `id`. The test name says the markers are written and a `Doc` row round-trips. The Scenario A file passes (6 tests). Both commits carry both sign-offs and no AI attribution.
 
+### S1-f-R1-1 (must-fix): the upgrade entries were not validated by execution
+
+- Where: `upgrade-instructions/pending/data-types-declare-names/extension/` and `.../app/`; `skills-contrib/record-upgrade-instructions/SKILL.md` "Validation by execution".
+- What is wrong: the skill says "Before merging, run every new entry against the corresponding example or extension code … starting from its pre-PR state", then check that `git status --porcelain` over the non-test paths is empty, that tests are untouched, and that the suite is green. It ends "If any check fails, iterate on the entry; do not merge." Checking each instruction by reading the pgvector, postgis and arktype-json diffs is not that procedure, and it does not cover every path the equality check compares. The extension diff since `bot/data-types-completion` also changes `packages/3-extensions/postgres/src/contract/define-contract.ts` and `packages/3-extensions/sqlite/src/contract/define-contract.ts`, and the app diff changes `examples/prisma-8-demo-sqlite/src/prisma/contract.d.ts`.
+- Change: in a disposable checkout (a gitignored worktree under `wip/`), run both flows exactly as the skill writes them against `bot/data-types-completion`, and record the commands and their empty outputs in the round report. Where an entry does not reproduce a file (the two facade `define-contract.ts` files are the likely case), extend the entry, or bring the question to the orchestrator if those files should not be in the extension audience's diff.
+
+### S1-f-R1-2 (should-fix): the extension entry leaves out three changes an extension author sees
+
+- Where: `upgrade-instructions/pending/data-types-declare-names/extension/instructions.md`.
+- What is wrong: (1) `CodecControlHooks.resolveIdentityValue` now receives `dataType` (the data type id) in place of `nativeType` (`packages/2-sql/9-family/src/core/migrations/types.ts`). An extension hook that reads `nativeType` breaks, and the entry tells authors to keep the hook unchanged. (2) PostgreSQL parameter casts now write the data type's base name: `$1::integer` becomes `$1::int4`, and likewise `bool`, `int2`, `int8`, `float4`, `float8`. An extension whose tests or fixtures assert query text changes. (3) The migrations `contractToSchema(contract, frameworkComponents)` now requires `frameworkComponents`.
+- Change: add an entry, or a paragraph under an existing one, for each, with before and after code and a detection pattern (`resolveIdentityValue` reading `nativeType`; `::integer`, `::boolean` and the other old names in test text; `contractToSchema(` with one argument).
+
+### S1-f-R1-3 (should-fix): the column helpers restate their data type's bound, and postgis gets it wrong
+
+- Where: `packages/3-extensions/postgis/src/core/codecs.ts:161-172` (`pgGeometryColumn`); the same pattern in `packages/3-extensions/pgvector/src/exports/column-types.ts:19-35` (`vector`).
+- What is wrong: design 2.4 says the data type's `params` is the only place a bound is written. `pgGeometryColumn({ srid: 0 })` passes the helper's own check ("non-negative integer"), but `postgis/geometry` requires 1 or more. So the contract builds, and is refused later, at the latest when the planner writes the column (`CONTRACT.TYPE_PARAMS_INVALID`). pgvector's helper repeats its bound with the right values, so it is a second copy of the bound, not a wrong one.
+- Change: make both helpers validate `{ srid }` and `{ length }` with the codec's `paramsSchema` (for example through `validateAuthoringTypeParams`, or by reading the schema's issues) and report `CONTRACT.ARGUMENT_INVALID` as today. Delete the restated bounds and the "non-negative" doc text. Red first: `pgGeometryColumn({ srid: 0 })` throws.
+
+### S1-f-R1-4 (low): the guide's stack and adapter snippets leave out `dataTypes`
+
+- Where: `docs/reference/codec-authoring-guide.md:331-364` ("Stack contribution and direct adapter injection").
+- What is wrong: the snippets contribute pgvector and postgis descriptors, and build `createPostgresAdapter({ codecDescriptors })`, with no `dataTypes`. Copied as written, a query that binds a vector parameter fails when the cast is rendered, because the runtime has no `pgvector/vector` data type. The guide says to register `dataTypes` elsewhere (line 588), and the extension entry shows `createPostgresAdapter({ codecDescriptors, dataTypes })`, but these snippets contradict both.
+- Change: add `dataTypes` to both extension descriptors and to the `createPostgresAdapter` call, and say that a custom codec's data types are passed beside it.
+
 ## Round notes
+
+### Dispatch f, round 1
+
+Scope: `4b33205e76..ddb0814c42` (`42441fc4dd` docs, `938ae7197b` upgrade entries, `ddb0814c42` test fix).
+
+Docs. ADR 171 carries "Status: Superseded by ADR 254" and the index row reads "**Superseded by ADR 254.**", the convention of rows 044, 162 and 171's neighbours. ADRs 186, 205, 208, 213, 219, 244 and 254 and the Mongo subsystem doc now describe data types, not `targetTypes` or `expandNativeType`. The guide gains "Declaring a data type" and loses the rendering hook section. I compared every new snippet with the code. `pgNumericParams`, `pgNumeric`, `pgEnum`, `postgisGeometry`, `pgvectorVector` and the `postgresCodec(sqlTextDescriptor, …)` adapter are the code's own text. The `pgInt2`/`pgInt4` example spells out what the code writes with helper functions. I copied the complete declarations into `wip/review-f1/snippets/snippets.ts` and typechecked them against the workspace packages: exit 0. The snippets with `// …` or with helpers they do not define (`quoteIdentifier`, `elementNumber`) are excerpts, which the guide does not claim to be copy-pasteable. Only the stack snippets are wrong (S1-f-R1-4).
+
+The coordinator's questions:
+1. Snippets: see above.
+2. The extension entry: every item on the design 6 list is covered, plus the `defineContract` lookups, listing extensions, runtime `dataTypes`, `DataTypeLookup.all` and the removed `validateScalarTypeCodecIds`. Three changes are missing (S1-f-R1-2). Skipping the byte-for-byte proof is not acceptable: the skill makes it a merge requirement (S1-f-R1-1). It can be done now or before the pull request opens, but the pull request must not merge without it.
+3. The app entry: it is required, because the diff since `bot/data-types-completion` changes `examples/prisma-8-demo-sqlite/src/prisma/contract.d.ts`, and `check:upgrade-coverage` maps `examples/` to the app audience. It says both true things: list every extension whose codec a TypeScript contract uses (`CONTRACT.CODEC_DESCRIPTOR_MISSING` otherwise), and re-emit SQLite contracts for the `sql/char@1` and `sql/varchar@1` aggregate rows, with no change to `contract.json`, hashes or migrations. The import path `@prisma/orm-extension-pgvector/pack` exists, and `examples/prisma-8-demo` uses it.
+4. `pgGeometryColumn` accepting SRID 0 is a finding for this slice: S1-f-R1-3, should-fix.
+5. The `contract-builder.test.ts` fix is the right end state. A codec id no pack registers cannot name a column type, so the build refuses it with `CONTRACT.CODEC_DESCRIPTOR_MISSING`, as dispatch d decided. The test asserts the code and the message, and it drops the `as any` and its biome-ignore. It passes (18 tests).
+6. Checks at `ddb0814c42`, logs under `wip/review-f1/`. `lint:docs` exits 0 (its warnings are about READMEs this slice does not touch). `lint:throws` exits 0 (40 = 40). `check:error-reference` lists all 360 codes. `check:upgrade-coverage --mode pr` passes against both `bot/data-types-completion` and the default base. The ADR index row for 171 is correct. The postgis tests pass.
+
+Every commit carries both sign-offs and no AI attribution.
 
 ### Dispatch e, round 1
 
