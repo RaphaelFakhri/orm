@@ -24,7 +24,7 @@ const deprecatedAliases = [
 ] as const;
 
 describe('mongoScalarAuthoringTypes', () => {
-  it('pins every base scalar as a zero-arg type constructor with manifest-derived nativeType', () => {
+  it('pins every base scalar as a zero-arg type constructor naming its codec', () => {
     expect(Object.keys(mongoScalarAuthoringTypes).sort()).toEqual(
       [
         ...expectedScalars.map(([name]) => name),
@@ -37,7 +37,7 @@ describe('mongoScalarAuthoringTypes', () => {
       expect(mongoScalarAuthoringTypes[name]).toEqual({
         kind: 'typeConstructor',
         documentation: expect.stringMatching(/\S/),
-        output: { codecId, nativeType: mongoDescriptorById(codecId)?.targetTypes?.[0] },
+        output: { codecId },
       });
     }
   });
@@ -68,7 +68,7 @@ describe('mongoScalarAuthoringTypes', () => {
       kind: 'typeConstructor',
       documentation:
         'A JSON value, stored as BSON object, array, string, double, int, long, bool or null; the collection validator admits only those types at the top level, and the codec refuses anything else at any depth.',
-      output: { codecId: 'mongo/json@1', nativeType: 'json' },
+      output: { codecId: 'mongo/json@1' },
     });
   });
 
@@ -77,7 +77,7 @@ describe('mongoScalarAuthoringTypes', () => {
     expect(mongoScalarAuthoringTypes['Bson']).toEqual({
       kind: 'typeConstructor',
       documentation: expect.stringContaining('the collection validator does not constrain it'),
-      output: { codecId: 'mongo/bson@1', nativeType: 'bson' },
+      output: { codecId: 'mongo/bson@1' },
     });
   });
 

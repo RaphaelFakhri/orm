@@ -1229,7 +1229,7 @@ describe('providePslCompletionItems', () => {
               String: {
                 kind: 'typeConstructor',
                 documentation: 'Variable-length Unicode text.',
-                output: { codecId: 'fixture/text@1', nativeType: 'text' },
+                output: { codecId: 'fixture/text@1' },
               },
             },
           },

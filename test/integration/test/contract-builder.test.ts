@@ -18,10 +18,12 @@ import { describe, expect, expectTypeOf, it } from 'vitest';
 import { TestSqlContractSerializer as SqlContractSerializer } from '../../../packages/2-sql/9-family/test/test-sql-contract-serializer';
 import type { Contract } from './fixtures/contract.d';
 import contractJson from './fixtures/contract.json' with { type: 'json' };
+import { postgresTypeLookups } from './postgres-type-lookups';
 
 describe('builder integration', () => {
   it('builds a contract matching fixture structure', () => {
     const contract = defineContract({
+      ...postgresTypeLookups,
       family: sqlFamilyPack,
       target: postgresPack,
       createNamespace: postgresCreateNamespace,
@@ -130,6 +132,7 @@ describe('builder integration', () => {
 
   it('contract can be validated via the SPI serializer', () => {
     const contract = defineContract({
+      ...postgresTypeLookups,
       family: sqlFamilyPack,
       target: postgresPack,
       createNamespace: postgresCreateNamespace,
@@ -151,6 +154,7 @@ describe('builder integration', () => {
 
   it('contract works with sql() function', () => {
     const contract = defineContract({
+      ...postgresTypeLookups,
       family: sqlFamilyPack,
       target: postgresPack,
       createNamespace: postgresCreateNamespace,
@@ -194,6 +198,7 @@ describe('builder integration', () => {
 
   it('ResultType inference works with builder contract', () => {
     const contract = defineContract({
+      ...postgresTypeLookups,
       family: sqlFamilyPack,
       target: postgresPack,
       createNamespace: postgresCreateNamespace,
@@ -240,6 +245,7 @@ describe('builder integration', () => {
 
   it('contract structure matches fixture contract', () => {
     const builderContract = defineContract({
+      ...postgresTypeLookups,
       family: sqlFamilyPack,
       target: postgresPack,
       createNamespace: postgresCreateNamespace,
@@ -322,6 +328,7 @@ describe('builder integration', () => {
 
   it('supports type option with column-type constants', () => {
     const contract = defineContract({
+      ...postgresTypeLookups,
       family: sqlFamilyPack,
       target: postgresPack,
       createNamespace: postgresCreateNamespace,
@@ -352,6 +359,7 @@ describe('builder integration', () => {
   it('accepts any codecId format in descriptor (validation happens at runtime)', () => {
     // Column descriptors accept any codecId format - validation happens at runtime when the contract is used, not at build time
     const contract = defineContract({
+      ...postgresTypeLookups,
       family: sqlFamilyPack,
       target: postgresPack,
       createNamespace: postgresCreateNamespace,
@@ -395,6 +403,7 @@ describe('builder integration', () => {
       }).sql({ table: 'user' });
 
       const contract = defineContract({
+        ...postgresTypeLookups,
         family: sqlFamilyPack,
         target: postgresPack,
         createNamespace: postgresCreateNamespace,
@@ -468,6 +477,7 @@ describe('builder integration', () => {
       }).sql({ table: 'user' });
 
       const contract = defineContract({
+        ...postgresTypeLookups,
         family: sqlFamilyPack,
         target: postgresPack,
         createNamespace: postgresCreateNamespace,

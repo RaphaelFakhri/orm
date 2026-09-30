@@ -21,7 +21,7 @@ const NOW_PHASE = { kind: 'generator', id: 'timestampNow' } as const;
 export const sqlTimestampPresetMirror = {
   kind: 'fieldPreset',
   args: [
-    { name: 'precision', kind: 'number', optional: true, integer: true, minimum: 0 },
+    { name: 'precision', kind: 'number', optional: true, integer: true },
     { name: 'onCreate', kind: 'option', values: ['now'], optional: true },
     { name: 'onUpdate', kind: 'option', values: ['now'], optional: true },
   ],

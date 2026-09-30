@@ -235,30 +235,24 @@ describe('storage entries', () => {
   });
 });
 
-describe('precision bounds agree between authoring and expansion', () => {
-  const precisionBearing = [
-    ['Timestamp', 'pg/timestamp-temporal@1', 'timestamp'],
-    ['Timestamptz', 'pg/timestamptz-temporal@1', 'timestamptz'],
-    ['Time', 'pg/time-temporal@1', 'time'],
-    ['Timetz', 'pg/timetz@1', 'timetz'],
-    ['TimestampString', 'pg/timestamp-string@1', 'timestamp'],
-    ['TimestamptzString', 'pg/timestamptz-string@1', 'timestamptz'],
-    ['TimeString', 'pg/time-string@1', 'time'],
-  ] as const;
-
-  it.each(precisionBearing)(
-    '%s declares a minimum its hook honours',
-    (typeName, codecId, nativeType) => {
-      const typeConstructor = postgresTargetPack.authoring.type[typeName];
-      const precisionArg = typeConstructor.args?.find((arg) => arg.name === 'precision');
-      const minimum = precisionArg?.kind === 'number' ? precisionArg.minimum : undefined;
-
-      expect(minimum, `${typeName} should declare a precision minimum`).toBeTypeOf('number');
-      expect(
-        hooks[codecId]!.expandNativeType({ nativeType, typeParams: { precision: minimum } }),
-      ).toBe(`${nativeType}(${minimum})`);
-    },
-  );
+describe('precision bounds live on the data type', () => {
+  it.each([
+    'Timestamp',
+    'Timestamptz',
+    'Time',
+    'Timetz',
+    'TimestampString',
+    'TimestamptzString',
+    'TimeString',
+  ] as const)('%s declares no bound of its own on precision', (typeName) => {
+    const typeConstructor = postgresTargetPack.authoring.type[typeName];
+    expect(typeConstructor.args?.find((arg) => arg.name === 'precision')).toEqual({
+      kind: 'number',
+      name: 'precision',
+      integer: true,
+      optional: true,
+    });
+  });
 });
 
 describe('postgres adapter query operations', () => {

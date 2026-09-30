@@ -204,10 +204,7 @@ namespace public {
 // PSL → contract helpers (mirrors rls-lifecycle-e2e.integration.test.ts)
 // ============================================================================
 
-function buildScalarTypeDescriptors(): ReadonlyMap<
-  string,
-  { codecId: string; nativeType: string }
-> {
+function buildScalarTypeDescriptors(): ReadonlyMap<string, { codecId: string }> {
   return collectScalarTypeConstructors(postgresTargetPack.authoring.type);
 }
 
