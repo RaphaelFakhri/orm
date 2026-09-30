@@ -94,6 +94,7 @@ describe('sqlOperationsToPreview', () => {
 describe('SqlControlFamilyInstance OperationPreviewCapable', () => {
   function instantiate() {
     const stack = {
+      family: sqlFamilyDescriptor,
       target: {
         targetId: 'postgres',
         familyId: 'sql',
