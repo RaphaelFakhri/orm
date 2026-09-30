@@ -1,4 +1,4 @@
-# ADR 257 — Packages offer collection scopes for their kinds of index
+# ADR 260 — Packages offer collection scopes for their kinds of index
 
 **Status:** Proposed
 **Date:** 2026-09-29

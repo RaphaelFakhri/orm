@@ -1,7 +1,7 @@
 # Query fragments, collection scopes and weighted full-text search
 
 **Linear project:** none yet.
-**Design records:** [ADR 259 — Query fragments are functions](../../docs/architecture%20docs/adrs/ADR%20259%20-%20Query%20fragments%20are%20functions.md) (Proposed) and [ADR 257 — Packages offer collection scopes for their kinds of index](../../docs/architecture%20docs/adrs/ADR%20257%20-%20Packages%20offer%20collection%20scopes%20for%20their%20kinds%20of%20index.md) (Proposed).
+**Design records:** [ADR 259 — Query fragments are functions](../../docs/architecture%20docs/adrs/ADR%20259%20-%20Query%20fragments%20are%20functions.md) (Proposed) and [ADR 260 — Packages offer collection scopes for their kinds of index](../../docs/architecture%20docs/adrs/ADR%20260%20-%20Packages%20offer%20collection%20scopes%20for%20their%20kinds%20of%20index.md) (Proposed).
 
 ## Purpose
 
