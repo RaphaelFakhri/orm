@@ -29,6 +29,19 @@ Read this first when you resume the project. It records where the work stands an
 - Verification after A01 (`wip/v3/`, local only): `build`, `typecheck`, `lint`, `lint:deps`, `check:error-reference`, `lint:framework-vocabulary`, `fixtures:check` and `check:upgrade-coverage` pass. `test:packages`: two failures pass on rerun (`completion-provider.test.ts`, the telemetry e2e test); the three tarball tests fail on the registry refusal. **`test:integration` did not finish** before the session was stopped for a rate limit. Run it again.
 - The two review reports are committed in `slice-reviews/2a/`, because `.gitignore` excludes `reviews/`.
 
+## Slice 2a review, round 2
+
+The second review is in `slice-reviews/2a-round-2/` (findings B01 to B05 and G01 to G04). Brief: `dispatches/2a-round-2-fixes-brief.md`. All findings are fixed; nothing needed the findings file.
+
+- **B01** (`5b5ce1b89b`, `2142987972`): `ControlStack` has `declaredDataTypes`, the list `assembleDataTypes` builds, with each type's contributor. `assertNothingCastsFromSqlExpression` takes that list and names the contributor in its message and payload. `createSqlFamilyInstance` and the registration test use the list. The message keeps "a list cast" for a list cast, as design 3.5 says. Tests, error reference and design 3.5 updated. The operation preview test's hand-built stack got the field; the other hand-built stacks are partial casts that never reach the family.
+- **B02** (`d671f9ae0b`): ADR 254's Assembly section says the SQL family runs its own check when it creates its control instance, so the CLI reports it and the language server does not.
+- **B03** (`597a20c65d`): `runtimeError`, `isRuntimeError` and `RuntimeErrorEnvelope` are exported from `@internal/framework-components/components`; `/codec` no longer exports `runtimeError`. `lint:deps` passes. Design 3.5 updated. The fragments did not name `/codec`.
+- **B05, G03** (`3911ae54cc`): the `json` entry documentation says "Reads the text" on both targets, in ADR 254, in the codec authoring guide and in the two test copies. ADR 254 says `@default` reports `PSL_UNKNOWN_LITERAL_TAG` at the literal; plan.md's carry-over list no longer names it.
+- **B04, G04, G02** (`7870e28f59`): spec "Adapter impact" says the family registers `sql/expression` and the targets do not. The extension fragment names `CONTRACT.DATA_TYPE_ENTRY_DUPLICATE`.
+- **G01** (`0fbf1f6414`): the registration test checks that the `sql/expression` entry comes first on both targets. The manual QA run on the tip replaces the old run; every case gives the expected result, and case 2 lists `sql, json`. The wrong status sentence is corrected.
+
+Verification (logs in the gitignored `wip/v4/`): `build`, `typecheck`, `lint`, `lint:deps`, `lint:casts` (delta 0), `lint:throws` (delta 0), `check:error-reference` (361 codes), `lint:framework-vocabulary` (272 of 272), `fixtures:check` (tree clean) and `check:upgrade-coverage` pass. Tests: framework-components 794 pass, family-sql 372 pass (after the operation preview fix; the first run failed on that stub), the integration registration test 16 pass, language server 734 pass, `sql-expression.test.ts` and `sql-attribute-specs.test.ts` pass. Manual QA: `wip/v4/manual-qa.log`. The orchestrator still has to run `test:packages` and `test:integration`.
+
 ## Slice order and tickets
 
 | Order | Plan slice | Ticket | State |
