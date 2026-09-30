@@ -196,7 +196,6 @@ export function refOf(fixture: AggregateFixture): CodecRef {
 
 const postgresDataTypeLookup = createDataTypeLookup(postgresDataTypes);
 
-/** The column types of codecs whose data type is never written as a column type. */
 const UNWRITTEN_COLUMN_TYPES: Readonly<Record<string, string>> = { 'pg/text-array@1': 'text[]' };
 
 export function nativeTypeOf(ref: CodecRef): string {

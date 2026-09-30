@@ -13,6 +13,7 @@ import {
 import { applicationDomainOf } from '@repo/test-utils';
 import { describe, expect, it } from 'vitest';
 import { PostgresControlAdapter } from '../../src/core/control-adapter';
+import { postgresComponents } from './fixtures/postgres-components';
 
 function createRefActionContract(
   onDelete?: ReferentialAction,
@@ -101,7 +102,7 @@ async function planAndGetFkSql(
     schema: emptySchema,
     policy: INIT_ADDITIVE_POLICY,
     fromContract: null,
-    frameworkComponents: [],
+    frameworkComponents: postgresComponents,
     spaceId: APP_SPACE_ID,
     snapshotsImportPath: '../../snapshots',
   });

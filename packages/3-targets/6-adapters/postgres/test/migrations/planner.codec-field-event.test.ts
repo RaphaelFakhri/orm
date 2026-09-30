@@ -5,7 +5,10 @@ import type { TargetBoundComponentDescriptor } from '@internal/framework-compone
 import { APP_SPACE_ID, type OpFactoryCall } from '@internal/framework-components/control';
 import { UNBOUND_NAMESPACE_ID } from '@internal/framework-components/ir';
 import { SqlStorage, type StorageColumn, type StorageTable } from '@internal/sql-contract/types';
-import { createPostgresBuiltinCodecLookup } from '@internal/target-postgres/codecs';
+import {
+  createPostgresBuiltinCodecLookup,
+  postgresCodecDescriptorRegistry,
+} from '@internal/target-postgres/codecs';
 import { createPostgresMigrationPlanner } from '@internal/target-postgres/planner';
 import {
   PostgresDatabaseSchemaNode,
@@ -16,6 +19,7 @@ import { applicationDomainOf } from '@repo/test-utils';
 import { expectNarrowedType } from '@repo/test-utils/typed-expectations';
 import { describe, expect, it } from 'vitest';
 import { PostgresControlAdapter } from '../../src/core/control-adapter';
+import { postgresComponents } from './fixtures/postgres-components';
 
 const emptySchema = new PostgresDatabaseSchemaNode({
   namespaces: {
@@ -74,10 +78,13 @@ function wrapOp(op: SqlMigrationPlanOperation<unknown>): OpFactoryCall {
   };
 }
 
+const textDescriptor = postgresCodecDescriptorRegistry.descriptorFor(PG_TEXT_CODEC)!;
+
 function makeFrameworkComponents(
   hooks: CodecControlHooks,
 ): ReadonlyArray<TargetBoundComponentDescriptor<'sql', string>> {
   return [
+    ...postgresComponents,
     {
       kind: 'adapter',
       id: 'test-codec',
@@ -86,6 +93,16 @@ function makeFrameworkComponents(
       version: '0.0.0-test',
       types: {
         codecTypes: {
+          codecDescriptors: [
+            {
+              codecId: HOOKED_CODEC,
+              dataType: textDescriptor.dataType,
+              traits: textDescriptor.traits,
+              paramsSchema: textDescriptor.paramsSchema,
+              isParameterized: false,
+              factory: (params: undefined) => textDescriptor.factory(params),
+            },
+          ],
           controlPlaneHooks: {
             [HOOKED_CODEC]: hooks,
           },
@@ -144,7 +161,8 @@ describe('PostgresMigrationPlanner - codec onFieldEvent wiring', () => {
   it('does not fire when no codec has an onFieldEvent hook', async () => {
     const planner = createPostgresMigrationPlanner(testAdapter);
 
-    const frameworkComponents: ReadonlyArray<TargetBoundComponentDescriptor<'sql', string>> = [];
+    const frameworkComponents: ReadonlyArray<TargetBoundComponentDescriptor<'sql', string>> =
+      postgresComponents;
 
     const result = planner.plan({
       contract: contract(

@@ -1,5 +1,4 @@
 import type { StorageHashBase } from '@internal/contract/types';
-import type { CodecControlHooks } from '@internal/family-sql/control';
 import { SqlStorage, StorageTable } from '@internal/sql-contract/types';
 import type { RawSqlLiteral } from '@internal/sql-relational-core/ast';
 import {
@@ -24,7 +23,6 @@ import { applicationDomainOf } from '@repo/test-utils';
 import { describe, expect, it } from 'vitest';
 import { createPostgresAdapter, postgresRawCodecInferer } from '../src/core/adapter';
 import { PostgresControlAdapter, parsePgReloptions } from '../src/core/control-adapter';
-import { postgresAdapterDescriptorMeta } from '../src/core/descriptor-meta';
 import { renderLoweredSql } from '../src/core/sql-renderer';
 import type { PostgresContract } from '../src/core/types';
 
@@ -95,17 +93,6 @@ describe('adapter-postgres structured error codes', () => {
     );
   });
 
-  it('raises RUNTIME.TYPE_PARAMS_INVALID for a non-positive length type param', () => {
-    const hooks = postgresAdapterDescriptorMeta.types.codecTypes.controlPlaneHooks;
-    const hookMap: ReadonlyMap<string, CodecControlHooks> = new Map(Object.entries(hooks));
-    const expand = hookMap.get('pg/varchar@1')?.expandNativeType;
-    expect(
-      structuredCodeOf(() =>
-        expand?.({ nativeType: 'character varying', typeParams: { length: 0 } }),
-      ),
-    ).toBe('RUNTIME.TYPE_PARAMS_INVALID');
-  });
-
   it('raises RUNTIME.PARAM_REF_MISSING_CODEC for a ParamRef with an unregistered codecId', () => {
     const ast = DeleteAst.from(TableSource.named('user', undefined, 'public')).withWhere(
       BinaryExpr.eq(
@@ -113,9 +100,9 @@ describe('adapter-postgres structured error codes', () => {
         ParamRef.of(1, { name: 'id', codec: { codecId: 'test/unknown@1' } }),
       ),
     );
-    expect(structuredCodeOf(() => renderLoweredSql(ast, contract, codecLookup))).toBe(
-      'RUNTIME.PARAM_REF_MISSING_CODEC',
-    );
+    expect(
+      structuredCodeOf(() => renderLoweredSql(ast, contract, codecLookup, codecLookup.dataTypes)),
+    ).toBe('RUNTIME.PARAM_REF_MISSING_CODEC');
   });
 
   it('raises RUNTIME.NAMESPACE_UNKNOWN when a table references a namespace missing from the contract', () => {
@@ -124,7 +111,7 @@ describe('adapter-postgres structured error codes', () => {
     ]);
     const error = (() => {
       try {
-        renderLoweredSql(ast, contract, codecLookup);
+        renderLoweredSql(ast, contract, codecLookup, codecLookup.dataTypes);
       } catch (e) {
         return e;
       }
@@ -139,16 +126,16 @@ describe('adapter-postgres structured error codes', () => {
 
   it('raises RUNTIME.AST_INVALID for an UPDATE with no SET assignments', () => {
     const ast = UpdateAst.table(TableSource.named('user', undefined, 'public')).withSet({});
-    expect(structuredCodeOf(() => renderLoweredSql(ast, contract, codecLookup))).toBe(
-      'RUNTIME.AST_INVALID',
-    );
+    expect(
+      structuredCodeOf(() => renderLoweredSql(ast, contract, codecLookup, codecLookup.dataTypes)),
+    ).toBe('RUNTIME.AST_INVALID');
   });
 
   it('raises RUNTIME.AST_INVALID for an INSERT with zero rows', () => {
     const ast = InsertAst.into(TableSource.named('user', undefined, 'public')).withRows([]);
-    expect(structuredCodeOf(() => renderLoweredSql(ast, contract, codecLookup))).toBe(
-      'RUNTIME.AST_INVALID',
-    );
+    expect(
+      structuredCodeOf(() => renderLoweredSql(ast, contract, codecLookup, codecLookup.dataTypes)),
+    ).toBe('RUNTIME.AST_INVALID');
   });
 
   it('raises CONTRACT.PACK_CONTRIBUTION_INVALID for a lowering template referencing a missing argument', () => {
@@ -162,9 +149,9 @@ describe('adapter-postgres structured error codes', () => {
     const ast = SelectAst.from(TableSource.named('user', undefined, 'public'))
       .withProjection([ProjectionItem.of('id', ColumnRef.of('user', 'id'))])
       .withWhere(NullCheckExpr.isNull(op));
-    expect(structuredCodeOf(() => renderLoweredSql(ast, contract, codecLookup))).toBe(
-      'CONTRACT.PACK_CONTRIBUTION_INVALID',
-    );
+    expect(
+      structuredCodeOf(() => renderLoweredSql(ast, contract, codecLookup, codecLookup.dataTypes)),
+    ).toBe('CONTRACT.PACK_CONTRIBUTION_INVALID');
   });
 
   it('raises CONTRACT.INTROSPECTION_UNSUPPORTED for a malformed index reloption entry', () => {

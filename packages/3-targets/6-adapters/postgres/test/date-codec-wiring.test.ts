@@ -13,23 +13,12 @@ describe('Postgres Date adapter wiring', () => {
     });
   });
 
-  it('declares storage and precision expansion for Date columns', () => {
+  it('declares storage for Date columns', () => {
     expect(postgresAdapterDescriptorMeta.types.storage).toContainEqual({
       typeId: codecId,
       familyId: 'sql',
       targetId: 'postgres',
       nativeType: 'timestamptz',
     });
-    const hook = postgresAdapterDescriptorMeta.types.codecTypes.controlPlaneHooks[codecId];
-    expect(hook.expandNativeType).toBeDefined();
-    expect(hook.expandNativeType?.({ nativeType: 'timestamptz' })).toBe('timestamptz');
-    for (const precision of [0, 3, 6]) {
-      expect(
-        hook.expandNativeType?.({ nativeType: 'timestamptz', typeParams: { precision } }),
-      ).toBe(`timestamptz(${precision})`);
-    }
-    expect(() =>
-      hook.expandNativeType?.({ nativeType: 'timestamptz', typeParams: { precision: -1 } }),
-    ).toThrow();
   });
 });

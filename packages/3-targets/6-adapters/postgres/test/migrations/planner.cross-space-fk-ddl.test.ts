@@ -24,6 +24,7 @@ import {
 import { applicationDomainOf } from '@repo/test-utils';
 import { describe, expect, it } from 'vitest';
 import { PostgresControlAdapter } from '../../src/core/control-adapter';
+import { postgresComponents } from './fixtures/postgres-components';
 
 const testAdapter = new PostgresControlAdapter(createPostgresBuiltinCodecLookup());
 
@@ -164,7 +165,7 @@ async function planAndGetFkExecuteSql(contract: Contract<SqlStorage>): Promise<s
     schema: emptySchema,
     policy: INIT_ADDITIVE_POLICY,
     fromContract: null,
-    frameworkComponents: [],
+    frameworkComponents: postgresComponents,
     spaceId: APP_SPACE_ID,
     snapshotsImportPath: '../../snapshots',
   });

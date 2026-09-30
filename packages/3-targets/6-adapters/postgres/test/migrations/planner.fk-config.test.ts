@@ -17,6 +17,7 @@ import {
 import { applicationDomainOf } from '@repo/test-utils';
 import { describe, expect, it } from 'vitest';
 import { PostgresControlAdapter } from '../../src/core/control-adapter';
+import { postgresComponents } from './fixtures/postgres-components';
 
 // FK1: `constraint`/`index` are authoring-time booleans materialized once at
 // `contract emit` (`buildSqlContractFromDefinition`) — a persisted contract
@@ -119,7 +120,7 @@ describe('PostgresMigrationPlanner - materialized FK/index combinations', () => 
       schema: emptySchema,
       policy: INIT_ADDITIVE_POLICY,
       fromContract: null,
-      frameworkComponents: [],
+      frameworkComponents: postgresComponents,
       spaceId: APP_SPACE_ID,
       snapshotsImportPath: '../../snapshots',
     });
@@ -139,7 +140,7 @@ describe('PostgresMigrationPlanner - materialized FK/index combinations', () => 
       schema: emptySchema,
       policy: INIT_ADDITIVE_POLICY,
       fromContract: null,
-      frameworkComponents: [],
+      frameworkComponents: postgresComponents,
       spaceId: APP_SPACE_ID,
       snapshotsImportPath: '../../snapshots',
     });
@@ -159,7 +160,7 @@ describe('PostgresMigrationPlanner - materialized FK/index combinations', () => 
       schema: emptySchema,
       policy: INIT_ADDITIVE_POLICY,
       fromContract: null,
-      frameworkComponents: [],
+      frameworkComponents: postgresComponents,
       spaceId: APP_SPACE_ID,
       snapshotsImportPath: '../../snapshots',
     });
@@ -179,7 +180,7 @@ describe('PostgresMigrationPlanner - materialized FK/index combinations', () => 
       schema: emptySchema,
       policy: INIT_ADDITIVE_POLICY,
       fromContract: null,
-      frameworkComponents: [],
+      frameworkComponents: postgresComponents,
       spaceId: APP_SPACE_ID,
       snapshotsImportPath: '../../snapshots',
     });
@@ -201,8 +202,11 @@ describe('PostgresMigrationPlanner - materialized FK/index combinations', () => 
       storageHash: coreHash('to'),
       includeStateColumn: true,
     });
+    const codecLookup = createPostgresBuiltinCodecLookup();
     const schema = contractToPostgresDatabaseSchemaNode(fromContract, {
       annotationNamespace: 'pg',
+      codecLookup,
+      dataTypes: codecLookup.dataTypes,
     });
 
     const result = planner.plan({
@@ -210,7 +214,7 @@ describe('PostgresMigrationPlanner - materialized FK/index combinations', () => 
       schema,
       policy: MIGRATION_PLAN_POLICY,
       fromContract,
-      frameworkComponents: [],
+      frameworkComponents: postgresComponents,
       spaceId: APP_SPACE_ID,
       snapshotsImportPath: '../../snapshots',
     });

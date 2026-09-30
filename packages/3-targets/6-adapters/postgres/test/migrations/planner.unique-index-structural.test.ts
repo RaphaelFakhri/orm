@@ -32,6 +32,7 @@ import {
 import { applicationDomainOf } from '@repo/test-utils';
 import { describe, expect, it } from 'vitest';
 import { PostgresControlAdapter } from '../../src/core/control-adapter';
+import { postgresComponents } from './fixtures/postgres-components';
 
 describe('PostgresMigrationPlanner - unique constraints vs indexes (structural nodes)', () => {
   const planner = createPostgresMigrationPlanner(
@@ -90,7 +91,7 @@ describe('PostgresMigrationPlanner - unique constraints vs indexes (structural n
       schema,
       policy: INIT_ADDITIVE_POLICY,
       fromContract: null,
-      frameworkComponents: [],
+      frameworkComponents: postgresComponents,
       spaceId: APP_SPACE_ID,
       snapshotsImportPath: '../../snapshots',
     });
