@@ -4,11 +4,11 @@ Read this first when you resume the project. It records where the work stands an
 
 ## State on 2026-09-30
 
-- Slice 2t (TML-3367) is on branch `tml-3367-data-type-value`, stacked on the 2a branch. Pull request: https://github.com/prisma/orm/pull/30539 (opened 2026-09-30, base `tml-3296-sql-expression-data-type`; retarget to `main` once #30534 merges). Two review rounds done, every finding fixed. Next: slice 2b (TML-3288) once 2a merges; its "Carried over" list in plan.md holds the deferred items from both 2t reviews.
+- Slice 2t (TML-3367) is on branch `tml-3367-data-type-value`, stacked on the 2a branch. Pull request: https://github.com/prisma/orm/pull/30539 (opened 2026-09-30, base `main` since #30534 merged; approved for merge by Will, auto-merge on). Two review rounds done, every finding fixed. Next: slice 2b (TML-3288) once 2a merges; its "Carried over" list in plan.md holds the deferred items from both 2t reviews.
 
-- Planning is finished. No slice has merged.
+- Planning is finished. Slice 2a merged on 2026-09-30.
 - PR #30349 (the binder) merged on 2026-09-25 and PR #30381 (block specs) on 2026-09-28. Nothing outside the project blocks it.
-- Slice 2a (TML-3296) is implemented on branch `tml-3296-sql-expression-data-type`, which also carries these project files. Two review rounds are done and every finding is fixed. Pull request: https://github.com/prisma/orm/pull/30534 (opened 2026-09-30, CI monitor on). Next: slice 2t (TML-3367) once it merges. [handover.md](handover.md) is the earlier handover and is superseded by this file.
+- Slice 2a (TML-3296) is implemented on branch `tml-3296-sql-expression-data-type`, which also carries these project files. Two review rounds are done and every finding is fixed. Pull request https://github.com/prisma/orm/pull/30534 merged to `main` on 2026-09-30 as `d0ec42633f`. [handover.md](handover.md) is the earlier handover and is superseded by this file.
 - Slice 2a changed nothing in `examples/` or `packages/3-extensions/`, so `check:upgrade-coverage` required no declaration; the two fragments under `upgrade-instructions/pending/sql-is-a-data-type/` are the ones design section 20 names.
 - The three publish-shell tarball tests (`all-shells-tarball`, `module-identity`, `cross-shell-tarball`) fail on this machine because `pnpm install` in the scratch project refuses `@vercel/detect-agent@1.2.5` as a "high-risk trust downgrade". That is the registry, not this branch. Check them in CI.
 
@@ -204,7 +204,7 @@ Logs in the gitignored `wip/2b-cd/`.
 
 | Order | Plan slice | Ticket | State |
 | --- | --- | --- | --- |
-| 1 | 2a: `sql` is the data type `sql/expression` | TML-3296 | PR #30534 open; two review rounds done, all findings fixed |
+| 1 | 2a: `sql` is the data type `sql/expression` | TML-3296 | Merged 2026-09-30 (#30534) |
 | 2 | 2t: an argument declares the data type it receives | TML-3367 | PR #30539 open against the 2a branch; two review rounds done, all findings fixed |
 | 3 | 2b: the six places take `sql` literals | TML-3288 | Dispatches (a) to (d) done on `tml-3288-sql-expression-places`; review next |
 | 4 | 3: the TypeScript builder takes `sql` values | TML-3289 | Waiting for 2b |

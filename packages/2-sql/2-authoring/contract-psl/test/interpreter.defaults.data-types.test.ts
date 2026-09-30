@@ -229,7 +229,7 @@ describe('written defaults a column refuses', () => {
       expect.objectContaining({
         code: 'PSL_VALUE_TYPE_INCOMPATIBLE',
         message:
-          'Field "N.active": This target has no data type for a boolean value; write no written form',
+          'Field "N.active": This target has no data type for a boolean value; write sql`...`',
       }),
     ]);
   });

@@ -130,7 +130,7 @@ flowchart LR
 - When the first attribute place uses `dataTypeValue`, update its doc comment: cite ADR 260 and say it also serves as a named attribute argument, not only a `funcCall` parameter.
 - The rewrite for a plain string whose text is not canonical, such as `where: "  x"`, reads back as different text; check the rewrite with `sqlTextReadsBack` (design section 11.2) before offering it.
 - Test that the Mongo provider forwards the stack's data types, in the block spec context test of design section 9.1.
-- `describeAdmittedForms` returns `no written form` for a type nothing can write, so a refusal can end `write no written form`; word that case.
+- `describeAdmittedForms` returns `no written form` for a type nothing can write. `@default` now says `` write sql`...` `` in that case, because it always takes a `sql` literal; a `dataTypeValue` position for such a type would still end `write no written form`, which is a pack bug rather than a user error, so word it as one if a place ever hits it.
 
 ## Slice 3 — The TypeScript builder takes `sql` values
 
