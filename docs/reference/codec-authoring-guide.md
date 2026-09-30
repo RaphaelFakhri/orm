@@ -326,7 +326,7 @@ Adapter composition validates erased contributions structurally through `buildPo
 
 ### Stack contribution and direct adapter injection
 
-Contribute one canonical target-typed descriptor set through the existing target-neutral stack metadata. Runtime and control descriptors for the same extension must expose the same set; when the runtime SPI also requires `codecs()`, return that canonical set there as well.
+Contribute one canonical target-typed descriptor set through the existing target-neutral stack metadata, beside the data types those descriptors represent. Runtime and control descriptors for the same extension must expose the same sets; when the runtime SPI also requires `codecs()`, return that canonical descriptor set there as well.
 
 ```ts
 const codecDescriptors = definePostgresCodecs([
@@ -335,20 +335,23 @@ const codecDescriptors = definePostgresCodecs([
 ]);
 
 const codecTypes = { codecDescriptors };
+const dataTypes = [...pgvectorDataTypes, ...postgisDataTypes];
 
 export const runtimeExtension = {
+  dataTypes,
   types: { codecTypes },
   codecs: () => codecDescriptors,
   // remaining runtime extension members
 };
 
 export const controlExtension = {
+  dataTypes,
   types: { codecTypes },
   // remaining control extension members
 };
 ```
 
-Runtime and control stacks may assemble through different framework paths, but each target adapter validates the resulting ordered descriptor set once and builds one coherent registry for ordinary codec materialization and target behavior. Bare adapters remain built-ins-only. For focused construction outside a stack, pass target-typed descriptors through the adapter's single coherent option; custom descriptors append to built-ins:
+Runtime and control stacks may assemble through different framework paths, but each target adapter validates the resulting ordered descriptor set once and builds one coherent registry for ordinary codec materialization and target behavior. Bare adapters remain built-ins-only. For focused construction outside a stack, pass target-typed descriptors through the adapter's single coherent option; custom descriptors append to built-ins. The PostgreSQL adapter also takes the data types those descriptors represent beyond the target's own, because it writes each parameter's cast from the codec's data type:
 
 ```ts
 import { createPostgresAdapter } from '@internal/adapter-postgres/adapter';
@@ -356,6 +359,7 @@ import { createSqliteAdapter } from '@internal/adapter-sqlite/adapter';
 
 const postgresAdapter = createPostgresAdapter({
   codecDescriptors: postgresExtensionCodecs,
+  dataTypes: postgresExtensionDataTypes,
 });
 
 const sqliteAdapter = createSqliteAdapter({
