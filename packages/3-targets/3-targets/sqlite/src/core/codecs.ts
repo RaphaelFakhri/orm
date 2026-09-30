@@ -45,6 +45,8 @@ import {
 import {
   sqliteBigint,
   sqliteBlob,
+  sqliteCharacter,
+  sqliteCharacterVarying,
   sqliteDatetime,
   sqliteInteger,
   sqliteJson,
@@ -234,22 +236,22 @@ const safeIntegerFromBigint = (value: bigint): number => {
 };
 
 export const sqliteSqlCharDescriptor = sqliteCodec(sqlCharDescriptor, {
-  dataType: sqliteText.id,
+  dataType: sqliteCharacter,
   jsonProjection: identityJsonProjection,
 });
 
 export const sqliteSqlVarcharDescriptor = sqliteCodec(sqlVarcharDescriptor, {
-  dataType: sqliteText.id,
+  dataType: sqliteCharacterVarying,
   jsonProjection: identityJsonProjection,
 });
 
 export const sqliteSqlIntDescriptor = sqliteCodec(sqlIntDescriptor, {
-  dataType: sqliteInteger.id,
+  dataType: sqliteInteger,
   jsonProjection: identityJsonProjection,
 });
 
 export const sqliteSqlFloatDescriptor = sqliteCodec(sqlFloatDescriptor, {
-  dataType: sqliteReal.id,
+  dataType: sqliteReal,
   jsonProjection: identityJsonProjection,
 });
 

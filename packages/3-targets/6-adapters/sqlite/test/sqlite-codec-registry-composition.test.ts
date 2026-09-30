@@ -121,7 +121,7 @@ function sqliteDescriptor(options: {
     options.transform,
   );
   return sqliteCodec(descriptor, {
-    dataType: fixtureTypeId(options.codecId),
+    dataType: dataType(fixtureTypeId(options.codecId), {}),
     jsonProjection(expression: ProjectionExpr): ProjectionExpr {
       options.onProjection?.();
       return expression;

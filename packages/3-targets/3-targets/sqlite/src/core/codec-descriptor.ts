@@ -9,12 +9,14 @@ import {
   type CodecInstanceContext,
   type CodecRef,
   type CodecTrait,
+  type DataType,
   type DataTypeId,
   validateCodecTypeParams,
 } from '@internal/framework-components/codec';
 import type { ProjectionExpr } from '@internal/sql-relational-core/ast';
 import { blindCast } from '@internal/utils/casts';
 import { structuredError } from '@internal/utils/structured-error';
+import type { StandardSchemaV1 } from '@standard-schema/spec';
 
 const SQLITE_CODEC_DESCRIPTOR_KIND = 'sqlite-codec' as const;
 
@@ -59,8 +61,11 @@ type DescriptorParams<D extends AnyCodecDescriptorTemplate> =
   D extends CodecDescriptorTemplate<infer P> ? P : never;
 
 export interface SqliteCodecOptions<P> {
-  /** The data type the adapted codec represents here. A template names none; this target does. */
-  readonly dataType: DataTypeId;
+  /**
+   * The data type the adapted codec represents here. A template names none; this target does. The
+   * adapted codec's parameter schema is this data type's, not the template's.
+   */
+  readonly dataType: DataType;
   readonly jsonProjection: (expression: ProjectionExpr, params: P) => ProjectionExpr;
 }
 
@@ -78,7 +83,7 @@ class SqliteCodecDescriptorAdapter<
   override readonly codecId: string;
   override readonly traits: readonly CodecTrait[];
   override readonly targetTypes: readonly string[];
-  override readonly paramsSchema: D['paramsSchema'];
+  override readonly paramsSchema: StandardSchemaV1<DescriptorParams<D>> | undefined;
   override readonly renderOutputType?: (params: DescriptorParams<D>) => string | undefined;
   override readonly renderInputType?: (params: DescriptorParams<D>) => string | undefined;
   override readonly renderValueLiteral?: (
@@ -91,11 +96,14 @@ class SqliteCodecDescriptorAdapter<
     private readonly options: SqliteCodecOptions<DescriptorParams<D>>,
   ) {
     super();
-    this.dataType = options.dataType;
+    this.dataType = options.dataType.id;
     this.codecId = descriptor.codecId;
     this.traits = descriptor.traits;
     this.targetTypes = descriptor.targetTypes;
-    this.paramsSchema = descriptor.paramsSchema;
+    this.paramsSchema = blindCast<
+      StandardSchemaV1<DescriptorParams<D>> | undefined,
+      'the data type the codec represents declares the parameters the codec takes'
+    >(options.dataType.params);
 
     const renderOutputType = descriptor.renderOutputType;
     if (renderOutputType !== undefined) {
@@ -111,10 +119,6 @@ class SqliteCodecDescriptorAdapter<
     if (renderValueLiteral !== undefined) {
       this.renderValueLiteral = (value, side) => renderValueLiteral.call(descriptor, value, side);
     }
-  }
-
-  override get isParameterized(): boolean {
-    return this.descriptor.isParameterized;
   }
 
   override readonly factory = (

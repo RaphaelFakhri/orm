@@ -328,10 +328,12 @@ import { sqliteCodec } from '@internal/target-sqlite/codec-descriptor';
 import { sqliteInteger } from '@internal/target-sqlite/data-types';
 
 const sqliteSqlIntDescriptor = sqliteCodec(sqlIntDescriptor, {
-  dataType: sqliteInteger.id,
+  dataType: sqliteInteger,
   jsonProjection: (expression) => expression,
 });
 ```
+
+As with `postgresCodec(...)`, the adapted codec's parameter schema is the data type's `params`.
 
 ### Target-typed tuples and structural validation
 
@@ -575,13 +577,13 @@ import { postgresCodec } from '@internal/target-postgres/codec-descriptor';
 import { pgChar } from '@internal/target-postgres/data-types';
 
 const postgresSqlCharDescriptor = postgresCodec(sqlCharDescriptor, {
-  dataType: pgChar.id,
+  dataType: pgChar,
   nativeType: () => 'character',
   jsonProjection: (expression) => expression,
 });
 ```
 
-The adapter preserves the generic codec id, params schema, traits, factory, output renderer, target types, and metadata, and adds PostgreSQL native-type and projection behavior. It also supplies the `dataType` the template itself cannot name — see [A codec whose data type depends on the target](#a-codec-whose-data-type-depends-on-the-target).
+The adapter preserves the generic codec id, traits, factory, output renderer, target types, and metadata, takes its params schema from the data type, and adds PostgreSQL native-type and projection behavior. It also supplies the `dataType` the template itself cannot name — see [A codec whose data type depends on the target](#a-codec-whose-data-type-depends-on-the-target).
 
 When PostgreSQL owns a distinct codec id, define a `PostgresCodecDescriptor` subclass and delegate only the reusable SQL behavior explicitly:
 
@@ -599,7 +601,7 @@ class PgCharDescriptor extends PostgresCodecDescriptor<LengthParams> {
   override readonly codecId = 'pg/char@1' as const;
   override readonly targetTypes = ['character'] as const;
   override readonly traits = sqlCharDescriptor.traits;
-  override readonly paramsSchema = sqlCharDescriptor.paramsSchema;
+  override readonly paramsSchema = pgCharacterLengthParams;
 
   override renderOutputType(params: LengthParams): string | undefined {
     return sqlCharDescriptor.renderOutputType(params);

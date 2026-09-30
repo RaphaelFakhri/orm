@@ -2,6 +2,7 @@ import type {
   AnyCodecDescriptorTemplate,
   CodecInstanceContext,
   CodecRef,
+  DataType,
 } from '@internal/framework-components/codec';
 import {
   CaseExpr,
@@ -33,6 +34,12 @@ import {
   sqliteSqlVarcharDescriptor,
   sqliteTextDescriptor,
 } from '../src/core/codecs';
+import {
+  sqliteCharacter,
+  sqliteCharacterVarying,
+  sqliteInteger,
+  sqliteReal,
+} from '../src/core/data-types';
 import { sqliteCodecDescriptorRegistry, sqliteCodecRegistry } from '../src/core/registry';
 
 const EXPECTED_CODEC_IDS = [
@@ -82,25 +89,37 @@ describe('SQLite built-in codec descriptors', () => {
     const cases: ReadonlyArray<{
       descriptor: AnySqliteCodecDescriptor;
       rawDescriptor: AnyCodecDescriptorTemplate;
+      dataType: DataType;
       typeParams?: CodecRef['typeParams'];
     }> = [
       {
         descriptor: sqliteSqlCharDescriptor,
         rawDescriptor: sqlCharDescriptor,
+        dataType: sqliteCharacter,
         typeParams: { length: 12 },
       },
       {
         descriptor: sqliteSqlVarcharDescriptor,
         rawDescriptor: sqlVarcharDescriptor,
+        dataType: sqliteCharacterVarying,
         typeParams: { length: 120 },
       },
-      { descriptor: sqliteSqlIntDescriptor, rawDescriptor: sqlIntDescriptor },
-      { descriptor: sqliteSqlFloatDescriptor, rawDescriptor: sqlFloatDescriptor },
+      {
+        descriptor: sqliteSqlIntDescriptor,
+        rawDescriptor: sqlIntDescriptor,
+        dataType: sqliteInteger,
+      },
+      {
+        descriptor: sqliteSqlFloatDescriptor,
+        rawDescriptor: sqlFloatDescriptor,
+        dataType: sqliteReal,
+      },
     ];
 
-    for (const { descriptor, rawDescriptor, typeParams } of cases) {
+    for (const { descriptor, rawDescriptor, dataType, typeParams } of cases) {
       expect(descriptor.codecId).toBe(rawDescriptor.codecId);
-      expect(descriptor.paramsSchema).toBe(rawDescriptor.paramsSchema);
+      expect(descriptor.dataType).toBe(dataType.id);
+      expect(descriptor.paramsSchema).toBe(dataType.params);
       expect(descriptor.projectJson(expression, refFor(descriptor, typeParams))).toBe(expression);
     }
 

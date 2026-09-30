@@ -6,6 +6,7 @@ import {
   CodecImpl,
   type CodecInstanceContext,
   type CodecTrait,
+  dataType,
   dataTypeId,
 } from '@internal/framework-components/codec';
 import { FunctionCallExpr, type ProjectionExpr } from '@internal/sql-relational-core/ast';
@@ -102,7 +103,7 @@ class DirectVectorDescriptor extends SqliteCodecDescriptor<VectorParams> {
 const genericDescriptor = new GenericVectorDescriptor();
 const directDescriptor = new DirectVectorDescriptor();
 const adaptedDescriptor = sqliteCodec(genericDescriptor, {
-  dataType: dataTypeId('demo/fixture'),
+  dataType: dataType('demo/fixture', {}),
   jsonProjection(expression, params) {
     expectTypeOf(expression).toEqualTypeOf<ProjectionExpr>();
     expectTypeOf(params).toEqualTypeOf<VectorParams>();

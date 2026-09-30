@@ -1,5 +1,5 @@
 import type { Codec } from '@internal/framework-components/codec';
-import { CodecDescriptorImpl, dataTypeId } from '@internal/framework-components/codec';
+import { CodecDescriptorImpl, dataType, dataTypeId } from '@internal/framework-components/codec';
 import { UNBOUND_NAMESPACE_ID } from '@internal/framework-components/ir';
 import { SqlStorage, type StorageTableInput } from '@internal/sql-contract/types';
 import type { ContractCodecRegistry } from '@internal/sql-relational-core/ast';
@@ -294,7 +294,7 @@ class ExtTransformDescriptor extends CodecDescriptorImpl<void> {
 }
 
 const extTransformDescriptor = sqliteCodec(new ExtTransformDescriptor(), {
-  dataType: dataTypeId('demo/fixture'),
+  dataType: dataType('demo/fixture', {}),
   jsonProjection: (expression) => expression,
 });
 

@@ -1,18 +1,22 @@
 /**
- * The data types this target owns, with the casts that say which other types' values each one takes.
+ * The data types this target owns: the text a migration writes for each one, its parameters and
+ * their normal form, and the casts that say which other types' values each one takes.
  *
  * SQLite's storage classes are shared by several logical types, so the target declares the types it
  * distinguishes rather than one per storage class: `sqlite/integer` and `sqlite/bigint` are
  * distinct although both store as INTEGER, and `sqlite/text`, `sqlite/datetime` and `sqlite/json`
- * are distinct although all store as TEXT.
+ * are distinct although all store as TEXT. No text is marked as the catalog's, so none of them
+ * claims a type the database reports.
  *
  * ADR 254.
  */
 
 import type { JsonValue } from '@internal/contract/types';
-import { type Cast, type DataType, dataType } from '@internal/framework-components/codec';
+import type { Cast, DataType } from '@internal/framework-components/codec';
+import { sqlDataType } from '@internal/sql-contract/data-type';
 import { numeralText } from '@internal/sql-relational-core/ast';
 import { structuredError } from '@internal/utils/structured-error';
+import { type as arktype } from 'arktype';
 
 const unchanged: Cast = (value) => value;
 
@@ -49,24 +53,50 @@ const asReal: Cast = (value) => {
   );
 };
 
-export const sqliteText: DataType = dataType('sqlite/text', {});
-export const sqliteJson: DataType = dataType('sqlite/json', {});
-export const sqliteInteger: DataType = dataType('sqlite/integer', {});
+/** A type written by `name` and nothing else. */
+const writtenAs = (id: string, name: string, casts: Readonly<Record<string, Cast>> = {}) =>
+  sqlDataType(id, { texts: [{ text: name, written: true }], casts });
 
-export const sqliteDatetime: DataType = dataType('sqlite/datetime', {
+export const sqliteText = writtenAs('sqlite/text', 'text');
+export const sqliteJson = writtenAs('sqlite/json', 'text');
+export const sqliteInteger = writtenAs('sqlite/integer', 'integer');
+
+export const sqliteDatetime = writtenAs('sqlite/datetime', 'text', {
+  [sqliteText.id]: unchanged,
+});
+
+export const sqliteBlob = writtenAs('sqlite/blob', 'blob', { [sqliteText.id]: unchanged });
+
+export const sqliteBigint = writtenAs('sqlite/bigint', 'integer', {
+  [sqliteInteger.id]: asNumeralText,
+});
+
+export const sqliteReal = writtenAs('sqlite/real', 'real', {
+  [sqliteInteger.id]: asReal,
+  [sqliteBigint.id]: asReal,
+});
+
+/** The length of `character` and `character varying`, which SQLite accepts and does not enforce. */
+export const sqliteCharacterLengthParams = arktype({ 'length?': 'number.integer >= 1' });
+
+/** A character type is written without its length, so its normal form has none. */
+const withoutLength = <Params extends { readonly length?: number }>({
+  length: _length,
+  ...rest
+}: Params) => rest;
+
+export const sqliteCharacter = sqlDataType('sqlite/character', {
+  params: sqliteCharacterLengthParams,
+  texts: [{ text: 'character', written: true }],
+  normalize: withoutLength,
   casts: { [sqliteText.id]: unchanged },
 });
 
-export const sqliteBlob: DataType = dataType('sqlite/blob', {
+export const sqliteCharacterVarying = sqlDataType('sqlite/character-varying', {
+  params: sqliteCharacterLengthParams,
+  texts: [{ text: 'character varying', written: true }],
+  normalize: withoutLength,
   casts: { [sqliteText.id]: unchanged },
-});
-
-export const sqliteBigint: DataType = dataType('sqlite/bigint', {
-  casts: { [sqliteInteger.id]: asNumeralText },
-});
-
-export const sqliteReal: DataType = dataType('sqlite/real', {
-  casts: { [sqliteInteger.id]: asReal, [sqliteBigint.id]: asReal },
 });
 
 /** Every data type this target registers. */
@@ -78,4 +108,6 @@ export const sqliteDataTypes: readonly DataType[] = [
   sqliteBlob,
   sqliteBigint,
   sqliteReal,
+  sqliteCharacter,
+  sqliteCharacterVarying,
 ];
