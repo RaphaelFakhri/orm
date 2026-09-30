@@ -1,5 +1,6 @@
 import { dataType } from '@internal/framework-components/codec';
 import { InternalError } from '@internal/utils/internal-error';
+import { type } from 'arktype';
 import { describe, expect, it } from 'vitest';
 import {
   dataTypeParams,
@@ -145,6 +146,19 @@ describe('renderSqlTypeName', () => {
 
   it('refuses to write a type that is never written', () => {
     expect(() => renderSqlTypeName(textArray, {})).toThrow(invalidParams);
+  });
+
+  it('refuses a placeholder value that is not an integer, so nothing else is written into the name', () => {
+    const labelled = sqlDataType('t/labelled', {
+      params: type({ label: 'string' }),
+      texts: [{ text: 'labelled({label})', written: true }],
+    });
+    expect(() => renderSqlTypeName(labelled, { label: '1); DROP TABLE users; --' })).toThrow(
+      expect.objectContaining({
+        code: 'CONTRACT.TYPE_PARAMS_INVALID',
+        meta: { dataType: 't/labelled', parameters: ['label'] },
+      }),
+    );
   });
 });
 

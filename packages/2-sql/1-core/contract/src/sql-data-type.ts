@@ -276,10 +276,22 @@ function pickText<Params extends SqlTypeParams>(
   );
 }
 
-function substitute(text: SqlTypeText, params: SqlTypeParams): string {
-  return (text.display ?? text.text).replace(PLACEHOLDER, (_, name: string) =>
-    String(params[name]),
-  );
+function substitute<Params extends SqlTypeParams>(
+  type: SqlDataType<Params>,
+  text: SqlTypeText,
+  params: SqlTypeParams,
+): string {
+  return (text.display ?? text.text).replace(PLACEHOLDER, (_, name: string) => {
+    const value = params[name];
+    if (!Number.isSafeInteger(value)) {
+      throw contractError(
+        'CONTRACT.TYPE_PARAMS_INVALID',
+        `${type.id}: the parameter ${name} is written into the type name and must be an integer`,
+        { meta: { dataType: type.id, parameters: [name] } },
+      );
+    }
+    return String(value);
+  });
 }
 
 /** The name of `type` with no parameters, for places where parameters must not appear. */
@@ -384,7 +396,7 @@ export function renderSqlTypeName<Params extends SqlTypeParams>(
   if (type.sql.render !== undefined) return type.sql.render(validated);
   const normalized = type.sql.normalize(validated);
   const keys = presentKeys(params).filter((key) => Object.hasOwn(normalized, key));
-  return substitute(pickText(type, 'written', keys), params);
+  return substitute(type, pickText(type, 'written', keys), params);
 }
 
 /** The text the database catalog prints for `type` with `params`, in their normal form. */
@@ -399,7 +411,7 @@ export function renderSqlCatalogText<Params extends SqlTypeParams>(
     );
   }
   const normalized = type.sql.normalize(validated);
-  return substitute(pickText(type, 'catalog', presentKeys(normalized)), normalized);
+  return substitute(type, pickText(type, 'catalog', presentKeys(normalized)), normalized);
 }
 
 function prepareReportedText(text: string): string {

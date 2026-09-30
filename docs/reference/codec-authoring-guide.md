@@ -508,7 +508,7 @@ export const pgNumeric = sqlDataType('pg/numeric', {
 });
 ```
 
-A column with `{ precision: 10 }` is written `numeric(10)`, and one with `{ precision: 10, scale: 2 }` is written `numeric(10,2)`. Parameters that fail the schema, or that no `written` text takes, are refused with `CONTRACT.TYPE_PARAMS_INVALID`. `normalize` returns the normal form of a type's parameters, so that two ways of writing the same database type compare equal: PostgreSQL reports `numeric(10)` as `numeric(10,0)`. A type without `normalize` keeps its parameters as they are.
+A column with `{ precision: 10 }` is written `numeric(10)`, and one with `{ precision: 10, scale: 2 }` is written `numeric(10,2)`. Parameters that fail the schema, or that no `written` text takes, are refused with `CONTRACT.TYPE_PARAMS_INVALID`. A placeholder is written only with an integer value; any other value is refused with the same code, so a parameter can never write other SQL into a migration. `normalize` returns the normal form of a type's parameters, so that two ways of writing the same database type compare equal: PostgreSQL reports `numeric(10)` as `numeric(10,0)`. A type without `normalize` keeps its parameters as they are.
 
 A codec's `paramsSchema` is its data type's `params`, referenced and never restated, so a bound has one home:
 
@@ -560,7 +560,7 @@ export const pgEnum = sqlDataType('pg/enum', {
 });
 ```
 
-`render` and `fromReported` are allowed only with `claimsKind`, and a type with `claimsKind` declares no `texts`.
+`render` and `fromReported` are allowed only with `claimsKind`, and a type with `claimsKind` declares no `texts`. A migration writes what `render` returns without further checks, so `render` must quote every parameter value it writes, as `pg/enum` does with `quoteIdentifier`.
 
 #### Casts
 
