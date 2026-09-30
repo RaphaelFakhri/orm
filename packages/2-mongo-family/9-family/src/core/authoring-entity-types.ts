@@ -6,6 +6,7 @@ import {
   type ParsedPslExtensionBlock,
   resolveEnumCodecId,
 } from '@internal/framework-components/authoring';
+import { bsonTypesOfCodec } from '@internal/mongo-contract';
 import { type EnumTypeHandle, enumType } from '@internal/mongo-contract-ts/contract-builder';
 import type { InferBlock, PslBlockSpecDescriptor } from '@internal/psl-parser';
 import { blockAttribute, jsonValue, mapBlock, str } from '@internal/psl-parser';
@@ -39,7 +40,10 @@ export const mongoFamilyEnumEntityDescriptor = {
       }
       const { codecId, codecSpan } = resolved;
 
-      const bsonTypes = ctx.codecLookup?.targetTypesFor(codecId);
+      const bsonTypes =
+        ctx.dataTypes === undefined
+          ? undefined
+          : bsonTypesOfCodec(codecId, { codecLookup: ctx.codecLookup, dataTypes: ctx.dataTypes });
       if (bsonTypes === undefined) {
         diagnostics?.push({
           code: 'PSL_EXTENSION_INVALID_VALUE',
@@ -64,7 +68,7 @@ export const mongoFamilyEnumEntityDescriptor = {
       if (codec === undefined) {
         diagnostics?.push({
           code: 'PSL_EXTENSION_INVALID_VALUE',
-          message: `enum "${block.name}" @@type codec "${codecId}" resolves in targetTypesFor but is absent from codecLookup.get`,
+          message: `enum "${block.name}" @@type codec "${codecId}" is registered but codecLookup.get has no codec for it`,
           sourceId,
           span: codecSpan,
         });

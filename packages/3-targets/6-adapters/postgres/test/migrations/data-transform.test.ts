@@ -228,7 +228,6 @@ const transformingCodecDescriptor: AnyCodecDescriptor = {
   codecId: TEST_CODEC_ID,
   dataType: dataTypeId('demo/fixture'),
   traits: [],
-  targetTypes: ['text'],
   paramsSchema: undefined,
   isParameterized: false,
   factory: () => () => transformingCodec,

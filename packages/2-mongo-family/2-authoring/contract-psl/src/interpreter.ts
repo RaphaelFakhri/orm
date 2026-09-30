@@ -28,7 +28,7 @@ import {
   isAuthoringEntityTypeDescriptor,
   isAuthoringTypeConstructorDescriptor,
 } from '@internal/framework-components/authoring';
-import type { CodecLookup } from '@internal/framework-components/codec';
+import type { CodecLookup, DataTypeLookup } from '@internal/framework-components/codec';
 import type { ControlDefaultRegistries } from '@internal/framework-components/control';
 import { UNBOUND_NAMESPACE_ID } from '@internal/framework-components/ir';
 import {
@@ -100,6 +100,7 @@ export interface InterpretPslDocumentToMongoContractInput {
   readonly scalarTypeCodecIds: ReadonlyMap<string, string>;
   readonly controlMutationDefaults: ControlDefaultRegistries;
   readonly codecLookup?: CodecLookup;
+  readonly dataTypeLookup: DataTypeLookup;
   readonly seedDiagnostics?: readonly ContractSourceDiagnostic[];
   readonly authoringContributions?: AuthoringContributions;
   readonly composedExtensions?: readonly string[];
@@ -1253,6 +1254,7 @@ export function interpretPslDocumentToMongoContract(
       target: 'mongo',
       ...ifDefined('enumInferenceCodecs', input.enumInferenceCodecs),
       ...ifDefined('codecLookup', codecLookup),
+      dataTypes: input.dataTypeLookup,
       diagnostics: {
         push: (d) => {
           diagnostics.pushExternal(
@@ -1571,6 +1573,7 @@ export function interpretPslDocumentToMongoContract(
         modelEntry.fields,
         modelEntry.discriminator.field,
         variantEntries,
+        input.dataTypeLookup,
         valueObjects,
         codecLookup,
         storageValueSets,
@@ -1578,6 +1581,7 @@ export function interpretPslDocumentToMongoContract(
     } else {
       coll['validator'] = deriveJsonSchema(
         modelEntry.fields,
+        input.dataTypeLookup,
         valueObjects,
         codecLookup,
         storageValueSets,

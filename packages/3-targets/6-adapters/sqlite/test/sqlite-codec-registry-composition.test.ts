@@ -92,7 +92,6 @@ class TestCodec extends CodecImpl<string, readonly ['equality'], string, string>
 class TestGenericDescriptor extends CodecDescriptorImpl<void> {
   override readonly dataType = dataTypeId('demo/fixture');
   override readonly traits = ['equality'] as const;
-  override readonly targetTypes = ['text'] as const;
   override readonly paramsSchema = undefined;
 
   constructor(
@@ -364,7 +363,6 @@ describe('SQLite adapter codec registry composition', () => {
       ...raw,
       codecId: 'app/wrong-target@1',
       traits: raw.traits,
-      targetTypes: raw.targetTypes,
       paramsSchema: raw.paramsSchema,
       isParameterized: raw.isParameterized,
       factory: raw.factory.bind(raw),

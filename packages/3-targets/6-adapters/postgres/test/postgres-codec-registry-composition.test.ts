@@ -96,7 +96,6 @@ function genericDescriptor(codecId: string): AnyCodecDescriptorTemplate {
   return {
     codecId,
     traits: ['equality'],
-    targetTypes: [],
     paramsSchema: undefined,
     isParameterized: false,
     factory: () => () => codec,
@@ -131,7 +130,6 @@ function transformingPostgresDescriptor(
   const descriptor: AnyCodecDescriptorTemplate = {
     codecId,
     traits: ['equality'],
-    targetTypes: [nativeType],
     paramsSchema: undefined,
     isParameterized: false,
     factory: () => () => {

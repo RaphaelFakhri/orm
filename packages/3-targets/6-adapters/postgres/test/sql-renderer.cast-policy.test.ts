@@ -37,7 +37,6 @@ function genericDescriptor(codecId: string): AnyCodecDescriptorTemplate {
   return {
     codecId,
     traits: ['equality'],
-    targetTypes: [],
     paramsSchema: undefined,
     isParameterized: false,
     factory: () => () => codec,

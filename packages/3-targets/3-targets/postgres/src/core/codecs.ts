@@ -453,9 +453,7 @@ export class PgEnumDescriptor extends PostgresCodecDescriptor<PgEnumParams> {
    * builder resolves a column before it knows its model's namespace), so it is
    * applied later, at contract construction, by {@link qualifyNativeType} via
    * the target's `authoring.qualifyColumnType` hook. `nativeType` mirrors
-   * `typeParams.typeName` — the same value `nativeTypeFor` derives at render
-   * time — so the column's declared native type and the render-time cast
-   * agree. Returns `undefined` if `entity` is not a `PostgresNativeEnum` (a
+   * `typeParams.typeName`, the name the `pg/enum` data type writes. Returns `undefined` if `entity` is not a `PostgresNativeEnum` (a
    * contributor bug, not a user-schema error — the caller decides how to
    * report it).
    */

@@ -41,8 +41,14 @@ import type { PostgresContract } from '@internal/adapter-postgres/types';
 import { computeProfileHash, computeStorageHash } from '@internal/contract/hashing';
 import type { JsonValue } from '@internal/contract/types';
 import { UNBOUND_DOMAIN_NAMESPACE_ID } from '@internal/contract/types';
+import { isPlainRecord } from '@internal/contract/is-plain-record';
 import type { CodecRef } from '@internal/framework-components/codec';
-import { validateCodecTypeParams } from '@internal/framework-components/codec';
+import { createDataTypeLookup, validateCodecTypeParams } from '@internal/framework-components/codec';
+import {
+  dataTypeParams,
+  sqlBaseName,
+  sqlDataTypeOfCodec,
+} from '@internal/sql-contract/data-type';
 import { SqlStorage } from '@internal/sql-contract/types';
 import {
   CastExpr,
@@ -55,6 +61,7 @@ import {
 } from '@internal/sql-relational-core/ast';
 import type { AnyPostgresCodecDescriptor } from '@internal/target-postgres/codec-descriptor';
 import { postgresCodecDescriptorRegistry } from '@internal/target-postgres/codecs';
+import { postgresDataTypes } from '@internal/target-postgres/data-types';
 import { ifDefined } from '@internal/utils/defined';
 import { structuredError } from '@internal/utils/structured-error';
 
@@ -239,6 +246,8 @@ function descriptorFor(conformanceCase: PostgresCodecConformanceCase) {
  * Builds `SELECT CAST(json_build_object('value', <projection>) AS text)`, so the
  * document arrives as text and the harness — not the driver — owns the parse.
  */
+const postgresDataTypeLookup = createDataTypeLookup(postgresDataTypes);
+
 export function buildProjectionSql(conformanceCase: PostgresCodecConformanceCase): string {
   const descriptor = descriptorFor(conformanceCase);
   const projection = descriptor.projectJson(
@@ -252,7 +261,12 @@ export function buildProjectionSql(conformanceCase: PostgresCodecConformanceCase
     ProjectionItem.of(DOCUMENT_ALIAS, CastExpr.as(document, 'text')),
   ]);
 
-  return renderLoweredSql(select, conformanceContract, postgresCodecDescriptorRegistry).sql;
+  return renderLoweredSql(
+    select,
+    conformanceContract,
+    postgresCodecDescriptorRegistry,
+    postgresDataTypeLookup,
+  ).sql;
 }
 
 type ElementCodec = {
@@ -332,7 +346,14 @@ export async function runPostgresCodecProjection(
   for (const statement of conformanceCase.setupSql ?? []) {
     await connection.query(statement);
   }
-  const elementType = descriptor.nativeTypeFor(ref);
+  const dataType = sqlDataTypeOfCodec(ref.codecId, {
+    codecLookup: postgresCodecDescriptorRegistry,
+    dataTypeLookup: postgresDataTypeLookup,
+  });
+  const elementType = sqlBaseName(
+    dataType,
+    dataTypeParams(dataType, isPlainRecord(ref.typeParams) ? ref.typeParams : undefined),
+  );
   const columnType = conformanceCase.many === true ? `${elementType}[]` : elementType;
   await connection.query(`CREATE TABLE "${STORAGE_TABLE}" ("${VALUE_COLUMN}" ${columnType})`);
 

@@ -6,6 +6,7 @@ const postgisRuntimeDescriptor: SqlRuntimeExtensionDescriptor<'postgres'> = {
   kind: 'extension' as const,
   id: postgisPackMeta.id,
   version: postgisPackMeta.version,
+  dataTypes: postgisPackMeta.dataTypes,
   familyId: 'sql' as const,
   targetId: 'postgres' as const,
   // Expose the unified descriptor list so `extractCodecLookup` reads

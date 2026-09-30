@@ -61,7 +61,6 @@ const codecLookup: CodecLookup = {
       decodeJson: (j: unknown) => j,
     } as ReturnType<CodecLookup['get']>;
   },
-  targetTypesFor: (id: string) => mongoTargetTypes[id],
   renderOutputTypeFor: () => undefined,
   // Enum field types are produced through the codec seam (TML-2952): the emitter
   // renders each value-set value via `renderValueLiteralFor`. `mongo/string@1` is an

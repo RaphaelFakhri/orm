@@ -32,7 +32,6 @@ const codecLookup: CodecLookup = {
       decodeJson: (j: unknown) => j,
     } as ReturnType<CodecLookup['get']>;
   },
-  targetTypesFor: (id: string) => targetTypes[id],
   renderOutputTypeFor: () => undefined,
 };
 

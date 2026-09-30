@@ -124,7 +124,6 @@ export class SqliteControlAdapter implements SqlControlAdapter<'sqlite'> {
   }
 
   readonly normalizeDefault = parseSqliteDefault;
-  readonly normalizeNativeType = normalizeSqliteNativeType;
 
   bootstrapControlTableQueries(): readonly DdlNode[] {
     return buildControlTableBootstrapQueries();

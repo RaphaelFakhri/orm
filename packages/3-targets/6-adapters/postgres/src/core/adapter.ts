@@ -91,7 +91,7 @@ class PostgresAdapterImpl
         { meta: { surface: 'runtime-adapter' } },
       );
     }
-    return renderLoweredSql(ast, context.contract, this.codecRegistry);
+    return renderLoweredSql(ast, context.contract, this.codecRegistry, this.codecRegistry.dataTypes);
   }
 }
 
@@ -139,7 +139,10 @@ export const postgresRawCodecInferer: RawCodecInferer = {
 };
 
 export function createPostgresAdapter(options?: PostgresAdapterOptions) {
-  const codecRegistry = createPostgresCodecRegistryWithBuiltins(options?.codecDescriptors);
+  const codecRegistry = createPostgresCodecRegistryWithBuiltins(
+    options?.codecDescriptors,
+    options?.dataTypes,
+  );
   return Object.freeze(new PostgresAdapterImpl(codecRegistry, options?.profileId));
 }
 

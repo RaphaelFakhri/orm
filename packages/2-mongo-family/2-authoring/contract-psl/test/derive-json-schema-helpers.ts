@@ -30,7 +30,6 @@ export const mongoCodecLookup: CodecLookup = {
       decodeJson: (j: unknown) => j,
     } as ReturnType<CodecLookup['get']>;
   },
-  targetTypesFor: (id: string) => mongoTargetTypes[id],
   renderOutputTypeFor: () => undefined,
 };
 

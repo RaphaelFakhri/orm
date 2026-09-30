@@ -229,6 +229,18 @@
       "plane": "runtime"
     },
     {
+      "glob": "packages/3-targets/3-targets/postgres/src/core/**",
+      "domain": "extensions",
+      "layer": "targets",
+      "plane": "shared"
+    },
+    {
+      "glob": "packages/3-targets/3-targets/postgres/src/exports/data-types.ts",
+      "domain": "extensions",
+      "layer": "targets",
+      "plane": "shared"
+    },
+    {
       "glob": "packages/3-targets/3-targets/postgres/src/exports/control.ts",
       "domain": "extensions",
       "layer": "targets",

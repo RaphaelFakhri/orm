@@ -42,7 +42,6 @@ const transformingDescriptor: AnySqliteCodecDescriptor = {
   codecId: 'test/transform@1',
   dataType: dataTypeId('test/transform'),
   traits: [],
-  targetTypes: ['TEXT'],
   paramsSchema: undefined,
   isParameterized: false,
   factory: () => () => transformingCodec,
@@ -279,7 +278,6 @@ class ExtTransformDescriptor extends CodecDescriptorImpl<void> {
   override readonly dataType = dataTypeId('demo/fixture');
   override readonly codecId = EXT_CODEC_ID;
   override readonly traits = [] as const;
-  override readonly targetTypes = ['TEXT'] as const;
   override readonly paramsSchema = undefined;
   override factory(): (ctx: object) => Codec {
     return () =>

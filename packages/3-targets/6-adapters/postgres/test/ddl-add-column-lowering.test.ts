@@ -145,7 +145,6 @@ describe('PostgresAlterTable ADD COLUMN lowering', () => {
     const descriptor = {
       codecId: 'test/vector@1',
       traits: ['equality'],
-      targetTypes: ['vector'],
       isParameterized: true,
       paramsSchema: {
         '~standard': { version: 1, vendor: 'test', validate: (value: unknown) => ({ value }) },

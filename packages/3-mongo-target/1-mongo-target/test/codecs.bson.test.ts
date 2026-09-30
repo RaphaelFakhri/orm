@@ -275,7 +275,6 @@ describe('mongo/bson@1 descriptor', () => {
     expect(descriptor).toMatchObject({
       codecId: 'mongo/bson@1',
       dataType: 'mongo/bson',
-      targetTypes: [],
       traits: [],
     });
     expect(descriptor).not.toHaveProperty('renderOutputType');

@@ -5,7 +5,12 @@
  * ADR 254.
  */
 
-import type { DataType, DataTypeSpec } from '@internal/framework-components/codec';
+import type {
+  CodecLookup,
+  DataType,
+  DataTypeLookup,
+  DataTypeSpec,
+} from '@internal/framework-components/codec';
 import { dataType } from '@internal/framework-components/codec';
 
 export interface MongoDataTypeSpec extends Pick<DataTypeSpec, 'params' | 'casts'> {
@@ -22,4 +27,20 @@ export function mongoDataType(id: string, spec: MongoDataTypeSpec): MongoDataTyp
 
 export function isMongoDataType(type: DataType): type is MongoDataType {
   return 'bsonTypes' in type;
+}
+
+/**
+ * The BSON types a value of the codec `codecId` is stored as, read from the data type the codec
+ * represents; undefined when the stack registers no such codec or Mongo data type.
+ */
+export function bsonTypesOfCodec(
+  codecId: string,
+  lookups: {
+    readonly codecLookup: Pick<CodecLookup, 'descriptorFor'> | undefined;
+    readonly dataTypes: Pick<DataTypeLookup, 'get'>;
+  },
+): readonly string[] | undefined {
+  const descriptor = lookups.codecLookup?.descriptorFor?.(codecId);
+  const type = descriptor === undefined ? undefined : lookups.dataTypes.get(descriptor.dataType);
+  return type !== undefined && isMongoDataType(type) ? type.bsonTypes : undefined;
 }
