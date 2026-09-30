@@ -95,6 +95,7 @@ function interpretWithSymbolDiagnostics(
       sources,
       pslBlockDescriptors: assembled.pslBlockDescriptors,
       binder: blockResolutionBinder(symbolTable, sources),
+      dataTypes: EMPTY_DATA_TYPES,
     }).diagnostics,
   ];
 

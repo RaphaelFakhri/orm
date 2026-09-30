@@ -1,4 +1,4 @@
-import { blockSpecFactoryOf, buildSymbolTable } from '@internal/psl-parser';
+import { blockSpecFactoryOf, buildSymbolTable, EMPTY_DATA_TYPES } from '@internal/psl-parser';
 import { parse } from '@internal/psl-parser/syntax';
 import { describe, expect, it } from 'vitest';
 import { postgresAuthoringPslBlockDescriptors } from '../src/core/authoring';
@@ -11,7 +11,7 @@ function specContext() {
   });
   const block = symbolTable.topLevel.blocks['docs_probe'];
   if (block === undefined) throw new Error('expected the probe role block in the symbol table');
-  return { symbols: symbolTable, block };
+  return { symbols: symbolTable, block, dataTypes: EMPTY_DATA_TYPES };
 }
 
 describe('PostgreSQL block documentation', () => {

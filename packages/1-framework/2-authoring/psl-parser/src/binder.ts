@@ -273,6 +273,7 @@ export function createBinder(options: CreateBinderOptions): BinderResult {
   const blockContext = {
     pslBlockDescriptors,
     symbolTable,
+    dataTypes,
     sources,
     references,
     diagnostics,
@@ -301,12 +302,17 @@ interface ReferenceContext {
 interface BlockBindContext extends ReferenceContext {
   readonly pslBlockDescriptors: AuthoringPslBlockDescriptorNamespace;
   readonly symbolTable: SymbolTable;
+  readonly dataTypes: DataTypeSupport;
 }
 
 function bindBlock(block: BlockSymbol, ctx: BlockBindContext): void {
   const descriptor = findBlockDescriptor(ctx.pslBlockDescriptors, block.keyword);
   if (descriptor === undefined) return;
-  const spec = blockSpecFactoryOf(descriptor)({ symbols: ctx.symbolTable, block });
+  const spec = blockSpecFactoryOf(descriptor)({
+    symbols: ctx.symbolTable,
+    block,
+    dataTypes: ctx.dataTypes,
+  });
 
   for (const entry of block.node.entries()) {
     const key = entry.key()?.name();
@@ -330,7 +336,7 @@ function bindBlock(block: BlockSymbol, ctx: BlockBindContext): void {
     const attributeSpec = blindCast<
       BlockAttributeSpecFactory,
       'framework core cannot name AttributeSpec, so block-attribute factories transit the descriptor erased as unknown; the binder restores the factory type the descriptor surface documents'
-    >(factory)({ symbols: ctx.symbolTable, block });
+    >(factory)({ symbols: ctx.symbolTable, block, dataTypes: ctx.dataTypes });
     bindArguments(attribute, attributeSpec, ctx);
   }
 }

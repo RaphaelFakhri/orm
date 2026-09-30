@@ -105,6 +105,7 @@ namespace public {
       sources,
       pslBlockDescriptors: assembled.pslBlockDescriptors,
       binder: blockResolutionBinder(symbolTable, sources),
+      dataTypes: EMPTY_DATA_TYPES,
     });
     return { document, sources, symbolTable, diagnostics, parsedBlocks };
   }

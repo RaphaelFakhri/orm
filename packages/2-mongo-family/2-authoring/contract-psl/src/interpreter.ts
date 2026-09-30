@@ -1195,6 +1195,7 @@ export function interpretPslDocumentToMongoContract(
     sources,
     pslBlockDescriptors: input.authoringContributions?.pslBlockDescriptors ?? {},
     binder,
+    dataTypes: input.dataTypes,
   });
   diagnostics.push(...blockDiagnostics);
   const topLevel = symbolTable.topLevel;

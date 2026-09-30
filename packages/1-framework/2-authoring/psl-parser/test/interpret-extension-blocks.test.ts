@@ -99,6 +99,7 @@ function build(source: string) {
     sources,
     pslBlockDescriptors: DESCRIPTORS,
     binder,
+    dataTypes: EMPTY_DATA_TYPES,
   });
   return {
     symbolTable,
@@ -434,6 +435,7 @@ describe('interpretExtensionBlocks() — consumer-resolved envelopes', () => {
       sources: result.sources,
       pslBlockDescriptors: DESCRIPTORS,
       binder: result.binder,
+      dataTypes: EMPTY_DATA_TYPES,
     });
 
     expect([...again.parsedBlocks.keys()]).toEqual([...result.parsedBlocks.keys()]);

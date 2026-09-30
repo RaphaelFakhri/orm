@@ -58,7 +58,11 @@ export function attributeSpecResolver(
         return blindCast<
           BlockAttributeSpecFactory,
           'block descriptor attributes are validated as factories at control-stack assembly but exposed through framework-components as unknown to avoid a parser dependency'
-        >(factory)({ symbols: source.symbolTable, block });
+        >(factory)({
+          symbols: source.symbolTable,
+          block,
+          dataTypes: source.dataTypes ?? EMPTY_DATA_TYPES,
+        });
       };
     }
     case 'model': {

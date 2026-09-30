@@ -7,6 +7,7 @@ import {
   type AttributeSpec,
   assembleAttributeSpecs,
   blockSpecFactoryOf,
+  EMPTY_DATA_TYPES,
   findBlockDescriptor,
   type NamespaceSymbol,
   type SymbolTable,
@@ -450,7 +451,11 @@ function provideGenericBlockKeyCompletionItems(
   if (block === undefined) {
     return [];
   }
-  const spec = blockSpecFactoryOf(descriptor)({ symbols: source.symbolTable, block });
+  const spec = blockSpecFactoryOf(descriptor)({
+    symbols: source.symbolTable,
+    block,
+    dataTypes: source.dataTypes ?? EMPTY_DATA_TYPES,
+  });
   if (spec.mode !== 'struct') {
     return [];
   }

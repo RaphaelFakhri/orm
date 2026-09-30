@@ -8,6 +8,7 @@ import { list } from '../src/attribute-spec/combinators/list';
 import { oneOf } from '../src/attribute-spec/combinators/one-of';
 import { str } from '../src/attribute-spec/combinators/str';
 import { optional } from '../src/attribute-spec/optional';
+import { EMPTY_DATA_TYPES } from '../src/attribute-spec/spec-context';
 import { mapBlock, structBlock } from '../src/block-spec/constructors';
 import type { PslBlockSpecDescriptor } from '../src/block-spec/descriptor';
 import { interpretExtensionBlock } from '../src/block-spec/interpret';
@@ -103,6 +104,7 @@ function interpret<S extends BlockSpec<unknown>>(
       symbolTable: setupResult.symbolTable,
       pslBlockDescriptors: { [descriptor.keyword]: descriptor },
     }),
+    dataTypes: EMPTY_DATA_TYPES,
   });
 }
 

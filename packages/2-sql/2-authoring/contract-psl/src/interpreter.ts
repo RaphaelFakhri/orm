@@ -2120,6 +2120,7 @@ export function interpretPslDocumentToSqlContract(
     sources: input.sources,
     pslBlockDescriptors: composedPslBlockDescriptors,
     binder,
+    dataTypes,
   });
   diagnostics.push(...blockDiagnostics);
   validateBlockModelAttributeRequirements({

@@ -131,6 +131,7 @@ describe('syntax-scoped entity resolution', () => {
       symbols: result.symbolTable,
       sources,
       binder,
+      dataTypes: EMPTY_DATA_TYPES,
     });
     expect(parsed.diagnostics).toEqual([]);
     expect(parsed.attributes['target']?.args).toEqual({

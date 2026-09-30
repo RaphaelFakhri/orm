@@ -89,6 +89,7 @@ function interpretWithSymbolDiagnostics(source: string) {
       sources,
       pslBlockDescriptors: assembled.pslBlockDescriptors,
       binder: blockResolutionBinder(symbolTable, sources),
+      dataTypes: EMPTY_DATA_TYPES,
     }).diagnostics,
   ];
   const result = interpretPslDocumentToSqlContract({

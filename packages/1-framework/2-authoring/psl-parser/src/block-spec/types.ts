@@ -1,9 +1,11 @@
+import type { DataTypeSupport } from '@internal/framework-components/authoring';
 import type { ArgType, AttributeCtx, Param } from '../attribute-spec/types';
 import type { BlockSymbol, SymbolTable } from '../symbol-table';
 
 export interface BlockSpecContext {
   readonly symbols: SymbolTable;
   readonly block: BlockSymbol;
+  readonly dataTypes: DataTypeSupport;
 }
 
 export interface BlockEntryValueSpec {

@@ -25,6 +25,7 @@ function build(source: string) {
     sources,
     pslBlockDescriptors: sqlFamilyPslBlockDescriptors,
     binder,
+    dataTypes: EMPTY_DATA_TYPES,
   });
   return { ...result, blockDiagnostics, parsedBlocks };
 }
