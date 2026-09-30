@@ -16,6 +16,7 @@ import {
   isOrderByDirection,
   isOrderByNulls,
   type LimitOffsetValue,
+  type LockingClause,
   OrderByItem,
   ProjectionItem,
   SelectAst,
@@ -80,6 +81,7 @@ export interface BuilderState {
   readonly offset: LimitOffsetValue | undefined;
   readonly distinct: true | undefined;
   readonly distinctOn: readonly AstExpression[] | undefined;
+  readonly locking: readonly LockingClause[] | undefined;
   readonly scope: Scope;
   readonly rowFields: Record<string, ScopeField>;
   /**
@@ -138,6 +140,7 @@ export function emptyState(from: TableSource, scope: Scope): BuilderState {
     offset: undefined,
     distinct: undefined,
     distinctOn: undefined,
+    locking: undefined,
     scope,
     rowFields: {},
     annotations: new Map(),
@@ -154,7 +157,36 @@ export function combineWhereExprs(exprs: readonly AstExpression[]): AstExpressio
   return AndExpr.of(exprs);
 }
 
+const LOCK_INCOMPATIBLE_PROJECTION_KINDS: ReadonlySet<string> = new Set([
+  'aggregate',
+  'json-array-agg',
+  'window-func',
+]);
+
+function assertLockableProjection(state: BuilderState): void {
+  if (state.locking === undefined) return;
+  const item = state.projections.find((projection) =>
+    LOCK_INCOMPATIBLE_PROJECTION_KINDS.has(projection.expr.kind),
+  );
+  if (item !== undefined) {
+    throw structuredError(
+      'ORM.LOCK_INCOMPATIBLE',
+      `A locking clause cannot be combined with an aggregate or window function in the projection (column "${item.alias}")`,
+      { meta: { conflict: 'aggregate' } },
+    );
+  }
+}
+
+export function assertNotLocked(state: BuilderState): void {
+  if (state.locking !== undefined) {
+    throw structuredError('ORM.LOCK_INCOMPATIBLE', 'A locked select cannot be used as a subquery', {
+      meta: { conflict: 'subquery' },
+    });
+  }
+}
+
 export function buildSelectAst(state: BuilderState): SelectAst {
+  assertLockableProjection(state);
   const where = combineWhereExprs(state.where);
   return new SelectAst({
     from: state.from,
@@ -168,7 +200,7 @@ export function buildSelectAst(state: BuilderState): SelectAst {
     having: state.having,
     limit: state.limit,
     offset: state.offset,
-    locking: undefined,
+    locking: state.locking,
     selectAllIntent: undefined,
   });
 }

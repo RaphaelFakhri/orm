@@ -899,6 +899,10 @@ An `include()` usage is structurally invalid: the refinement callback returned s
 
 The include is well-formed but not supported in this position: scalar aggregations or `combine()` on a to-one relation (SQL), or including an embed relation / compound reference (Mongo; only reference relations can be included). Payload: `relation`, `kind`, `model`.
 
+### ORM.LOCK_INCOMPATIBLE
+
+A row-locking method (`forUpdate()`, `forNoKeyUpdate()`, `forShare()`, `forKeyShare()`) was combined with something Postgres refuses to lock. Raised by the SQL builder: at `build()` when the projection holds an aggregate or window function, and when a locked select is turned into a subquery through `.as()` or passed where a subquery is expected. Payload: `conflict` (`aggregate` or `subquery`).
+
 ### ORM.MODEL_UNKNOWN
 
 The Mongo ORM client was asked to operate on a model name that is not in the contract (collection compile, or a raw-pipeline root bound to an unknown model). Payload: `model`, `root`.
