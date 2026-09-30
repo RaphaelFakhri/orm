@@ -3,6 +3,7 @@ import type { ContractWithTypeMaps, SqlStorage, TypeMaps } from '@internal/sql-c
 import type { ExecutionContext } from '@internal/sql-relational-core/query-lane-context';
 import { expectTypeOf, test } from 'vitest';
 import { Collection } from '../src/collection';
+import type { StateType } from '../src/collection-internal-types';
 
 import { createMockRuntime } from './helpers';
 
@@ -208,15 +209,9 @@ type RowOf<TCollection> =
     ? Row
     : never;
 
-type StateOf<TCollection> =
-  TCollection extends Collection<
-    infer _Contract extends Contract<SqlStorage>,
-    infer _ModelName extends string,
-    infer _Row,
-    infer State
-  >
-    ? State
-    : never;
+type StateOf<TCollection> = TCollection extends { readonly [StateType]: infer State }
+  ? State
+  : never;
 
 const runtime = createMockRuntime();
 const context = {} as unknown as ExecutionContext<GeneratedLikeContract>;

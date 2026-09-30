@@ -56,6 +56,8 @@ import {
 import type {
   CollectionConstructor,
   CollectionInit,
+  HasOrderBy,
+  HasWhere,
   IncludedRelationsForRow,
   IncludeRefinementCollection,
   IncludeRefinementResult,
@@ -66,7 +68,6 @@ import type {
   RowType,
   StateType,
   WhereInput,
-  WithOrderByState,
   WithVariantState,
   WithWhereState,
 } from './collection-internal-types';
@@ -369,16 +370,16 @@ class CollectionImpl<
     fn: (
       model: VariantAwareModelAccessor<TContract, ModelName, State['variantName'], State['nsId']>,
     ) => WhereDirectInput,
-  ): Collection<TContract, ModelName, Row, WithWhereState<State>>;
-  where(input: WhereDirectInput): Collection<TContract, ModelName, Row, WithWhereState<State>>;
+  ): this & HasWhere;
+  where(input: WhereDirectInput): this & HasWhere;
   where(
     fn: (
       model: VariantAwareModelAccessor<TContract, ModelName, State['variantName'], State['nsId']>,
     ) => WhereArg,
-  ): Collection<TContract, ModelName, Row, WithWhereState<State>>;
+  ): this & HasWhere;
   where(
     filters: ShorthandWhereFilter<TContract, State['nsId'], ModelName>,
-  ): Collection<TContract, ModelName, Row, WithWhereState<State>>;
+  ): this & HasWhere;
   where(
     input:
       | WhereDirectInput
@@ -399,7 +400,7 @@ class CollectionImpl<
           >,
         ) => WhereArg)
       | ShorthandWhereFilter<TContract, State['nsId'], ModelName>,
-  ): Collection<TContract, ModelName, Row, WithWhereState<State>> {
+  ): this & HasWhere {
     const whereArg =
       typeof input === 'function'
         ? input(
@@ -420,12 +421,12 @@ class CollectionImpl<
 
     if (!filter) {
       return blindCast<
-        Collection<TContract, ModelName, Row, WithWhereState<State>>,
+        this & HasWhere,
         'where() records its static state even when normalization produces no filter'
       >(this);
     }
 
-    return this.#clone<WithWhereState<State>>({
+    return this.#cloneSelf<HasWhere>({
       filters: [...this.state.filters, filter],
     });
   }
@@ -462,9 +463,9 @@ class CollectionImpl<
     TContract,
     ModelName,
     VariantModelRow<TContract, ModelName, V>,
-    WithVariantState<WithWhereState<State>, V>
+    WithVariantState<WithWhereState<this[typeof StateType]>, V>
   > {
-    type ReturnState = WithVariantState<WithWhereState<State>, V>;
+    type ReturnState = WithVariantState<WithWhereState<this[typeof StateType]>, V>;
     const model = modelOf(this.contract, this.namespaceId, this.modelName);
     const discriminator = model?.discriminator;
     const variants = model?.variants;
@@ -580,7 +581,7 @@ class CollectionImpl<
         >;
       }
     >,
-    State
+    this[typeof StateType]
   >;
   include<
     RelName extends VariantAwareIncludeRelationNames<
@@ -643,7 +644,7 @@ class CollectionImpl<
         >;
       }
     >,
-    State
+    this[typeof StateType]
   >;
   include<
     RelName extends VariantAwareIncludeRelationNames<
@@ -706,7 +707,7 @@ class CollectionImpl<
         >;
       }
     >,
-    State
+    this[typeof StateType]
   > {
     const relation = resolveIncludeRelation(
       this.contract,
@@ -796,7 +797,7 @@ class CollectionImpl<
           >;
         }
       >,
-      State
+      this[typeof StateType]
     >({
       includes: [...this.state.includes, includeExpr],
     });
@@ -830,7 +831,7 @@ class CollectionImpl<
       Pick<DefaultModelRow<TContract, ModelName>, Fields[number]> &
         IncludedRelationsForRow<TContract, ModelName, Row>
     >,
-    State
+    this[typeof StateType]
   > {
     const selectedFields = mapFieldsToColumns(
       this.contract,
@@ -844,7 +845,7 @@ class CollectionImpl<
         Pick<DefaultModelRow<TContract, ModelName>, Fields[number]> &
           IncludedRelationsForRow<TContract, ModelName, Row>
       >,
-      State
+      this[typeof StateType]
     >({
       selectedFields,
     });
@@ -887,7 +888,7 @@ class CollectionImpl<
             >,
           ) => OrderByItem
         >,
-  ): Collection<TContract, ModelName, Row, WithOrderByState<State>> {
+  ): this & HasOrderBy {
     const accessor = createModelAccessor<TContract, ModelName, State['variantName'], State['nsId']>(
       this.ctx.context,
       this.namespaceId,
@@ -897,7 +898,7 @@ class CollectionImpl<
     const selectors = Array.isArray(selection) ? selection : [selection];
     const nextOrders = selectors.map((selector) => selector(accessor));
     const existing = this.state.orderBy ?? [];
-    return this.#clone<WithOrderByState<State>>({
+    return this.#cloneSelf<HasOrderBy>({
       orderBy: [...existing, ...nextOrders],
     });
   }
@@ -1029,10 +1030,10 @@ class CollectionImpl<
    * ```
    */
   cursor(
-    cursorValues: State['hasOrderBy'] extends true
+    cursorValues: this[typeof StateType]['hasOrderBy'] extends true
       ? Partial<Record<keyof DefaultModelRow<TContract, ModelName> & string, unknown>>
       : never,
-  ): Collection<TContract, ModelName, Row, State> {
+  ): this {
     assertCursorCompatibleOrder(this.state.orderBy);
     const mappedCursor = mapCursorValuesToColumns(
       this.contract,
@@ -1042,13 +1043,10 @@ class CollectionImpl<
     );
 
     if (Object.keys(mappedCursor).length === 0) {
-      return blindCast<
-        Collection<TContract, ModelName, Row, State>,
-        'the constructor installed the reducer members the surface type declares'
-      >(this);
+      return this;
     }
 
-    return this.#clone({
+    return this.#cloneSelf({
       cursor: mappedCursor,
     });
   }
@@ -1066,7 +1064,7 @@ class CollectionImpl<
       keyof DefaultModelRow<TContract, ModelName> & string,
       ...(keyof DefaultModelRow<TContract, ModelName> & string)[],
     ],
-  >(...fields: Fields): Collection<TContract, ModelName, Row, State> {
+  >(...fields: Fields): this {
     const distinctFields = mapFieldsToColumns(
       this.contract,
       this.namespaceId,
@@ -1074,7 +1072,7 @@ class CollectionImpl<
       fields,
     );
 
-    return this.#clone({
+    return this.#cloneSelf({
       distinct: distinctFields,
       distinctOn: undefined,
     });
@@ -1103,11 +1101,11 @@ class CollectionImpl<
     ],
   >(
     ...fields: TContract['capabilities'] extends { postgres: { distinctOn: true } }
-      ? State['hasOrderBy'] extends true
+      ? this[typeof StateType]['hasOrderBy'] extends true
         ? Fields
         : never
       : never
-  ): Collection<TContract, ModelName, Row, State> {
+  ): this {
     assertDistinctOnCapability(this.contract, 'distinctOn');
     assertDistinctOnCompatibleOrder(this.state.orderBy, fields.length);
     const distinctOnFields = mapFieldsToColumns(
@@ -1117,7 +1115,7 @@ class CollectionImpl<
       fields,
     );
 
-    return this.#clone({
+    return this.#cloneSelf({
       distinct: undefined,
       distinctOn: distinctOnFields,
     });
@@ -1132,8 +1130,8 @@ class CollectionImpl<
    */
   limit(
     n: number | TraitExpression<readonly ['numeric'], false, ExtractCodecTypes<TContract>>,
-  ): Collection<TContract, ModelName, Row, State> {
-    return this.#clone({ limit: typeof n === 'number' ? n : toExpr(n) });
+  ): this {
+    return this.#cloneSelf({ limit: typeof n === 'number' ? n : toExpr(n) });
   }
 
   /**
@@ -1149,8 +1147,8 @@ class CollectionImpl<
    */
   offset(
     n: number | TraitExpression<readonly ['numeric'], false, ExtractCodecTypes<TContract>>,
-  ): Collection<TContract, ModelName, Row, State> {
-    return this.#clone({ offset: typeof n === 'number' ? n : toExpr(n) });
+  ): this {
+    return this.#cloneSelf({ offset: typeof n === 'number' ? n : toExpr(n) });
   }
 
   /**
@@ -1192,7 +1190,7 @@ class CollectionImpl<
     return this.#withAnnotationsFromMeta(configure, 'all').#dispatch();
   }
 
-  get prepared(): PreparedCollection<TContract, ModelName, Row, State> {
+  get prepared(): PreparedCollection<TContract, ModelName, Row, this[typeof StateType]> {
     return {
       aggregate: (fn, configure) => this.#describeAggregate(fn, configure),
       all: (configure) => {
@@ -2146,7 +2144,7 @@ class CollectionImpl<
    * statements nor the read-back query carry them.
    */
   async update(
-    data: State['hasWhere'] extends true
+    data: this[typeof StateType]['hasWhere'] extends true
       ? MutationUpdateInput<TContract, ModelName, State['nsId']>
       : never,
     configure?: (meta: MetaBuilder<'write'>) => void,
@@ -2198,9 +2196,7 @@ class CollectionImpl<
       const narrowed = scoped.#clone({ filters: [identityWhere] });
       const rows = await narrowed.#updateAllWithAnnotations(
         blindCast<
-          State['hasWhere'] extends true
-            ? Partial<DefaultModelRow<TContract, ModelName, State['nsId']>>
-            : never,
+          Partial<DefaultModelRow<TContract, ModelName, State['nsId']>>,
           'absence of nested callbacks selects the scalar update input'
         >(data),
         annotationsMap,
@@ -2235,7 +2231,7 @@ class CollectionImpl<
    * `MetaBuilder<'write'>` for attaching typed annotations.
    */
   updateAll(
-    data: State['hasWhere'] extends true
+    data: this[typeof StateType]['hasWhere'] extends true
       ? Partial<DefaultModelRow<TContract, ModelName, State['nsId']>>
       : never,
     configure?: (meta: MetaBuilder<'write'>) => void,
@@ -2247,9 +2243,7 @@ class CollectionImpl<
   }
 
   #updateAllWithAnnotations(
-    data: State['hasWhere'] extends true
-      ? Partial<DefaultModelRow<TContract, ModelName, State['nsId']>>
-      : never,
+    data: Partial<DefaultModelRow<TContract, ModelName, State['nsId']>>,
     annotationsMap: ReadonlyMap<string, AnnotationValue<unknown, OperationKind>> | undefined,
   ): AsyncIterableResult<Row> {
     assertReturningCapability(this.contract, 'updateAll()');
@@ -2310,7 +2304,7 @@ class CollectionImpl<
    * ```
    */
   async updateAndCount(
-    data: State['hasWhere'] extends true
+    data: this[typeof StateType]['hasWhere'] extends true
       ? Partial<DefaultModelRow<TContract, ModelName, State['nsId']>>
       : never,
     configure?: (meta: MetaBuilder<'write'>) => void,
@@ -2360,7 +2354,7 @@ class CollectionImpl<
    * `MetaBuilder<'write'>` for attaching typed annotations.
    */
   async delete(
-    this: State['hasWhere'] extends true ? Collection<TContract, ModelName, Row, State> : never,
+    this: this[typeof StateType]['hasWhere'] extends true ? this : never,
     configure?: (meta: MetaBuilder<'write'>) => void,
   ): Promise<Row | null> {
     assertReturningCapability(this.contract, 'delete()');
@@ -2401,7 +2395,7 @@ class CollectionImpl<
    * `MetaBuilder<'write'>` for attaching typed annotations.
    */
   deleteAll(
-    this: State['hasWhere'] extends true ? Collection<TContract, ModelName, Row, State> : never,
+    this: this[typeof StateType]['hasWhere'] extends true ? this : never,
     configure?: (meta: MetaBuilder<'write'>) => void,
   ): AsyncIterableResult<Row> {
     return blindCast<
@@ -2514,7 +2508,7 @@ class CollectionImpl<
    * ```
    */
   async deleteAndCount(
-    this: State['hasWhere'] extends true ? Collection<TContract, ModelName, Row, State> : never,
+    this: this[typeof StateType]['hasWhere'] extends true ? this : never,
     configure?: (meta: MetaBuilder<'write'>) => void,
   ): Promise<number> {
     const annotationsMap = this.#collectAnnotationsFromMeta(configure, 'write', 'deleteAndCount');
@@ -2698,6 +2692,13 @@ class CollectionImpl<
       ...this.state,
       ...overrides,
     });
+  }
+
+  #cloneSelf<Flags = unknown>(overrides: Partial<CollectionState>): this & Flags {
+    return blindCast<
+      this & Flags,
+      'the clone is built by this constructor, so it is an instance of the same class'
+    >(this.#createSelf<Row, State>({ ...this.state, ...overrides }));
   }
 
   #withRuntime(runtime: RuntimeQueryable): CollectionImpl<TContract, ModelName, Row, State> {
