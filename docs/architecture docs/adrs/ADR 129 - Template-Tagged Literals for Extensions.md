@@ -51,11 +51,13 @@ The body is what is written between the quotes. The text is the canonical value 
 
 1. A NUL character is `PSL_TAGGED_LITERAL_NUL`.
 2. Line endings become `\n`.
-3. A blank first line and a blank last line are dropped, so a body may start on the line after the opening backtick and end on the line before the closing one.
+3. Every blank line before the first non-blank line and after the last non-blank line is dropped, so a body may start on the line after the opening backtick and end on the line before the closing one. A blank line is empty or holds only spaces and tabs.
 4. The common leading whitespace of the non-blank lines is removed. Tabs and spaces are counted as characters, not expanded.
 5. Internal blank lines are kept, as empty lines.
 6. No trailing newline is added.
 7. A text over 65536 UTF-8 bytes is `PSL_TAGGED_LITERAL_TOO_LARGE`.
+
+The text is its own canonical form: canonicalizing it again gives the same text, and so does printing it as a literal and reading the literal back. Dropping only one blank line at each end would break this, because `"\n\n(a > 0)"` would become `"\n(a > 0)"`, which canonicalizes to `"(a > 0)"`.
 
 So these three write the same default:
 

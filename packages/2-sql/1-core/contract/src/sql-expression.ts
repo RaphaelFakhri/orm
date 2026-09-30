@@ -1,6 +1,7 @@
 import type { JsonValue } from '@internal/contract/types';
 import type { DataTypeAuthoringEntry } from '@internal/framework-components/authoring';
 import {
+  canonicalizeTaggedLiteralBody,
   printTaggedLiteral,
   taggedLiteralTextReadsBack,
 } from '@internal/framework-components/authoring';
@@ -29,7 +30,16 @@ export function sqlTextFromCanonical(value: JsonValue): string {
   throw new InternalError(`A sql/expression value is a string, got ${JSON.stringify(value)}.`);
 }
 
-/** A `sql` literal holding `text`. Throws when the literal would read back as different text; check with `sqlTextsReadBack` first. */
+/** The text a `sql` literal holding `text` reads back as, or `undefined` when `text` has a NUL character or is too large. */
+export function canonicalSqlText(text: string): string | undefined {
+  const canonical = canonicalizeTaggedLiteralBody(text);
+  return canonical.ok ? canonical.text : undefined;
+}
+
+/**
+ * A `sql` literal holding `text`. Throws when the literal would read back as different text; check with `sqlTextsReadBack`
+ * first. The result of `canonicalSqlText` always reads back.
+ */
 export function printSqlExpressionLiteral(text: string): string {
   if (!taggedLiteralTextReadsBack(text)) {
     throw new InternalError(

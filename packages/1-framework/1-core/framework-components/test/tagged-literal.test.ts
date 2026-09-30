@@ -22,8 +22,10 @@ describe('canonicalizeTaggedLiteralBody', () => {
     ['CRLF becomes LF', 'a\r\nb', 'a\nb'],
     ['lone CR becomes LF', 'a\rb', 'a\nb'],
     ['blank first line dropped', '\n  a', 'a'],
+    ['every blank first line dropped', '\n\n  \n  a', 'a'],
     ['first line of only spaces and tabs dropped', ' \t\n  a', 'a'],
     ['blank last line dropped', 'a\n  ', 'a'],
+    ['every blank last line dropped', 'a\n\n  \n', 'a'],
     ['trailing newline dropped with the blank last line', 'a\n', 'a'],
     ['common leading whitespace removed', '  a\n    b', 'a\n  b'],
     ['tabs count as single characters', '\ta\n\t\tb', 'a\n\tb'],
@@ -185,4 +187,48 @@ describe('taggedLiteralTextReadsBack', () => {
   ])('%s reads back: %s', (_, text, expected) => {
     expect(taggedLiteralTextReadsBack(text)).toBe(expected);
   });
+});
+
+const CANONICALIZATION_CASES = [
+  '\n\n(a > 0)',
+  '(a > 0)\n\n',
+  '\n  \n(a > 0)',
+  '  a\n\n    b\n',
+  '\r\n\r\n(a)',
+  '\n\n\n',
+  '  a\n\n  b',
+  'a\r\n\r\nb',
+  '\n\n  SELECT 1\n\n',
+  '\n\n  `a`\n  \n',
+];
+
+function canonical(text: string): string {
+  const result = canonicalizeTaggedLiteralBody(text);
+  if (!result.ok) throw new Error(`${JSON.stringify(text)} does not canonicalize`);
+  return result.text;
+}
+
+function readPrintedLiteral(printed: string): string {
+  const body = printed.slice('sql'.length);
+  return body.startsWith('`')
+    ? resolvePslBacktickEscapes(body.slice(1, -1))
+    : (JSON.parse(body) as string);
+}
+
+describe('the canonical text', () => {
+  it.each(CANONICALIZATION_CASES.map((text) => [JSON.stringify(text), text]))(
+    'of %s is unchanged by canonicalizing it again',
+    (_name, text) => {
+      expect(canonical(canonical(text))).toBe(canonical(text));
+    },
+  );
+
+  it.each(CANONICALIZATION_CASES.map((text) => [JSON.stringify(text), text]))(
+    'of %s reads back unchanged once printed',
+    (_name, text) => {
+      const text0 = canonical(text);
+      expect(canonical(readPrintedLiteral(printTaggedLiteral('sql', text0)))).toBe(text0);
+      expect(taggedLiteralTextReadsBack(text0)).toBe(true);
+    },
+  );
 });

@@ -1,15 +1,9 @@
-import { canonicalizeTaggedLiteralBody } from '@internal/framework-components/authoring';
-import { sqlTextsReadBack } from '@internal/sql-contract/sql-expression';
+import { canonicalSqlText, sqlTextsReadBack } from '@internal/sql-contract/sql-expression';
 import { detectIndexNaming, type IndexAttributeSource } from '../psl-build/index-attributes';
 
 /** Why `contract infer` skips an exact-named object whose SQL a `sql` literal would change. */
 export const SQL_DOES_NOT_READ_BACK =
   'its SQL cannot be written as a sql literal that reads back unchanged. It is not in this schema; add it by hand before running migration plan, or the plan will drop it.';
-
-function canonicalSqlText(text: string): string | undefined {
-  const canonical = canonicalizeTaggedLiteralBody(text);
-  return canonical.ok ? canonical.text : undefined;
-}
 
 /**
  * The index as `contract infer` prints it, or `undefined` when it is skipped. An exact-named index

@@ -151,8 +151,10 @@ describe('contract infer skips SQL that would not read back', () => {
     expect(psl).toContain(SKIP_NOTE('index', 'profile_crlf_expr'));
   });
 
-  it('prints a wire-named index whose where would not read back with its canonical text', () => {
-    const where = '(owner_id > 0)\n';
+  it.each([
+    ['a blank last line', '(owner_id > 0)\n'],
+    ['two blank first lines', '\n\n(owner_id > 0)'],
+  ])('prints a wire-named index whose where has %s with its canonical text', (_name, where) => {
     const name = formatWireName(
       'profile_owner_idx',
       computeIndexContentHash({ columns: ['owner_id'], where, unique: false }),

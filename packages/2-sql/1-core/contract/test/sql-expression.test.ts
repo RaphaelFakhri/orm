@@ -2,6 +2,7 @@ import { dataType } from '@internal/framework-components/codec';
 import { describe, expect, it } from 'vitest';
 import {
   assertNothingCastsFromSqlExpression,
+  canonicalSqlText,
   printSqlExpressionLiteral,
   SQL_EXPRESSION_DATA_TYPE_ID,
   SQL_EXPRESSION_TAG,
@@ -71,6 +72,25 @@ describe('printSqlExpressionLiteral', () => {
     expect(() => printSqlExpressionLiteral('  a = 1')).toThrow(
       'A sql literal cannot hold "  a = 1": it would read back as different text.',
     );
+  });
+
+  it.each(['\n\n(a > 0)', '(a > 0)\n\n', '\n  \n(a > 0)', '\r\n\r\n(a)', '  a\n  \n    b\n'])(
+    'prints the canonical text of %j without throwing',
+    (text) => {
+      const canonical = canonicalSqlText(text);
+      expect(canonical).toBeDefined();
+      expect(() => printSqlExpressionLiteral(canonical ?? '')).not.toThrow();
+    },
+  );
+});
+
+describe('canonicalSqlText', () => {
+  it('is the canonical text of a SQL body', () => {
+    expect(canonicalSqlText('\n  a = 1\n    AND b = 2\n')).toBe('a = 1\n  AND b = 2');
+  });
+
+  it('is undefined for a body that has no canonical text', () => {
+    expect(canonicalSqlText('a\u0000')).toBeUndefined();
   });
 });
 
