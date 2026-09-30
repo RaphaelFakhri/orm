@@ -207,6 +207,9 @@ function writtenFormPhrase(support: DataTypeSupport, type: string): string | und
   return isNumber ? 'a number' : undefined;
 }
 
+/** What {@link describeAdmittedForms} returns for a type that nothing writes. */
+export const NO_WRITTEN_FORM = 'no written form';
+
 /** How a position of `dataType` can be written, for a diagnostic: ``sql`...` ``, `true or false`. */
 export function describeAdmittedForms(support: DataTypeSupport, dataType: DataTypeId): string {
   const phrases = admittedTypes(support, dataType).flatMap((type) => {
@@ -214,5 +217,5 @@ export function describeAdmittedForms(support: DataTypeSupport, dataType: DataTy
     return phrase === undefined ? [] : [phrase];
   });
   const unique = [...new Set(phrases)];
-  return unique.length === 0 ? 'no written form' : unique.join(' or ');
+  return unique.length === 0 ? NO_WRITTEN_FORM : unique.join(' or ');
 }

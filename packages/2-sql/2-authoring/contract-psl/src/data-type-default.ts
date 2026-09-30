@@ -13,6 +13,7 @@ import {
   type DataTypeSupport,
   describeAdmittedForms,
   describeRefusal,
+  NO_WRITTEN_FORM,
   type ReadRefusal,
   readWrittenValue,
   type TypedValue,
@@ -22,6 +23,7 @@ import {
 import type { CodecLookup, DataTypeId } from '@internal/framework-components/codec';
 import { materializeCodec } from '@internal/framework-components/codec';
 import type { ContributedPslDiagnosticCode } from '@internal/framework-components/psl-ast';
+import { SQL_EXPRESSION_TAG } from '@internal/sql-contract/sql-expression';
 import { blindCast } from '@internal/utils/casts';
 import { ifDefined } from '@internal/utils/defined';
 import { InternalError } from '@internal/utils/internal-error';
@@ -270,9 +272,15 @@ function location(fieldPath: string, elementIndex: number | undefined): string {
     : `Field "${fieldPath}" at element ${elementIndex + 1}`;
 }
 
-/** What may be written where every one of `types` is received, for a message: `a number`. */
+/**
+ * What may be written where every one of `types` is received, for a message: `a number`. A column
+ * whose type nothing writes still takes a `sql` literal, which `@default` stores as a SQL expression.
+ */
 function formsOf(dataTypes: DataTypeSupport, types: readonly DataTypeId[]): string {
-  return [...new Set(types.map((type) => describeAdmittedForms(dataTypes, type)))].join(' or ');
+  const forms = [...new Set(types.map((type) => describeAdmittedForms(dataTypes, type)))].filter(
+    (form) => form !== NO_WRITTEN_FORM,
+  );
+  return forms.length === 0 ? `${SQL_EXPRESSION_TAG}\`...\`` : forms.join(' or ');
 }
 
 /** {@link readDataTypeDefault} worded as a PSL diagnostic's code and message. */

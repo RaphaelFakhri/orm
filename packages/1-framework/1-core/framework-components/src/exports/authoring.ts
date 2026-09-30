@@ -97,5 +97,6 @@ export {
   entryForPlain,
   entryForTag,
   knownTags,
+  NO_WRITTEN_FORM,
   readWrittenValue,
 } from '../shared/written-value';
