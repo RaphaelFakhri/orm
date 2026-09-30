@@ -147,6 +147,10 @@ flowchart LR
 - Postgres extension `test/contract-builder/rls-handles.test-d.ts` and `full-text-index.test-d.ts` (update): strings are type errors.
 - `test/integration/test/authoring/parity/sql-expressions/` (new parity fixture: `contract.ts`, `schema.prisma`, `packs.ts`, `expected.contract.json`): a partial index, an expression index, a `@@fullTextIndex` with `where`, a `@@check`, a policy with `using` and `withCheck`, and a raw default; at least two texts span several indented lines, one holds `"quoted"` identifiers, one a backslash, and one TS predicate is composed by interpolation.
 
+**Carried over from the slice 2b review:**
+
+- Export the SQL family's data type registration (the `sql/expression` declaration and its authoring entry) as one value from `@internal/sql-contract/sql-expression`, use it in `packages/2-sql/9-family/src/core/control-descriptor.ts`, and spread it in the four test fixtures that rebuild it by hand (`postgres/test/fixtures/postgres-data-type-support.ts`, `adapters/postgres/test/helpers/postgres-data-type-support.ts`, `contract-psl/test/fixture-data-types.ts`, `language-server/test/completion-provider.test.ts`).
+
 ## Slice 4 — Migration files write template literals
 
 **Linear:** TML-3290. **Design:** 16, 19 (slice 4 row), 20 (slice 4 row).
