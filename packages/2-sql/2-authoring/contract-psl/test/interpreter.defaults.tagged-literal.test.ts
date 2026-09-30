@@ -163,6 +163,17 @@ describe('interpretPslDocumentToSqlContract tagged literal defaults', () => {
     ]);
   });
 
+  it('rejects an unregistered tag inside a list at that element', () => {
+    expect(diagnostics('v Jsonb[] @default([json`{}`, pg.json`[1]`])')).toEqual([
+      {
+        code: 'PSL_UNKNOWN_LITERAL_TAG',
+        message: 'Unknown literal tag "pg.json". Known tags: sql, json.',
+        sourceId: 'schema.prisma',
+        span: lineThreeSpan(33, 'pg.json`[1]`'.length),
+      },
+    ]);
+  });
+
   it('rejects a NUL character at the literal', () => {
     expect(diagnostics('v String @default(sql`a\0b`)')).toEqual([
       {

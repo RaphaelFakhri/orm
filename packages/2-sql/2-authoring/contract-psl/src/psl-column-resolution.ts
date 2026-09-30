@@ -13,15 +13,14 @@ import type {
 import {
   checkUncomposedNamespace,
   type DataTypeSupport,
-  entryForTag,
   getAuthoringFieldPreset,
   hasRegisteredFieldNamespace,
   instantiateAuthoringTypeConstructor,
   isAuthoringEntityTypeDescriptor,
   isAuthoringTypeConstructorDescriptor,
-  knownTags,
   readWrittenValue,
   validateAuthoringHelperArguments,
+  type WrittenScalar,
   type WrittenValue,
 } from '@internal/framework-components/authoring';
 import type { AnyCodecDescriptor, CodecLookup } from '@internal/framework-components/codec';
@@ -38,7 +37,6 @@ import type {
   ModelSymbol,
   NumLiteral,
   ParsedTaggedLiteral,
-  PslDiagnostic,
   PslSpan,
   ResolvedTypeConstructorCall,
   SymbolTable,
@@ -561,39 +559,6 @@ const TAGGED_LITERAL_CANONICALIZATION_CODES = {
   'too-large': 'PSL_TAGGED_LITERAL_TOO_LARGE',
 } as const;
 
-type TaggedLiteralRead =
-  | { readonly ok: false; readonly diagnostic: PslDiagnostic }
-  | { readonly ok: true; readonly written: Extract<WrittenValue, { readonly kind: 'tag' }> };
-
-function readTaggedLiteral(
-  literal: ParsedTaggedLiteral,
-  support: DataTypeSupport,
-  source: DiagnosticSource,
-): TaggedLiteralRead {
-  const reject = (code: string, message: string): TaggedLiteralRead => ({
-    ok: false,
-    diagnostic: {
-      code,
-      message,
-      ...source.at(literal.span),
-    },
-  });
-  if (entryForTag(support, literal.tag) === undefined) {
-    return reject(
-      'PSL_UNKNOWN_LITERAL_TAG',
-      `Unknown literal tag "${literal.tag}". Known tags: ${knownTags(support).join(', ')}.`,
-    );
-  }
-  const { canonicalization } = literal;
-  if (!canonicalization.ok) {
-    return reject(
-      TAGGED_LITERAL_CANONICALIZATION_CODES[canonicalization.reason],
-      describeTaggedLiteralFailure(canonicalization.reason),
-    );
-  }
-  return { ok: true, written: { kind: 'tag', tag: literal.tag, text: canonicalization.text } };
-}
-
 function defaultValueExpression(node: FieldAttributeAst): ExpressionAst | undefined {
   const args = [...(node.argList()?.args() ?? [])];
   const argument =
@@ -683,18 +648,22 @@ export function lowerDefaultForField(input: {
     return { defaultValue: { kind: 'literal' as const, value: lowered.value, canonical: true } };
   };
 
-  const writtenElement = (
+  const writtenScalar = (
     element: string | boolean | NumLiteral | ParsedTaggedLiteral,
-  ): WrittenValue | { readonly ok: false } => {
+  ): WrittenScalar | { readonly ok: false } => {
     if (typeof element === 'string') return { kind: 'string', text: element };
     if (typeof element === 'boolean') return { kind: 'boolean', value: element };
     if ('text' in element) return { kind: 'number', text: element.text };
-    const literal = readTaggedLiteral(element, input.dataTypeSupport, source);
-    if (!literal.ok) {
-      input.diagnostics.push(literal.diagnostic);
+    const { canonicalization } = element;
+    if (!canonicalization.ok) {
+      input.diagnostics.push({
+        code: TAGGED_LITERAL_CANONICALIZATION_CODES[canonicalization.reason],
+        message: describeTaggedLiteralFailure(canonicalization.reason),
+        ...source.at(element.span),
+      });
       return { ok: false };
     }
-    return literal.written;
+    return { kind: 'tag', tag: element.tag, text: canonicalization.text };
   };
 
   const sqlExpressionDefault = (text: string, span: PslSpan) => {
@@ -729,7 +698,7 @@ export function lowerDefaultForField(input: {
   if (Array.isArray(value)) {
     const elements: WrittenValue[] = [];
     for (const element of value) {
-      const written = writtenElement(element);
+      const written = writtenScalar(element);
       if ('ok' in written) return {};
       elements.push(written);
     }
@@ -744,16 +713,13 @@ export function lowerDefaultForField(input: {
   }
 
   if ('tag' in value) {
-    const literal = readTaggedLiteral(value, input.dataTypeSupport, source);
-    if (!literal.ok) {
-      input.diagnostics.push(literal.diagnostic);
-      return {};
-    }
-    const read = readWrittenValue(input.dataTypeSupport, literal.written);
+    const written = writtenScalar(value);
+    if ('ok' in written) return {};
+    const read = readWrittenValue(input.dataTypeSupport, written);
     if (read.ok && read.value.type === SQL_EXPRESSION_DATA_TYPE_ID) {
       return sqlExpressionDefault(sqlTextFromCanonical(read.value.value), value.span);
     }
-    return readAsLiteral(literal.written);
+    return readAsLiteral(written);
   }
 
   if (typeof value === 'object') {
