@@ -200,6 +200,26 @@ Logs in the gitignored `wip/2b-cd/`.
 - The wording of a number of the wrong size (`pg/int4 has no cast from pg/int8; write a number`) and of `write no written form`, carried over from slice 2t. No place in slice 2b receives a number-typed or formless data type, so neither message can appear yet.
 - `/drive-code-review` of slice 2b.
 
+### Slice 2b review fixes, 2026-09-30
+
+Brief: `dispatches/2b-review-fixes-brief.md`. Reviews: `slice-reviews/2b/`. Commits `5f44720063` to the status commit. Not pushed, no pull request.
+
+- **A01, A02, A14, F07**: the framework has one tag-agnostic `taggedLiteralTextReadsBack`, exported from `authoring`; `canonicalizeTaggedLiteralBody` is no longer exported from `control`. `sqlTextsReadBack` is the one predicate infer and print call. `printSqlExpressionLiteral` throws for text that does not read back. Column defaults print with `printTaggedLiteral`, because they print unconditionally (`dispatches/2b-review-fixes-findings.md` finding 1). The skip note lives in `psl-infer/infer-sql-text.ts`.
+- **A03**: infer skips only exact-named objects, with the new note. A wire-named index is printed with its canonical text under the same name. Tests in `infer-sql-expression-literals.test.ts` and `infer-parse-emit.test.ts` (absent from the emitted contract).
+- **A04 to A07, A17, F03**: ADRs 129, 231, 260, the editor tooling brief, the error reference and both fragments.
+- **A08, A09**: `@default` argument values carry `kind` (`scalar`, `list`, `function`, `member`); a written scalar has no `ok` field; `writtenList` is generic.
+- **A10**: every `sqlAttributeSpecs` factory takes the context, and every call site passes it. ADR 249 says so.
+- **A11**: `blockSpecContext` builds every `BlockSpecContext`.
+- **A12**: the guard test collects every `str()` argument and compares it with a list of non-SQL arguments.
+- **A13**: deferred to slice 3, in `plan.md`.
+- **A15, F02**: the codemod skips `//` and `///` comments; its test checks both fragment copies and compares its printer with the framework's. Rerun on the merge-base schemas, it reproduces every committed rewrite (`wip/2b-review-fixes/codemod-rerun/`).
+- **A16**: `createSqlBinder` requires `defaultFunctionRegistry`.
+- **F04**: `test/migrations/sql-text-canonical-planner.test.ts`. Wire-named objects: no operations. An exact-named index and check: `migration plan` stops with a conflict asking for `migration new`; an exact-named policy plans nothing. The fragments and ADR 260 say so.
+- **F05, F06**: whole assertions. **F08**: nothing in code; the pull request description says the hook change rode in `0e83ea5e3f`.
+- Build fix: `EnumMemberDefault` and `FunctionDefault` are exported from `@internal/sql-contract-psl/attribute-specs`, so `family-sql` declarations can name them.
+
+Verification at HEAD (F01), logs in `wip/2b-review-fixes/`: `build`, `typecheck`, `lint`, `lint:deps`, `lint:skills`, `check:error-reference`, `lint:framework-vocabulary`, `fixtures:check` (tree clean) pass; `lint:casts` and `lint:throws` delta 0. `test:scripts`: 590 pass. `test:packages`: 1452 files pass, 7 fail; the three tarball tests are the known failures, and the other four pass alone (`rerun-failed.log`). Integration files alone: 60 files, 982 tests pass (`integration.log`). Supabase pack: 18 files pass (`supabase-tests.log`). `check:upgrade-coverage`: `upgrade-coverage.log`.
+
 ## Slice order and tickets
 
 | Order | Plan slice | Ticket | State |
