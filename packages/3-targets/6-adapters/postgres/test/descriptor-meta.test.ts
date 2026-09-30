@@ -1,5 +1,5 @@
+import postgresTargetPack from '@internal/target-postgres/pack';
 import { describe, expect, it } from 'vitest';
-import { postgresNativeAuthoringTypes } from '../src/core/control-mutation-defaults';
 import { postgresAdapterDescriptorMeta } from '../src/core/descriptor-meta';
 import postgresRuntimeAdapterDescriptor from '../src/exports/runtime';
 
@@ -9,6 +9,12 @@ type ExpandFn = (input: { nativeType: string; typeParams?: Record<string, unknow
 type HooksMap = Record<string, { expandNativeType: ExpandFn }>;
 
 const hooks = postgresAdapterDescriptorMeta.types.codecTypes.controlPlaneHooks as HooksMap;
+
+describe('postgresAdapterDescriptorMeta data types', () => {
+  it('registers none, because the target registers them', () => {
+    expect(postgresAdapterDescriptorMeta).not.toHaveProperty('dataTypes');
+  });
+});
 
 describe('postgresAdapterDescriptorMeta capabilities', () => {
   it('descriptor reports sql.scalarList capability', () => {
@@ -243,7 +249,7 @@ describe('precision bounds agree between authoring and expansion', () => {
   it.each(precisionBearing)(
     '%s declares a minimum its hook honours',
     (typeName, codecId, nativeType) => {
-      const typeConstructor = postgresNativeAuthoringTypes[typeName];
+      const typeConstructor = postgresTargetPack.authoring.type[typeName];
       const precisionArg = typeConstructor.args?.find((arg) => arg.name === 'precision');
       const minimum = precisionArg?.kind === 'number' ? precisionArg.minimum : undefined;
 

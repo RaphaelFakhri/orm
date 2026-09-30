@@ -14,9 +14,9 @@ import type { SqlStorage } from '@internal/sql-contract/types';
 import { interpretPslDocumentToSqlContract } from '@internal/sql-contract-psl';
 import type { SqlSchemaIRNode } from '@internal/sql-schema-ir/types';
 import { postgresDataTypes } from '@internal/target-postgres/data-types';
+import postgresTargetPack from '@internal/target-postgres/pack';
 import { isPostgresSchema, postgresCreateNamespace } from '@internal/target-postgres/types';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { postgresScalarAuthoringTypes } from '../../src/core/control-mutation-defaults';
 import {
   controlAdapter,
   createDriver,
@@ -137,7 +137,7 @@ function buildScalarTypeDescriptors(): ReadonlyMap<
   string,
   { codecId: string; nativeType: string }
 > {
-  return collectScalarTypeConstructors(postgresScalarAuthoringTypes);
+  return collectScalarTypeConstructors(postgresTargetPack.authoring.type);
 }
 
 function buildContractFromPsl(psl: string): Contract<SqlStorage> {

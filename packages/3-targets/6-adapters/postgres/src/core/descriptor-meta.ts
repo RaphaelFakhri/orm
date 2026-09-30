@@ -38,7 +38,6 @@ import {
   SQL_VARCHAR_CODEC_ID,
 } from '@internal/target-postgres/codec-ids';
 import { postgresCodecRegistry } from '@internal/target-postgres/codecs';
-import { postgresDataTypes } from '@internal/target-postgres/data-types';
 import { adapterError } from './adapter-errors';
 
 // ============================================================================ Helper functions for reducing boilerplate ============================================================================
@@ -168,7 +167,6 @@ export const postgresAdapterDescriptorMeta = {
       insertOnConflictWithoutTarget: true,
     },
   },
-  dataTypes: postgresDataTypes,
   types: {
     aggregateDescriptors: postgresAggregateDescriptors,
     codecTypes: {

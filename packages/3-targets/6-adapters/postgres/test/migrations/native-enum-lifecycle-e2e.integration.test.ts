@@ -16,6 +16,7 @@
  *  - Member-change refusal (R9): rename/removal/reorder each plan zero ops
  *    and leave the database untouched.
  */
+
 import type { Contract, ControlPolicy } from '@internal/contract/types';
 import { INIT_ADDITIVE_POLICY } from '@internal/family-sql/control';
 import { collectScalarTypeConstructors } from '@internal/framework-components/authoring';
@@ -33,13 +34,13 @@ import { interpretPslDocumentToSqlContract } from '@internal/sql-contract-psl';
 import type { SqlSchemaIRNode } from '@internal/sql-schema-ir/types';
 import { createPostgresBuiltinCodecLookup } from '@internal/target-postgres/codecs';
 import { postgresDataTypes } from '@internal/target-postgres/data-types';
+import postgresTargetPack from '@internal/target-postgres/pack';
 import {
   PostgresDatabaseSchemaNode,
   postgresCreateNamespace,
 } from '@internal/target-postgres/types';
 import { ifDefined } from '@internal/utils/defined';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import { postgresScalarAuthoringTypes } from '../../src/core/control-mutation-defaults';
 import {
   controlAdapter,
   createDriver,
@@ -207,7 +208,7 @@ function buildScalarTypeDescriptors(): ReadonlyMap<
   string,
   { codecId: string; nativeType: string }
 > {
-  return collectScalarTypeConstructors(postgresScalarAuthoringTypes);
+  return collectScalarTypeConstructors(postgresTargetPack.authoring.type);
 }
 
 function buildContractFromPsl(psl: string, control: ControlPolicy): Contract<SqlStorage> {
