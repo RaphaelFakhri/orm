@@ -175,6 +175,8 @@ The control stack assembles every pack's data types, codec descriptors, type con
 
 The reverse of the last is not required: a type may be reachable only through casts. Assembly is the right level for these checks because they span packs: `pgvector/vector` casting from `pg/numeric` is valid only when the Postgres target that owns `pg/numeric` is in the stack. Within a pack, references are by constant rather than by string, so a misspelt id fails to compile and an unregistered one fails assembly.
 
+A family may add checks for its own data types. The SQL family checks that no type casts from `sql/expression` when it creates its control instance, not during assembly, so the CLI reports `CONTRACT.DATA_TYPE_CASTS_FROM_SQL_EXPRESSION` and the language server does not. Like the assembly checks, it names the contributor.
+
 ## Printing
 
 `contract infer` inverts the mapping. For an introspected column it matches the reported type name against the registered types' DDL names and aliases. For a stored value, the printer classifies the canonical form with the same rules a written value uses: digit text or a number through the target's classifier, a document as the JSON type, text as the text type, a boolean, an array element by element. It confirms the column's type is that type or casts from it, prints with the entry's `print`, and runs the text back through parse and cast to prove it returns the stored value. Anything that fails takes the raw-expression fallback, so infer never prints a schema that emit cannot read.
