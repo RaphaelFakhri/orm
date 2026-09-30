@@ -142,6 +142,14 @@ describe('arktype object schema keys', () => {
     expect(requiredSchemaKeys(type('number.integer >= 1'))).toBeUndefined();
   });
 
+  it.each([
+    ['a union of objects', type({ length: 'number' }).or({ scale: 'number' })],
+    ['a piped object', type({ length: 'number' }).pipe((params) => params)],
+  ] as const)('reads no keys from %s', (_, schema) => {
+    expect(objectSchemaKeys(schema)).toBeUndefined();
+    expect(requiredSchemaKeys(schema)).toBeUndefined();
+  });
+
   it('reads no keys from a value that is not a schema', () => {
     expect(objectSchemaKeys({ props: [] })).toBeUndefined();
     expect(requiredSchemaKeys(undefined)).toBeUndefined();

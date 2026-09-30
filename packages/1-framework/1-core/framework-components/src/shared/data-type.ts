@@ -115,8 +115,17 @@ function objectSchemaProps(schema: unknown): readonly SchemaProp[] | undefined {
     return undefined;
   }
   if (!describesObjects(schema)) return undefined;
-  const props: unknown = Reflect.get(schema, 'props');
+  const props = readProps(schema);
   return isSchemaPropList(props) ? props : undefined;
+}
+
+/** Arktype throws from `props` for a union or a morph, whose keys it cannot list. */
+function readProps(schema: object): unknown {
+  try {
+    return Reflect.get(schema, 'props');
+  } catch {
+    return undefined;
+  }
 }
 
 /** The keys an arktype object schema declares, or undefined when `schema` is not one. */

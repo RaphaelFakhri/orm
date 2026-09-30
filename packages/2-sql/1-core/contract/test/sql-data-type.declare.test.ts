@@ -29,6 +29,18 @@ describe('sqlDataType', () => {
     );
   });
 
+  it.each([
+    ['a union of objects', type({ length: 'number' }).or({ scale: 'number' })],
+    ['a piped object', type({ length: 'number' }).pipe((params) => params)],
+  ] as const)('refuses %s as a parameter schema, naming the data type', (_, params) => {
+    expect(() => sqlDataType('t/unreadable-params', { params })).toThrow(
+      expect.objectContaining({
+        name: 'InternalError',
+        message: expect.stringMatching(/t\/unreadable-params/),
+      }),
+    );
+  });
+
   it('normalizes with the identity unless a normal form is declared', () => {
     expect(int4.sql.normalize({})).toEqual({});
     expect(numeric.sql.normalize({ precision: 10 })).toEqual({ precision: 10, scale: 0 });
