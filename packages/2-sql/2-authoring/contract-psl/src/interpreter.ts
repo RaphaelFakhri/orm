@@ -1083,7 +1083,7 @@ function buildModelNodeFromPsl(input: BuildModelNodeInput): BuildModelNodeResult
         spec: specFactory({
           symbols: input.symbolTable,
           model,
-          controlMutationDefaults: { defaultFunctionRegistry: input.defaultFunctionRegistry },
+          defaultFunctionRegistry: input.defaultFunctionRegistry,
           dataTypes: input.dataTypes,
         }),
         model,
@@ -2080,9 +2080,7 @@ export function interpretPslDocumentToSqlContract(
     sources: input.sources,
     pslBlockDescriptors: composedPslBlockDescriptors,
     authoringContributions: input.authoringContributions,
-    controlMutationDefaults: {
-      defaultFunctionRegistry: input.controlMutationDefaults?.defaultFunctionRegistry ?? new Map(),
-    },
+    defaultFunctionRegistry: input.controlMutationDefaults?.defaultFunctionRegistry ?? new Map(),
     dataTypes,
     scalarColumnDescriptors: input.scalarColumnDescriptors,
     contributedModelAttributeSpecs: contributedModelSpecs,

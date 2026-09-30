@@ -76,7 +76,7 @@ function lowerEnumDefaultForField(input: {
       symbols: input.symbolTable,
       model,
       field,
-      controlMutationDefaults: { defaultFunctionRegistry: input.defaultFunctionRegistry },
+      defaultFunctionRegistry: input.defaultFunctionRegistry,
       dataTypes: input.dataTypes,
     }),
   );

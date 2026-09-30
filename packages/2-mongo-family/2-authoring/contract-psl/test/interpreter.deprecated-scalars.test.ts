@@ -51,7 +51,7 @@ function interpret(schema: string) {
     sources,
     scalarTypeCodecIds,
     authoringContributions,
-    controlMutationDefaults: { defaultFunctionRegistry: new Map() },
+    defaultFunctionRegistry: new Map(),
     dataTypes: EMPTY_DATA_TYPES,
     reportWarning: (diagnostic) => {
       warnings.push(diagnostic);
@@ -106,7 +106,7 @@ describe('deprecated Mongo PSL scalar names', () => {
       sources,
       scalarTypeCodecIds,
       authoringContributions,
-      controlMutationDefaults: { defaultFunctionRegistry: new Map() },
+      defaultFunctionRegistry: new Map(),
       dataTypes: EMPTY_DATA_TYPES,
     });
     expect(result.ok).toBe(true);

@@ -25,7 +25,7 @@ function parseArgument(source: string) {
     symbolTable,
     typeConstructors: {},
     attributeSpecs: { model: {}, field: {} },
-    controlMutationDefaults: { defaultFunctionRegistry: new Map() },
+    defaultFunctionRegistry: new Map(),
     dataTypes: EMPTY_DATA_TYPES,
   }).binder;
   const attribute = [...document.syntax.descendants()]

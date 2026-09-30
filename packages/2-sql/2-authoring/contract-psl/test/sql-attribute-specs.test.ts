@@ -21,7 +21,7 @@ import {
 import { fixtureDataTypeSupport } from './fixture-data-types';
 import { buildSymbolTableInput, createBuiltinLikeControlMutationDefaults } from './fixtures';
 
-const controlMutationDefaults = createBuiltinLikeControlMutationDefaults();
+const { defaultFunctionRegistry } = createBuiltinLikeControlMutationDefaults();
 
 function project(schema: string, modelName: string) {
   const input = buildSymbolTableInput(schema);
@@ -82,7 +82,7 @@ function interpretDefault(schema: string, fieldName: string) {
         symbols: symbolTable,
         model,
         field: target,
-        controlMutationDefaults,
+        defaultFunctionRegistry,
         dataTypes: fixtureDataTypeSupport,
       }),
     ),
@@ -136,14 +136,14 @@ describe('sqlAttributeSpecs', () => {
   const modelCtx = modelSpecContext({
     symbols: symbolTable,
     model,
-    controlMutationDefaults,
+    defaultFunctionRegistry,
     dataTypes: fixtureDataTypeSupport,
   });
   const fieldCtx = fieldSpecContext({
     symbols: symbolTable,
     model,
     field: field(model, 'id'),
-    controlMutationDefaults,
+    defaultFunctionRegistry,
     dataTypes: fixtureDataTypeSupport,
   });
 
@@ -246,7 +246,7 @@ describe('sqlAttributeSpecs.field.default', () => {
     symbols: symbolTable,
     model,
     field: field(model, 'id'),
-    controlMutationDefaults,
+    defaultFunctionRegistry,
     dataTypes: fixtureDataTypeSupport,
   });
 
@@ -291,7 +291,7 @@ describe('sqlAttributeSpecs.field.default', () => {
       symbols: symbolTable,
       model,
       field: field(model, 'id'),
-      controlMutationDefaults,
+      defaultFunctionRegistry,
       dataTypes: EMPTY_DATA_TYPES,
     });
     const value = oneOfMetadata(positionalType(sqlAttributeSpecs.field.default(noTags)));
@@ -304,7 +304,7 @@ describe('sqlAttributeSpecs.field.default', () => {
       symbols: symbolTable,
       model,
       field: field(model, 'tags'),
-      controlMutationDefaults,
+      defaultFunctionRegistry,
       dataTypes: fixtureDataTypeSupport,
     });
     const value = oneOfMetadata(positionalType(sqlAttributeSpecs.field.default(listCtx)));
@@ -335,7 +335,7 @@ describe('sqlAttributeSpecs.field.default', () => {
       symbols: symbolTable,
       model,
       field: field(model, 'tags'),
-      controlMutationDefaults,
+      defaultFunctionRegistry,
       dataTypes: fixtureDataTypeSupport,
     });
     const value = oneOfMetadata(positionalType(sqlAttributeSpecs.field.default(listCtx)));
@@ -356,7 +356,7 @@ describe('sqlAttributeSpecs.field.default', () => {
       symbols: enumProject.symbolTable,
       model: enumProject.model,
       field: priority,
-      controlMutationDefaults,
+      defaultFunctionRegistry,
       dataTypes: fixtureDataTypeSupport,
     });
     const enumDefault = oneOfMetadata(positionalType(sqlAttributeSpecs.field.default(enumCtx)));
@@ -374,7 +374,7 @@ describe('sqlAttributeSpecs.field.default', () => {
       symbols: emptyProject.symbolTable,
       model: emptyProject.model,
       field: kind,
-      controlMutationDefaults,
+      defaultFunctionRegistry,
       dataTypes: fixtureDataTypeSupport,
     });
     const emptyDefault = oneOfMetadata(positionalType(sqlAttributeSpecs.field.default(emptyCtx)));

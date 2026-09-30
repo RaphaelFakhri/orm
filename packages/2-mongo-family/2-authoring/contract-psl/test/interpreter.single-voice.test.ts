@@ -27,9 +27,7 @@ function diagnosticCodes(schema: string): readonly string[] {
   const result = interpretPslDocumentToMongoContract({
     ...symbolTableInput(schema),
     scalarTypeCodecIds,
-    controlMutationDefaults: {
-      defaultFunctionRegistry: new Map(),
-    },
+    defaultFunctionRegistry: new Map(),
     dataTypes: EMPTY_DATA_TYPES,
   });
   if (result.ok) throw new Error('expected interpretation to fail');

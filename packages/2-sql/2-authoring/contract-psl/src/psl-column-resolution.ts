@@ -613,7 +613,7 @@ export function lowerDefaultForField(input: {
       symbols: input.symbolTable,
       model: input.model,
       field: input.field,
-      controlMutationDefaults: { defaultFunctionRegistry: input.defaultFunctionRegistry },
+      defaultFunctionRegistry: input.defaultFunctionRegistry,
       dataTypes: input.dataTypes,
     }),
   );

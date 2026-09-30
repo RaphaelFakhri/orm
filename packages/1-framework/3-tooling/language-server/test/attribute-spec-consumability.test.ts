@@ -111,9 +111,7 @@ describe('assembled attribute specs are consumable from a resolved project', () 
     const spec = assembleAttributeSpecs(authoringContributions).model['base']?.({
       symbols: pipeline.symbolTable,
       model,
-      controlMutationDefaults: {
-        defaultFunctionRegistry: controlMutationDefaults.defaultFunctionRegistry,
-      },
+      defaultFunctionRegistry: controlMutationDefaults.defaultFunctionRegistry,
       dataTypes: EMPTY_DATA_TYPES,
     });
     expect(spec).toMatchObject({
@@ -203,9 +201,8 @@ describe('assembled attribute specs are consumable from a resolved project', () 
       symbols: pipeline.symbolTable,
       model,
       field,
-      controlMutationDefaults: {
-        ...interpretation.context.controlMutationDefaults,
-      },
+      defaultFunctionRegistry:
+        interpretation.context.controlMutationDefaults.defaultFunctionRegistry,
       dataTypes: interpretation.context.dataTypes,
     });
     expect(spec).toMatchObject({
@@ -236,9 +233,8 @@ describe('assembled attribute specs are consumable from a resolved project', () 
     const ctx: AttributeSpecContext = {
       symbols: pipeline.symbolTable,
       model,
-      controlMutationDefaults: {
-        ...interpretation.context.controlMutationDefaults,
-      },
+      defaultFunctionRegistry:
+        interpretation.context.controlMutationDefaults.defaultFunctionRegistry,
       dataTypes: interpretation.context.dataTypes,
     };
 

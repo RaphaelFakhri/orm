@@ -3,7 +3,7 @@ import type {
   AuthoringTypeConstructorDescriptor,
   DataTypeSupport,
 } from '@internal/framework-components/authoring';
-import type { ControlDefaultRegistries } from '@internal/framework-components/control';
+import type { ControlMutationDefaultRegistry } from '@internal/framework-components/control';
 import type {
   ArgType,
   AttributeSpec,
@@ -127,7 +127,7 @@ export function createMongoBinder(input: {
   readonly symbolTable: SymbolTable;
   readonly sources: PslSources;
   readonly scalarTypeCodecIds: ReadonlyMap<string, string>;
-  readonly controlMutationDefaults: ControlDefaultRegistries;
+  readonly defaultFunctionRegistry: ControlMutationDefaultRegistry;
   readonly dataTypes: DataTypeSupport;
   readonly authoringContributions?: AuthoringContributions | undefined;
 }): { readonly binder: Binder; readonly diagnostics: readonly PslDiagnostic[] } {
@@ -140,7 +140,7 @@ export function createMongoBinder(input: {
     symbolTable: input.symbolTable,
     typeConstructors: { ...scalars, ...(input.authoringContributions?.type ?? {}) },
     attributeSpecs: mongoAttributeSpecs,
-    controlMutationDefaults: input.controlMutationDefaults,
+    defaultFunctionRegistry: input.defaultFunctionRegistry,
     dataTypes: input.dataTypes,
     pslBlockDescriptors: input.authoringContributions?.pslBlockDescriptors ?? {},
     describeUnsupportedAttribute: describeUnsupportedMongoAttribute(input.sources),

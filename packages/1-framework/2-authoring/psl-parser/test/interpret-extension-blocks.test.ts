@@ -90,7 +90,7 @@ function build(source: string) {
       String: { kind: 'typeConstructor', output: { codecId: 'fixture/scalar@1' } },
     },
     attributeSpecs: { model: {}, field: {} },
-    controlMutationDefaults: { defaultFunctionRegistry: new Map() },
+    defaultFunctionRegistry: new Map(),
     dataTypes: EMPTY_DATA_TYPES,
     pslBlockDescriptors: DESCRIPTORS,
   });

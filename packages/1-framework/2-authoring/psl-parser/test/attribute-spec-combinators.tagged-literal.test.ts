@@ -25,9 +25,7 @@ function makeCtx(sources: PslSources): FieldAttributeCtx {
     symbolTable,
     typeConstructors: {},
     attributeSpecs: { model: {}, field: {} },
-    controlMutationDefaults: {
-      defaultFunctionRegistry: new Map(),
-    },
+    defaultFunctionRegistry: new Map(),
     dataTypes: EMPTY_DATA_TYPES,
   });
   return { sources, symbols: symbolTable, selfModel, field, binder };

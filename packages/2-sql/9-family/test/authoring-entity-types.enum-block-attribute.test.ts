@@ -16,7 +16,7 @@ function build(source: string) {
     symbolTable: result.symbolTable,
     typeConstructors: {},
     attributeSpecs: { model: {}, field: {} },
-    controlMutationDefaults: { defaultFunctionRegistry: new Map() },
+    defaultFunctionRegistry: new Map(),
     dataTypes: EMPTY_DATA_TYPES,
     pslBlockDescriptors: sqlFamilyPslBlockDescriptors,
   });

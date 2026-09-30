@@ -15,7 +15,7 @@ function diagnosticsOf(schema: string): readonly ContractSourceDiagnostic[] {
     symbolTable,
     sources,
     scalarTypeCodecIds: new Map([['ObjectId', 'mongo/objectId@1']]),
-    controlMutationDefaults: { defaultFunctionRegistry: new Map() },
+    defaultFunctionRegistry: new Map(),
     dataTypes: EMPTY_DATA_TYPES,
   });
   if (result.ok) throw new Error('Expected interpretation to fail');

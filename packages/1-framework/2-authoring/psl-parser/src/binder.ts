@@ -3,7 +3,7 @@ import type {
   AuthoringTypeNamespace,
   DataTypeSupport,
 } from '@internal/framework-components/authoring';
-import type { ControlDefaultRegistries } from '@internal/framework-components/control';
+import type { ControlMutationDefaultRegistry } from '@internal/framework-components/control';
 import type { ContributedPslDiagnosticCode } from '@internal/framework-components/psl-ast';
 import { blindCast } from '@internal/utils/casts';
 import type {
@@ -103,7 +103,7 @@ export interface CreateBinderOptions {
   readonly symbolTable: SymbolTable;
   readonly typeConstructors: AuthoringTypeNamespace;
   readonly attributeSpecs: AttributeSpecNamespace;
-  readonly controlMutationDefaults: ControlDefaultRegistries;
+  readonly defaultFunctionRegistry: ControlMutationDefaultRegistry;
   readonly dataTypes: DataTypeSupport;
   readonly pslBlockDescriptors?: AuthoringPslBlockDescriptorNamespace | undefined;
   readonly describeUnsupportedAttribute?: DescribeUnsupportedAttribute | undefined;
@@ -183,7 +183,7 @@ export function createBinder(options: CreateBinderOptions): BinderResult {
     symbolTable,
     typeConstructors,
     attributeSpecs,
-    controlMutationDefaults,
+    defaultFunctionRegistry,
     dataTypes,
     describeUnsupportedAttribute,
   } = options;
@@ -250,7 +250,7 @@ export function createBinder(options: CreateBinderOptions): BinderResult {
     };
     const specContext =
       entity.kind === 'model'
-        ? { symbols: symbolTable, model: entity, controlMutationDefaults, dataTypes }
+        ? { symbols: symbolTable, model: entity, defaultFunctionRegistry, dataTypes }
         : undefined;
     bindAttributes(
       entity,

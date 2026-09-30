@@ -44,9 +44,7 @@ function foreignArg(source: string): { arg: ExpressionAst; ctx: ModelAttributeCt
     symbolTable,
     typeConstructors: {},
     attributeSpecs: { model: {}, field: {} },
-    controlMutationDefaults: {
-      defaultFunctionRegistry: new Map(),
-    },
+    defaultFunctionRegistry: new Map(),
     dataTypes: EMPTY_DATA_TYPES,
   });
   return {

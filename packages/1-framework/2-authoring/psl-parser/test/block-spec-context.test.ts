@@ -56,7 +56,7 @@ describe('block spec context', () => {
       symbolTable,
       typeConstructors: {},
       attributeSpecs: { model: {}, field: {} },
-      controlMutationDefaults: { defaultFunctionRegistry: new Map() },
+      defaultFunctionRegistry: new Map(),
       dataTypes: binderDataTypes,
       pslBlockDescriptors: { policy_select: recordingDescriptor(bound) },
     });

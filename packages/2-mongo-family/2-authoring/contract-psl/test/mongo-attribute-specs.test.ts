@@ -78,7 +78,7 @@ function contexts(): { model: AttributeSpecContext; field: FieldAttributeSpecCon
   const modelContext: AttributeSpecContext = {
     symbols: symbolTable,
     model,
-    controlMutationDefaults: { defaultFunctionRegistry: new Map() },
+    defaultFunctionRegistry: new Map(),
     dataTypes: EMPTY_DATA_TYPES,
   };
   return { model: modelContext, field: { ...modelContext, field } };
@@ -111,7 +111,7 @@ model Base { id String }`,
         symbolTable,
         sources,
         scalarTypeCodecIds: new Map(),
-        controlMutationDefaults: { defaultFunctionRegistry: new Map() },
+        defaultFunctionRegistry: new Map(),
         dataTypes: EMPTY_DATA_TYPES,
       }).binder,
       diagnostics,

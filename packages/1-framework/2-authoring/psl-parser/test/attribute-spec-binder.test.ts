@@ -62,9 +62,7 @@ function bind(text: string) {
     symbolTable,
     typeConstructors: TYPE_CONSTRUCTORS,
     attributeSpecs: ATTRIBUTE_SPECS,
-    controlMutationDefaults: {
-      defaultFunctionRegistry: new Map(),
-    },
+    defaultFunctionRegistry: new Map(),
     dataTypes: EMPTY_DATA_TYPES,
   });
   return { sources, symbolTable, binder, binderDiagnostics: diagnostics };

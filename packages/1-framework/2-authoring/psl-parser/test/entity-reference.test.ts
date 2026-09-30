@@ -67,7 +67,7 @@ function fixture(value: string, local = true) {
       },
       field: {},
     },
-    controlMutationDefaults: { defaultFunctionRegistry: new Map() },
+    defaultFunctionRegistry: new Map(),
     dataTypes: EMPTY_DATA_TYPES,
   });
   for (const syntax of document.syntax.descendants()) {
@@ -117,7 +117,7 @@ describe('syntax-scoped entity resolution', () => {
       symbolTable: result.symbolTable,
       typeConstructors: {},
       attributeSpecs: { model: {}, field: {} },
-      controlMutationDefaults: { defaultFunctionRegistry: new Map() },
+      defaultFunctionRegistry: new Map(),
       dataTypes: EMPTY_DATA_TYPES,
       pslBlockDescriptors: { permission: descriptor },
     });
@@ -224,7 +224,7 @@ describe('syntax-scoped entity resolution', () => {
           },
           field: {},
         },
-        controlMutationDefaults: { defaultFunctionRegistry: new Map() },
+        defaultFunctionRegistry: new Map(),
         dataTypes: EMPTY_DATA_TYPES,
       });
       const selfModel = symbolTable.topLevel.models['Owner'];

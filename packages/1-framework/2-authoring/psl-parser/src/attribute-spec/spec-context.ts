@@ -1,6 +1,6 @@
 import type { DataTypeSupport } from '@internal/framework-components/authoring';
 import { createDataTypeLookup } from '@internal/framework-components/codec';
-import type { ControlDefaultRegistries } from '@internal/framework-components/control';
+import type { ControlMutationDefaultRegistry } from '@internal/framework-components/control';
 import type { BlockSpecContext } from '../block-spec/types';
 import type { FieldSymbol, ModelSymbol, SymbolTable } from '../symbol-table';
 import type { AttributeCtx, AttributeSpec, FieldAttributeCtx, ModelAttributeCtx } from './types';
@@ -8,7 +8,7 @@ import type { AttributeCtx, AttributeSpec, FieldAttributeCtx, ModelAttributeCtx 
 export interface AttributeSpecContext {
   readonly symbols: SymbolTable;
   readonly model: ModelSymbol;
-  readonly controlMutationDefaults: ControlDefaultRegistries;
+  readonly defaultFunctionRegistry: ControlMutationDefaultRegistry;
   readonly dataTypes: DataTypeSupport;
 }
 

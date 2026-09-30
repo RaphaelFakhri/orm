@@ -30,7 +30,7 @@ import {
   isAuthoringTypeConstructorDescriptor,
 } from '@internal/framework-components/authoring';
 import type { CodecLookup } from '@internal/framework-components/codec';
-import type { ControlDefaultRegistries } from '@internal/framework-components/control';
+import type { ControlMutationDefaultRegistry } from '@internal/framework-components/control';
 import { UNBOUND_NAMESPACE_ID } from '@internal/framework-components/ir';
 import {
   applyPolymorphicScopeToMongoIndex,
@@ -99,7 +99,7 @@ export interface InterpretPslDocumentToMongoContractInput {
   readonly symbolTable: SymbolTable;
   readonly sources: PslSources;
   readonly scalarTypeCodecIds: ReadonlyMap<string, string>;
-  readonly controlMutationDefaults: ControlDefaultRegistries;
+  readonly defaultFunctionRegistry: ControlMutationDefaultRegistry;
   readonly dataTypes: DataTypeSupport;
   readonly codecLookup?: CodecLookup;
   readonly seedDiagnostics?: readonly ContractSourceDiagnostic[];
@@ -1183,7 +1183,7 @@ export function interpretPslDocumentToMongoContract(
     symbolTable,
     sources,
     scalarTypeCodecIds,
-    controlMutationDefaults: input.controlMutationDefaults,
+    defaultFunctionRegistry: input.defaultFunctionRegistry,
     dataTypes: input.dataTypes,
     authoringContributions: input.authoringContributions,
   });
@@ -1212,7 +1212,7 @@ export function interpretPslDocumentToMongoContract(
   const specContextFor = (model: ModelSymbol): AttributeSpecContext => ({
     symbols: symbolTable,
     model,
-    controlMutationDefaults: input.controlMutationDefaults,
+    defaultFunctionRegistry: input.defaultFunctionRegistry,
     dataTypes: input.dataTypes,
   });
   const modelMetadataByName = new Map<string, MongoModelMetadata>();

@@ -43,7 +43,7 @@ function bind(
       sources,
       symbolTable,
       typeConstructors: {},
-      controlMutationDefaults: { defaultFunctionRegistry: new Map() },
+      defaultFunctionRegistry: new Map(),
       dataTypes: EMPTY_DATA_TYPES,
       attributeSpecs: { model: { refs: () => modelAttribute('refs', parameters) }, field: {} },
       pslBlockDescriptors: {
@@ -353,7 +353,7 @@ it('resolves a field after an entity lookup fails', () => {
     sources,
     symbolTable,
     typeConstructors: {},
-    controlMutationDefaults: { defaultFunctionRegistry: new Map() },
+    defaultFunctionRegistry: new Map(),
     dataTypes: EMPTY_DATA_TYPES,
     attributeSpecs: {
       model: {},

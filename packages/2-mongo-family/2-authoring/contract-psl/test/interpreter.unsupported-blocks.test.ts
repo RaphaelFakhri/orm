@@ -18,7 +18,7 @@ function interpret(schema: string) {
       ['String', 'mongo/string@1'],
       ['ObjectId', 'mongo/objectId@1'],
     ]),
-    controlMutationDefaults: { defaultFunctionRegistry: new Map() },
+    defaultFunctionRegistry: new Map(),
     dataTypes: EMPTY_DATA_TYPES,
     codecLookup: emptyCodecLookup,
   });

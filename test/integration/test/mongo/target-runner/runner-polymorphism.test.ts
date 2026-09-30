@@ -123,7 +123,7 @@ function makeContractFromPsl(): MongoContract {
     symbolTable,
     sources,
     scalarTypeCodecIds: mongoScalarTypeDescriptors,
-    controlMutationDefaults: { defaultFunctionRegistry: new Map() },
+    defaultFunctionRegistry: new Map(),
     dataTypes: EMPTY_DATA_TYPES,
     codecLookup: mongoCodecLookup,
   });

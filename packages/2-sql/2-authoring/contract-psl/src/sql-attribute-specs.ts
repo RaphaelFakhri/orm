@@ -8,7 +8,7 @@ import type {
   DataTypeSupport,
 } from '@internal/framework-components/authoring';
 import { isAuthoringFieldPresetDescriptor } from '@internal/framework-components/authoring';
-import type { ControlDefaultRegistries } from '@internal/framework-components/control';
+import type { ControlMutationDefaultRegistry } from '@internal/framework-components/control';
 import type { ContributedPslDiagnosticCode } from '@internal/framework-components/psl-ast';
 import type {
   ArgType,
@@ -130,7 +130,7 @@ export function createSqlBinder(input: {
   readonly symbolTable: SymbolTable;
   readonly sources: PslSources;
   readonly authoringContributions?: AuthoringContributions | undefined;
-  readonly controlMutationDefaults?: ControlDefaultRegistries | undefined;
+  readonly defaultFunctionRegistry?: ControlMutationDefaultRegistry | undefined;
   readonly dataTypes: DataTypeSupport;
   readonly scalarColumnDescriptors?: ReadonlyMap<string, { readonly codecId: string }> | undefined;
   readonly pslBlockDescriptors?: AuthoringPslBlockDescriptorNamespace | undefined;
@@ -162,9 +162,7 @@ export function createSqlBinder(input: {
       ),
       field: sqlAttributeSpecs.field,
     },
-    controlMutationDefaults: input.controlMutationDefaults ?? {
-      defaultFunctionRegistry: new Map(),
-    },
+    defaultFunctionRegistry: input.defaultFunctionRegistry ?? new Map(),
     dataTypes: input.dataTypes,
     describeUnsupportedAttribute: input.describeUnsupportedAttribute,
   });
@@ -258,7 +256,7 @@ type DefaultArgValue = DefaultLiteralElement | DefaultLiteralElement[] | TypedFu
 function scalarDefaultArms(
   isList: boolean,
   dataTypes: DataTypeSupport,
-  registries: ControlDefaultRegistries,
+  defaultFunctionRegistry: ControlMutationDefaultRegistry,
 ): readonly [ArgType<DefaultArgValue, AttributeCtx>, ...ArgType<DefaultArgValue, AttributeCtx>[]] {
   // One arm per distinct documentation, so each tag's completion and signature help carries the
   // text of the tag it names rather than every registered tag's text run together.
@@ -285,7 +283,7 @@ function scalarDefaultArms(
       ...tagArms((dataType) => dataType !== SQL_EXPRESSION_DATA_TYPE_ID),
     );
   const listArm = () => list(literal(), { label: `list of (${literal().label})` });
-  const funcArms = [...registries.defaultFunctionRegistry.entries()].map(([name, entry]) =>
+  const funcArms = [...defaultFunctionRegistry.entries()].map(([name, entry]) =>
     funcCall(
       name,
       blindCast<
@@ -310,7 +308,7 @@ function defaultValueArm(
     ArgType<DefaultArgValue, AttributeCtx>,
     ...ArgType<DefaultArgValue, AttributeCtx>[],
   ],
-  registry: ControlDefaultRegistries['defaultFunctionRegistry'],
+  registry: ControlMutationDefaultRegistry,
 ) {
   const value = oneOf(...arms);
   return {
@@ -371,14 +369,14 @@ function defaultFieldSpec(ctx: FieldAttributeSpecContext) {
   const members = enumMemberNames(ctx);
   const valueArms =
     members === undefined
-      ? scalarDefaultArms(ctx.field.list, ctx.dataTypes, ctx.controlMutationDefaults)
+      ? scalarDefaultArms(ctx.field.list, ctx.dataTypes, ctx.defaultFunctionRegistry)
       : enumDefaultArms(members, ctx.field.typeName);
   return fieldAttribute('default', {
     documentation: 'Supplies a default value when this field is omitted from a mutation.',
     positional: [
       {
         key: 'value',
-        type: defaultValueArm(valueArms, ctx.controlMutationDefaults.defaultFunctionRegistry),
+        type: defaultValueArm(valueArms, ctx.defaultFunctionRegistry),
         documentation:
           'A literal, enum member, or registered default function compatible with this field.',
       },
@@ -763,13 +761,13 @@ export type SqlRelationOutput = InferAttr<typeof relationFieldSpec>;
 export function modelSpecContext(input: {
   readonly symbols: SymbolTable;
   readonly model: ModelSymbol;
-  readonly controlMutationDefaults: ControlDefaultRegistries;
+  readonly defaultFunctionRegistry: ControlMutationDefaultRegistry;
   readonly dataTypes: DataTypeSupport;
 }): AttributeSpecContext {
   return {
     symbols: input.symbols,
     model: input.model,
-    controlMutationDefaults: input.controlMutationDefaults,
+    defaultFunctionRegistry: input.defaultFunctionRegistry,
     dataTypes: input.dataTypes,
   };
 }
@@ -778,14 +776,14 @@ export function fieldSpecContext(input: {
   readonly symbols: SymbolTable;
   readonly model: ModelSymbol;
   readonly field: FieldSymbol;
-  readonly controlMutationDefaults: ControlDefaultRegistries;
+  readonly defaultFunctionRegistry: ControlMutationDefaultRegistry;
   readonly dataTypes: DataTypeSupport;
 }): FieldAttributeSpecContext {
   return {
     symbols: input.symbols,
     model: input.model,
     field: input.field,
-    controlMutationDefaults: input.controlMutationDefaults,
+    defaultFunctionRegistry: input.defaultFunctionRegistry,
     dataTypes: input.dataTypes,
   };
 }

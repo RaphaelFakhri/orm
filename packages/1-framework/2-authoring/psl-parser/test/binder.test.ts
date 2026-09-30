@@ -86,7 +86,7 @@ const FIELD_SPECS = {
 
 const ATTRIBUTE_SPECS = { model: MODEL_SPECS, field: FIELD_SPECS };
 
-const NO_CONTROL_DEFAULTS = { defaultFunctionRegistry: new Map() };
+const NO_DEFAULT_FUNCTIONS = new Map();
 
 function attributeNodes(
   owner: ModelSymbol | CompositeTypeSymbol | FieldSymbol,
@@ -142,7 +142,7 @@ function bind(...texts: string[]) {
       symbolTable,
       typeConstructors: TYPE_CONSTRUCTORS,
       attributeSpecs: ATTRIBUTE_SPECS,
-      controlMutationDefaults: NO_CONTROL_DEFAULTS,
+      defaultFunctionRegistry: NO_DEFAULT_FUNCTIONS,
       dataTypes: EMPTY_DATA_TYPES,
     }),
   };
@@ -160,7 +160,7 @@ function bindWithUnsupportedDescriber(
       symbolTable,
       typeConstructors: TYPE_CONSTRUCTORS,
       attributeSpecs: ATTRIBUTE_SPECS,
-      controlMutationDefaults: NO_CONTROL_DEFAULTS,
+      defaultFunctionRegistry: NO_DEFAULT_FUNCTIONS,
       dataTypes: EMPTY_DATA_TYPES,
       describeUnsupportedAttribute,
     }),
@@ -1099,7 +1099,7 @@ describe('attribute-spec registry shape', () => {
       symbolTable,
       typeConstructors: TYPE_CONSTRUCTORS,
       attributeSpecs: registry,
-      controlMutationDefaults: NO_CONTROL_DEFAULTS,
+      defaultFunctionRegistry: NO_DEFAULT_FUNCTIONS,
       dataTypes: EMPTY_DATA_TYPES,
     });
     const user = symbolTable.topLevel.models['User']!;
@@ -1266,7 +1266,7 @@ describe('the binder calls the real spec factories', () => {
       symbolTable,
       typeConstructors: TYPE_CONSTRUCTORS,
       attributeSpecs: registry,
-      controlMutationDefaults: NO_CONTROL_DEFAULTS,
+      defaultFunctionRegistry: NO_DEFAULT_FUNCTIONS,
       dataTypes: EMPTY_DATA_TYPES,
     });
     const user = symbolTable.topLevel.models['User']!;
@@ -1312,7 +1312,7 @@ describe('the binder gives spec factories the data types of the stack', () => {
           },
         },
       },
-      controlMutationDefaults: NO_CONTROL_DEFAULTS,
+      defaultFunctionRegistry: NO_DEFAULT_FUNCTIONS,
       dataTypes,
     });
 

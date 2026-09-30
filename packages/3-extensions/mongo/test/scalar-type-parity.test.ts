@@ -62,7 +62,7 @@ function emit(
     symbolTable,
     sources,
     scalarTypeCodecIds,
-    controlMutationDefaults: { defaultFunctionRegistry: new Map() },
+    defaultFunctionRegistry: new Map(),
     dataTypes: EMPTY_DATA_TYPES,
     codecLookup: stack.codecLookup,
     authoringContributions: stack.authoringContributions,
