@@ -36,15 +36,11 @@ import {
   PG_TIMESTAMPTZ_NATIVE_TYPE,
 } from './temporal-codec-helpers';
 
-/**
- * `@updatedAt` and the `*String` presets set a timestamp through the `timestampNow` generator, which
- * yields a `Date` rather than text. A `timestamptz` column writes it as its instant in UTC.
- */
+/** `timestampNow`, the generator behind `@updatedAt` and the `*String` presets, yields a `Date`. */
 function timestamptzText(value: string | Date): string {
   return value instanceof Date ? encodeDate(value) : value;
 }
 
-/** A `timestamp` column writes a generated `Date` as the UTC wall-clock time of its instant. */
 function timestampText(value: string | Date): string {
   return value instanceof Date ? encodeDate(value).replace('Z', '') : value;
 }

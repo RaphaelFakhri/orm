@@ -139,7 +139,6 @@ function output(run: EngineCommandResult): string {
   return `${stripAnsi(run.stderr)}\n${stripAnsi(run.stdout)}`;
 }
 
-/** Milliseconds since the epoch of a `timestamp` column's text, which holds UTC wall-clock time. */
 function utcMillis(timestampText: string): number {
   return new Date(`${timestampText.replace(' ', 'T')}Z`).getTime();
 }
