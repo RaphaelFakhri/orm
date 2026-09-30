@@ -511,10 +511,6 @@ A model references a namespace that is not in the contract's declared `namespace
 
 Namespaces are declared (contract-level list or a model-level `namespace`) on a target that has no schema/namespace concept, i.e. SQLite. Raised by the SQL contract builder. Payload: `namespaces`, `modelKey`, `targetId`.
 
-### CONTRACT.NATIVE_TYPE_INVALID
-
-A native type name in the contract fails the identifier-safety pattern required to render it into DDL. Raised by the Postgres and SQLite migration planners while building column DDL. Payload: `nativeType`.
-
 ### CONTRACT.PACK_CONTRIBUTION_INVALID
 
 A composed pack's contribution is malformed or collides with another contribution; this is the extension-author-facing bucket. Covers: entity types colliding with reserved helper keys, duplicate entity kinds or index-type registrations, a registered entity kind with no `lowerEntityHandles` lowering, an invalid `indexTypes` shape, entries-slot collisions between a model attribute and a block entry kind, a model attribute that lowers to a malformed index, bad authoring-helper paths, a codec registered with an entity-ref arg but no `columnFromEntity` hook, and print-time contribution mismatches (a block keyword with no PSL block descriptor, or a descriptor whose discriminator disagrees with the block's kind). Raised during contract authoring/lowering and PSL printing. Payload: `packId`, `contribution`, `reason`, `keyword`, `paramName`, `codecId`.
