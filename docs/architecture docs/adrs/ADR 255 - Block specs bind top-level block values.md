@@ -1,6 +1,6 @@
 # ADR 255 — Block specs bind top-level block values
 
-**Status:** Accepted
+**Status:** Accepted. Amended 2026-09-30: block specs may read the stack's data types, so a policy's predicates take `sql` literals ([ADR 260](ADR%20260%20-%20Raw%20SQL%20is%20a%20value%20of%20the%20data%20type%20sql-expression.md)).
 **Date:** 2026-09-22
 **Builds on:** [ADR 231 — Declarative attribute specifications](ADR%20231%20-%20Declarative%20attribute%20specifications.md), [ADR 126 — PSL top-level block SPI](ADR%20126%20-%20PSL%20top-level%20block%20SPI.md), [ADR 249 — Central attribute-spec registry](ADR%20249%20-%20Central%20attribute-spec%20registry.md)
 
@@ -11,9 +11,20 @@
 A contributed top-level PSL block declares its member-value grammar with the same argument combinators attributes use (ADR 231), through one of two constructors. A closed key set is a `structBlock`; the Postgres `policy_select` keyword declares exactly the keys a SELECT policy takes:
 
 ```ts
-import { entityRef, structBlock, identifier, list, oneOf, optional, str, bool } from '@internal/psl-parser';
+import {
+  type BlockSpecContext,
+  bool,
+  dataTypeValue,
+  entityRef,
+  identifier,
+  list,
+  oneOf,
+  optional,
+  structBlock,
+} from '@internal/psl-parser';
+import { SQL_EXPRESSION_DATA_TYPE_ID } from '@internal/sql-contract/sql-expression';
 
-export function policyUsingOnlySpec() {
+export function policyUsingOnlySpec(ctx: BlockSpecContext) {
   return structBlock({
     parameters: {
       target: {
@@ -25,7 +36,7 @@ export function policyUsingOnlySpec() {
         documentation: 'The database roles to which this policy applies.',
       },
       using: {
-        type: optional(str()),
+        type: optional(dataTypeValue(SQL_EXPRESSION_DATA_TYPE_ID, ctx.dataTypes)),
         documentation: 'A SQL predicate controlling which rows this policy permits.',
       },
       permissive: {
@@ -158,9 +169,11 @@ The hook picks only the destination namespace — entity kind and key stay fixed
 
 `AuthoringPslBlockDescriptor.requiresModelAttribute: { parameter, attribute }` declares that the model selected by a ref parameter must carry a bare `@@` attribute (Postgres policies require `@@rls` on their target). The family interpreter enforces it generically over the whole document — declaration order does not matter — and anchors `PSL_EXTENSION_TARGET_MODEL_MISSING_ATTRIBUTE` on the original parameter span.
 
----
+### Block specs may read the stack's data types
 
-A block spec may depend on the stack's data types. `BlockSpecContext.dataTypes` is the same value as `AttributeSpecContext.dataTypes`, and `interpretExtensionBlocks` and the binder put it into every block spec and block attribute context they build. This is how a policy's `using` and `withCheck` receive `sql/expression` through `dataTypeValue` (ADR 256). Admitting a value of a data type chooses no codec and no stored representation, so the reason below for keeping codec registries out of parsing does not apply.
+A block spec may depend on the stack's data types. `BlockSpecContext.dataTypes` is the same value as `AttributeSpecContext.dataTypes`, and `interpretExtensionBlocks` and the binder put it into every block spec and block attribute context they build. This is how a policy's `using` and `withCheck` receive `sql/expression` through `dataTypeValue`, so they take only a `sql` literal ([ADR 260](ADR%20260%20-%20Raw%20SQL%20is%20a%20value%20of%20the%20data%20type%20sql-expression.md)). Admitting a value of a data type chooses no codec and no stored representation, so the reason below for keeping codec registries out of parsing does not apply.
+
+---
 
 ## Consequences
 

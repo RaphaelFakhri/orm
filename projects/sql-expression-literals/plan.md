@@ -96,9 +96,9 @@ flowchart LR
 
 ## Slice 2b — The six places take `sql` literals
 
-**Linear:** TML-3288. **Design:** 8, 9, 11.2, 12, 13, 18.1, 18.3 (2b items), 19 (2b rows, ADR 256), 20 (2b row).
+**Linear:** TML-3288. **Design:** 8, 9, 11.2, 12, 13, 18.1, 18.3 (2b items), 19 (2b rows, ADR 260), 20 (2b row).
 
-**Outcome.** `@@index(where:)`, `@@index(expression:)`, `@@fullTextIndex(where:)`, `@@check(expression:)` and a policy's `using` and `withCheck` take `sql` literals and refuse every other literal through the cast rule, with messages that end in the exact rewrite. `contract infer` prints them as `sql` literals and skips a body that would not read back. The language server completes and colours them. The Supabase pack contract is regenerated. ADR 256 records the decision.
+**Outcome.** `@@index(where:)`, `@@index(expression:)`, `@@fullTextIndex(where:)`, `@@check(expression:)` and a policy's `using` and `withCheck` take `sql` literals and refuse every other literal through the cast rule, with messages that end in the exact rewrite. `contract infer` prints them as `sql` literals and skips a body that would not read back. The language server completes and colours them. The Supabase pack contract is regenerated. ADR 260 records the decision.
 
 **Dispatches** (F30): (a) data types in the block spec context (section 9.1); (b) the six places, printers and every fixture and artefact change in section 18.1, in one dispatch; (c) language-server completion and colouring (section 12 only); (d) docs, ADRs, the codemod and upgrade fragments.
 
@@ -119,7 +119,7 @@ flowchart LR
 **Carried over from the slice 2a review:**
 
 - `sqlTextReadsBack` and its tests move here from slice 2a, next to their only caller (design section 11.2). Its test: true for canonical text (a single line, several lines, an empty text); false for indented text, a blank first or last line, a carriage return and a NUL character. Add `canonicalizeTaggedLiteralBody` to the framework's `authoring` export with it.
-- Before writing ADR 256, check the ADR numbering: three files are already numbered 255.
+- Before writing ADR 260, check the ADR numbering: three files are already numbered 255.
 - `docs/architecture docs/subsystems/6. Ecosystem Extensions & Packs.md`, section "Template-Tagged Literals": add an `` @@index(where: sql`...`) `` example.
 
 **Carried over from the slice 2t review:**
@@ -127,7 +127,7 @@ flowchart LR
 - Put `defaultFunctionRegistry` directly on `AttributeSpecContext` and delete `ControlDefaultRegistries`, which now holds only that registry under a third name; this slice builds every spec context again.
 - Let the `@default` literal arms yield a written scalar with its span, for example a small combinator on `readWrittenScalar`, so `lowerDataTypeDefault` reports at the span it is given and `writtenScalar`, `defaultValueExpression` and `listElements` in `psl-column-resolution.ts` go.
 - A number of the wrong size reads `pg/int4 has no cast from pg/int8; write a number` to an author who wrote a number. This is shipped behaviour of `@default` since slice 2t (`@default(100000000000000099)` on an `Int` column gives exactly that message, as manual QA case 4 of slice 2t shows), and applies to a number-typed `dataTypeValue` too; word that case in both, in the caller's choice of what follows `write`, before a number-typed place ships or in the release notes.
-- When the first attribute place uses `dataTypeValue`, update its doc comment: cite ADR 256 and say it also serves as a named attribute argument, not only a `funcCall` parameter.
+- When the first attribute place uses `dataTypeValue`, update its doc comment: cite ADR 260 and say it also serves as a named attribute argument, not only a `funcCall` parameter.
 - The rewrite for a plain string whose text is not canonical, such as `where: "  x"`, reads back as different text; check the rewrite with `sqlTextReadsBack` (design section 11.2) before offering it.
 - Test that the Mongo provider forwards the stack's data types, in the block spec context test of design section 9.1.
 - `describeAdmittedForms` returns `no written form` for a type nothing can write, so a refusal can end `write no written form`; word that case.
@@ -191,4 +191,4 @@ Whichever PR merges second rebases. From [research/review-followups.md](research
 
 ## Close-out
 
-After the last delivered slice merges: final retro; map every decision in `design-notes.md` to its durable home (ADR 256, or an amended ADR) in the close-out PR; delete `projects/sql-expression-literals/`; mark the Linear project completed.
+After the last delivered slice merges: final retro; map every decision in `design-notes.md` to its durable home (ADR 260, or an amended ADR) in the close-out PR; delete `projects/sql-expression-literals/`; mark the Linear project completed.

@@ -24,7 +24,7 @@ const TAGGED_LITERAL_FAILURE_CODES = {
   'too-large': 'PSL_TAGGED_LITERAL_TOO_LARGE',
 } as const;
 
-/** An argument typed by a data type: any literal, admitted by the ADR 254 cast rule. Used as a named attribute argument or a block parameter, and as a parameter of a `funcCall`, never as a bare arm of `oneOf`. ADR 231, ADR 254, ADR 256. */
+/** An argument typed by a data type: any literal, admitted by the ADR 254 cast rule. Used as a named attribute argument or a block parameter, and as a parameter of a `funcCall`, never as a bare arm of `oneOf`. ADR 231, ADR 254, ADR 260. */
 export function dataTypeValue(
   dataType: DataTypeId,
   support: DataTypeSupport,
