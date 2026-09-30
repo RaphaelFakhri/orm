@@ -191,6 +191,14 @@ record(int({ min: 1, max: 99_999 }))
 
 This is intentionally narrower than an arbitrary JSON value. Its shipped use is Mongo's partial index filter, whose nested document is passed through rather than interpreted as a typed PSL record.
 
+### Values of a data type
+
+`dataTypeValue(dataType, support)` takes a value of one data type ([ADR 254](ADR%20254%20-%20Data%20types%20and%20casts.md)). It accepts any literal: a quoted string, a number, a boolean or a tagged literal. The stack's authoring entries read the literal into a value of some type, and the ADR 254 cast rule admits it when that type is `dataType` or a type `dataType` casts from. It returns the canonical value with the type id and the span. It reports every refusal at the written value, with the general codes: `PSL_VALUE_TYPE_INCOMPATIBLE`, `PSL_INVALID_LITERAL` and `PSL_UNKNOWN_LITERAL_TAG`. A quoted string refused by a type that has a tag gets a message that ends with the literal to write instead. `support` is the spec context's `dataTypes` ([ADR 249](ADR%20249%20-%20Central%20attribute-spec%20registry.md)).
+
+Building the argument never throws, because the language server builds every spec, including on stacks that lack the type. Parsing throws an internal error when the stack does not register `dataType`: a spec that names a type its stack lacks is a pack bug. The argument carries `tags` and `documentation` for completion.
+
+`dataTypeValue` is never an arm of `oneOf`, because `oneOf` discards its diagnostics, which say how to write the value. It works as a parameter in a `funcCall` signature.
+
 ### Alternatives
 
 `oneOf(first, ...rest)` tries its alternatives in order and returns the first success. If every alternative fails, it discards the branch diagnostics and emits one aggregate `Expected one of: …` diagnostic assembled from the alternatives' labels.
@@ -240,7 +248,7 @@ const enumDefault = oneOf(...enumMembers.map(identifier));
 
 The number arm is `numLiteral()`, not `num()`. `num()` yields a JavaScript number, which rounds a literal past the safe integer range and drops trailing zeros; `numLiteral()` yields the literal's source text, so a `Decimal` or `BigInt` default keeps every digit as written. What to do with that text is the lowering concern below: the plain number goes to a codec that reads one, and the decimal text to a codec that does not.
 
-Literal-to-codec compatibility remains a lowering concern. A `matchingScalarLiteral` combinator is not implemented.
+`@default` still checks literal-to-type compatibility in lowering, because its receiving type comes from the column. A position whose receiving type is fixed uses `dataTypeValue` instead. A `matchingScalarLiteral` combinator is not implemented.
 
 ### Mongo index elements
 
