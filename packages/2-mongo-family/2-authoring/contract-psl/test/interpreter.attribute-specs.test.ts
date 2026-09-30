@@ -1,4 +1,5 @@
 import type { ContractSourceDiagnostic } from '@internal/config/config-types';
+import { createDataTypeLookup } from '@internal/framework-components/codec';
 import { UNBOUND_NAMESPACE_ID } from '@internal/framework-components/ir';
 import { buildSymbolTable } from '@internal/psl-parser';
 import { parse } from '@internal/psl-parser/syntax';
@@ -22,6 +23,7 @@ function interpret(schema: string) {
     symbolTable,
     sources,
     scalarTypeCodecIds,
+    dataTypeLookup: createDataTypeLookup([]),
     controlMutationDefaults: {
       dataTypeEntries: {},
       defaultFunctionRegistry: new Map(),

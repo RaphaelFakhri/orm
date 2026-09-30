@@ -2,23 +2,27 @@ import { MongoControlAdapterImpl } from '@internal/adapter-mongo/control';
 import type { JsonValue } from '@internal/contract/types';
 import mongoControlDriver from '@internal/driver-mongo/control';
 import { contractToMongoSchemaIR } from '@internal/family-mongo/control';
-import type { CodecLookup } from '@internal/framework-components/codec';
+import { type CodecLookup, createDataTypeLookup } from '@internal/framework-components/codec';
 import { UNBOUND_NAMESPACE_ID } from '@internal/framework-components/ir';
 import type { MongoContract } from '@internal/mongo-contract';
 import { interpretPslDocumentToMongoContract } from '@internal/mongo-contract-psl';
 import type { MongoMigrationPlanOperation } from '@internal/mongo-query-ast/control';
 import { buildSymbolTable } from '@internal/psl-parser';
 import { parse } from '@internal/psl-parser/syntax';
+import { mongoDescriptorById } from '@internal/target-mongo/codecs';
 import {
   MongoMigrationPlanner,
   MongoMigrationRunner,
   serializeMongoOps,
 } from '@internal/target-mongo/control';
+import { mongoDataTypes } from '@internal/target-mongo/data-types';
 import { timeouts } from '@repo/test-utils';
 import { type Db, MongoClient } from 'mongodb';
 import { MongoMemoryReplSet } from 'mongodb-memory-server';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { buildFabricatedMigrationEdges } from './fabricated-migration-edges';
+
+const mongoDataTypeLookup = createDataTypeLookup(mongoDataTypes);
 
 const ALL_POLICY = {
   allowedOperationClasses: ['additive', 'widening', 'destructive'] as const,
@@ -45,10 +49,7 @@ const mongoCodecLookup: CodecLookup = {
       decodeJson: (v: JsonValue) => v,
     };
   },
-  targetTypesFor(id: string) {
-    const bsonType = bsonTypesByCodecId[id];
-    return bsonType ? [bsonType] : undefined;
-  },
+  descriptorFor: (id: string) => (bsonTypesByCodecId[id] ? mongoDescriptorById(id) : undefined),
   renderOutputTypeFor: () => undefined,
 };
 
@@ -76,6 +77,7 @@ function pslToContract(schema: string): MongoContract {
       defaultFunctionRegistry: new Map(),
     },
     codecLookup: mongoCodecLookup,
+    dataTypeLookup: mongoDataTypeLookup,
   });
   if (!result.ok) {
     throw new Error(`PSL interpretation failed: ${JSON.stringify(result)}`);

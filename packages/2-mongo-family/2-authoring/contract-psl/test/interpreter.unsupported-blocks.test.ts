@@ -1,4 +1,4 @@
-import { emptyCodecLookup } from '@internal/framework-components/codec';
+import { createDataTypeLookup, emptyCodecLookup } from '@internal/framework-components/codec';
 import { buildSymbolTable } from '@internal/psl-parser';
 import { parse } from '@internal/psl-parser/syntax';
 import { describe, expect, it } from 'vitest';
@@ -18,6 +18,7 @@ function interpret(schema: string) {
       ['String', 'mongo/string@1'],
       ['ObjectId', 'mongo/objectId@1'],
     ]),
+    dataTypeLookup: createDataTypeLookup([]),
     controlMutationDefaults: { dataTypeEntries: {}, defaultFunctionRegistry: new Map() },
     codecLookup: emptyCodecLookup,
   });

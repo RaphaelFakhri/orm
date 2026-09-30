@@ -67,6 +67,7 @@ function emit(
       defaultFunctionRegistry: new Map(),
     },
     codecLookup: stack.codecLookup,
+    dataTypeLookup: stack.dataTypeLookup,
     authoringContributions: stack.authoringContributions,
   });
 }

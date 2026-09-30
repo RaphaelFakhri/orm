@@ -1,7 +1,13 @@
 import type { ContractField } from '@internal/contract/types';
-import type { CodecLookup } from '@internal/framework-components/codec';
+import {
+  type AnyCodecDescriptor,
+  type CodecLookup,
+  createDataTypeLookup,
+  type DataTypeLookup,
+} from '@internal/framework-components/codec';
+import { mongoDataType } from '@internal/mongo-contract';
 
-const mongoTargetTypes: Record<string, readonly string[]> = {
+const bsonTypesByCodecId: Record<string, readonly string[]> = {
   'mongo/string@1': ['string'],
   'mongo/int32@1': ['int'],
   'mongo/bool@1': ['bool'],
@@ -18,10 +24,19 @@ const mongoTargetTypes: Record<string, readonly string[]> = {
   'test/number-or-null@1': ['null', 'int'],
 };
 
+function dataTypeIdOf(codecId: string): string {
+  return codecId.replace(/@\d+$/, '').toLowerCase();
+}
+
+export const mongoDataTypeLookup: DataTypeLookup = createDataTypeLookup(
+  Object.entries(bsonTypesByCodecId).map(([codecId, bsonTypes]) =>
+    mongoDataType(dataTypeIdOf(codecId), { bsonTypes }),
+  ),
+);
+
 export const mongoCodecLookup: CodecLookup = {
   get(id: string) {
-    const targetTypes = mongoTargetTypes[id];
-    if (!targetTypes) return undefined;
+    if (!(id in bsonTypesByCodecId)) return undefined;
     return {
       id,
       encode: async (v: unknown) => v,
@@ -29,6 +44,10 @@ export const mongoCodecLookup: CodecLookup = {
       encodeJson: (v: unknown) => v,
       decodeJson: (j: unknown) => j,
     } as ReturnType<CodecLookup['get']>;
+  },
+  descriptorFor(id: string) {
+    if (!(id in bsonTypesByCodecId)) return undefined;
+    return { codecId: id, dataType: dataTypeIdOf(id) } as unknown as AnyCodecDescriptor;
   },
   renderOutputTypeFor: () => undefined,
 };

@@ -4,7 +4,13 @@ import type {
   AuthoringEntityContext,
   ParsedPslExtensionBlock,
 } from '@internal/framework-components/authoring';
-import type { Codec, CodecLookup } from '@internal/framework-components/codec';
+import {
+  type AnyCodecDescriptor,
+  type Codec,
+  type CodecLookup,
+  createDataTypeLookup,
+} from '@internal/framework-components/codec';
+import { mongoDataType } from '@internal/mongo-contract';
 import { describe, expect, it } from 'vitest';
 import { mongoFamilyEnumEntityDescriptor } from '../src/core/authoring-entity-types';
 
@@ -81,6 +87,26 @@ const foldingCodec: Codec = {
   },
 };
 
+const dataTypeIdByCodecId: Record<string, string> = {
+  [TEXT_CODEC_ID]: 'test/text',
+  [INT_CODEC_ID]: 'test/int',
+  'mongo/json@1': 'test/mongo-json',
+  'mongo/bson@1': 'test/mongo-bson',
+  [JSON_CODEC_ID]: 'test/json',
+  [FOLDING_CODEC_ID]: 'test/folding-text',
+};
+
+const testDataTypes = createDataTypeLookup([
+  mongoDataType('test/text', { bsonTypes: ['text'] }),
+  mongoDataType('test/int', { bsonTypes: ['int'] }),
+  mongoDataType('test/mongo-json', {
+    bsonTypes: ['object', 'array', 'string', 'double', 'int', 'long', 'bool', 'null'],
+  }),
+  mongoDataType('test/mongo-bson', { bsonTypes: [] }),
+  mongoDataType('test/json', { bsonTypes: ['json'] }),
+  mongoDataType('test/folding-text', { bsonTypes: ['text'] }),
+]);
+
 const testCodecLookup: CodecLookup = {
   get(id: string): Codec | undefined {
     if (id === TEXT_CODEC_ID) return textCodec;
@@ -89,16 +115,10 @@ const testCodecLookup: CodecLookup = {
     if (id === FOLDING_CODEC_ID) return foldingCodec;
     return undefined;
   },
-  targetTypesFor(id: string): readonly string[] | undefined {
-    if (id === TEXT_CODEC_ID) return ['text'];
-    if (id === INT_CODEC_ID) return ['int'];
-    if (id === 'mongo/json@1') {
-      return ['object', 'array', 'string', 'double', 'int', 'long', 'bool', 'null'];
-    }
-    if (id === 'mongo/bson@1') return [];
-    if (id === JSON_CODEC_ID) return ['json'];
-    if (id === FOLDING_CODEC_ID) return ['text'];
-    return undefined;
+  descriptorFor(id: string) {
+    const dataTypeId = dataTypeIdByCodecId[id];
+    if (dataTypeId === undefined) return undefined;
+    return { codecId: id, dataType: dataTypeId } as unknown as AnyCodecDescriptor;
   },
   renderOutputTypeFor: () => undefined,
 };
@@ -111,6 +131,7 @@ function makeContext(diagnostics: unknown[]): AuthoringEntityContext {
     family: 'mongo',
     target: 'mongo',
     codecLookup: testCodecLookup,
+    dataTypes: testDataTypes,
     sourceId: 'schema.prisma',
     diagnostics: sink,
     enumInferenceCodecs: { text: TEXT_CODEC_ID, int: INT_CODEC_ID },

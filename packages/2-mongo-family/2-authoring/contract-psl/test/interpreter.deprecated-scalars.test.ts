@@ -3,6 +3,7 @@ import type {
   AuthoringContributions,
   AuthoringTypeConstructorDescriptor,
 } from '@internal/framework-components/authoring';
+import { createDataTypeLookup } from '@internal/framework-components/codec';
 import { buildSymbolTable } from '@internal/psl-parser';
 import { parse } from '@internal/psl-parser/syntax';
 import { describe, expect, it } from 'vitest';
@@ -47,6 +48,7 @@ function interpret(schema: string) {
     sources,
     scalarTypeCodecIds,
     authoringContributions,
+    dataTypeLookup: createDataTypeLookup([]),
     controlMutationDefaults: { dataTypeEntries: {}, defaultFunctionRegistry: new Map() },
     reportWarning: (diagnostic) => {
       warnings.push(diagnostic);
@@ -101,6 +103,7 @@ describe('deprecated Mongo PSL scalar names', () => {
       sources,
       scalarTypeCodecIds,
       authoringContributions,
+      dataTypeLookup: createDataTypeLookup([]),
       controlMutationDefaults: { dataTypeEntries: {}, defaultFunctionRegistry: new Map() },
     });
     expect(result.ok).toBe(true);
