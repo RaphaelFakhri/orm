@@ -3,8 +3,10 @@ import { withTransaction } from '@internal/sql-runtime';
 import { describe, expect, it } from 'vitest';
 import { setupIntegrationTest, timeouts } from './setup';
 
-describe('integration: row locking', { timeout: timeouts.databaseOperation }, () => {
-  const { db, runtime } = setupIntegrationTest();
+describe('integration: Postgres accepts each row-locking clause the builder renders', {
+  timeout: timeouts.databaseOperation,
+}, () => {
+  const { db, runtime, lower } = setupIntegrationTest();
 
   const inTransaction = <Row>(plan: SqlQueryPlan<Row>) =>
     withTransaction(runtime(), async (tx) => await tx.query(plan));
@@ -13,37 +15,54 @@ describe('integration: row locking', { timeout: timeouts.databaseOperation }, ()
     db()
       .public.users.select('id', 'name')
       .where((f, fns) => fns.eq(f.id, 1));
+  const aliceSql = 'SELECT "id" AS "id", "name" AS "name" FROM "public"."users" WHERE "id" = $1';
 
-  it.each(['forUpdate', 'forNoKeyUpdate', 'forShare', 'forKeyShare'] as const)(
-    '%s returns the locked row',
-    async (method) => {
-      expect(await inTransaction(alice()[method]().build())).toEqual([{ id: 1, name: 'Alice' }]);
-    },
-  );
+  const lockedByThisTransaction = () =>
+    db()
+      .public.users.select('locked', (_f, fns) =>
+        fns.raw`xmax::text = (pg_current_xact_id()::text::bigint % 4294967296)::text`.returns(
+          'pg/bool@1',
+        ),
+      )
+      .where((f, fns) => fns.eq(f.id, 1))
+      .build();
 
-  it('forUpdate with skipLocked returns the row', async () => {
-    expect(await inTransaction(alice().forUpdate({ skipLocked: true }).build())).toEqual([
-      { id: 1, name: 'Alice' },
-    ]);
+  it.each([
+    ['forUpdate', 'FOR UPDATE'],
+    ['forNoKeyUpdate', 'FOR NO KEY UPDATE'],
+    ['forShare', 'FOR SHARE'],
+    ['forKeyShare', 'FOR KEY SHARE'],
+  ] as const)('%s renders %s and Postgres returns the row', async (method, keyword) => {
+    const plan = alice()[method]().build();
+
+    expect(lower(plan).sql).toBe(`${aliceSql} ${keyword}`);
+    expect(await inTransaction(plan)).toEqual([{ id: 1, name: 'Alice' }]);
   });
 
-  it('forUpdate with nowait returns the row', async () => {
-    expect(await inTransaction(alice().forUpdate({ nowait: true }).build())).toEqual([
-      { id: 1, name: 'Alice' },
-    ]);
+  it('skipLocked renders SKIP LOCKED and Postgres returns the row', async () => {
+    const plan = alice().forUpdate({ skipLocked: true }).build();
+
+    expect(lower(plan).sql).toBe(`${aliceSql} FOR UPDATE SKIP LOCKED`);
+    expect(await inTransaction(plan)).toEqual([{ id: 1, name: 'Alice' }]);
   });
 
-  it('forUpdate of the only table returns the row', async () => {
-    expect(
-      await inTransaction(
-        alice()
-          .forUpdate({ of: ['users'] })
-          .build(),
-      ),
-    ).toEqual([{ id: 1, name: 'Alice' }]);
+  it('nowait renders NOWAIT and Postgres returns the row', async () => {
+    const plan = alice().forUpdate({ nowait: true }).build();
+
+    expect(lower(plan).sql).toBe(`${aliceSql} FOR UPDATE NOWAIT`);
+    expect(await inTransaction(plan)).toEqual([{ id: 1, name: 'Alice' }]);
   });
 
-  it('forUpdate of an alias on a joined select returns the joined row', async () => {
+  it('of on the only table renders OF and Postgres returns the row', async () => {
+    const plan = alice()
+      .forUpdate({ of: ['users'] })
+      .build();
+
+    expect(lower(plan).sql).toBe(`${aliceSql} FOR UPDATE OF "users"`);
+    expect(await inTransaction(plan)).toEqual([{ id: 1, name: 'Alice' }]);
+  });
+
+  it('of an alias on a joined select renders OF the alias and Postgres returns the joined row', async () => {
     const d = db();
     const plan = d.public.users
       .as('u')
@@ -53,10 +72,13 @@ describe('integration: row locking', { timeout: timeouts.databaseOperation }, ()
       .forUpdate({ of: ['u'] })
       .build();
 
+    expect(lower(plan).sql).toBe(
+      'SELECT "name" AS "name", "title" AS "title" FROM "public"."users" AS "u" INNER JOIN "public"."posts" ON "u"."id" = "posts"."user_id" WHERE "u"."id" = $1 FOR UPDATE OF "u"',
+    );
     expect(await inTransaction(plan)).toEqual([{ name: 'Bob', title: 'Bobs Post' }]);
   });
 
-  it('the work-queue shape claims one row', async () => {
+  it('the work-queue shape renders LIMIT 1 FOR UPDATE SKIP LOCKED and Postgres returns one row', async () => {
     const plan = db()
       .public.posts.select('id', 'title')
       .where((f, fns) => fns.gt(f.views, 40))
@@ -65,6 +87,27 @@ describe('integration: row locking', { timeout: timeouts.databaseOperation }, ()
       .forUpdate({ skipLocked: true })
       .build();
 
+    expect(lower(plan).sql).toBe(
+      'SELECT "id" AS "id", "title" AS "title" FROM "public"."posts" WHERE "views" > $1 ORDER BY "views" ASC LIMIT 1 FOR UPDATE SKIP LOCKED',
+    );
     expect(await inTransaction(plan)).toEqual([{ id: 2, title: 'Second Post' }]);
+  });
+
+  it('the transaction holds the row lock after a forUpdate select', async () => {
+    const locked = await withTransaction(runtime(), async (tx) => {
+      await tx.query(alice().forUpdate().build());
+      return await tx.query(lockedByThisTransaction());
+    });
+
+    expect(locked).toEqual([{ locked: true }]);
+  });
+
+  it('the transaction holds no row lock after a plain select', async () => {
+    const locked = await withTransaction(runtime(), async (tx) => {
+      await tx.query(alice().build());
+      return await tx.query(lockedByThisTransaction());
+    });
+
+    expect(locked).toEqual([{ locked: false }]);
   });
 });

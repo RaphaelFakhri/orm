@@ -42,6 +42,7 @@ Type-safe builder interfaces validated via `expectTypeOf` tests in `test/playgro
 
 - 72 unit tests (expressions, field proxy, functions, builders)
 - 33 integration tests against PGlite (SELECT, WHERE, JOIN, ORDER BY, GROUP BY, HAVING, LIMIT/OFFSET, DISTINCT, subqueries, execution methods, extension functions)
+- Row-locking integration tests prove that Postgres accepts each rendered locking clause and that the transaction holds the lock, on a single PGlite connection. They do not prove that another transaction waits, fails under `nowait` or skips under `skipLocked`, because PGlite has one connection.
 
 ## What's missing
 

@@ -225,11 +225,11 @@ describe('row locking', () => {
 
   describe('capabilities', () => {
     it.each([
-      ['forUpdate', 'sql'],
-      ['forShare', 'sql'],
-      ['forNoKeyUpdate', 'postgres'],
-      ['forKeyShare', 'postgres'],
-    ] as const)('%s throws without %s.%s', (method, group) => {
+      { method: 'forUpdate', group: 'sql' },
+      { method: 'forShare', group: 'sql' },
+      { method: 'forNoKeyUpdate', group: 'postgres' },
+      { method: 'forKeyShare', group: 'postgres' },
+    ] as const)('$method throws without $group.$method', ({ method, group }) => {
       const query = withoutFlag(group, method).public.users.select('id') as unknown as Record<
         string,
         () => unknown

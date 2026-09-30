@@ -73,6 +73,11 @@ test('of accepts only table names and aliases in scope', () => {
 
   // @ts-expect-error posts is not in scope
   db.public.users.select('id').forUpdate({ of: ['posts'] });
+  const aliased = db.public.users.as('u').select('id');
+  // @ts-expect-error after as('u') only the alias is in scope
+  aliased.forUpdate({ of: ['users'] });
+  // @ts-expect-error of takes unqualified names
+  db.public.users.select('id').forUpdate({ of: ['public.users'] });
 });
 
 test('nowait and skipLocked together is a type error', () => {

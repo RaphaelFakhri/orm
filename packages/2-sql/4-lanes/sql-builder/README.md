@@ -81,7 +81,7 @@ await tx.sql.public.contact
 await tx.sql.public.contact.select('id').forKeyShare().all();
 ```
 
-`nowait` and `skipLocked` exclude each other. `build()` refuses a lock together with `distinct`, `distinctOn`, or an aggregate or window function in the projection. A locked select cannot be used as a subquery. `groupBy()` returns a query without the locking methods.
+`nowait` and `skipLocked` exclude each other. `build()` refuses a lock together with `distinct`, `distinctOn`, `groupBy`, `having`, or an aggregate or window function in the projection. A locked select cannot be used as a subquery. `groupBy()` returns a query without the locking methods.
 
 ## Architecture
 
