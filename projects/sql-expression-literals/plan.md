@@ -125,7 +125,7 @@ flowchart LR
 
 - Put `defaultFunctionRegistry` directly on `AttributeSpecContext` and delete `ControlDefaultRegistries`, which now holds only that registry under a third name; this slice builds every spec context again.
 - Let the `@default` literal arms yield a written scalar with its span, for example a small combinator on `readWrittenScalar`, so `lowerDataTypeDefault` reports at the span it is given and `writtenScalar`, `defaultValueExpression` and `listElements` in `psl-column-resolution.ts` go.
-- A number of the wrong size for a number-typed `dataTypeValue` reads `pg/int4 has no cast from pg/int8; write a number` to an author who wrote a number; word that case before a number-typed place ships.
+- A number of the wrong size reads `pg/int4 has no cast from pg/int8; write a number` to an author who wrote a number. This is shipped behaviour of `@default` since slice 2t (`@default(100000000000000099)` on an `Int` column gives exactly that message, as manual QA case 4 of slice 2t shows), and applies to a number-typed `dataTypeValue` too; word that case in both, in the caller's choice of what follows `write`, before a number-typed place ships or in the release notes.
 - When the first attribute place uses `dataTypeValue`, update its doc comment: cite ADR 256 and say it also serves as a named attribute argument, not only a `funcCall` parameter.
 - The rewrite for a plain string whose text is not canonical, such as `where: "  x"`, reads back as different text; check the rewrite with `sqlTextReadsBack` (design section 11.2) before offering it.
 - Test that the Mongo provider forwards the stack's data types, in the block spec context test of design section 9.1.
