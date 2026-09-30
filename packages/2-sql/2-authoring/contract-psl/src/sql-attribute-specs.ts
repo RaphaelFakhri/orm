@@ -255,12 +255,12 @@ const mapFieldSpec = fieldAttribute('map', {
   refine: validateMappedName,
 });
 
-interface EnumMemberDefault {
+export interface EnumMemberDefault {
   readonly kind: 'member';
   readonly name: string;
 }
 
-interface FunctionDefault {
+export interface FunctionDefault {
   readonly kind: 'function';
   readonly call: TypedFuncCall;
 }
