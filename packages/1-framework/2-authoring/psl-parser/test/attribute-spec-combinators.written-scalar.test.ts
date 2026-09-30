@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { EMPTY_DATA_TYPES } from '../src/attribute-spec/spec-context';
 import { createBinder } from '../src/binder';
 import type { AttributeCtx } from '../src/exports';
-import { bool, numLiteral, str, taggedLiteral, writtenScalar } from '../src/exports';
+import { bool, numLiteral, str, taggedLiteral, writtenList, writtenScalar } from '../src/exports';
 import { Cursor, parseAttribute } from '../src/parse';
 import { PslSources } from '../src/source-file';
 import { FieldAttributeAst } from '../src/syntax/ast/attributes';
@@ -79,5 +79,34 @@ describe('writtenScalar', () => {
   it('returns the refusal of the arm it wraps', () => {
     const { expr, ctx } = argOf('true');
     expect(writtenScalar(str()).parse(expr, ctx)).toEqual(str().parse(expr, ctx));
+  });
+});
+
+describe('writtenList', () => {
+  const type = writtenList(writtenScalar(str()));
+
+  it('is a list labelled by its element', () => {
+    expect({ kind: type.kind, label: type.label }).toEqual({
+      kind: 'list',
+      label: 'list of (string)',
+    });
+  });
+
+  it('yields its written elements and the span of the whole list', () => {
+    const source = '["a", "b"]';
+    const { expr, ctx } = argOf(source);
+    const at = (offset: number, length: number) => ({
+      start: { offset: 3 + offset, line: 1, column: 4 + offset },
+      end: { offset: 3 + offset + length, line: 1, column: 4 + offset + length },
+    });
+    expect(type.parse(expr, ctx)).toEqual(
+      ok({
+        elements: [
+          { ok: true, written: { kind: 'string', text: 'a' }, span: at(1, 3) },
+          { ok: true, written: { kind: 'string', text: 'b' }, span: at(6, 3) },
+        ],
+        span: spanOf(source),
+      }),
+    );
   });
 });

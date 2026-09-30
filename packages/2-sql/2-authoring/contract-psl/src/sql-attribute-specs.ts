@@ -26,6 +26,7 @@ import type {
   ModelAttributeCtx,
   ModelAttributeSpecFactory,
   ModelSymbol,
+  ParsedWrittenList,
   ParsedWrittenScalar,
   PslDiagnostic,
   PslSpan,
@@ -56,6 +57,7 @@ import {
   referencedFieldRef,
   str,
   taggedLiteral,
+  writtenList,
   writtenScalar,
 } from '@internal/psl-parser';
 import type {
@@ -70,7 +72,7 @@ import {
   sqlTextFromCanonical,
 } from '@internal/sql-contract/sql-expression';
 import { blindCast } from '@internal/utils/casts';
-import { notOk, ok } from '@internal/utils/result';
+import { notOk } from '@internal/utils/result';
 import { removedDbgeneratedMessage } from './default-function-registry';
 import { getAttribute } from './psl-attribute-parsing';
 
@@ -253,32 +255,7 @@ const mapFieldSpec = fieldAttribute('map', {
   refine: validateMappedName,
 });
 
-/** A written list with its span, so a refusal about the whole list is reported at it. */
-export interface ParsedWrittenList {
-  readonly elements: readonly ParsedWrittenScalar[];
-  readonly span: PslSpan;
-}
-
 type DefaultArgValue = ParsedWrittenScalar | ParsedWrittenList | TypedFuncCall | string;
-
-function writtenList(
-  of: ArgType<ParsedWrittenScalar, AttributeCtx>,
-): ArgType<ParsedWrittenList, AttributeCtx> {
-  const arm = list(of, { label: `list of (${of.label})` });
-  return {
-    kind: 'list',
-    label: arm.label,
-    of: arm.of,
-    allowEmpty: arm.allowEmpty,
-    unique: arm.unique,
-    parse: (arg, ctx) => {
-      const parsed = arm.parse(arg, ctx);
-      return parsed.ok
-        ? ok({ elements: parsed.value, span: nodePslSpan(arg.syntax, ctx.sources) })
-        : parsed;
-    },
-  };
-}
 
 function scalarDefaultArms(
   isList: boolean,

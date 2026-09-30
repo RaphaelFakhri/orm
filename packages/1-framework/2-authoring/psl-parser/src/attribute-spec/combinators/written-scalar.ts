@@ -6,6 +6,7 @@ import { ok } from '@internal/utils/result';
 import { nodePslSpan } from '../../resolve';
 import { readWrittenScalar } from '../../written-scalar';
 import type { ArgType, AttributeCtx } from '../types';
+import { list } from './list';
 
 /** A literal argument read as a written scalar, with its span; a tagged literal whose text cannot be canonicalized carries why. */
 export type ParsedWrittenScalar =
@@ -34,4 +35,30 @@ export function writtenScalar<Ctx extends AttributeCtx>(
     ArgType<ParsedWrittenScalar, Ctx>,
     "The arm's metadata does not depend on its output type, but TypeScript cannot carry a spread of the ArgType union over to a new output type."
   >({ ...arm, parse });
+}
+
+/** A written list with its span, so a refusal about the whole list is reported at it. */
+export interface ParsedWrittenList {
+  readonly elements: readonly ParsedWrittenScalar[];
+  readonly span: PslSpan;
+}
+
+/** A list of written scalars, yielding its elements and the span of the whole list. ADR 254. */
+export function writtenList(
+  of: ArgType<ParsedWrittenScalar, AttributeCtx>,
+): ArgType<ParsedWrittenList, AttributeCtx> {
+  const arm = list(of, { label: `list of (${of.label})` });
+  return {
+    kind: 'list',
+    label: arm.label,
+    of: arm.of,
+    allowEmpty: arm.allowEmpty,
+    unique: arm.unique,
+    parse: (arg, ctx) => {
+      const parsed = arm.parse(arg, ctx);
+      return parsed.ok
+        ? ok({ elements: parsed.value, span: nodePslSpan(arg.syntax, ctx.sources) })
+        : parsed;
+    },
+  };
 }
