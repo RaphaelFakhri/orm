@@ -140,7 +140,8 @@ describe('SqliteControlAdapter.lowerToExecuteRequest — DDL literal defaults', 
       columns: [col('n', 'INTEGER', { default: fn('1 -- c') })],
     });
     const result = await adapter.lowerToExecuteRequest(ast, ctx);
-    expect(result.sql).toContain('"n" INTEGER DEFAULT (1 -- c\n)');
+    expect(result.sql).toBe('CREATE TABLE "t" (\n  "n" INTEGER DEFAULT (1 -- c\n)\n)');
+    expect(result.params).toEqual([]);
   });
 
   it("maps the canonical now() function default to SQLite's datetime('now')", async () => {
