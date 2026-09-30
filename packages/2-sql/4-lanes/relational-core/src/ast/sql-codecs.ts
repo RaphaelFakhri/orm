@@ -19,8 +19,6 @@ import {
   type ColumnHelperForStrict,
   column,
 } from '@internal/framework-components/codec';
-import type { StandardSchemaV1 } from '@standard-schema/spec';
-import { type as arktype } from 'arktype';
 import {
   SQL_CHAR_CODEC_ID,
   SQL_FLOAT_CODEC_ID,
@@ -44,10 +42,6 @@ import {
 } from './sql-codec-helpers';
 
 type LengthParams = { readonly length?: number };
-
-const lengthParamsSchema = arktype({
-  'length?': 'number.integer > 0',
-}) satisfies StandardSchemaV1<LengthParams>;
 
 export class SqlTextCodec extends CodecImpl<
   typeof SQL_TEXT_CODEC_ID,
@@ -183,7 +177,7 @@ export class SqlCharCodec extends CodecImpl<
 export class SqlCharDescriptor extends CodecDescriptorTemplateImpl<LengthParams> {
   override readonly codecId = SQL_CHAR_CODEC_ID;
   override readonly traits = ['equality', 'order', 'textual'] as const;
-  override readonly paramsSchema: StandardSchemaV1<LengthParams> = lengthParamsSchema;
+  override readonly paramsSchema = undefined;
   override renderOutputType(params: LengthParams): string | undefined {
     return sqlCharRenderOutputType(params);
   }
@@ -223,7 +217,7 @@ export class SqlVarcharCodec extends CodecImpl<
 export class SqlVarcharDescriptor extends CodecDescriptorTemplateImpl<LengthParams> {
   override readonly codecId = SQL_VARCHAR_CODEC_ID;
   override readonly traits = ['equality', 'order', 'textual'] as const;
-  override readonly paramsSchema: StandardSchemaV1<LengthParams> = lengthParamsSchema;
+  override readonly paramsSchema = undefined;
   override renderOutputType(params: LengthParams): string | undefined {
     return sqlVarcharRenderOutputType(params);
   }

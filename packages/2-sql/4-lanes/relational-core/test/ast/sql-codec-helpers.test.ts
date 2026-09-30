@@ -45,19 +45,15 @@ describe('sql-codec-helpers', () => {
     id: string;
     hasParamsSchema: boolean;
   }> = [
-    { scalar: 'char', id: SQL_CHAR_CODEC_ID, hasParamsSchema: true },
-    {
-      scalar: 'varchar',
-      id: SQL_VARCHAR_CODEC_ID,
-      hasParamsSchema: true,
-    },
+    { scalar: 'char', id: SQL_CHAR_CODEC_ID, hasParamsSchema: false },
+    { scalar: 'varchar', id: SQL_VARCHAR_CODEC_ID, hasParamsSchema: false },
     { scalar: 'int', id: SQL_INT_CODEC_ID, hasParamsSchema: false },
     { scalar: 'float', id: SQL_FLOAT_CODEC_ID, hasParamsSchema: false },
     { scalar: 'text', id: SQL_TEXT_CODEC_ID, hasParamsSchema: false },
   ];
 
   it.each(codecDefinitionCases)(
-    'defines descriptor for $scalar',
+    'defines descriptor for $scalar, with no parameter bound of its own',
     ({ scalar, id, hasParamsSchema }) => {
       const descriptor = descriptorsByScalar[scalar];
       expect(descriptor.codecId).toBe(id);
