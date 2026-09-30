@@ -33,7 +33,7 @@ describe('sqlDataType', () => {
     ['a union of objects', type({ length: 'number' }).or({ scale: 'number' })],
     ['a piped object', type({ length: 'number' }).pipe((params) => params)],
   ] as const)('refuses %s as a parameter schema, naming the data type', (_, params) => {
-    expect(() => sqlDataType('t/unreadable-params', { params })).toThrow(
+    expect(() => sqlDataType('t/unreadable-params', { params: params as never })).toThrow(
       expect.objectContaining({
         name: 'InternalError',
         message: expect.stringMatching(/t\/unreadable-params/),
