@@ -52,7 +52,6 @@ export interface ComponentMetadata {
       readonly typeId: string;
       readonly familyId: string;
       readonly targetId: string;
-      readonly nativeType?: string;
     }>;
   };
 

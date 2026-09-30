@@ -42,6 +42,7 @@ export type {
 export {
   assembleDataTypes,
   createDataTypeLookup,
+  DATA_TYPE_ID_PATTERN,
   dataType,
   dataTypeId,
   objectSchemaKeys,

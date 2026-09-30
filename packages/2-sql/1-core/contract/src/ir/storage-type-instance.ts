@@ -20,7 +20,7 @@ export const CODEC_INSTANCE_KIND = 'codec-instance' as const;
 export interface StorageTypeInstance extends StorageType {
   readonly kind: typeof CODEC_INSTANCE_KIND;
   readonly codecId: string;
-  readonly nativeType: string;
+  readonly dataType: string;
   readonly typeParams: Record<string, unknown>;
 }
 
@@ -33,7 +33,7 @@ export interface StorageTypeInstance extends StorageType {
  */
 export interface StorageTypeInstanceInput {
   readonly codecId: string;
-  readonly nativeType: string;
+  readonly dataType: string;
   readonly typeParams?: Record<string, unknown>;
 }
 
@@ -46,7 +46,7 @@ export function toStorageTypeInstance(input: StorageTypeInstanceInput): StorageT
   return {
     kind: CODEC_INSTANCE_KIND,
     codecId: input.codecId,
-    nativeType: input.nativeType,
+    dataType: input.dataType,
     typeParams: input.typeParams ?? {},
   };
 }
