@@ -12,12 +12,21 @@ changes:
         - '\binterpretPslDocumentToMongoContract\s*\('
   - id: stack-and-source-context-carry-data-types
     summary: |
-      `ControlStack` gains `dataTypes: DataTypeSupport`. `ContractSourceContext`, `InterpretPslDocumentToSqlContractInput` and `InterpretPrisma7DocumentsInput` replace `dataTypeLookup` with `dataTypes: DataTypeSupport`.
+      `ControlStack` replaces `dataTypeLookup` with `dataTypes: DataTypeSupport`. `ContractSourceContext`, `InterpretPslDocumentToSqlContractInput` and `InterpretPrisma7DocumentsInput` replace `dataTypeLookup` with `dataTypes: DataTypeSupport`.
     detection:
       glob: "**/*.{ts,mts,cts}"
       matches:
         - '\bdataTypeLookup\s*:'
-        - '\bcontext\.dataTypeLookup\b'
+        - '\b(context|stack)\.dataTypeLookup\b'
+  - id: print-path-carries-data-types
+    summary: |
+      `SqlPslBuildContext` replaces `dataTypeLookup` and `authoringContributions.dataTypes` with `dataTypes: DataTypeSupport`. `DefaultMappingOptions` replaces `dataTypeEntries` and its lookup-only `dataTypes` with `dataTypes: DataTypeSupport`.
+    detection:
+      glob: "**/*.{ts,mts,cts}"
+      matches:
+        - '\b(SqlPslBuildContext|DefaultMappingOptions)\b'
+        - '\bdataTypeEntries\s*:'
+        - '\bcontext\.authoringContributions\.dataTypes\b'
   - id: cast-rule-moves-to-the-framework
     summary: |
       `entryForTag`, `WrittenValue` and `DataTypeSupport` are no longer exported from `@internal/sql-contract-psl/resolution`. Import them from `@internal/framework-components/authoring`, which also exports the cast rule for one written value. `DefaultRefusal` is the framework's refusals plus the default-only ones: its `no-cast` arm names `receivingType`, not `columnType`, and `readDataTypeDefault` takes `dataTypes`, not `support`.
@@ -93,7 +102,7 @@ Where code builds a spec context, a binder or a Mongo interpreter input, move th
 
 ## The stack and the contract source context carry the data types as one pair
 
-`ControlStack` gains `dataTypes: DataTypeSupport`: its registered data types (`lookup`, the same object as `dataTypeLookup`) with their authoring entries (`entries`, the same object as `authoringContributions.dataTypes`). `ContractSourceContext` replaces `dataTypeLookup` with the same `dataTypes`, and so do the inputs of the SQL and Prisma 7 interpreters. The SQL interpreter no longer reads entries from `authoringContributions.dataTypes`.
+`ControlStack` replaces `dataTypeLookup` with `dataTypes: DataTypeSupport`: its registered data types (`lookup`) with their authoring entries (`entries`, the same object as `authoringContributions.dataTypes`). Code that read `stack.dataTypeLookup` reads `stack.dataTypes.lookup`. `ContractSourceContext` replaces `dataTypeLookup` with the same `dataTypes`, and so do the inputs of the SQL and Prisma 7 interpreters. The SQL interpreter no longer reads entries from `authoringContributions.dataTypes`.
 
 ```diff
   const context: ContractSourceContext = {
@@ -113,6 +122,21 @@ Where code builds a spec context, a binder or a Mongo interpreter input, move th
 ```
 
 A test that passed a lookup without entries passes `{ entries: {}, lookup }`. Code that read `context.dataTypeLookup` reads `context.dataTypes.lookup`.
+
+## The contract print path carries the data types as one pair
+
+`SqlPslBuildContext`, which a target's `buildPslContract` receives, carries `dataTypes: DataTypeSupport` from `stack.dataTypes` in place of `dataTypeLookup`, and its `authoringContributions` no longer includes `dataTypes`. `DefaultMappingOptions`, which `mapDefault` takes, had `dataTypeEntries` beside a `dataTypes` that was only the lookup; it now has one `dataTypes: DataTypeSupport`.
+
+```diff
+  mapDefault(columnDefault, {
+-   dataTypeEntries: context.authoringContributions.dataTypes,
+-   dataTypes: context.dataTypeLookup,
++   dataTypes: context.dataTypes,
+    columnDataType,
+  });
+```
+
+A hand-built `SqlPslBuildContext` or `DefaultMappingOptions` passes `dataTypes: { entries, lookup }`. Code that read `options.dataTypes.get(...)` reads `options.dataTypes.lookup.get(...)`.
 
 ## `oneOf` gives a call to the function one alternative names
 

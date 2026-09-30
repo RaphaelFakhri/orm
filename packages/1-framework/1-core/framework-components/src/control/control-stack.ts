@@ -84,8 +84,6 @@ export interface ControlStack<
   /** Every aggregate overload the composed components declare, validated for shape and single ownership at assembly. */
   readonly aggregateDescriptors: ReadonlyArray<AggregateDescriptor>;
   readonly authoringContributions: AssembledAuthoringContributions;
-  /** Every data type the composed components register, by id. ADR 254. */
-  readonly dataTypeLookup: DataTypeLookup;
   /** Every data type the composed components register, with the authoring entries that write them. ADR 254. */
   readonly dataTypes: DataTypeSupport;
   /** Every data type the composed components register, with the id of the component that registered it. ADR 254. */
@@ -852,7 +850,6 @@ export function createControlStack<TFamilyId extends string, TTargetId extends s
     extensionIds: extractComponentIds(family, target, adapter, orderedExtensions),
     codecLookup,
     codecDescriptors,
-    dataTypeLookup: dataTypes.lookup,
     dataTypes: { entries: authoringContributions.dataTypes, lookup: dataTypes.lookup },
     declaredDataTypes: dataTypes.declared,
     aggregateDescriptors: collectAggregateDescriptors(allDescriptors),

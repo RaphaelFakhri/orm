@@ -127,8 +127,7 @@ function forColumn(
   shape: { readonly list?: true } = {},
 ): DefaultMappingOptions {
   return {
-    dataTypeEntries: entries,
-    dataTypes: createDataTypeLookup(types),
+    dataTypes: { entries, lookup: createDataTypeLookup(types) },
     columnDataType: columnDataType.id,
     ...(shape.list === true ? { list: true } : {}),
   };

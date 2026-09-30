@@ -228,7 +228,7 @@ describe('createControlStack', () => {
     const stack = createControlStack(input);
 
     expect(stack.dataTypes.entries).toBe(stack.authoringContributions.dataTypes);
-    expect(stack.dataTypes.lookup).toBe(stack.dataTypeLookup);
+    expect(stack.dataTypes.lookup.get(int2.id)).toBe(int2);
     expect(Object.keys(stack.dataTypes.entries)).toEqual([int2.id]);
   });
 });

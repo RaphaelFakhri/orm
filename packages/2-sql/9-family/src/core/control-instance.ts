@@ -1042,7 +1042,7 @@ export function createSqlFamilyInstance<TTargetId extends string>(
         document: targetBuildPslContract(contract, {
           authoringContributions: stack.authoringContributions,
           codecLookup: stack.codecLookup,
-          dataTypeLookup: stack.dataTypeLookup,
+          dataTypes: stack.dataTypes,
         }),
         sourceSettings: ifDefined('defaultControlPolicy', contract.defaultControlPolicy),
       };

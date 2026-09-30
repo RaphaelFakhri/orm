@@ -99,7 +99,6 @@ function stubStack(
   return {
     scalarTypes,
     authoringContributions: { pslBlockDescriptors, dataTypes: stubDataTypeEntries },
-    dataTypeLookup: stubDataTypes.lookup,
     dataTypes: stubDataTypes,
   } as unknown as ControlStack;
 }

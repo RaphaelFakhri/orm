@@ -14,7 +14,10 @@ import type {
   ColumnDefaultLiteralInputValue,
   JsonValue,
 } from '@internal/contract/types';
-import type { DataTypeAuthoringEntry } from '@internal/framework-components/authoring';
+import type {
+  DataTypeAuthoringEntry,
+  DataTypeSupport,
+} from '@internal/framework-components/authoring';
 import { printTaggedLiteral } from '@internal/framework-components/authoring';
 import type { DataTypeId, DataTypeLookup } from '@internal/framework-components/codec';
 import { dataTypeId } from '@internal/framework-components/codec';
@@ -29,10 +32,8 @@ const DEFAULT_FUNCTION_ATTRIBUTES: Readonly<Record<string, string>> = {
 
 export interface DefaultMappingOptions {
   readonly functionAttributes?: Readonly<Record<string, string>>;
-  /** PSL support for the stack's data types, keyed by data type id. */
-  readonly dataTypeEntries?: Readonly<Record<string, DataTypeAuthoringEntry>> | undefined;
-  /** The stack's data types, whose casts say which other types' values each one takes. */
-  readonly dataTypes?: DataTypeLookup | undefined;
+  /** The stack's data types, whose casts say which other types' values each one takes, with the authoring entries that write them. */
+  readonly dataTypes?: DataTypeSupport | undefined;
   /** The data type of the column's codec. */
   readonly columnDataType?: DataTypeId | undefined;
   /**
@@ -139,10 +140,10 @@ function classifications(value: JsonValue, surface: WritingSurface): readonly Ty
 function admitted(
   candidate: TypedValue,
   columnDataType: DataTypeId,
-  dataTypes: DataTypeLookup,
+  lookup: DataTypeLookup,
 ): JsonValue | undefined {
   if (candidate.type === columnDataType) return candidate.value;
-  const cast = dataTypes.get(columnDataType)?.casts[candidate.type];
+  const cast = lookup.get(columnDataType)?.casts[candidate.type];
   if (cast === undefined) return undefined;
   try {
     return cast(candidate.value);
@@ -195,19 +196,19 @@ interface WrittenElement {
 function writeScalar(
   value: JsonValue,
   columnDataType: DataTypeId,
-  dataTypes: DataTypeLookup,
+  lookup: DataTypeLookup,
   surface: WritingSurface,
 ): string | undefined {
   for (const candidate of classifications(value, surface)) {
     const entry = surface.entryOf.get(candidate.type);
     if (entry === undefined) continue;
-    const stored = admitted(candidate, columnDataType, dataTypes);
+    const stored = admitted(candidate, columnDataType, lookup);
     if (stored === undefined || !sameForm(stored, value)) continue;
     const text = printedText(entry, candidate.value);
     if (text === undefined) continue;
     const reread = readBack(entry, candidate.type, text);
     if (reread === undefined) continue;
-    const restored = admitted(reread, columnDataType, dataTypes);
+    const restored = admitted(reread, columnDataType, lookup);
     if (restored === undefined || !sameForm(restored, value)) continue;
     return literalText(entry, text);
   }
@@ -240,10 +241,10 @@ function writeElement(
 function writeListCast(
   value: readonly JsonValue[],
   columnDataType: DataTypeId,
-  dataTypes: DataTypeLookup,
+  lookup: DataTypeLookup,
   surface: WritingSurface,
 ): string | undefined {
-  const listCast = dataTypes.get(columnDataType)?.listCast;
+  const listCast = lookup.get(columnDataType)?.listCast;
   if (listCast === undefined) return undefined;
   const parts: string[] = [];
   const elements: JsonValue[] = [];
@@ -266,32 +267,29 @@ function writeDefaultLiteral(
   options: DefaultMappingOptions | undefined,
 ): string | undefined {
   if (stored instanceof Date) return undefined;
-  const { dataTypeEntries, dataTypes, columnDataType } = options ?? {};
-  if (dataTypeEntries === undefined || dataTypes === undefined || columnDataType === undefined) {
-    return undefined;
-  }
+  const { dataTypes, columnDataType } = options ?? {};
+  if (dataTypes === undefined || columnDataType === undefined) return undefined;
+  const { entries, lookup } = dataTypes;
   const { value } = defaultInCanonicalForm(
     stored,
-    dataTypes.get(columnDataType)?.toCanonicalForm,
+    lookup.get(columnDataType)?.toCanonicalForm,
     options?.list === true,
   );
   if (value instanceof Date) return undefined;
-  const surface = writingSurface(dataTypeEntries);
+  const surface = writingSurface(entries);
   if (options?.list === true) {
     if (!Array.isArray(value)) return undefined;
     const parts: string[] = [];
     for (const element of value) {
-      const written = writeScalar(element, columnDataType, dataTypes, surface);
+      const written = writeScalar(element, columnDataType, lookup, surface);
       if (written === undefined) return undefined;
       parts.push(written);
     }
     return `[${parts.join(', ')}]`;
   }
-  const written = writeScalar(value, columnDataType, dataTypes, surface);
+  const written = writeScalar(value, columnDataType, lookup, surface);
   if (written !== undefined) return written;
-  return Array.isArray(value)
-    ? writeListCast(value, columnDataType, dataTypes, surface)
-    : undefined;
+  return Array.isArray(value) ? writeListCast(value, columnDataType, lookup, surface) : undefined;
 }
 
 /** Whether two canonical forms are the same JSON value, member by member and element by element. */
