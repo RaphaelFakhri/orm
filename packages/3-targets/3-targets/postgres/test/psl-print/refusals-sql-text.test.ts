@@ -6,15 +6,6 @@ const WHY =
 const FIX =
   "Write the SQL in that canonical form in the contract's source, or keep authoring this contract in its current source.";
 
-function thrownBy(print: () => unknown): unknown {
-  try {
-    print();
-  } catch (error) {
-    return error;
-  }
-  return undefined;
-}
-
 describe('SQL a sql literal cannot write back unchanged', () => {
   it('refuses an index whose where clause ends in a newline', () => {
     const print = printingWidget({
@@ -23,14 +14,16 @@ describe('SQL a sql literal cannot write back unchanged', () => {
       },
     });
 
-    expect(thrownBy(print)).toMatchObject({
-      code: 'CONTRACT.PRINT_UNSUPPORTED',
-      message:
-        'contract print: index "widget_id_idx" on "public"."Widget" holds SQL that a sql literal cannot write back unchanged, so it cannot be written in Prisma 8 PSL.',
-      why: WHY,
-      fix: FIX,
-      meta: { namespaceId: 'public', table: 'Widget', name: 'widget_id_idx' },
-    });
+    expect(print).toThrow(
+      expect.objectContaining({
+        code: 'CONTRACT.PRINT_UNSUPPORTED',
+        message:
+          'contract print: index "widget_id_idx" on "public"."Widget" holds SQL that a sql literal cannot write back unchanged, so it cannot be written in Prisma 8 PSL.',
+        why: WHY,
+        fix: FIX,
+        meta: { namespaceId: 'public', table: 'Widget', name: 'widget_id_idx' },
+      }),
+    );
   });
 
   it('refuses a check whose expression ends in a newline', () => {
@@ -38,14 +31,16 @@ describe('SQL a sql literal cannot write back unchanged', () => {
       table: { checks: [{ name: 'widget_id_positive', expression: 'id > 0\n' }] },
     });
 
-    expect(thrownBy(print)).toMatchObject({
-      code: 'CONTRACT.PRINT_UNSUPPORTED',
-      message:
-        'contract print: check "widget_id_positive" on "public"."Widget" holds SQL that a sql literal cannot write back unchanged, so it cannot be written in Prisma 8 PSL.',
-      why: WHY,
-      fix: FIX,
-      meta: { namespaceId: 'public', table: 'Widget', name: 'widget_id_positive' },
-    });
+    expect(print).toThrow(
+      expect.objectContaining({
+        code: 'CONTRACT.PRINT_UNSUPPORTED',
+        message:
+          'contract print: check "widget_id_positive" on "public"."Widget" holds SQL that a sql literal cannot write back unchanged, so it cannot be written in Prisma 8 PSL.',
+        why: WHY,
+        fix: FIX,
+        meta: { namespaceId: 'public', table: 'Widget', name: 'widget_id_positive' },
+      }),
+    );
   });
 
   it('refuses a policy whose using predicate ends in a newline', () => {
@@ -83,13 +78,15 @@ describe('SQL a sql literal cannot write back unchanged', () => {
       },
     });
 
-    expect(thrownBy(print)).toMatchObject({
-      code: 'CONTRACT.PRINT_UNSUPPORTED',
-      message:
-        'contract print: policy "widget_read" on "public"."Widget" holds SQL that a sql literal cannot write back unchanged, so it cannot be written in Prisma 8 PSL.',
-      why: WHY,
-      fix: FIX,
-      meta: { namespaceId: 'public', table: 'Widget', policy: 'widget_read' },
-    });
+    expect(print).toThrow(
+      expect.objectContaining({
+        code: 'CONTRACT.PRINT_UNSUPPORTED',
+        message:
+          'contract print: policy "widget_read" on "public"."Widget" holds SQL that a sql literal cannot write back unchanged, so it cannot be written in Prisma 8 PSL.',
+        why: WHY,
+        fix: FIX,
+        meta: { namespaceId: 'public', table: 'Widget', policy: 'widget_read' },
+      }),
+    );
   });
 });

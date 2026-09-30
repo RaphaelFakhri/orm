@@ -171,11 +171,13 @@ describe('policy predicates', () => {
   }`);
 
     expect(diagnosticsOf(source)).toEqual([
-      expect.objectContaining({
+      {
         code: 'PSL_EXTENSION_UNKNOWN_PARAMETER',
         message:
           'Unknown parameter "using" in "policy_insert" block "owner_insert". The block does not declare this parameter.',
-      }),
+        sourceId: SOURCE_ID,
+        span: spanAt(source, 'owner_insert', 'using  = sql`owner_id = 1`'),
+      },
     ]);
   });
 });
