@@ -52,7 +52,7 @@ flowchart LR
 
 **Linear:** TML-3296. **Design:** 2 (slice 2a), 3, 10, 11.1, 13 (`@default` rows), 18.2, 18.3 (2a items), 19 (2a rows), 20 (2a row).
 
-**Outcome.** `sql/expression` is a data type the SQL family defines and both targets register; the lowering-entry kind, `pg.sql` and `sqlite.sql` are gone. `@default` stores a `sql/expression` value as a default expression and keeps its own checks. `@default` refusals that come from the cast rule use the general codes. `contract infer` prints raw defaults through the one tagged-literal printer. No `contract.json` changes.
+**Outcome.** `sql/expression` is a data type the SQL family defines and registers; the lowering-entry kind, `pg.sql` and `sqlite.sql` are gone. `@default` stores a `sql/expression` value as a default expression and keeps its own checks. `@default` refusals that come from the cast rule use the general codes. `contract infer` prints raw defaults through the one tagged-literal printer. No `contract.json` changes.
 
 **Tests:**
 
@@ -60,11 +60,11 @@ flowchart LR
 - `framework-components/test/data-type-assembly.test.ts` (update): lowering keys are gone; an entry keyed by an unregistered id fails.
 - `3-targets/3-targets/postgres/test/data-types.test.ts` and the SQLite twin (extend): no element of `postgresDataTypes` (`sqliteDataTypes`) names `sql/expression` in `casts` or `listCast.of`.
 - Target `data-types.test.ts` and adapter `control-mutation-defaults.test.ts` (update): section 18.3.
-- `contract-psl/test/interpreter.defaults.tagged-literal.test.ts` (update): `sql` stores a function default on scalar and list columns; `pg.sql` is `PSL_UNKNOWN_LITERAL_TAG` with `Known tags: json, sql.`; reserved and unsafe texts report `PSL_INVALID_DEFAULT_SQL` with the `sql` message; a `sql` element in a list literal is refused with `PSL_VALUE_TYPE_INCOMPATIBLE` and the exact message in design section 10.
+- `contract-psl/test/interpreter.defaults.tagged-literal.test.ts` (update): `sql` stores a function default on scalar and list columns; `pg.sql` is `PSL_UNKNOWN_LITERAL_TAG` with `Known tags: sql, json.`; reserved and unsafe texts report `PSL_INVALID_DEFAULT_SQL` with the `sql` message; a `sql` element in a list literal is refused with `PSL_VALUE_TYPE_INCOMPATIBLE` and the exact message in design section 10.
 - `contract-psl/test/interpreter.defaults.data-types.test.ts` (update): the `it.each` table splits by the code table in design 10.1, asserting each code and message.
 - `framework-components/test/tagged-literal.test.ts` (update): `printTaggedLiteral` single-line, multi-line (text on its own lines) and double-quote forms; backslashes; round trip through `canonicalizeTaggedLiteralBody`, including after every continuation line was indented.
 - `2-sql/9-family/test/psl-build/default-mapping.test.ts` (update): function defaults through `printSqlExpressionLiteral`; a `json` text holding a backtick in the double-quote form; a multi-line function default on its own lines.
-- `language-server/test/completion-provider.test.ts` (update): `@default(` offers `json` and `sql` on Postgres and SQLite.
+- `language-server/test/completion-provider.test.ts` (update): `@default(` offers `sql` and `json` on Postgres and SQLite, in that order.
 - Existing assertions of changed codes (update):
   - `PSL_VALUE_TYPE_INCOMPATIBLE` in `3-targets/3-targets/postgres/test/psl-pg-enum-column.test.ts:271`, `test/integration/test/number-defaults/psl-number-defaults.integration.test.ts:224, 238`, and `contract-psl/test/interpreter.defaults.tagged-literal.test.ts:248, 258`.
   - `PSL_INVALID_LITERAL` in `interpreter.defaults.tagged-literal.test.ts:241, 281`.

@@ -65,7 +65,7 @@ rm -f contract.prisma contract.json contract.d.ts
 | Case | Expected |
 | --- | --- |
 | 1 | The emit succeeds and stores a function default with the text `gen_random_uuid()` |
-| 2 | `PSL_UNKNOWN_LITERAL_TAG`, and the known tags are `json, sql` |
+| 2 | `PSL_UNKNOWN_LITERAL_TAG`, and the known tags are `sql, json`: the family registers `sql` and is assembled before the target |
 | 3 | `PSL_INVALID_DEFAULT_SQL`, and the message says to write `@default(now())` |
 | 4 | `PSL_INVALID_DEFAULT_SQL` with the unsafe SQL message |
 | 5 | `PSL_VALUE_TYPE_INCOMPATIBLE`, naming element 1 and `sql/expression` |

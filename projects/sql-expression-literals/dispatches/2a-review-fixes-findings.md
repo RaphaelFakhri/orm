@@ -1,5 +1,7 @@
 # Findings from the slice 2a review fixes
 
+**Resolved on 2026-09-30.** The coordinator decided to go ahead with A01 unchanged. `contract infer` reading only the target's lists is existing behaviour and out of scope. The family now registers `sql/expression`, and design section 11.1 records that the infer default mapping does not see family or extension types. `inferred-psl.defaults-and-types.test.ts` shows that infer still prints raw defaults as `sql` literals through `createPostgresDefaultMapping`.
+
 ## A01: `contract infer` does not read the stack's data types
 
 The brief asks me to confirm, before moving the registration of `sql/expression` to the family, that every production path that assembles data types includes the family descriptor's contributions. One path does not, so I stopped A01 and did not move the registration.

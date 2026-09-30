@@ -8,7 +8,7 @@ Slice 2t (sections 4 to 7) is the argument type that other projects reuse; it sh
 
 ## 1. Vocabulary
 
-- **`sql/expression`**: the data type (ADR 254) of a SQL expression in the target database's language. An expression, not a statement or a query: every place that takes one (a default, an index element, a predicate, a CHECK body) takes an expression. Its canonical form is a JSON string: the text. It has no codec and no DDL name, no column has it, it declares no casts, and no type casts from it.
+- **`sql/expression`**: the data type (ADR 254) of a SQL expression in the target database's language. An expression, not a statement or a query: every place that takes one (a default, an index element, a predicate, a CHECK body) takes an expression. Its canonical form is a JSON string: the text. It has no codec and no DDL name, no column has it, it declares no casts, and no type casts from it. The SQL family defines it and registers it itself; no target registers it.
 - **`sql` literal**: the PSL syntax for a value of `sql/expression`: `` sql`...` ``, `sql"..."` or `sql'...'`. Its text is canonicalized by `canonicalizeTaggedLiteralBody` (ADR 129).
 - **Typed value**: a value together with its data type, `{ type, value }`, where `value` is the canonical form of `type`.
 - **Admitted forms of a type T**: the ways a position of type T can be written: T's own written form and the written forms of the types T casts from.
@@ -27,10 +27,10 @@ This package is the lowest one that the authoring packages, the family, both tar
 export const SQL_EXPRESSION_DATA_TYPE_ID: DataTypeId = dataTypeId('sql/expression');
 export const SQL_EXPRESSION_TAG = 'sql';
 
-/** The data type of a SQL expression in the target database's language. It declares no casts. Each SQL target registers it unchanged. ADR 254. */
+/** The data type of a SQL expression in the target database's language. It declares no casts. The SQL family registers it. ADR 254. */
 export const sqlExpressionDataType: DataType = dataType(SQL_EXPRESSION_DATA_TYPE_ID, {});
 
-/** PSL support for `sql/expression`. Each SQL target registers it unchanged under `SQL_EXPRESSION_DATA_TYPE_ID`. */
+/** PSL support for `sql/expression`. The SQL family registers it under `SQL_EXPRESSION_DATA_TYPE_ID`. */
 export const sqlExpressionAuthoringEntry: DataTypeAuthoringEntry = {
   written: { kind: 'tag', tag: SQL_EXPRESSION_TAG, parse: (text) => text },
   print: (value) => sqlTextFromCanonical(value),
@@ -100,17 +100,18 @@ Imports: `dataType`, `dataTypeId`, `DataType`, `DataTypeId` from `@internal/fram
 
 ## 3. Registration and the removal of lowering entries (slice 2a)
 
-### 3.1 Targets register the family's type and entry
+### 3.1 The family registers its type and entry
 
-- `packages/3-targets/3-targets/postgres/src/core/data-types.ts`: append `sqlExpressionDataType` (imported from `@internal/sql-contract/sql-expression`) as the last element of `postgresDataTypes`.
-- `packages/3-targets/3-targets/postgres/src/core/data-type-entries.ts`: add `[SQL_EXPRESSION_DATA_TYPE_ID]: sqlExpressionAuthoringEntry` as the last key returned by `postgresDataTypeEntries()`. Replace the doc sentence about `sql` and `pg.sql` with: "`sql` is the tag of `sql/expression`, which the SQL family defines and this target registers."
-- SQLite: the same two changes, without the doc sentence, which the SQLite file does not have, to `sqliteDataTypes` in `packages/3-targets/3-targets/sqlite/src/core/data-types.ts` and `sqliteDataTypeEntries()` in `data-type-entries.ts`.
+- `packages/2-sql/9-family/src/core/control-descriptor.ts`: `SqlFamilyDescriptor` gets `readonly dataTypes: readonly DataType[] = [sqlExpressionDataType]` and `dataTypes: { [SQL_EXPRESSION_DATA_TYPE_ID]: sqlExpressionAuthoringEntry }` in its `authoring`. The owner of the type and the component that registers it are then one component, and a new SQL target has nothing to remember. ADR 254 allows a family to register only a type that is the same on every target and that nothing casts from.
+- The targets' lists hold only their own types: `postgresDataTypes`, `postgresDataTypeEntries()`, `sqliteDataTypes` and `sqliteDataTypeEntries()` do not contain `sql/expression`. In `packages/3-targets/3-targets/postgres/src/core/data-type-entries.ts`, replace the doc sentence about `sql` and `pg.sql` with: "The `sql` tag is not here: it writes `sql/expression`, which the SQL family defines and registers itself."
+- Every production path that reads the stack's data types assembles the family with the target, the adapter and the extensions (`createControlStack`), so it sees the type and entry. `contract infer` does not read the stack (section 11.1), which changes no output.
+- The stack assembles the family first, so messages and completion list the tags in the order `sql, json`: `Unknown literal tag "pg.sql". Known tags: sql, json.`
 
 ### 3.2 Adapters register the target's entries unchanged
 
 - Delete `packages/3-targets/6-adapters/postgres/src/core/data-type-authoring.ts` and `packages/3-targets/6-adapters/sqlite/src/core/data-type-authoring.ts`.
 - `packages/3-targets/6-adapters/postgres/src/exports/control.ts`: `dataTypes: postgresDataTypeEntries()` from `@internal/target-postgres/data-types`. SQLite: `dataTypes: sqliteDataTypeEntries()` from `@internal/target-sqlite/data-types`.
-- No component registers `pg.sql` or `sqlite.sql`. Postgres registers the tags `json` and `sql`; SQLite `json` and `sql`.
+- No component registers `pg.sql` or `sqlite.sql`. Each target registers the tag `json`; the family registers `sql`.
 
 ### 3.3 The family's lowering entry is deleted
 
@@ -277,7 +278,7 @@ Examples on Postgres:
 - `where: "(archived_at IS NULL)"`: `PSL_VALUE_TYPE_INCOMPATIBLE`, ``sql/expression has no cast from pg/text; write it as sql`(archived_at IS NULL)` ``.
 - `where: archived`: `PSL_INVALID_ATTRIBUTE_SYNTAX`, ``Expected sql`...`, got an identifier``.
 - `where: 42`: `PSL_VALUE_TYPE_INCOMPATIBLE`, ``sql/expression has no cast from pg/int2; write sql`...` ``.
-- `` where: pg.sql`x` ``: `PSL_UNKNOWN_LITERAL_TAG`, `Unknown literal tag "pg.sql". Known tags: json, sql.`
+- `` where: pg.sql`x` ``: `PSL_UNKNOWN_LITERAL_TAG`, `Unknown literal tag "pg.sql". Known tags: sql, json.`
 
 ## 7. Spec contexts carry the stack's data types (slice 2t)
 
@@ -400,6 +401,7 @@ export function printTaggedLiteral(tag: string, text: string): string {
 - Delete `sqlLiteralText`. A function default that is not a named function prints `` `@default(${printSqlExpressionLiteral(expression)})` ``.
 - `literalText` prints a tag entry's text with `printTaggedLiteral(written.tag, text)`, imported from `@internal/framework-components/authoring`. A `json` text holding a backtick now prints in the double-quote form.
 - `writingSurface` has no special case for `sql/expression`. The cast rule keeps its entry out of literal defaults, because no column has the type and no type casts from it. The raw-expression fallback prints SQL.
+- `contract infer` builds its default mapping from the target's own lists (`createPostgresDefaultMapping` in `postgres/src/core/psl-infer/postgres-default-mapping.ts`), so it does not see the family's or any extension's data types; because it prints SQL through `printSqlExpressionLiteral`, that changes no output.
 
 ### 11.2 `contract infer` prints the six places (slice 2b)
 
@@ -661,10 +663,12 @@ The refusal, the printers and the regeneration land in one dispatch.
 
 These fail at run time, not compile time:
 
-- `contract-psl/test/fixture-data-types.ts` (slice 2a): add `sqlExpressionDataType` as the last element of `fixtureDataTypes`; replace the `loweringEntryKey('sql')` and `loweringEntryKey('pg.sql')` keys with `[SQL_EXPRESSION_DATA_TYPE_ID]: sqlExpressionAuthoringEntry` as the last key (known tags then read `json, sql`). Delete `test/fixture-sql-tag.ts`.
-- Adapter tests (slice 2a): delete `6-adapters/{postgres,sqlite}/test/data-type-authoring.test.ts`. Their cases about the target's own entries (the number classifiers at each bound, the boolean reader, JSON and numeric read and print) move to `3-targets/3-targets/{postgres,sqlite}/test/data-type-entries.test.ts`; only the cases about lowering keys are dropped. In `6-adapters/{postgres,sqlite}/test/control-mutation-defaults.test.ts`, delete the `createPostgresDataTypeEntries` and `createSqliteDataTypeEntries` describe blocks, import entries from `@internal/target-{postgres,sqlite}/data-types`, and assert that the adapter descriptor's `authoring.dataTypes` has `sql/expression` as its last key and the tags `json`, `sql`.
-- Language server `test/completion-provider.test.ts` (slice 2a, about lines 1350-1357): it loads pack sources by path, because the server does not depend on the targets. Load `3-targets/3-targets/{postgres,sqlite}/src/exports/data-types.ts` with `importFromPackageRoot`, typed through a local module interface. In slice 2b, the new `@@index`/`@@check` completion tests also build a lookup from those types with `createDataTypeLookup`.
-- `postgres/test/data-types.test.ts` and `sqlite/test/data-types.test.ts` (slice 2a): the sorted id lists gain `sql/expression`.
+- Tests that build contributions by hand from a target's lists add the family's type and entry, first, as a stack assembles them.
+- `contract-psl/test/fixture-data-types.ts` (slice 2a): add `sqlExpressionDataType` as the first element of `fixtureDataTypes`; replace the `loweringEntryKey('sql')` and `loweringEntryKey('pg.sql')` keys with `[SQL_EXPRESSION_DATA_TYPE_ID]: sqlExpressionAuthoringEntry` as the first key (known tags then read `sql, json`, as on a real stack). Delete `test/fixture-sql-tag.ts`.
+- Adapter tests (slice 2a): delete `6-adapters/{postgres,sqlite}/test/data-type-authoring.test.ts`. Their cases about the target's own entries (the number classifiers at each bound, the boolean reader, JSON and numeric read and print) move to `3-targets/3-targets/{postgres,sqlite}/test/data-type-entries.test.ts`; only the cases about lowering keys are dropped. In `6-adapters/{postgres,sqlite}/test/control-mutation-defaults.test.ts`, delete the `createPostgresDataTypeEntries` and `createSqliteDataTypeEntries` describe blocks, import entries from `@internal/target-{postgres,sqlite}/data-types`, and assert that the adapter descriptor's `authoring.dataTypes` has no `sql/expression` key and only the tag `json`.
+- Language server `test/completion-provider.test.ts` (slice 2a, about lines 1350-1357): it loads pack sources by path, because the server does not depend on the targets. Load `3-targets/3-targets/{postgres,sqlite}/src/exports/data-types.ts` and `2-sql/1-core/contract/src/exports/sql-expression.ts` with `importFromPackageRoot`, typed through local module interfaces, and put the family's entry first, so `@default(` offers `sql` before `json` as on a real stack. In slice 2b, the new `@@index`/`@@check` completion tests also build a lookup from those types with `createDataTypeLookup`.
+- `postgres/test/data-types.test.ts` and `sqlite/test/data-types.test.ts` (slice 2a): the sorted id lists do not contain `sql/expression`, and no type casts from it.
+- `test/integration/test/authoring/sql-expression-registration.test.ts` (slice 2a): on each assembled SQL stack, Postgres with every shipped extension pack, the registered type and entry are the family's objects (`toBe`), and no registered type casts from `sql/expression`.
 - Tests that assemble contributions without the Postgres adapter and interpret `@@index`, `@@check`, `@@fullTextIndex` or a policy (slice 2b): add `dataTypes: postgresDataTypeEntries()` and pass `createDataTypeLookup(postgresDataTypes)`, and pass the same data types wherever the test binds block specs (`buildSymbolTable`, or the interpreter, per section 9.1). The list is in [research/rebase-delta.md](research/rebase-delta.md) B.2, including `postgres/test/psl-policy-placement.test.ts`, `postgres/test/block-documentation.test.ts` and the adapter's `rls-*` integration tests.
 - `contract-psl/test/sql-attribute-specs.test.ts`: in slice 2a, the `@default` tag arm expects `tags: ['sql']` with the `sqlExpressionAuthoringEntry` documentation; in slice 2b, `sqlAttributeSpecs.model.index()` and `.check()` calls pass a context.
 - contract-psl tests that interpret `@@index` or `@@check` (slice 2b) add `dataTypes: fixtureDataTypeSupport.entries` to their `authoringContributions`: `interpreter.check-attribute.test.ts`, `interpreter.model-attribute-indexes.test.ts`, `interpreter.index-naming.test.ts`, `interpreter.unknown-attributes.test.ts`, and the shared `authoringContributions` in `ts-psl-parity.test.ts`.
@@ -681,7 +685,7 @@ A new ADR 256, "Raw SQL is a value of the data type `sql/expression`", written i
 | --- | --- | --- |
 | ADR 234 | 1 | "Normalizer stability": the `--` rule (section 14.4), and why no existing name changes |
 | `docs/architecture docs/subsystems/7. Migration System.md` | 1 | New section "Opaque SQL in DDL": the node, the renderer rule, the invariant, the template-string sites, the data-transform exception |
-| ADR 254 | 2a | Widen the definition: a data type is the type of a value Prisma stores or passes to the database; most are database types; `sql/expression` has no codec and no DDL name, no column has it, it declares no casts, and no type casts from it. The family may define a type that targets register unchanged. Lowering entries are gone; `sql` is `sql/expression`'s tag. Tell the follow-up project that a DDL name is optional for such types. State the prefix rule once: a tag is unprefixed when the owner of its data type is the family or a target; every other owner prefixes its tags. `@default` reports the cast-rule codes at the `@default` attribute. Only the scalar cast rule moves to the framework (2t); list casts stay in the family's default reader |
+| ADR 254 | 2a | Widen the definition: a data type is the type of a value Prisma stores or passes to the database; most are database types; `sql/expression` has no codec and no DDL name, no column has it, it declares no casts, and no type casts from it. A family registers only a type that is the same on every target and that nothing casts from; the SQL family registers `sql/expression` itself. Lowering entries are gone; `sql` is `sql/expression`'s tag. Tell the follow-up project that a DDL name is optional for such types. State the prefix rule once: a tag is unprefixed when the owner of its data type is the family or a target; every other owner prefixes its tags. `@default` reports the cast-rule codes at the `@default` attribute. Only the scalar cast rule moves to the framework (2t); list casts stay in the family's default reader |
 | ADR 129 | 2a | Retitle it "Tagged literals write values of data types" (the file name stays). The tag names the data type of the text, not a pack that owns it. The body is what is written between the quotes; the text is the canonical value. Delete the prefixed-alias rule and link to the prefix rule in ADR 254. Move "the SQL family owns the unprefixed `sql` tag" from rejected alternatives into the decision, with the reason: the tag is part of the definition of `sql/expression`, which the family owns. `@default` stores a `sql/expression` value; its checks belong to `@default`, and in TypeScript the `sql` tag runs the same checks |
 | ADR 129 | 2b | The six places; move "check the tag while parsing the argument" from rejected alternatives into the decision for typed positions, with the rule that `dataTypeValue` is never an arm of `oneOf`; record the infer read-back rule and the skip notes (section 11.2) |
 | ADR 129 | 3 | The TS tag returns `SqlExpression`, interpolates other `sql` values, and the checks moved to `.default()` |

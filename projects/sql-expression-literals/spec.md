@@ -63,7 +63,7 @@ The complete list is in [design.md](design.md) section 21.
 
 ## Cross-cutting requirements
 
-1. **One type, owned by the family.** The SQL family defines the data type `sql/expression` (which declares no casts), its authoring entry with the tag `sql`, and its canonical form, the text. Each SQL target registers the declaration and the entry unchanged. No prefixed tag exists.
+1. **One type, owned by the family.** The SQL family defines the data type `sql/expression` (which declares no casts), its authoring entry with the tag `sql`, and its canonical form, the text. The family registers the declaration and the entry itself, so every SQL target has the same ones. No prefixed tag exists.
 2. **Admission by type.** Every place that takes raw SQL declares that it receives `sql/expression`, and the ordinary cast rule decides what is admitted, when the argument is parsed. Refusals use the same codes in `@default` and the six places. A refusal of a plain string ends with the exact rewrite.
 3. **Checks on SQL text belong to the consumer.** `sql/expression` accepts any text the canonicalization accepts. `@default` keeps its refusals of `now()`, `autoincrement()`, `;`, comments, `$$` and `SELECT`, in PSL and in TypeScript. The other places add none.
 4. **Same contract from PSL and TypeScript.** Every TypeScript `sql/expression` value is canonicalized as a PSL `sql` literal is, whether it comes from the `sql` tag, from interpolating other `sql` values, or from the constructor. The same SQL written in either language emits a byte-identical contract.
