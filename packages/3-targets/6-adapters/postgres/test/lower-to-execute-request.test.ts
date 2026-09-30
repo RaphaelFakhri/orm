@@ -1,5 +1,5 @@
 import type { AnyCodecDescriptor, Codec } from '@internal/framework-components/codec';
-import { CodecDescriptorImpl, dataTypeId } from '@internal/framework-components/codec';
+import { CodecDescriptorImpl, dataType, dataTypeId } from '@internal/framework-components/codec';
 import { UNBOUND_NAMESPACE_ID } from '@internal/framework-components/ir';
 import { SqlStorage, type StorageTableInput } from '@internal/sql-contract/types';
 import type { ContractCodecRegistry, ProjectionExpr } from '@internal/sql-relational-core/ast';
@@ -45,7 +45,7 @@ const transformingCodecDescriptor: AnyCodecDescriptor = {
   factory: () => () => transformingCodec,
 };
 const transformingDescriptor = postgresCodec(transformingCodecDescriptor, {
-  dataType: dataTypeId('demo/fixture'),
+  dataType: dataType('demo/fixture', {}),
   nativeType: () => 'text',
   jsonProjection: (expression: ProjectionExpr) => expression,
 });
@@ -300,7 +300,7 @@ class ExtTransformDescriptor extends CodecDescriptorImpl<void> {
 }
 
 const extTransformDescriptor = postgresCodec(new ExtTransformDescriptor(), {
-  dataType: dataTypeId('demo/fixture'),
+  dataType: dataType('demo/fixture', {}),
   nativeType: () => 'text',
   jsonProjection: (expression: ProjectionExpr) => expression,
 });

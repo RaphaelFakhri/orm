@@ -10,9 +10,9 @@ import {
 import { CastExpr, type ProjectionExpr } from '@internal/sql-relational-core/ast';
 import type { StandardSchemaV1 } from '@standard-schema/spec';
 import { PostgresCodecDescriptor } from './codec-descriptor';
-import { type PrecisionParams, precisionParamsSchema } from './codec-helpers';
+import type { PrecisionParams } from './codec-helpers';
 import { PG_TIMESTAMPTZ_DATE_CODEC_ID } from './codec-ids';
-import { pgTimestamptz } from './data-types';
+import { pgPrecisionParams, pgTimestamptz } from './data-types';
 import { PG_TIMESTAMPTZ_NATIVE_TYPE } from './temporal-codec-helpers';
 
 const TIMESTAMPTZ_TEXT =
@@ -128,8 +128,7 @@ export class PgTimestamptzDateDescriptor extends PostgresCodecDescriptor<Precisi
   override readonly codecId = PG_TIMESTAMPTZ_DATE_CODEC_ID;
   override readonly traits = ['equality', 'order'] as const;
   override readonly targetTypes = [] as const;
-  override readonly paramsSchema =
-    precisionParamsSchema satisfies StandardSchemaV1<PrecisionParams>;
+  override readonly paramsSchema = pgPrecisionParams satisfies StandardSchemaV1<PrecisionParams>;
   override renderOutputType(_params: PrecisionParams): string {
     return 'Date';
   }

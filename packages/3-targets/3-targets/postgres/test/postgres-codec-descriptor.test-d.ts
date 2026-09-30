@@ -6,6 +6,7 @@ import {
   CodecImpl,
   type CodecInstanceContext,
   type CodecTrait,
+  dataType,
   dataTypeId,
 } from '@internal/framework-components/codec';
 import { FunctionCallExpr, type ProjectionExpr } from '@internal/sql-relational-core/ast';
@@ -106,7 +107,7 @@ class DirectVectorDescriptor extends PostgresCodecDescriptor<VectorParams> {
 const genericDescriptor = new GenericVectorDescriptor();
 const directDescriptor = new DirectVectorDescriptor();
 const adaptedDescriptor = postgresCodec(genericDescriptor, {
-  dataType: dataTypeId('demo/fixture'),
+  dataType: dataType('demo/fixture', {}),
   nativeType(params) {
     expectTypeOf(params).toEqualTypeOf<VectorParams>();
     return `vector(${params.length})`;

@@ -12,6 +12,7 @@ import {
   CodecImpl,
   type CodecInstanceContext,
   type ColumnTypeDescriptor,
+  dataType,
   dataTypeId,
 } from '@internal/framework-components/codec';
 import { defineContract, field, model, rel } from '@internal/postgres/contract-builder';
@@ -77,7 +78,7 @@ class IncludedTextDescriptor extends CodecDescriptorImpl<void> {
  * assuming. This one stores and projects text unchanged.
  */
 const includedTextDescriptor = postgresCodec(new IncludedTextDescriptor(), {
-  dataType: dataTypeId('demo/fixture'),
+  dataType: dataType('demo/fixture', {}),
   nativeType: () => 'text',
   jsonProjection: (expression) => expression,
 });

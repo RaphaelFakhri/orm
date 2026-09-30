@@ -109,7 +109,7 @@ function postgresDescriptor(
   onProjection?: () => void,
 ): AnyPostgresCodecDescriptor {
   return postgresCodec(genericDescriptor(codecId), {
-    dataType: fixtureTypeId(codecId),
+    dataType: dataType(fixtureTypeId(codecId), {}),
     nativeType: () => nativeType,
     jsonProjection(expression: ProjectionExpr): ProjectionExpr {
       onProjection?.();
@@ -140,7 +140,7 @@ function transformingPostgresDescriptor(
     },
   };
   return postgresCodec(descriptor, {
-    dataType: fixtureTypeId(codecId),
+    dataType: dataType(fixtureTypeId(codecId), {}),
     nativeType: () => nativeType,
     jsonProjection: (expression: ProjectionExpr) => expression,
   });

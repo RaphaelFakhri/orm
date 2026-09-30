@@ -10,15 +10,9 @@
 
 import type { JsonValue } from '@internal/contract/types';
 import { isNonFiniteText, numeralText } from '@internal/sql-relational-core/ast';
-import type { StandardSchemaV1 } from '@standard-schema/spec';
-import { type as arktype } from 'arktype';
 import { postgresError } from './errors';
 
 export type PrecisionParams = { readonly precision?: number };
-
-export const precisionParamsSchema = arktype({
-  'precision?': 'number.integer >= 0 & number.integer <= 6',
-}) satisfies StandardSchemaV1<PrecisionParams>;
 
 export function renderLength(
   typeName: string,

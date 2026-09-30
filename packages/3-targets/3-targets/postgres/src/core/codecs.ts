@@ -43,7 +43,6 @@ import {
 } from '@internal/sql-relational-core/ast';
 import { blindCast } from '@internal/utils/casts';
 import type { StandardSchemaV1 } from '@standard-schema/spec';
-import { type as arktype } from 'arktype';
 import { definePostgresCodecs, PostgresCodecDescriptor, postgresCodec } from './codec-descriptor';
 import {
   decimalTextBigintLiteral,
@@ -74,7 +73,6 @@ import {
   pgNumericDecode,
   pgNumericRenderOutputType,
   pgUnboundedIntDecode,
-  precisionParamsSchema,
   renderLength,
   renderPrecision,
 } from './codec-helpers';
@@ -108,10 +106,13 @@ import {
 } from './codec-ids';
 import {
   pgBit,
+  pgBitLengthParams,
   pgBool,
   pgBytea,
   pgChar,
+  pgCharacterLengthParams,
   pgEnum,
+  pgEnumParams,
   pgFloat4,
   pgFloat8,
   pgInet,
@@ -122,6 +123,8 @@ import {
   pgJson,
   pgJsonb,
   pgNumeric,
+  pgNumericParams,
+  pgPrecisionParams,
   pgText,
   pgTextArray,
   pgTimetz,
@@ -149,15 +152,6 @@ import {
 
 type LengthParams = { readonly length?: number };
 type NumericParams = { readonly precision?: number; readonly scale?: number };
-
-const lengthParamsSchema = arktype({
-  'length?': 'number.integer > 0',
-}) satisfies StandardSchemaV1<LengthParams>;
-
-const numericParamsSchema = arktype({
-  'precision?': 'number.integer > 0 & number.integer <= 1000',
-  'scale?': 'number.integer >= 0',
-}) satisfies StandardSchemaV1<NumericParams>;
 
 const PG_TEXT_NATIVE_TYPE = 'text';
 const PG_TEXT_ARRAY_NATIVE_TYPE = 'text[]';
@@ -322,31 +316,31 @@ const isoDurationJsonProjection = (expression: ProjectionExpr): ProjectionExpr =
 };
 
 export const postgresSqlCharDescriptor = postgresCodec(sqlCharDescriptor, {
-  dataType: pgChar.id,
+  dataType: pgChar,
   nativeType: () => 'character',
   jsonProjection: identityJsonProjection,
 });
 
 export const postgresSqlVarcharDescriptor = postgresCodec(sqlVarcharDescriptor, {
-  dataType: pgVarchar.id,
+  dataType: pgVarchar,
   nativeType: () => 'character varying',
   jsonProjection: identityJsonProjection,
 });
 
 export const postgresSqlIntDescriptor = postgresCodec(sqlIntDescriptor, {
-  dataType: pgInt4.id,
+  dataType: pgInt4,
   nativeType: () => 'int4',
   jsonProjection: identityJsonProjection,
 });
 
 export const postgresSqlFloatDescriptor = postgresCodec(sqlFloatDescriptor, {
-  dataType: pgFloat8.id,
+  dataType: pgFloat8,
   nativeType: () => 'float8',
   jsonProjection: identityJsonProjection,
 });
 
 export const postgresSqlTextDescriptor = postgresCodec(sqlTextDescriptor, {
-  dataType: pgText.id,
+  dataType: pgText,
   nativeType: () => 'text',
   jsonProjection: identityJsonProjection,
 });
@@ -459,10 +453,6 @@ export function isPgEnumParams(value: unknown): value is PgEnumParams {
   );
 }
 
-const pgEnumParamsSchema = arktype({
-  typeName: 'string',
-}) satisfies StandardSchemaV1<PgEnumParams>;
-
 export class PgEnumDescriptor extends PostgresCodecDescriptor<PgEnumParams> {
   protected override nativeType(params: PgEnumParams): string {
     return params.typeName;
@@ -474,7 +464,7 @@ export class PgEnumDescriptor extends PostgresCodecDescriptor<PgEnumParams> {
   override readonly codecId = PG_ENUM_CODEC_ID;
   override readonly traits = ['equality', 'order'] as const;
   override readonly targetTypes = ['text'] as const;
-  override readonly paramsSchema = pgEnumParamsSchema satisfies StandardSchemaV1<PgEnumParams>;
+  override readonly paramsSchema = pgEnumParams satisfies StandardSchemaV1<PgEnumParams>;
   override renderValueLiteral(value: JsonValue): string | undefined {
     return renderTsLiteral(value);
   }
@@ -1003,7 +993,7 @@ export class PgNumericDescriptor extends PostgresCodecDescriptor<NumericParams> 
   override readonly codecId = PG_NUMERIC_CODEC_ID;
   override readonly traits = ['equality', 'order', 'numeric'] as const;
   override readonly targetTypes = ['numeric', 'decimal'] as const;
-  override readonly paramsSchema = numericParamsSchema satisfies StandardSchemaV1<NumericParams>;
+  override readonly paramsSchema = pgNumericParams satisfies StandardSchemaV1<NumericParams>;
   override renderOutputType(params: NumericParams): string | undefined {
     return pgNumericRenderOutputType(params);
   }
@@ -1053,7 +1043,7 @@ export class PgUnboundedIntCodec extends CodecImpl<
   }
 }
 
-export class PgUnboundedIntDescriptor extends PostgresCodecDescriptor<void> {
+export class PgUnboundedIntDescriptor extends PostgresCodecDescriptor<NumericParams> {
   protected override nativeType(): string {
     return PG_NUMERIC_NATIVE_TYPE;
   }
@@ -1064,11 +1054,11 @@ export class PgUnboundedIntDescriptor extends PostgresCodecDescriptor<void> {
   override readonly codecId = PG_UNBOUNDED_INT_CODEC_ID;
   override readonly traits = ['equality', 'order', 'numeric'] as const;
   override readonly targetTypes = [] as const;
-  override readonly paramsSchema = undefined;
+  override readonly paramsSchema = pgNumericParams satisfies StandardSchemaV1<NumericParams>;
   override renderValueLiteral(value: JsonValue): string | undefined {
     return decimalTextBigintLiteral(value);
   }
-  override factory(): (ctx: CodecInstanceContext) => PgUnboundedIntCodec {
+  override factory(_params?: NumericParams): (ctx: CodecInstanceContext) => PgUnboundedIntCodec {
     return () => new PgUnboundedIntCodec(this);
   }
 }
@@ -1119,8 +1109,7 @@ export class PgTimetzDescriptor extends PostgresCodecDescriptor<PrecisionParams>
   override readonly codecId = PG_TIMETZ_CODEC_ID;
   override readonly traits = ['equality', 'order'] as const;
   override readonly targetTypes = ['timetz'] as const;
-  override readonly paramsSchema =
-    precisionParamsSchema satisfies StandardSchemaV1<PrecisionParams>;
+  override readonly paramsSchema = pgPrecisionParams satisfies StandardSchemaV1<PrecisionParams>;
   override renderOutputType(params: PrecisionParams): string | undefined {
     return renderPrecision('Timetz', params);
   }
@@ -1170,7 +1159,7 @@ export class PgBitDescriptor extends PostgresCodecDescriptor<LengthParams> {
   override readonly codecId = PG_BIT_CODEC_ID;
   override readonly traits = ['equality', 'order'] as const;
   override readonly targetTypes = ['bit'] as const;
-  override readonly paramsSchema = lengthParamsSchema satisfies StandardSchemaV1<LengthParams>;
+  override readonly paramsSchema = pgBitLengthParams satisfies StandardSchemaV1<LengthParams>;
   override renderOutputType(params: LengthParams): string | undefined {
     return renderLength('Bit', params);
   }
@@ -1220,7 +1209,7 @@ export class PgVarbitDescriptor extends PostgresCodecDescriptor<LengthParams> {
   override readonly codecId = PG_VARBIT_CODEC_ID;
   override readonly traits = ['equality', 'order'] as const;
   override readonly targetTypes = ['bit varying'] as const;
-  override readonly paramsSchema = lengthParamsSchema satisfies StandardSchemaV1<LengthParams>;
+  override readonly paramsSchema = pgBitLengthParams satisfies StandardSchemaV1<LengthParams>;
   override renderOutputType(params: LengthParams): string | undefined {
     return renderLength('VarBit', params);
   }
@@ -1486,8 +1475,7 @@ export class PgIntervalDescriptor extends PostgresCodecDescriptor<PrecisionParam
   override readonly codecId = PG_INTERVAL_CODEC_ID;
   override readonly traits = ['equality', 'order'] as const;
   override readonly targetTypes = ['interval'] as const;
-  override readonly paramsSchema =
-    precisionParamsSchema satisfies StandardSchemaV1<PrecisionParams>;
+  override readonly paramsSchema = pgPrecisionParams satisfies StandardSchemaV1<PrecisionParams>;
   override renderOutputType(params: PrecisionParams): string | undefined {
     return renderPrecision('Interval', params);
   }
@@ -1629,7 +1617,7 @@ export class PgCharDescriptor extends PostgresCodecDescriptor<LengthParams> {
   override readonly codecId = PG_CHAR_CODEC_ID;
   override readonly targetTypes = ['character'] as const;
   override readonly traits = sqlCharDescriptor.traits;
-  override readonly paramsSchema = sqlCharDescriptor.paramsSchema;
+  override readonly paramsSchema = pgCharacterLengthParams satisfies StandardSchemaV1<LengthParams>;
   override renderOutputType(params: LengthParams): string | undefined {
     return sqlCharDescriptor.renderOutputType(params);
   }
@@ -1659,7 +1647,7 @@ export class PgVarcharDescriptor extends PostgresCodecDescriptor<LengthParams> {
   override readonly codecId = PG_VARCHAR_CODEC_ID;
   override readonly targetTypes = ['character varying'] as const;
   override readonly traits = sqlVarcharDescriptor.traits;
-  override readonly paramsSchema = sqlVarcharDescriptor.paramsSchema;
+  override readonly paramsSchema = pgCharacterLengthParams satisfies StandardSchemaV1<LengthParams>;
   override renderOutputType(params: LengthParams): string | undefined {
     return sqlVarcharDescriptor.renderOutputType(params);
   }

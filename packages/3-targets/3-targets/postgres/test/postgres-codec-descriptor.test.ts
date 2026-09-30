@@ -6,6 +6,7 @@ import {
   CodecImpl,
   type CodecInstanceContext,
   type CodecRef,
+  dataType,
   dataTypeId,
 } from '@internal/framework-components/codec';
 import {
@@ -24,6 +25,7 @@ import {
 } from '@internal/sql-relational-core/ast';
 import { ifDefined } from '@internal/utils/defined';
 import type { StandardSchemaV1 } from '@standard-schema/spec';
+import { type as arktype } from 'arktype';
 import { describe, expect, it } from 'vitest';
 import {
   buildPostgresCodecDescriptorRegistry,
@@ -274,10 +276,14 @@ describe('PostgresCodecDescriptor', () => {
   });
 });
 
+const fixtureVectorType = dataType('demo/fixture', {
+  params: arktype({ length: 'number.integer >= 1' }),
+});
+
 describe('postgresCodec', () => {
   it('preserves the wrapped descriptor contract and materialization behavior', () => {
     const descriptor = postgresCodec(genericVectorDescriptor, {
-      dataType: dataTypeId('demo/fixture'),
+      dataType: fixtureVectorType,
       nativeType: (params) => `vector(${params.length})`,
       jsonProjection: (expression, params) =>
         FunctionCallExpr.of('project_generic_vector', [expression, LiteralExpr.of(params.length)]),
@@ -287,7 +293,7 @@ describe('postgresCodec', () => {
     expect(descriptor.codecId).toBe(genericVectorDescriptor.codecId);
     expect(descriptor.traits).toBe(genericVectorDescriptor.traits);
     expect(descriptor.targetTypes).toBe(genericVectorDescriptor.targetTypes);
-    expect(descriptor.paramsSchema).toBe(genericVectorDescriptor.paramsSchema);
+    expect(descriptor.dataType).toBe(fixtureVectorType.id);
     expect(descriptor.isParameterized).toBe(genericVectorDescriptor.isParameterized);
     expect(descriptor.renderOutputType?.({ length: 6 })).toBe('Vector<6>');
     expect(descriptor.renderInputType?.({ length: 6 })).toBe(
@@ -303,10 +309,28 @@ describe('postgresCodec', () => {
     expect(codec.descriptor).toBe(genericVectorDescriptor);
   });
 
+  it('takes its parameter schema from the data type, not the template', () => {
+    const descriptor = postgresCodec(genericVectorDescriptor, {
+      dataType: fixtureVectorType,
+      nativeType: (params) => `vector(${params.length})`,
+      jsonProjection: (expression) => expression,
+    });
+    const withoutParams = postgresCodec(genericVectorDescriptor, {
+      dataType: dataType('demo/plain', {}),
+      nativeType: () => 'vector',
+      jsonProjection: (expression) => expression,
+    });
+
+    expect(descriptor.paramsSchema).toBe(fixtureVectorType.params);
+    expect(descriptor.paramsSchema).not.toBe(genericVectorDescriptor.paramsSchema);
+    expect(withoutParams.paramsSchema).toBeUndefined();
+    expect(withoutParams.isParameterized).toBe(false);
+  });
+
   it('accepts an array override only after typed parameter validation', () => {
     const overrideCalls: VectorParams[] = [];
     const descriptor = postgresCodec(genericVectorDescriptor, {
-      dataType: dataTypeId('demo/fixture'),
+      dataType: fixtureVectorType,
       nativeType: (params) => `vector(${params.length})`,
       jsonProjection: (expression) => expression,
       jsonArrayProjection: (expression, params) => {
