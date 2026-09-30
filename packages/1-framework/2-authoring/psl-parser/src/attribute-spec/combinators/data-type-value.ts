@@ -1,12 +1,12 @@
 import {
   admittedTags,
-  canonicalizeTaggedLiteralBody,
   castTypedValue,
   type DataTypeSupport,
   describeAdmittedForms,
   describeRefusal,
   printTaggedLiteral,
   readWrittenValue,
+  taggedLiteralTextReadsBack,
 } from '@internal/framework-components/authoring';
 import type { DataTypeId } from '@internal/framework-components/codec';
 import { describeTaggedLiteralFailure } from '@internal/framework-components/control';
@@ -91,8 +91,7 @@ function parseDataTypeValue(
 
 /** What to write instead of a quoted string: the exact literal, when its text reads back unchanged. */
 function rewriteAsTaggedLiteral(tag: string, text: string): string {
-  const canonical = canonicalizeTaggedLiteralBody(text);
-  return canonical.ok && canonical.text === text
+  return taggedLiteralTextReadsBack(text)
     ? `it as ${printTaggedLiteral(tag, text)}`
     : `it as a ${tag} literal`;
 }

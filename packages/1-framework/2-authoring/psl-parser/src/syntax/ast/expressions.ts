@@ -1,8 +1,6 @@
+import { canonicalizeTaggedLiteralBody } from '@internal/framework-components/authoring';
 import type { TaggedLiteralCanonicalization } from '@internal/framework-components/control';
-import {
-  canonicalizeTaggedLiteralBody,
-  resolvePslBacktickEscapes,
-} from '@internal/framework-components/control';
+import { resolvePslBacktickEscapes } from '@internal/framework-components/control';
 import { isTerminatedStringLiteral } from '../../tokenizer';
 import type { AstNode } from '../ast-helpers';
 import { filterChildren, findChildToken, findFirstChild } from '../ast-helpers';

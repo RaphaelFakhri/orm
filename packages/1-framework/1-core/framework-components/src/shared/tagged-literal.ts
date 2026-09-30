@@ -160,3 +160,9 @@ export function printTaggedLiteral(tag: string, text: string): string {
   const fenced = text.replace(/\\/g, '\\\\');
   return text.includes('\n') ? `${tag}\`\n${fenced}\n\`` : `${tag}\`${fenced}\``;
 }
+
+/** Whether a tagged literal printed with `text` reads back as `text`: canonicalization succeeds and leaves it unchanged. ADR 129. */
+export function taggedLiteralTextReadsBack(text: string): boolean {
+  const canonical = canonicalizeTaggedLiteralBody(text);
+  return canonical.ok && canonical.text === text;
+}

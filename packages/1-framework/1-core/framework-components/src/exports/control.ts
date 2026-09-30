@@ -148,7 +148,6 @@ export type {
 } from '../shared/mutation-default-types';
 export type { TaggedLiteralCanonicalization } from '../shared/tagged-literal';
 export {
-  canonicalizeTaggedLiteralBody,
   describeTaggedLiteralFailure,
   resolvePslBacktickEscapes,
   resolveTemplateTagEscapes,

@@ -6,6 +6,7 @@ import {
   resolvePslBacktickEscapes,
   resolveTemplateTagEscapes,
   TAGGED_LITERAL_MAX_BYTES,
+  taggedLiteralTextReadsBack,
 } from '../src/shared/tagged-literal';
 
 const MAX_BYTES = 65536;
@@ -167,5 +168,21 @@ describe('printTaggedLiteral', () => {
       ok: true,
       text: text,
     });
+  });
+});
+
+describe('taggedLiteralTextReadsBack', () => {
+  it.each([
+    ['a single line', 'a = 1', true],
+    ['several lines', 'a = 1\n  AND b = 2', true],
+    ['an empty text', '', true],
+    ['indented text', '  a = 1', false],
+    ['a blank first line', '\na = 1', false],
+    ['a blank last line', 'a = 1\n', false],
+    ['a whitespace-only inner line', 'a = 1\n  \nAND b = 2', false],
+    ['a carriage return', 'a = 1\r\nAND b = 2', false],
+    ['a NUL character', 'a\u0000', false],
+  ])('%s reads back: %s', (_, text, expected) => {
+    expect(taggedLiteralTextReadsBack(text)).toBe(expected);
   });
 });
