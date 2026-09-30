@@ -165,7 +165,7 @@ function roundTrippedDefaults(columns: readonly SqlColumnIRInput[]) {
   );
 }
 
-describe('a printed default reads back as the value the database reported', () => {
+describe('a printed default reads back as the value the database reported, in the text the contract stores', () => {
   it('round-trips every literal form the printer writes', () => {
     expect(
       roundTrippedDefaults([
@@ -199,7 +199,7 @@ two lines é'::text`,
       active: { kind: 'literal', value: true },
       meta: { kind: 'literal', value: { plan: 'free', seats: 1 } },
       ticked: { kind: 'literal', value: { tick: '`', slash: '\\' } },
-      stamp: { kind: 'literal', value: '2024-01-01 00:00:00' },
+      stamp: { kind: 'literal', value: '2024-01-01T00:00:00' },
       scores: { kind: 'literal', value: [1, 2] },
       docs: { kind: 'literal', value: [{}, []] },
     });
