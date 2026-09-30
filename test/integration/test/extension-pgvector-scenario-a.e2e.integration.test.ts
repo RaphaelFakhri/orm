@@ -26,8 +26,7 @@ import { UNBOUND_NAMESPACE_ID } from '@internal/framework-components/ir';
  * Drives the CLI aggregate `db init` flow (`executeDbInit`,
  * sub-spec § 6) against a real Postgres (PGlite via
  * `createDevDatabase`) with pgvector wired as an extension space and a
- * user `Doc` table that carries a `vector(N)` column. Three layers of
- * coverage:
+ * user `Doc` table. Three layers of coverage:
  *
  *   1. **Pinned `ops.json` byte-equivalence (disk).** Closes project
  *      AC10 / TC-15 at the on-disk shape level — the `CREATE EXTENSION
@@ -38,15 +37,17 @@ import { UNBOUND_NAMESPACE_ID } from '@internal/framework-components/ir';
  *   2. **Multi-space planning (real DDL).** `executeDbInit`
  *      with `mode: 'plan'` against the real descriptor produces a plan
  *      that includes the pgvector baseline op AND the app-space
- *      `CREATE TABLE Doc` op, ordered first per
- *      `concatenateSpaceApplyInputs` cross-space ordering.
+ *      `CREATE TABLE Doc` op with its `vector(N)` column, ordered first
+ *      per `concatenateSpaceApplyInputs` cross-space ordering.
  *
  *   3. **Multi-space apply (synthetic vector stub).** PGlite does not
  *      ship the `vector` extension; the synthetic-stub variant
  *      replaces the install op's SQL with a `CREATE DOMAIN vector AS
  *      text` stub so the framework + per-space wiring runs against a
- *      real DB. Asserts marker rows for both `app` and `pgvector`
- *      (project AC5 / AC10 / TC-16).
+ *      real DB. A domain takes no length, so the `Doc` table applied
+ *      here has only its `id` column. Asserts marker rows for both
+ *      `app` and `pgvector` (project AC5 / AC10 / TC-16), and writes and
+ *      reads one `Doc` row.
  */
 
 import { mkdir, mkdtemp, readFile, rm } from 'node:fs/promises';
@@ -344,7 +345,7 @@ describe('pgvector Scenario A end-to-end (PGlite, T4.3)', {
     expect(appDocIdx).toBeGreaterThan(installIdx);
   });
 
-  it('synthetic vector stub: applies pgvector + app-space atomically; markers + round-trip OK', async () => {
+  it('synthetic vector stub: applies pgvector + app-space atomically; markers written, Doc row round-trips', async () => {
     project = await setupTestProject({ migration: buildSyntheticBaselineMigration() });
 
     const result = await executeDbInit({
