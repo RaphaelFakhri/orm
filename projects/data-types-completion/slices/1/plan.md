@@ -22,3 +22,4 @@ After dispatch f: `/drive-code-review` without the walkthrough, fix its findings
 - Dispatch e: the golden for `snapshot-read-shapes/codec-instance.json` records a planner error that quotes the `expandNativeType` hook's message. Deleting the hook changes that message and not any DDL; re-record that one golden in dispatch e. This is not a halt.
 - Dispatch c must register `sql/char@1` and `sql/varchar@1` on SQLite (design 2.7 item 9) before dispatch e makes the planner read the codec's data type, or the SQLite goldens break.
 - Dispatch d also moves the Postgres and SQLite data type authoring entries (`authoring.dataTypes`) from the adapters to the targets (design 3.1). Found in dispatch b.
+- Dispatch f writes the extension-audience upgrade instruction of design section 6, because slice 1 changes `postgresCodec`, codec `targetTypes`, the rendering hooks and constructor templates, all of which extensions use. Found in the review of dispatch b.

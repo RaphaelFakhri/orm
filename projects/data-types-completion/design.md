@@ -206,6 +206,7 @@ One contract change follows for users only: the five shared column packagers in 
 - Runtime: a parameter cast test expecting `$1::int4`, and one with a `varchar(255)` column expecting no length in the cast.
 - Assembly: one test per check in section 5. `pnpm fixtures:check` shows no change.
 - Docs: ADR 171 marked superseded by ADR 254; `docs/reference/codec-authoring-guide.md` gains "Declaring a data type" and loses the rendering hook section; `docs/reference/error-reference.md` gains `CONTRACT.TYPE_PARAMS_INVALID`.
+- Upgrade instruction, extension audience only: `upgrade-instructions/pending/data-types-declare-names/extension/instructions.md`, following `skills-contrib/record-upgrade-instructions/SKILL.md`. It covers every change an extension author sees in slice 1: `postgresCodec` takes the data type object instead of its id; codec `targetTypes` and the `expandNativeType` hooks are gone, replaced by `sqlDataType` texts on the extension's data type; a codec's `paramsSchema` is its data type's `params`; type constructor templates lose `nativeType`. `pnpm check:upgrade-coverage --mode pr` must pass. Application authors see no change in slice 1, so there is no app-audience instruction.
 
 # Slice 2: the contract names the data type (TML-3388)
 
