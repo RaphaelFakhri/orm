@@ -132,6 +132,7 @@ describe('native enum blocks', () => {
             dataType: 'pg/enum',
             codecId: 'pg/enum@1',
             nullable: false,
+            typeParams: { typeName: 'user_role' },
             valueSet: {
               plane: 'storage',
               namespaceId: 'public',

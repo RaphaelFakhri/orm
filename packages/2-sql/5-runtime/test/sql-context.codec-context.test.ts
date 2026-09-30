@@ -63,7 +63,7 @@ describe('buildContractCodecRegistry — per-column codec instance context', () 
       tables[tableName] = {
         columns: {
           field: {
-            nativeType: columnSpec.nativeType,
+            dataType: columnSpec.codecId.replace(/@\d+$/, ''),
             codecId: columnSpec.codecId,
             nullable: false,
           },
@@ -420,7 +420,7 @@ describe('buildContractCodecRegistry — forColumn delegates to forCodecRef', ()
       tables[tableName] = {
         columns: {
           field: {
-            nativeType: columnSpec.nativeType,
+            dataType: columnSpec.codecId.replace(/@\d+$/, ''),
             codecId: columnSpec.codecId,
             nullable: false,
           },

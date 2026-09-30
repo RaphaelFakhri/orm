@@ -84,7 +84,7 @@ const authoringTargetPack = {
 } as const;
 
 type ColumnSpec = {
-  readonly nativeType: string;
+  readonly dataType: string;
   readonly codecId: string;
   readonly nullable: boolean;
   readonly many?: true;

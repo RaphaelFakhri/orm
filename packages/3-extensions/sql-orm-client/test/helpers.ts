@@ -515,7 +515,6 @@ export function buildStiPolyContract(): TestContract {
 }
 
 type RawColumn = {
-  nativeType: string;
   codecId: string;
   nullable: boolean;
   // A string default is treated as a SQL expression (`defaultSql`); any other
@@ -523,8 +522,8 @@ type RawColumn = {
   default?: string | ColumnDefaultLiteralInputValue;
 };
 
-// extraColumns carry a raw codecId/nativeType pair; a ColumnTypeDescriptor is
-// exactly that pair, so the DSL accepts it directly without any contract-shaped
+// extraColumns carry a raw codecId; a ColumnTypeDescriptor is
+// exactly that codecId, so the DSL accepts it directly without any contract-shaped
 // literal.
 function extraColumnDescriptor(col: RawColumn): ColumnTypeDescriptor {
   return { codecId: col.codecId };

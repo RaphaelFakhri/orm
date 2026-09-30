@@ -40,12 +40,13 @@ interface ListDefaultCase {
 const listDefaults: readonly ListDefaultCase[] = [
   {
     column: 'bigInts',
-    type: { codecId: 'pg/int8@1' },
+    type: { dataType: 'pg/int8', codecId: 'pg/int8@1' },
     default: { kind: 'literal', value: ['1', '-2', '9007199254740993'] },
   },
   {
     column: 'decimals',
     type: {
+      dataType: 'pg/numeric',
       codecId: 'pg/numeric@1',
       typeParams: { precision: 65, scale: 30 },
     },
@@ -53,12 +54,13 @@ const listDefaults: readonly ListDefaultCase[] = [
   },
   {
     column: 'unscaledDecimals',
-    type: { codecId: 'pg/numeric@1' },
+    type: { dataType: 'pg/numeric', codecId: 'pg/numeric@1' },
     default: { kind: 'literal', value: ['1.50', '-0.5'] },
   },
   {
     column: 'timestamps',
     type: {
+      dataType: 'pg/timestamp',
       codecId: 'pg/timestamp-temporal@1',
       typeParams: { precision: 3 },
     },
@@ -67,6 +69,7 @@ const listDefaults: readonly ListDefaultCase[] = [
   {
     column: 'instants',
     type: {
+      dataType: 'pg/timestamptz',
       codecId: 'pg/timestamptz-temporal@1',
       typeParams: { precision: 3 },
     },
@@ -74,37 +77,38 @@ const listDefaults: readonly ListDefaultCase[] = [
   },
   {
     column: 'dates',
-    type: { codecId: 'pg/date-temporal@1' },
+    type: { dataType: 'pg/date', codecId: 'pg/date-temporal@1' },
     default: { kind: 'literal', value: ['2024-01-01'] },
   },
   {
     column: 'ints',
-    type: { codecId: 'pg/int4@1' },
+    type: { dataType: 'pg/int4', codecId: 'pg/int4@1' },
     default: { kind: 'literal', value: [-1, 2] },
   },
   {
     column: 'floats',
-    type: { codecId: 'pg/float8@1' },
+    type: { dataType: 'pg/float8', codecId: 'pg/float8@1' },
     default: { kind: 'literal', value: [1.5, -2] },
   },
   {
     column: 'texts',
-    type: { codecId: 'pg/text@1' },
+    type: { dataType: 'pg/text', codecId: 'pg/text@1' },
     default: { kind: 'literal', value: ['a,b', "it's", '-1'] },
   },
   {
     column: 'emptyVarchars',
-    type: { codecId: 'sql/varchar@1', typeParams: { length: 32 } },
+    type: { dataType: 'pg/varchar', codecId: 'sql/varchar@1', typeParams: { length: 32 } },
     default: { kind: 'literal', value: [] },
   },
   {
     column: 'castBigInts',
-    type: { codecId: 'pg/int8@1' },
+    type: { dataType: 'pg/int8', codecId: 'pg/int8@1' },
     default: { kind: 'function', expression: 'ARRAY[(1)::bigint, (2)::bigint]' },
   },
   {
     column: 'castTimestamps',
     type: {
+      dataType: 'pg/timestamp',
       codecId: 'pg/timestamp-temporal@1',
       typeParams: { precision: 3 },
     },
@@ -112,7 +116,7 @@ const listDefaults: readonly ListDefaultCase[] = [
   },
   {
     column: 'castBytes',
-    type: { codecId: 'pg/bytea@1' },
+    type: { dataType: 'pg/bytea', codecId: 'pg/bytea@1' },
     default: { kind: 'function', expression: "ARRAY['\\x68656c6c6f']::BYTEA[]" },
   },
 ];
@@ -147,17 +151,17 @@ function enumListColumns(
 ): Record<string, StorageColumnInput> {
   return Object.fromEntries(
     enumLists.map((enumList): [string, StorageColumnInput] => {
-      const nativeType =
+      const typeName =
         schema === publicSchema ? enumList.typeName : `${schema}.${enumList.typeName}`;
       return [
         enumList.column,
         {
-          nativeType,
+          dataType: 'pg/enum',
           codecId: 'pg/enum@1',
           nullable: true,
           many: true,
           noCheck: ['elementNotNull'],
-          typeParams: { typeName: nativeType },
+          typeParams: { typeName },
           valueSet: {
             plane: 'storage',
             entityKind: 'valueSet',

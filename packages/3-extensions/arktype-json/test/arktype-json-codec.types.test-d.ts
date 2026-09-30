@@ -4,7 +4,7 @@
  * Spec § Case 3: method-level generic over `S extends Type<unknown>`. Coverage focuses on the literal-preservation property — `S['infer']` flows from the column-author site through `arktypeJsonColumn` into the resolved codec's `TInput` slot. Exercises that:
  *
  * - the helper's return-type `codecFactory` slot carries `ArktypeJsonCodecClass<S['infer']>`, with the schema's TS-level inferred shape preserved.
- * - the column spec's `nativeType` is the bare `'jsonb'` literal and `codecId` is `'arktype/json@1'`.
+ * - the column spec's `codecId` is `'arktype/json@1'`.
  * - `ColumnInputType` extraction recovers the schema's inferred shape.
  * - the descriptor's factory returns the erased `ArktypeJsonCodecClass<unknown>` form (since `S` is unavailable at descriptor-factory time; only the IR is).
  * - `satisfies ColumnHelperFor<ArktypeJsonDescriptor>` (coarse) succeeds; `ColumnHelperForStrict` is intentionally not applied because `Codec` is invariant in `TInput` (see codec-class.ts comment).
@@ -45,13 +45,12 @@ test('arktypeJsonColumn: typeParams shape is ArktypeJsonTypeParams', () => {
   expectTypeOf(col.typeParams).toEqualTypeOf<ArktypeJsonTypeParams>();
 });
 
-test('arktypeJsonColumn: bare nativeType "jsonb" + codecId literal', () => {
+test('arktypeJsonColumn: codecId literal', () => {
   const ProductSchema = type({ name: 'string', price: 'number' });
   const col = arktypeJsonColumn(ProductSchema);
-  expectTypeOf(col.nativeType).toEqualTypeOf<string | undefined>();
   expectTypeOf(col.codecId).toEqualTypeOf<string>();
-  if (col.nativeType !== 'jsonb' || col.codecId !== 'arktype/json@1') {
-    throw new Error(`nativeType / codecId mismatch: ${col.nativeType} / ${col.codecId}`);
+  if (col.codecId !== 'arktype/json@1') {
+    throw new Error(`codecId mismatch: ${col.codecId}`);
   }
 });
 

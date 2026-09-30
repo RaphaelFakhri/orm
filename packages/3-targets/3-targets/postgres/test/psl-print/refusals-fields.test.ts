@@ -1,4 +1,6 @@
+import { sqlDataType } from '@internal/sql-contract/data-type';
 import { blindCast } from '@internal/utils/casts';
+import { type as arktype } from 'arktype';
 import { describe, expect, it } from 'vitest';
 import { testBuildContext } from './build-context';
 import { INT_FIELD, printingWidget, refusal, TEXT_COLUMN, TEXT_FIELD } from './refusal-support';
@@ -115,6 +117,12 @@ describe('columns and fields', () => {
           },
         },
       },
+      dataTypes: [
+        sqlDataType('postgis/geometry', {
+          params: arktype({ 'shape?': 'string' }),
+          texts: [{ text: 'geometry', written: true, catalog: true }],
+        }),
+      ],
     });
 
     function withShape(typeParams: Record<string, unknown>) {
@@ -140,7 +148,11 @@ describe('columns and fields', () => {
     }
 
     it('refuses a column whose codec no PSL type in the stack produces, naming the column', () => {
-      const vector = { codecId: 'pg/vector@1', typeParams: { length: 3 } };
+      const vector = {
+        dataType: 'pgvector/vector',
+        codecId: 'pg/vector@1',
+        typeParams: { length: 3 },
+      };
       expect(
         printingWidget({
           columns: { v: { ...vector, nullable: false } },
@@ -154,6 +166,7 @@ describe('columns and fields', () => {
       ).toThrow(
         refusal({
           coordinate: '"public"."Widget"."v"',
+          dataType: 'pgvector/vector',
           codecId: 'pg/vector@1',
         }),
       );
@@ -173,6 +186,7 @@ describe('columns and fields', () => {
       expect(withShape({})).toThrow(
         refusal({
           coordinate: '"public"."Widget"."area"',
+          dataType: 'postgis/geometry',
           codecId: 'pg/geometry@1',
         }),
       );

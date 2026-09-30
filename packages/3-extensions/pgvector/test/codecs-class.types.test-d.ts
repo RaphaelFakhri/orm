@@ -36,11 +36,10 @@ test('pgVector: column helper preserves typed codecFactory + length literal', ()
   expectTypeOf(col.typeParams).toEqualTypeOf<{ length: 1536 }>();
 });
 
-test('pgVector: column helper carries bare nativeType (family layer expands at emit/verify)', () => {
+test('pgVector: column helper carries the codec id and the length', () => {
   const col = pgVectorColumn(1536);
-  expectTypeOf(col.nativeType).toEqualTypeOf<string | undefined>();
-  if (col.nativeType !== 'vector' || col.codecId !== 'pg/vector@1') {
-    throw new Error(`nativeType / codecId mismatch: ${col.nativeType} / ${col.codecId}`);
+  if (col.codecId !== 'pg/vector@1') {
+    throw new Error(`codecId mismatch: ${col.codecId}`);
   }
   if (col.typeParams.length !== 1536) {
     throw new Error(`length literal not preserved: ${col.typeParams.length}`);

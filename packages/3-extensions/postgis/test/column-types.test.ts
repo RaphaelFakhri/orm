@@ -3,7 +3,7 @@ import { geometry, geometryColumn } from '../src/exports/column-types';
 
 describe('postgis column-types', () => {
   describe('geometryColumn (static)', () => {
-    it('has correct codecId and nativeType', () => {
+    it('has correct codecId', () => {
       expect(geometryColumn).toMatchObject({
         codecId: 'pg/geometry@1',
       });

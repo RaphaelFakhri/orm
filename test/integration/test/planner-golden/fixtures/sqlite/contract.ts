@@ -1,8 +1,7 @@
 /**
  * One column per SQLite codec in each parameter shape a contract can hold
  * today, so the planner golden test sees every way a column type is written.
- * A descriptor written out by hand stands where no column helper exists; its
- * `nativeType` is the name the column's data type is written with.
+ * A descriptor written out by hand stands where no column helper exists.
  */
 
 import {

@@ -367,7 +367,7 @@ describe('default omission', () => {
             columns: {
               labels: {
                 codecId: 'pg/text_array@1',
-                nativeType: 'text[]',
+                dataType: 'pg/text-array',
                 nullable: false,
                 default: { kind: 'literal', value: [] },
               },

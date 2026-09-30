@@ -23,9 +23,9 @@ function model(table: string, fieldColumns: Record<string, string>) {
 }
 
 function storageTable(columnCodecs: Record<string, string>) {
-  const cols: Record<string, { codecId: string; nativeType: string; nullable: boolean }> = {};
+  const cols: Record<string, { codecId: string; dataType: string; nullable: boolean }> = {};
   for (const [column, codecId] of Object.entries(columnCodecs)) {
-    cols[column] = { codecId, nativeType: codecId, nullable: false };
+    cols[column] = { codecId, dataType: codecId.replace(/@\d+$/, ''), nullable: false };
   }
   return {
     columns: cols,

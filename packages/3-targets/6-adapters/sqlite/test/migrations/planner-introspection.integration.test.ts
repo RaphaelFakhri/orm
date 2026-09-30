@@ -111,7 +111,7 @@ describe('SQLite planner + introspection round-trip', () => {
               nullable: false,
               default: { kind: 'function', expression: 'autoincrement()' },
             }),
-            email: makeColumn({ nativeType: 'text', nullable: false }),
+            email: makeColumn({ nullable: false }),
             active: makeColumn({
               dataType: 'sqlite/integer',
               codecId: 'sqlite/integer@1',
@@ -184,7 +184,7 @@ describe('SQLite planner + introspection round-trip', () => {
               nullable: false,
               default: { kind: 'function', expression: 'autoincrement()' },
             }),
-            value: makeColumn({ nativeType: 'text', nullable: true }),
+            value: makeColumn({ nullable: true }),
           },
           primaryKey: { columns: ['id'] },
         }),

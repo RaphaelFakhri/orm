@@ -179,6 +179,7 @@ const cases: readonly DefaultCase[] = [
     column: 'timestamps',
     ddl: `"timestamps" TIMESTAMP(3)[] DEFAULT ARRAY['2024-01-01 00:00:00 +00:00']::TIMESTAMP(3)[]`,
     type: {
+      dataType: 'pg/timestamp',
       codecId: 'pg/timestamp-temporal@1',
       typeParams: { precision: 3 },
       ...list,
@@ -190,6 +191,7 @@ const cases: readonly DefaultCase[] = [
     column: 'emptyVarchars',
     ddl: '"emptyVarchars" VARCHAR(32)[] DEFAULT ARRAY[]::VARCHAR(32)[]',
     type: {
+      dataType: 'pg/varchar',
       codecId: 'sql/varchar@1',
       typeParams: { length: 32 },
       ...list,

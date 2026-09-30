@@ -287,7 +287,7 @@ describe('NOT NULL column without default uses temporary default', () => {
     const addCol = await planAddColumn(
       'searchDocument',
       {
-        nativeType: 'tsvector',
+        dataType: 'test/tsvector',
         codecId: 'pg/tsvector@1',
         nullable: false,
       },
@@ -701,7 +701,7 @@ function buildUserTableSchema(): PostgresTableSchemaNode {
 function planAddColumn(
   columnName: string,
   columnDef: {
-    nativeType: string;
+    dataType: string;
     codecId: string;
     nullable: boolean;
     many?: boolean;

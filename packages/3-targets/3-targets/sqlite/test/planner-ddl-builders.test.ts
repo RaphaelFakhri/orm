@@ -161,7 +161,8 @@ describe('isInlineAutoincrementPrimaryKey', () => {
     const table = makeTable({
       columns: {
         id: makeColumn({
-          nativeType: 'integer',
+          dataType: 'sqlite/integer',
+          codecId: 'sqlite/integer@1',
           nullable: false,
           default: { kind: 'function', expression: 'autoincrement()' },
         }),
@@ -174,9 +175,14 @@ describe('isInlineAutoincrementPrimaryKey', () => {
   it('is false when the column is not in the primary key', () => {
     const table = makeTable({
       columns: {
-        id: makeColumn({ nativeType: 'integer', nullable: false }),
+        id: makeColumn({
+          dataType: 'sqlite/integer',
+          codecId: 'sqlite/integer@1',
+          nullable: false,
+        }),
         seq: makeColumn({
-          nativeType: 'integer',
+          dataType: 'sqlite/integer',
+          codecId: 'sqlite/integer@1',
           nullable: false,
           default: { kind: 'function', expression: 'autoincrement()' },
         }),
@@ -190,11 +196,16 @@ describe('isInlineAutoincrementPrimaryKey', () => {
     const table = makeTable({
       columns: {
         a: makeColumn({
-          nativeType: 'integer',
+          dataType: 'sqlite/integer',
+          codecId: 'sqlite/integer@1',
           nullable: false,
           default: { kind: 'function', expression: 'autoincrement()' },
         }),
-        b: makeColumn({ nativeType: 'integer', nullable: false }),
+        b: makeColumn({
+          dataType: 'sqlite/integer',
+          codecId: 'sqlite/integer@1',
+          nullable: false,
+        }),
       },
       primaryKey: { columns: ['a', 'b'] },
     });
@@ -204,7 +215,11 @@ describe('isInlineAutoincrementPrimaryKey', () => {
   it('is false when default is not autoincrement()', () => {
     const table = makeTable({
       columns: {
-        id: makeColumn({ nativeType: 'integer', nullable: false }),
+        id: makeColumn({
+          dataType: 'sqlite/integer',
+          codecId: 'sqlite/integer@1',
+          nullable: false,
+        }),
       },
       primaryKey: { columns: ['id'] },
     });

@@ -84,9 +84,8 @@ describe('enumType() — Mongo binding', () => {
     expect(Role.ordinalOf(notAMember)).toBe(-1);
   });
 
-  it('stores codecId and nativeType', () => {
+  it('stores codecId', () => {
     expect(Role.codecId).toBe('mongo/string@1');
-    expect(Role.nativeType).toBe('string');
   });
 });
 

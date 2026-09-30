@@ -10,7 +10,6 @@
  */
 interface ColumnTypeDescriptor {
   readonly codecId: string;
-  readonly nativeType: string;
 }
 
 export const int4Column: ColumnTypeDescriptor = {

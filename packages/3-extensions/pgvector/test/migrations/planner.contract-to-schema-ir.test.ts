@@ -67,7 +67,7 @@ function ns(tables: Record<string, StorageTable>): Pick<SqlStorageInput, 'namesp
   };
 }
 
-function col(overrides: Partial<StorageColumn> & { nativeType: string }): StorageColumn {
+function col(overrides: Partial<StorageColumn> & Pick<StorageColumn, 'dataType'>): StorageColumn {
   return {
     codecId: 'pg/text@1',
     nullable: false,
@@ -124,7 +124,7 @@ function contractToSchemaIR(
       : Object.values(contract.storage.types ?? {}).map(
           (t) =>
             new PostgresNativeEnumSchemaNode({
-              typeName: t.nativeType,
+              typeName: t.typeParams?.['typeName'] as string,
               namespaceId: 'public',
               members: [],
             }),
@@ -422,8 +422,8 @@ describe('planner — additive scenarios', () => {
       ...ns({
         user: table({
           columns: {
-            id: col({ codecId: 'pg/uuid@1' }),
-            email: col({ codecId: 'pg/text@1' }),
+            id: col({ dataType: 'pg/uuid', codecId: 'pg/uuid@1' }),
+            email: col({ dataType: 'pg/text', codecId: 'pg/text@1' }),
           },
           primaryKey: { columns: ['id'] },
         }),
@@ -435,8 +435,8 @@ describe('planner — additive scenarios', () => {
       ...ns({
         user: table({
           columns: {
-            id: col({ codecId: 'pg/uuid@1' }),
-            email: col({ codecId: 'pg/text@1' }),
+            id: col({ dataType: 'pg/uuid', codecId: 'pg/uuid@1' }),
+            email: col({ dataType: 'pg/text', codecId: 'pg/text@1' }),
             age: col({ dataType: 'pg/int4', codecId: 'pg/int4@1', nullable: true }),
           },
           primaryKey: { columns: ['id'] },
@@ -463,7 +463,7 @@ describe('planner — additive scenarios', () => {
       ...ns({
         user: table({
           columns: {
-            id: col({ codecId: 'pg/uuid@1' }),
+            id: col({ dataType: 'pg/uuid', codecId: 'pg/uuid@1' }),
           },
           primaryKey: { columns: ['id'] },
         }),
@@ -475,14 +475,14 @@ describe('planner — additive scenarios', () => {
       ...ns({
         user: table({
           columns: {
-            id: col({ codecId: 'pg/uuid@1' }),
+            id: col({ dataType: 'pg/uuid', codecId: 'pg/uuid@1' }),
           },
           primaryKey: { columns: ['id'] },
         }),
         post: table({
           columns: {
-            id: col({ codecId: 'pg/uuid@1' }),
-            title: col({ codecId: 'pg/text@1' }),
+            id: col({ dataType: 'pg/uuid', codecId: 'pg/uuid@1' }),
+            title: col({ dataType: 'pg/text', codecId: 'pg/text@1' }),
           },
           primaryKey: { columns: ['id'] },
         }),
@@ -507,7 +507,7 @@ describe('planner — additive scenarios', () => {
       ...ns({
         user: table({
           columns: {
-            id: col({ codecId: 'pg/uuid@1' }),
+            id: col({ dataType: 'pg/uuid', codecId: 'pg/uuid@1' }),
           },
           primaryKey: { columns: ['id'] },
         }),
@@ -519,15 +519,15 @@ describe('planner — additive scenarios', () => {
       ...ns({
         user: table({
           columns: {
-            id: col({ codecId: 'pg/uuid@1' }),
+            id: col({ dataType: 'pg/uuid', codecId: 'pg/uuid@1' }),
           },
           primaryKey: { columns: ['id'] },
         }),
         post: table({
           columns: {
-            id: col({ codecId: 'pg/uuid@1' }),
-            title: col({ codecId: 'pg/text@1' }),
-            slug: col({ codecId: 'pg/text@1' }),
+            id: col({ dataType: 'pg/uuid', codecId: 'pg/uuid@1' }),
+            title: col({ dataType: 'pg/text', codecId: 'pg/text@1' }),
+            slug: col({ dataType: 'pg/text', codecId: 'pg/text@1' }),
           },
           primaryKey: { columns: ['id'] },
           uniques: [{ columns: ['slug'] }],
@@ -557,8 +557,8 @@ describe('planner — additive scenarios', () => {
       ...ns({
         user: table({
           columns: {
-            id: col({ codecId: 'pg/uuid@1' }),
-            email: col({ codecId: 'pg/text@1' }),
+            id: col({ dataType: 'pg/uuid', codecId: 'pg/uuid@1' }),
+            email: col({ dataType: 'pg/text', codecId: 'pg/text@1' }),
           },
           primaryKey: { columns: ['id'] },
         }),
@@ -581,9 +581,9 @@ describe('detectDestructiveChanges', () => {
       ...ns({
         user: table({
           columns: {
-            id: col({ codecId: 'pg/uuid@1' }),
-            email: col({ codecId: 'pg/text@1' }),
-            name: col({ codecId: 'pg/text@1' }),
+            id: col({ dataType: 'pg/uuid', codecId: 'pg/uuid@1' }),
+            email: col({ dataType: 'pg/text', codecId: 'pg/text@1' }),
+            name: col({ dataType: 'pg/text', codecId: 'pg/text@1' }),
           },
           primaryKey: { columns: ['id'] },
         }),
@@ -595,8 +595,8 @@ describe('detectDestructiveChanges', () => {
       ...ns({
         user: table({
           columns: {
-            id: col({ codecId: 'pg/uuid@1' }),
-            email: col({ codecId: 'pg/text@1' }),
+            id: col({ dataType: 'pg/uuid', codecId: 'pg/uuid@1' }),
+            email: col({ dataType: 'pg/text', codecId: 'pg/text@1' }),
           },
           primaryKey: { columns: ['id'] },
         }),
@@ -615,11 +615,11 @@ describe('detectDestructiveChanges', () => {
       storageHash: coreHash('test'),
       ...ns({
         user: table({
-          columns: { id: col({ codecId: 'pg/uuid@1' }) },
+          columns: { id: col({ dataType: 'pg/uuid', codecId: 'pg/uuid@1' }) },
           primaryKey: { columns: ['id'] },
         }),
         post: table({
-          columns: { id: col({ codecId: 'pg/uuid@1' }) },
+          columns: { id: col({ dataType: 'pg/uuid', codecId: 'pg/uuid@1' }) },
           primaryKey: { columns: ['id'] },
         }),
       }),
@@ -629,7 +629,7 @@ describe('detectDestructiveChanges', () => {
       storageHash: coreHash('test'),
       ...ns({
         user: table({
-          columns: { id: col({ codecId: 'pg/uuid@1' }) },
+          columns: { id: col({ dataType: 'pg/uuid', codecId: 'pg/uuid@1' }) },
           primaryKey: { columns: ['id'] },
         }),
       }),
@@ -648,13 +648,13 @@ describe('detectDestructiveChanges', () => {
       ...ns({
         user: table({
           columns: {
-            id: col({ codecId: 'pg/uuid@1' }),
-            name: col({ codecId: 'pg/text@1' }),
+            id: col({ dataType: 'pg/uuid', codecId: 'pg/uuid@1' }),
+            name: col({ dataType: 'pg/text', codecId: 'pg/text@1' }),
           },
           primaryKey: { columns: ['id'] },
         }),
         post: table({
-          columns: { id: col({ codecId: 'pg/uuid@1' }) },
+          columns: { id: col({ dataType: 'pg/uuid', codecId: 'pg/uuid@1' }) },
           primaryKey: { columns: ['id'] },
         }),
       }),
@@ -664,7 +664,7 @@ describe('detectDestructiveChanges', () => {
       storageHash: coreHash('test'),
       ...ns({
         user: table({
-          columns: { id: col({ codecId: 'pg/uuid@1' }) },
+          columns: { id: col({ dataType: 'pg/uuid', codecId: 'pg/uuid@1' }) },
           primaryKey: { columns: ['id'] },
         }),
       }),
@@ -686,8 +686,8 @@ describe('planner — type and nullability change behavior', () => {
       ...ns({
         user: table({
           columns: {
-            id: col({ codecId: 'pg/uuid@1' }),
-            name: col({ codecId: 'pg/text@1' }),
+            id: col({ dataType: 'pg/uuid', codecId: 'pg/uuid@1' }),
+            name: col({ dataType: 'pg/text', codecId: 'pg/text@1' }),
           },
           primaryKey: { columns: ['id'] },
         }),
@@ -699,8 +699,8 @@ describe('planner — type and nullability change behavior', () => {
       ...ns({
         user: table({
           columns: {
-            id: col({ codecId: 'pg/uuid@1' }),
-            name: col({ codecId: 'pg/int4@1' }),
+            id: col({ dataType: 'pg/uuid', codecId: 'pg/uuid@1' }),
+            name: col({ dataType: 'pg/int4', codecId: 'pg/int4@1' }),
           },
           primaryKey: { columns: ['id'] },
         }),
@@ -725,7 +725,7 @@ describe('planner — type and nullability change behavior', () => {
       ...ns({
         user: table({
           columns: {
-            id: col({ codecId: 'pg/uuid@1' }),
+            id: col({ dataType: 'pg/uuid', codecId: 'pg/uuid@1' }),
             bio: col({ dataType: 'pg/text', codecId: 'pg/text@1', nullable: true }),
           },
           primaryKey: { columns: ['id'] },
@@ -738,7 +738,7 @@ describe('planner — type and nullability change behavior', () => {
       ...ns({
         user: table({
           columns: {
-            id: col({ codecId: 'pg/uuid@1' }),
+            id: col({ dataType: 'pg/uuid', codecId: 'pg/uuid@1' }),
             bio: col({ dataType: 'pg/text', codecId: 'pg/text@1', nullable: false }),
           },
           primaryKey: { columns: ['id'] },
@@ -777,7 +777,7 @@ function createAdapterHooksComponent(): TargetBoundComponentDescriptor<'sql', 'p
         ? schema.nativeEnums.map((e) => e.typeName)
         : [];
 
-      if (existingEnumTypes.includes(typeInstance.nativeType)) {
+      if (existingEnumTypes.includes(typeInstance.typeParams?.['typeName'] as string)) {
         return { operations: [] };
       }
 
@@ -792,7 +792,7 @@ function createAdapterHooksComponent(): TargetBoundComponentDescriptor<'sql', 'p
             execute: [
               {
                 description: `create type "${typeName}"`,
-                sql: `CREATE TYPE "${schemaName ?? 'public'}"."${typeInstance.nativeType}" AS ENUM (${values.map((v) => `'${v}'`).join(', ')})`,
+                sql: `CREATE TYPE "${schemaName ?? 'public'}"."${typeInstance.typeParams?.['typeName'] as string}" AS ENUM (${values.map((v) => `'${v}'`).join(', ')})`,
               },
             ],
             postcheck: [],
@@ -831,15 +831,18 @@ const DEMO_BASE_TABLES = {
   user: table({
     columns: {
       id: col({
+        dataType: 'pg/char',
         codecId: 'sql/char@1',
         typeParams: { length: 36 },
       }),
-      email: col({ codecId: 'pg/text@1' }),
+      email: col({ dataType: 'pg/text', codecId: 'pg/text@1' }),
       createdAt: col({
+        dataType: 'pg/timestamptz',
         codecId: 'pg/timestamptz-temporal@1',
         default: { kind: 'function', expression: 'now()' },
       }),
       kind: col({
+        dataType: 'app/test-type',
         codecId: 'app/test-type@1',
         typeRef: 'user_type',
       }),
@@ -850,15 +853,18 @@ const DEMO_BASE_TABLES = {
   post: table({
     columns: {
       id: col({
+        dataType: 'pg/char',
         codecId: 'sql/char@1',
         typeParams: { length: 36 },
       }),
-      title: col({ codecId: 'pg/text@1' }),
+      title: col({ dataType: 'pg/text', codecId: 'pg/text@1' }),
       userId: col({
+        dataType: 'pg/char',
         codecId: 'sql/char@1',
         typeParams: { length: 36 },
       }),
       createdAt: col({
+        dataType: 'pg/timestamptz',
         codecId: 'pg/timestamptz-temporal@1',
         default: { kind: 'function', expression: 'now()' },
       }),

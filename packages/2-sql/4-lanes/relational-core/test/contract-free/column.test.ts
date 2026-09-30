@@ -46,7 +46,7 @@ describe('contract-free column helpers', () => {
         literal: (node) => node.kind,
         function: (node) => node.kind,
       },
-      { nativeType: 'text' },
+      { typeText: 'text' },
     );
     expect(kind).toBe('literal');
   });

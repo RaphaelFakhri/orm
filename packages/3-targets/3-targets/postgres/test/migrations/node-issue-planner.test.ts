@@ -318,7 +318,7 @@ describe('buildPostgresPlanDiff + planNodeIssues (one-differ path)', () => {
   ])(
     'checks a type change to enum $typeName (typeRef $typeRef) against $formatTypeExpected',
     ({ typeName, typeRef, formatTypeExpected }) => {
-      const enumType = { codecId: 'pg/enum@1', typeParams: { typeName } };
+      const enumType = { dataType: 'pg/enum', codecId: 'pg/enum@1', typeParams: { typeName } };
       const contract = makeContract(
         {
           user: {

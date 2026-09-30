@@ -11,6 +11,7 @@ import type { SqlStorage, StorageTable } from '@internal/sql-contract/types';
 import { blindCast } from '@internal/utils/casts';
 import { createContract } from '@repo/test-utils';
 import { describe, expect, it } from 'vitest';
+import { createTestSqlNamespace } from '../../1-core/contract/test/test-support';
 import { createSqlFamilyInstance } from '../src/core/control-instance';
 
 const int4 = sqlDataType('t/int4', { texts: [{ text: 'int4', written: true }] });
@@ -85,7 +86,10 @@ function contractWith(
     target: 't',
     storage: {
       namespaces: {
-        [UNBOUND_NAMESPACE_ID]: { id: UNBOUND_NAMESPACE_ID, entries: { table: tables } },
+        [UNBOUND_NAMESPACE_ID]: createTestSqlNamespace({
+          id: UNBOUND_NAMESPACE_ID,
+          entries: { table: tables },
+        }),
       },
       ...(options.types === undefined ? {} : { types: options.types }),
     },

@@ -2,7 +2,7 @@
  * One column per Postgres data type in each parameter shape a contract can hold
  * today, so the planner golden test sees every way a column type is written.
  * A descriptor written out by hand stands where no column helper takes that
- * shape; its `nativeType` is the type's name with no parameters.
+ * shape.
  */
 
 import {

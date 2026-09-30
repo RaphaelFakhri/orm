@@ -55,7 +55,7 @@ function buildContract(input: EnumTableCase): Contract<SqlStorage> {
                 columns: {
                   id: { dataType: 'pg/int4', codecId: 'pg/int4@1', nullable: false },
                   action: {
-                    nativeType: qualifiedType,
+                    dataType: 'pg/enum',
                     codecId: 'pg/enum@1',
                     nullable: false,
                     ...(input.contractDefault === undefined

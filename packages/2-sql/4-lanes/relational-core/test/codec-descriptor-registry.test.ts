@@ -219,7 +219,7 @@ describe('buildCodecDescriptorRegistry — codecRefForColumn namespace coordinat
       columns: Object.fromEntries(
         Object.entries(columns).map(([name, codecId]) => [
           name,
-          { nativeType: codecId, codecId, nullable: false },
+          { dataType: codecId.replace(/@\d+$/, ''), codecId, nullable: false },
         ]),
       ),
       primaryKey: { columns: ['id'] },

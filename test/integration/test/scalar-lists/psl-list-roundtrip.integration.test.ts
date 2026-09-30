@@ -121,7 +121,7 @@ describe('PSL scalar-list end-to-end', { concurrent: false }, () => {
         codecId: 'pg/text@1',
         many: true,
       });
-      expect(tagsColumn?.['nativeType']).not.toBe('jsonb');
+      expect(tagsColumn?.['dataType']).toBe('pg/text');
 
       await withClient(database.connectionString, async (client) => {
         await client.query('DROP SCHEMA IF EXISTS public CASCADE');

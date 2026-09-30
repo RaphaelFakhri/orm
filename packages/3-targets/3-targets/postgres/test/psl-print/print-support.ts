@@ -50,7 +50,7 @@ const INT_FIELD: ContractField = {
 
 export interface ColumnShape {
   readonly [key: string]: unknown;
-  readonly nativeType: string;
+  readonly dataType: string;
   readonly codecId: string;
   readonly nullable: boolean;
   readonly many?: boolean;

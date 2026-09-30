@@ -105,7 +105,7 @@ function createTestContract(
     Record<
       string,
       {
-        nativeType: string;
+        dataType: string;
         codecId: string;
         nullable: boolean;
         typeParams?: Record<string, unknown>;

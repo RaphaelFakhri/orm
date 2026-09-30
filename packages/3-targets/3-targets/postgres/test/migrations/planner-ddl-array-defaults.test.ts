@@ -8,8 +8,8 @@ import {
 } from '../../src/core/migrations/planner-ddl-builders';
 import { postgresTypeLookups } from '../postgres-type-lookups';
 
-function arrayColumn(nativeType: string): DefaultLiteralColumn {
-  return { nativeType, dataType: 'pg/text', many: true };
+function arrayColumn(typeText: string): DefaultLiteralColumn {
+  return { typeText, dataType: 'pg/text', many: true };
 }
 
 describe('renderDefaultLiteral array columns', () => {
@@ -31,27 +31,24 @@ describe('renderDefaultLiteral array columns', () => {
   it.each([
     {
       value: ['1', '-2', '9007199254740993'],
-      nativeType: 'int8',
+      typeText: 'int8',
       sql: "ARRAY['1', '-2', '9007199254740993']::int8[]",
     },
     {
       value: ['1.5', '-2.25'],
-      nativeType: 'numeric(65,30)',
+      typeText: 'numeric(65,30)',
       sql: "ARRAY['1.5', '-2.25']::numeric(65,30)[]",
     },
-    { value: ['1.50'], nativeType: 'numeric', sql: "ARRAY['1.50']::numeric[]" },
+    { value: ['1.50'], typeText: 'numeric', sql: "ARRAY['1.50']::numeric[]" },
     {
       value: ['2024-01-01T00:00:00'],
-      nativeType: 'timestamp(3)',
+      typeText: 'timestamp(3)',
       sql: "ARRAY['2024-01-01T00:00:00']::timestamp(3)[]",
     },
-  ])(
-    'casts the text elements of a $nativeType list to the list type',
-    ({ value, nativeType, sql }) => {
-      expect(renderDefaultLiteral(value, arrayColumn(nativeType))).toBe(sql);
-      expect(renderDefaultLiteral(value, arrayColumn(`${nativeType}[]`))).toBe(sql);
-    },
-  );
+  ])('casts the text elements of a $typeText list to the list type', ({ value, typeText, sql }) => {
+    expect(renderDefaultLiteral(value, arrayColumn(typeText))).toBe(sql);
+    expect(renderDefaultLiteral(value, arrayColumn(`${typeText}[]`))).toBe(sql);
+  });
 
   it.each([
     { typeName: 'order', cast: '"order"[]' },
@@ -63,18 +60,18 @@ describe('renderDefaultLiteral array columns', () => {
     'casts a list of the enum $typeName to the column type, quoted as DDL writes it',
     ({ typeName, cast }) => {
       const enumList: StorageColumn = {
-        nativeType: typeName,
+        dataType: 'pg/enum',
         codecId: 'pg/enum@1',
         nullable: true,
         many: true,
         typeParams: { typeName },
-      } as StorageColumn;
+      };
       const columnTypeSql = buildColumnTypeSql(enumList, postgresTypeLookups, {}, false);
 
       expect(
         buildColumnDefaultSql(
           { kind: 'literal', value: ['asc'] },
-          { many: true, nativeType: columnTypeSql, dataType: 'pg/enum' },
+          { many: true, typeText: columnTypeSql, dataType: 'pg/enum' },
         ),
       ).toBe(`DEFAULT ARRAY['asc']::${cast}`);
     },

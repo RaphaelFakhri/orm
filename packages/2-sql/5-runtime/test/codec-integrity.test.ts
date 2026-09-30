@@ -127,7 +127,7 @@ describe('createExecutionContext — column codec integrity', () => {
               Doc: {
                 columns: {
                   field: {
-                    nativeType: column.nativeType,
+                    dataType: column.codecId.replace(/@\d+$/, ''),
                     codecId: column.codecId,
                     nullable: false,
                     ...(column.typeParams ? { typeParams: column.typeParams } : {}),

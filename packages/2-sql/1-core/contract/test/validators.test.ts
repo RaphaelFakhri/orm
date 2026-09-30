@@ -223,7 +223,7 @@ describe('SQL contract validators', () => {
 
     it('refuses a column that stores its database type name', () => {
       const storage = storageWithColumn({
-        dataType: 'pg/int4',
+        nativeType: 'int4',
         codecId: 'pg/int4@1',
         nullable: false,
       });
@@ -237,12 +237,12 @@ describe('SQL contract validators', () => {
 
     it('refuses a storage type that stores its database type name, naming every such key', () => {
       const storage = {
-        ...storageWithColumn({ dataType: 'pg/int4', codecId: 'pg/int4@1', nullable: false }),
+        ...storageWithColumn({ nativeType: 'int4', codecId: 'pg/int4@1', nullable: false }),
         types: {
           Embedding: {
             kind: 'codec-instance',
             codecId: 'pg/vector@1',
-            dataType: 'pgvector/vector',
+            nativeType: 'vector',
             typeParams: { length: 3 },
           },
         },
@@ -260,7 +260,7 @@ describe('SQL contract validators', () => {
     it('refuses an old contract through the full validator with the standard code', () => {
       const contract = {
         ...createContract<SqlStorage>({ storage: unboundTables({}) }),
-        storage: storageWithColumn({ dataType: 'pg/int4', codecId: 'pg/int4@1', nullable: false }),
+        storage: storageWithColumn({ nativeType: 'int4', codecId: 'pg/int4@1', nullable: false }),
       };
       expect(() => validateSqlContractFully(contract)).toThrowError(
         expect.objectContaining({

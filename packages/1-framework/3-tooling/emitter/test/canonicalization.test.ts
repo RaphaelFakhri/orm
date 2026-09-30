@@ -432,7 +432,7 @@ describe('canonicalization', () => {
       storage: {
         namespaces: {},
         types: {
-          U: { codecId: 'x', nativeType: 'y', typeParams: {} },
+          U: { codecId: 'x', typeParams: {} },
         },
       },
     });

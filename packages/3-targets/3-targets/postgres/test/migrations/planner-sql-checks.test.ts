@@ -19,32 +19,19 @@ describe('qualifyTableName', () => {
 describe('buildExpectedFormatType', () => {
   describe('FORMAT_TYPE_DISPLAY mappings', () => {
     it('maps int2 to smallint', () => {
-      expect(
-        buildExpectedFormatType(
-          { dataType: 'pg/int2', codecId: 'pg/int2@1', nullable: false },
-          types,
-        ),
-      ).toBe('smallint');
+      expect(buildExpectedFormatType({ codecId: 'pg/int2@1' }, types)).toBe('smallint');
     });
 
     it('maps timestamptz to timestamp with time zone', () => {
-      expect(
-        buildExpectedFormatType(
-          { dataType: 'pg/timestamptz', codecId: 'pg/timestamptz-temporal@1', nullable: false },
-          types,
-        ),
-      ).toBe('timestamp with time zone');
+      expect(buildExpectedFormatType({ codecId: 'pg/timestamptz-temporal@1' }, types)).toBe(
+        'timestamp with time zone',
+      );
     });
   });
 
   describe('unmapped native types pass through', () => {
-    it('returns nativeType as-is for text', () => {
-      expect(
-        buildExpectedFormatType(
-          { dataType: 'pg/text', codecId: 'pg/text@1', nullable: false },
-          types,
-        ),
-      ).toBe('text');
+    it('returns the type name as-is for text', () => {
+      expect(buildExpectedFormatType({ codecId: 'pg/text@1' }, types)).toBe('text');
     });
   });
 
@@ -52,12 +39,7 @@ describe('buildExpectedFormatType', () => {
     it('renders the data type with its parameters', () => {
       expect(
         buildExpectedFormatType(
-          {
-            dataType: 'pg/numeric',
-            codecId: 'pg/numeric@1',
-            nullable: false,
-            typeParams: { precision: 10, scale: 2 },
-          },
+          { codecId: 'pg/numeric@1', typeParams: { precision: 10, scale: 2 } },
           types,
         ),
       ).toBe('numeric(10,2)');
@@ -65,41 +47,23 @@ describe('buildExpectedFormatType', () => {
 
     it('falls back to display map when typeParams are ones the data type does not declare', () => {
       expect(
-        buildExpectedFormatType(
-          {
-            dataType: 'pg/int4',
-            codecId: 'pg/int4@1',
-            nullable: false,
-            typeParams: { someParam: true },
-          },
-          types,
-        ),
+        buildExpectedFormatType({ codecId: 'pg/int4@1', typeParams: { someParam: true } }, types),
       ).toBe('integer');
     });
 
     it('throws CONTRACT.CODEC_DESCRIPTOR_MISSING when codecId is missing', () => {
       expect(() =>
-        buildExpectedFormatType(
-          {
-            nativeType: 'int4',
-            codecId: '',
-            nullable: false,
-            typeParams: { someParam: true },
-          },
-          types,
-        ),
+        buildExpectedFormatType({ codecId: '', typeParams: { someParam: true } }, types),
       ).toThrow(expect.objectContaining({ code: 'CONTRACT.CODEC_DESCRIPTOR_MISSING' }));
     });
   });
 
   describe('typeRef resolution against a storage type catalog', () => {
-    it('resolves nativeType/codecId from the referenced storage type, then applies the display map', () => {
+    it('resolves codecId from the referenced storage type, then applies the display map', () => {
       expect(
-        buildExpectedFormatType(
-          { nativeType: 'unused', codecId: 'unused', nullable: false, typeRef: 'MyStatus' },
-          types,
-          { MyStatus: toStorageTypeInstance({ codecId: 'pg/int4@1', dataType: 'pg/int4' }) },
-        ),
+        buildExpectedFormatType({ codecId: 'unused', typeRef: 'MyStatus' }, types, {
+          MyStatus: toStorageTypeInstance({ codecId: 'pg/int4@1', dataType: 'pg/int4' }),
+        }),
       ).toBe('integer');
     });
   });

@@ -1,6 +1,6 @@
 import { createDataTypeLookup } from '@internal/framework-components/codec';
 import type { SqlTypeLookups } from '@internal/sql-contract/data-type';
-import { type StorageColumn, toStorageTypeInstance } from '@internal/sql-contract/types';
+import { toStorageTypeInstance } from '@internal/sql-contract/types';
 import { postgresCodecDescriptorRegistry } from '@internal/target-postgres/codecs';
 import { postgresDataTypes } from '@internal/target-postgres/data-types';
 import {
@@ -16,12 +16,14 @@ const types: SqlTypeLookups = {
   dataTypeLookup: createDataTypeLookup(postgresDataTypes),
 };
 
-function col(overrides: Partial<StorageColumn> & { nativeType: string }): StorageColumn {
-  return { codecId: 'pg/text@1', nullable: true, ...overrides };
+type TypedColumn = Parameters<typeof buildColumnTypeSql>[0];
+
+function col(overrides: Partial<TypedColumn> = {}): TypedColumn {
+  return { codecId: 'pg/text@1', ...overrides };
 }
 
-function listColumn(nativeType: string): DefaultLiteralColumn {
-  return { nativeType, dataType: 'pg/text', many: true };
+function listColumn(typeText: string): DefaultLiteralColumn {
+  return { typeText, dataType: 'pg/text', many: true };
 }
 
 // ---------------------------------------------------------------------------
@@ -30,7 +32,7 @@ function listColumn(nativeType: string): DefaultLiteralColumn {
 
 describe('buildColumnTypeSql', () => {
   it('returns the data type name for plain columns', () => {
-    expect(buildColumnTypeSql(col({ nativeType: 'text' }), types)).toBe('text');
+    expect(buildColumnTypeSql(col(), types)).toBe('text');
   });
 
   it('returns SERIAL for int4 with autoincrement', () => {
@@ -58,7 +60,7 @@ describe('buildColumnTypeSql', () => {
   });
 
   it('writes a typeRef column as a column of the referenced type', () => {
-    const column = col({ nativeType: 'auth.aal_level', typeRef: 'AalLevel' });
+    const column = col({ typeRef: 'AalLevel' });
     const storageTypes = {
       AalLevel: toStorageTypeInstance({
         codecId: 'pg/enum@1',
@@ -100,10 +102,6 @@ describe('buildColumnTypeSql', () => {
       typeParams: { length: 3 },
     });
     expect(buildColumnTypeSql(column, types)).toBe('character varying(3)');
-  });
-
-  it('ignores the contract native type', () => {
-    expect(buildColumnTypeSql(col({ nativeType: 'text; DROP TABLE' }), types)).toBe('text');
   });
 });
 
@@ -175,7 +173,7 @@ describe('renderDefaultLiteral', () => {
   it('renders JSON object for jsonb column', () => {
     const result = renderDefaultLiteral(
       { key: 'val' },
-      { nativeType: 'jsonb', dataType: 'pg/jsonb' },
+      { typeText: 'jsonb', dataType: 'pg/jsonb' },
     );
     expect(result).toBe(`'{"key":"val"}'::jsonb`);
   });

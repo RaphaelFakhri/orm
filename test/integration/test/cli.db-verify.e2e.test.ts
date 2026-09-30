@@ -26,7 +26,7 @@ function createTestContract(
   tables: Record<
     string,
     {
-      columns: Record<string, { codecId: string; nativeType: string; nullable: boolean }>;
+      columns: Record<string, { codecId: string; dataType: string; nullable: boolean }>;
       uniques?: Array<{ columns: string[] }>;
     }
   >,

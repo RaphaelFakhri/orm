@@ -37,7 +37,7 @@ function createParamTypesTestContract(
     tableColumns: Record<
       string,
       {
-        nativeType: string;
+        dataType: string;
         codecId: string;
         nullable: boolean;
         typeParams?: Record<string, unknown>;

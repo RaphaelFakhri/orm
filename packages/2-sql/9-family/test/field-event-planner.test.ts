@@ -16,7 +16,7 @@ type Op = SqlMigrationPlanOperation<unknown>;
 
 function col(overrides: Partial<StorageColumn> & { codecId: string }): StorageColumn {
   return {
-    nativeType: 'text',
+    dataType: overrides.codecId.replace(/@\d+$/, ''),
     nullable: false,
     ...overrides,
   };

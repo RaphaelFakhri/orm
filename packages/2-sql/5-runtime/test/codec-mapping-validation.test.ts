@@ -21,7 +21,7 @@ function registryWith(...codecIds: string[]): CodecDescriptorRegistry {
 
 function tableWithColumn(codecId: string) {
   return {
-    columns: { value: { nativeType: 'text', codecId } },
+    columns: { value: { dataType: codecId.replace(/@\d+$/, ''), codecId } },
     uniques: [],
     indexes: [],
     foreignKeys: [],

@@ -15,7 +15,7 @@ function usersTable(columnName: string, codecId: string): StorageTable {
   return new StorageTable({
     columns: {
       id: { codecId: 'pg/int4@1', dataType: 'pg/int4', nullable: false },
-      [columnName]: { codecId, nativeType: 'text', nullable: false },
+      [columnName]: { codecId, dataType: codecId.replace(/@\d+$/, ''), nullable: false },
     },
     primaryKey: { columns: ['id'] },
     uniques: [],
