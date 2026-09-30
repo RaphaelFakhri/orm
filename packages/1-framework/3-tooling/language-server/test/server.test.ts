@@ -1,8 +1,9 @@
-import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { PassThrough } from 'node:stream';
 import { pathToFileURL } from 'node:url';
 import type { ContractSourceContext } from '@internal/config/config-types';
+import * as configLoader from '@internal/config-loader';
 import { errorUnexpected } from '@internal/errors/control';
 import type { AuthoringPslBlockDescriptorNamespace } from '@internal/framework-components/authoring';
 import {
@@ -33,7 +34,7 @@ import { type ParseDiagnostic, parse } from '@internal/psl-parser/syntax';
 import { notOk, ok } from '@internal/utils/result';
 import { timeouts } from '@repo/test-utils';
 import { join } from 'pathe';
-import { afterEach, describe, expect, it, onTestFinished, vi } from 'vitest';
+import { afterAll, afterEach, describe, expect, it, onTestFinished, vi } from 'vitest';
 import {
   type ClientCapabilities,
   type CompletionItem,
@@ -133,7 +134,24 @@ vi.mock('../src/project-artifacts', async (importOriginal) => {
   };
 });
 
-const root = tmpdir();
+const root = await mkdtemp(join(tmpdir(), 'server-inputs-'));
+afterAll(() => rm(root, { recursive: true, force: true }));
+for (const directory of [
+  '',
+  'project-a',
+  'project-b',
+  'previously-unseen',
+  'queued-load-project',
+  'non-input-project',
+  'parent-project/child-project',
+  'config-change-a',
+  'config-change-b',
+]) {
+  await mkdir(join(root, directory), { recursive: true });
+  await writeFile(join(root, directory, 'schema.psl'), '// use prisma-8\n');
+}
+await writeFile(join(root, 'schema2.psl'), '// use prisma-8\n');
+await writeFile(join(root, 'sibling.psl'), '// use prisma-8\n');
 const schemaPath = join(root, 'schema.psl');
 const schemaUri = pathToFileURL(schemaPath).toString();
 const configPath = join(root, 'prisma.config.ts');
@@ -900,8 +918,9 @@ afterEach(async () => {
 
 describe('language server', { timeout: timeouts.databaseOperation }, () => {
   it('publishes once per open and edit, using a normalized URI across equivalent lifecycle notifications', async () => {
-    harness = startHarness(resolveToSchema);
+    harness = startHarness(resolveToSchema, watchedFilesCapabilities);
     await harness.initialize();
+    const registration = harness.delayNextSchemaWatcherRegistration();
     const alias = schemaUri.replace('schema.psl', '%73chema.psl');
     openDocument(harness, alias, unformattedPsl);
     await harness.waitForDiagnostics(schemaUri);
@@ -952,6 +971,7 @@ describe('language server', { timeout: timeouts.databaseOperation }, () => {
     expect(harness.getDocumentAst(alias)?.sourceFile.filename).toBe(schemaUri);
     expect(Object.keys(harness.getProjectSymbolTable(alias)!.topLevel.models)).toEqual(['User']);
     expect(configResolutionMock.resolveConfigInputs).toHaveBeenCalledTimes(1);
+    (await registration).release();
   });
 
   it('replaces simultaneous alias opens without a spelling-only clear', async () => {
@@ -1757,6 +1777,9 @@ describe('language server', { timeout: timeouts.databaseOperation }, () => {
 
   it('returns Prisma 8 completions for a VS Code-shaped Windows document URI', async () => {
     const platform = vi.spyOn(process, 'platform', 'get').mockReturnValue('win32');
+    const expanded = vi
+      .spyOn(configLoader, 'expandContractInputs')
+      .mockResolvedValue(['D:\\project\\next.prisma']);
     try {
       const windowsDocumentUri = 'file:///d%3A/project/next.prisma';
       harness = startHarness(async () => resolutionForInputs(['D:\\project\\next.prisma']));
@@ -1777,6 +1800,7 @@ describe('language server', { timeout: timeouts.databaseOperation }, () => {
       });
       expect(items.map((item) => item.label)).not.toContain('datasource');
     } finally {
+      expanded.mockRestore();
       platform.mockRestore();
     }
   });
