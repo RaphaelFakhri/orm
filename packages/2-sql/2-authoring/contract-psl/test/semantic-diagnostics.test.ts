@@ -33,7 +33,7 @@ it('pushes owned default diagnostics with filename and range rather than a provi
     model,
     symbolTable,
     sources,
-    binder: createSqlBinder({ symbolTable, sources }).binder,
+    binder: createSqlBinder({ symbolTable, sources, dataTypes: fixtureDataTypeSupport }).binder,
     columnDescriptor: { codecId: 'pg/text@1', nativeType: 'text' },
     generatorDescriptorById: new Map(),
     defaultFunctionRegistry: new Map(),

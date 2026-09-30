@@ -194,7 +194,11 @@ model Other {
       fieldName: field.name,
       field,
       model,
-      binder: createSqlBinder({ symbolTable: input.symbolTable, sources: input.sources }).binder,
+      binder: createSqlBinder({
+        symbolTable: input.symbolTable,
+        sources: input.sources,
+        dataTypes: fixtureDataTypeSupport,
+      }).binder,
       symbolTable: input.symbolTable,
       sources: input.sources,
       columnDescriptor: { codecId: 'pg/text@1', nativeType: 'text' },

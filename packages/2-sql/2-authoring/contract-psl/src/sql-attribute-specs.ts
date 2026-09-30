@@ -38,7 +38,6 @@ import {
   bool,
   createBinder,
   diagnosticSource,
-  EMPTY_DATA_TYPES,
   entityRef,
   fieldAttribute,
   fieldRef,
@@ -151,7 +150,7 @@ export function createSqlBinder(input: {
   readonly sources: PslSources;
   readonly authoringContributions?: AuthoringContributions | undefined;
   readonly controlMutationDefaults?: ControlDefaultRegistries | undefined;
-  readonly dataTypes?: DataTypeSupport | undefined;
+  readonly dataTypes: DataTypeSupport;
   readonly scalarColumnDescriptors?: ReadonlyMap<string, { readonly codecId: string }> | undefined;
   readonly pslBlockDescriptors?: AuthoringPslBlockDescriptorNamespace | undefined;
   readonly describeUnsupportedAttribute?: DescribeUnsupportedAttribute | undefined;
@@ -185,7 +184,7 @@ export function createSqlBinder(input: {
     controlMutationDefaults: input.controlMutationDefaults ?? {
       defaultFunctionRegistry: new Map(),
     },
-    dataTypes: input.dataTypes ?? EMPTY_DATA_TYPES,
+    dataTypes: input.dataTypes,
     describeUnsupportedAttribute: input.describeUnsupportedAttribute,
   });
 }

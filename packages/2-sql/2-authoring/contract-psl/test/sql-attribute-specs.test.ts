@@ -90,7 +90,7 @@ function interpretDefault(schema: string, fieldName: string) {
     model,
     field: target,
     sources,
-    binder: createSqlBinder({ symbolTable, sources }).binder,
+    binder: createSqlBinder({ symbolTable, sources, dataTypes: fixtureDataTypeSupport }).binder,
     diagnostics,
   });
   return { value, diagnostics: diagnostics.toExternal() };
@@ -115,7 +115,11 @@ namespace scoped {
       spec: sqlAttributeSpecs.model.base(),
       model,
       sources: input.sources,
-      binder: createSqlBinder({ symbolTable: input.symbolTable, sources: input.sources }).binder,
+      binder: createSqlBinder({
+        symbolTable: input.symbolTable,
+        sources: input.sources,
+        dataTypes: fixtureDataTypeSupport,
+      }).binder,
       diagnostics,
     });
     expect(diagnostics.toExternal()).toEqual([]);
