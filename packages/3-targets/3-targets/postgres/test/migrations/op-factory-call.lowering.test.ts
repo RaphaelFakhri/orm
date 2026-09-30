@@ -222,6 +222,18 @@ describe('AlterColumnTypeCall', () => {
     );
   });
 
+  it('ends a USING clause containing a line comment with a line break', async () => {
+    const { lowerer } = recordingCheckLowerer();
+    const call = new AlterColumnTypeCall('public', 'user', 'age', {
+      ...options,
+      using: 'age::bigint -- widen',
+    });
+    const op = await call.toOp(lowerer);
+    expect(op.execute[0]?.sql).toBe(
+      'ALTER TABLE "public"."user" ALTER COLUMN "age" TYPE bigint USING age::bigint -- widen\n',
+    );
+  });
+
   it('toOp() throws when no lowerer is provided', async () => {
     const call = new AlterColumnTypeCall('public', 'user', 'age', options);
     await expect(async () => call.toOp()).rejects.toThrow('createPostgresMigrationPlanner');
