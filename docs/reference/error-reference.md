@@ -991,7 +991,7 @@ A lowered SQL AST is structurally invalid: a subquery projecting other than one 
 
 ### RUNTIME.AST_UNSUPPORTED
 
-The authored SQL AST uses a feature this target cannot render, e.g. DEFAULT as a value in INSERT … VALUES, WITH ORDINALITY on function sources, or returned-column aliases on function sources, all on SQLite; a row-locking clause (`FOR UPDATE` and the like) on SQLite, which has no row locks and refuses the clause rather than drop it; or a row-locking clause whose strength or option (`of`, `nowait`, `skipLocked`) needs a capability the Postgres adapter did not report. Raised by the target adapters' renderers. Payload: `node` (INSERT DEFAULT site); `target`, `feature` (function-source and SQLite locking-clause sites, `feature: 'locking-clause'`); `target`, `capability` (Postgres locking-clause sites).
+The authored SQL AST uses a feature this target cannot render, e.g. DEFAULT as a value in INSERT … VALUES, WITH ORDINALITY on function sources, or returned-column aliases on function sources, all on SQLite; a row-locking clause (`FOR UPDATE` and the like) on SQLite, which has no row locks and refuses the clause rather than drop it; or a row-locking clause whose strength or option (`of`, `nowait`, `skipLocked`) needs a capability the Postgres adapter did not report. Raised by the target adapters' renderers. Payload: `node` (INSERT DEFAULT site); `target`, `feature` (function-source sites, and locking-clause sites with `feature: 'locking-clause'`); on Postgres locking-clause sites also `capability`, the missing flag.
 
 ### RUNTIME.BINDING_INVALID
 

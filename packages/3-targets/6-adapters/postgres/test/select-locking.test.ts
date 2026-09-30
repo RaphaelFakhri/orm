@@ -171,7 +171,7 @@ describe('Postgres adapter row locking', () => {
           name: 'StructuredError',
           code: 'RUNTIME.AST_UNSUPPORTED',
           message: `Postgres adapter does not report capability ${capability}, which this locking clause needs`,
-          meta: { target: 'postgres', capability },
+          meta: { target: 'postgres', feature: 'locking-clause', capability },
         }),
       );
     });

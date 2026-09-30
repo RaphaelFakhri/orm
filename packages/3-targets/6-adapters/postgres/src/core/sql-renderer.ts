@@ -1,5 +1,6 @@
 import type { JsonValue } from '@internal/contract/types';
 import type { CodecRef } from '@internal/framework-components/codec';
+import type { CapabilityMatrix } from '@internal/framework-components/components';
 import { runtimeError } from '@internal/framework-components/runtime';
 import {
   type AggregateExpr,
@@ -51,7 +52,6 @@ import {
 import { ifDefined } from '@internal/utils/defined';
 import { assertNever, InternalError } from '@internal/utils/internal-error';
 import { adapterError } from './adapter-errors';
-import { postgresAdapterCapabilities } from './capabilities';
 import type { PostgresContract } from './types';
 
 /**
@@ -146,7 +146,7 @@ function unreachableKind(value: never): string {
 interface ParamIndexMap {
   readonly indexMap: Map<AnyParamRef, number>;
   readonly codecDescriptorRegistry: PostgresCodecDescriptorRegistry;
-  readonly capabilities: Record<string, unknown>;
+  readonly capabilities: CapabilityMatrix;
 }
 
 /**
@@ -158,7 +158,7 @@ export function renderLoweredSql(
   ast: AnyQueryAst,
   contract: PostgresContract,
   codecDescriptorRegistry: PostgresCodecDescriptorRegistry,
-  capabilities: Record<string, unknown> = postgresAdapterCapabilities,
+  capabilities: CapabilityMatrix,
 ): { readonly sql: string; readonly params: readonly LoweredParam[] } {
   const orderedRefs = collectOrderedParamRefs(ast);
   const indexMap = new Map<AnyParamRef, number>();
@@ -283,26 +283,20 @@ function lockWaitSql(wait: LockWait): {
 }
 
 function requireCapability(
-  capabilities: Record<string, unknown>,
+  capabilities: CapabilityMatrix,
   [group, flag]: readonly [string, string],
 ): void {
-  const flags = capabilities[group];
-  const reported =
-    typeof flags === 'object' &&
-    flags !== null &&
-    flag in flags &&
-    Reflect.get(flags, flag) === true;
-  if (!reported) {
+  if (capabilities[group]?.[flag] !== true) {
     const capability = `${group}.${flag}`;
     throw adapterError(
       'RUNTIME.AST_UNSUPPORTED',
       `Postgres adapter does not report capability ${capability}, which this locking clause needs`,
-      { meta: { target: 'postgres', capability } },
+      { meta: { target: 'postgres', feature: 'locking-clause', capability } },
     );
   }
 }
 
-function renderLockingClause(clause: LockingClause, capabilities: Record<string, unknown>): string {
+function renderLockingClause(clause: LockingClause, capabilities: CapabilityMatrix): string {
   const strength = lockStrengthSql(clause.strength);
   requireCapability(capabilities, strength.capability);
   const parts = [strength.keyword];
