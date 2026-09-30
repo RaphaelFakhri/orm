@@ -172,8 +172,9 @@ changes:
         - ':\s*DataTypeLookup\s*=\s*\{'
   - id: authoring-entity-context-takes-data-type-lookup
     summary: |
-      `AuthoringEntityContext` gains a required `dataTypeLookup`, the stack's data types. Code that
-      builds a context passes it.
+      `AuthoringEntityContext` gains a required `dataTypeLookup`, the stack's data types, and its
+      `codecLookup` becomes required. Code that builds a context passes both. The `codecLookup` input
+      of `interpretPslDocumentToMongoContract` becomes required too.
     detection:
       glob: "**/*.{ts,mts,cts}"
       matches:
@@ -188,6 +189,22 @@ changes:
       glob: "**/*.{ts,mts,cts}"
       matches:
         - '\bvalidateScalarTypeCodecIds\b'
+  - id: assemble-data-types-moved-to-codec
+    summary: |
+      `assembleDataTypes` moves from `@internal/framework-components/control` to
+      `@internal/framework-components/codec`, because the runtime plane assembles data types too.
+    detection:
+      glob: "**/*.{ts,mts,cts}"
+      matches:
+        - 'import\s*\{[^}]*\bassembleDataTypes\b[^}]*\}\s*from\s*[''"]@internal/framework-components/control[''"]'
+  - id: number-text-helpers-moved
+    summary: |
+      `numeralText` and `isNonFiniteText` move from `@internal/sql-relational-core/ast` to
+      `@internal/sql-contract/data-type`, beside the SQL data type declarations that use them.
+    detection:
+      glob: "**/*.{ts,mts,cts}"
+      matches:
+        - '\b(numeralText|isNonFiniteText)\b'
 ---
 
 After the edits below, delete imports and constants that are no longer used, and run the package's formatter so imports are sorted.
@@ -720,12 +737,37 @@ const ctx: AuthoringEntityContext = { family: 'sql', target: 'postgres' };
 const ctx: AuthoringEntityContext = {
   family: 'sql',
   target: 'postgres',
+  codecLookup: createPostgresBuiltinCodecLookup(),
   dataTypeLookup: createDataTypeLookup(postgresDataTypes),
 };
 ```
 
-Pass the lookup of the stack the context serves; `createDataTypeLookup` from `@internal/framework-components/codec` builds one from a list of data types.
+Pass the lookups of the stack the context serves; `createDataTypeLookup` from `@internal/framework-components/codec` builds a data type lookup from a list of data types, and `emptyCodecLookup` from the same module stands in where no codecs apply. A call of `interpretPslDocumentToMongoContract` passes `codecLookup` as well: the stack's codec lookup, or `emptyCodecLookup`.
 
 ## `validate-scalar-type-codec-ids-removed`
 
 Delete calls to `validateScalarTypeCodecIds`; the control stack checks the same thing when it is assembled. Fix any assembly error the new checks report in the extension's own contributions.
+
+## `assemble-data-types-moved-to-codec`
+
+Import `assembleDataTypes` from `@internal/framework-components/codec`. Remove it from the `@internal/framework-components/control` import, and delete that import if nothing is left in it:
+
+```ts
+// before
+import { assembleDataTypes } from '@internal/framework-components/control';
+
+// after
+import { assembleDataTypes } from '@internal/framework-components/codec';
+```
+
+## `number-text-helpers-moved`
+
+Import `numeralText` and `isNonFiniteText` from `@internal/sql-contract/data-type`, adding them to an existing import from that module. Remove them from the `@internal/sql-relational-core/ast` import, and delete that import if nothing is left in it:
+
+```ts
+// before
+import { isNonFiniteText } from '@internal/sql-relational-core/ast';
+
+// after
+import { isNonFiniteText } from '@internal/sql-contract/data-type';
+```
