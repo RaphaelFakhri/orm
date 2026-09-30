@@ -241,7 +241,7 @@ Future renderers map the same node to their own syntax: MariaDB writes `LOCK IN 
 | A method called without its flag, builder | `_gate` | the capability error the builder already throws for `distinctOn` |
 | An option passed without its flag, builder | the method | the same error, naming the option's flag |
 | A method called without its flag, ORM | the method | `ORM.CAPABILITY_MISSING`, `meta.capability` = the flag |
-| A lock with `distinct`, `distinctOn`, `groupBy` or `having` | `SelectAst` constructor | a structured error, `AST.LOCK_INCOMPATIBLE` |
+| A lock with `distinct`, `distinctOn`, `groupBy` or `having` | `SelectAst` constructor | a structured error, `RUNTIME.LOCK_INCOMPATIBLE` |
 | A lock with an aggregate projection, or a locked subquery | builder `build()` | a structured error, `SQL_BUILDER.LOCK_INCOMPATIBLE` |
 | A lock with `include`, `aggregate`, `distinct` or `distinctOn`, ORM | compile | a structured error, `ORM.LOCK_INCOMPATIBLE` |
 | A mutation terminal (`update`, `updateAll`, `updateAndCount`, `delete`, `deleteAll`, `deleteAndCount`, `create`, `upsert`) on a locked collection | the terminal | `ORM.LOCK_INCOMPATIBLE`; a mutation already locks the rows it changes, and dropping the requested lock silently would hide a mistake |
@@ -249,7 +249,7 @@ Future renderers map the same node to their own syntax: MariaDB writes `LOCK IN 
 | Any lock, SQLite | renderer | a structured error |
 | A row is locked and `nowait` was set | the database | SQLSTATE `55P03`, `lock_not_available`, surfaced as the driver error |
 
-The exact code strings follow whatever the neighbouring errors in each package use. Mapping `55P03` to a structured code is a follow-up.
+The namespace of each code is the one the neighbouring errors in that package use, from the closed list in ADR 239, so `SQL_BUILDER.` and `ORM.` above stand only if those namespaces exist; the suffix is always `LOCK_INCOMPATIBLE`, and every new code gets an entry in `docs/reference/error-reference.md`. Mapping `55P03` to a structured code is a follow-up.
 
 ## What the documentation must say
 
