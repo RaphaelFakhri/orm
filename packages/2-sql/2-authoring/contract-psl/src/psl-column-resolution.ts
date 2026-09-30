@@ -639,7 +639,7 @@ export function lowerDefaultForField(input: {
   };
 
   const canonicalized = (scalar: ParsedWrittenScalar): WrittenScalar | undefined => {
-    if (scalar.ok) return scalar.written;
+    if (scalar.written !== undefined) return scalar.written;
     input.diagnostics.push({
       code: TAGGED_LITERAL_CANONICALIZATION_CODES[scalar.reason],
       message: describeTaggedLiteralFailure(scalar.reason),
@@ -666,18 +666,18 @@ export function lowerDefaultForField(input: {
   };
 
   // An enum member identifier is lowered against its enum's handle, which a field without one lacks.
-  if (typeof value === 'string') return {};
+  if (value.kind === 'member') return {};
 
   // A column bound to a value set (`pg.enum(Ref)`) takes member names, which are checked against the
   // value set rather than read as literals; its codec accepts no literal default at all.
   if (input.columnDescriptor.valueSet !== undefined) {
     const memberName = (scalar: ParsedWrittenScalar) =>
-      scalar.ok && scalar.written.kind === 'string' ? scalar.written.text : undefined;
-    if ('written' in value || 'reason' in value) {
+      scalar.written?.kind === 'string' ? scalar.written.text : undefined;
+    if (value.kind === 'scalar') {
       const member = memberName(value);
       if (member !== undefined) return { defaultValue: { kind: 'literal', value: member } };
     }
-    if ('elements' in value) {
+    if (value.kind === 'list') {
       const members = value.elements.map(memberName);
       if (members.every((member) => member !== undefined)) {
         return { defaultValue: { kind: 'literal', value: members } };
@@ -685,7 +685,7 @@ export function lowerDefaultForField(input: {
     }
   }
 
-  if ('elements' in value) {
+  if (value.kind === 'list') {
     const elements: WrittenValue[] = [];
     for (const element of value.elements) {
       const written = canonicalized(element);
@@ -702,7 +702,7 @@ export function lowerDefaultForField(input: {
     );
   }
 
-  if ('written' in value || 'reason' in value) {
+  if (value.kind === 'scalar') {
     const written = canonicalized(value);
     if (written === undefined) return {};
     const spans = { attribute: attributeSpan, value: value.span, elements: [] };
@@ -714,63 +714,60 @@ export function lowerDefaultForField(input: {
     return readAsLiteral(written, spans);
   }
 
-  if (typeof value === 'object') {
-    const context: DefaultFunctionLoweringContext = {
-      sourceId: input.sources.sourceFileFor(node.syntax).filename,
-      modelName: input.modelName,
-      fieldName: input.fieldName,
-      columnCodecId: input.columnDescriptor.codecId,
-    };
-    const lowered = lowerDefaultFunctionWithRegistry({
-      call: value,
-      registry: input.defaultFunctionRegistry,
-      context,
-      source,
-    });
+  const { call } = value;
+  const context: DefaultFunctionLoweringContext = {
+    sourceId: input.sources.sourceFileFor(node.syntax).filename,
+    modelName: input.modelName,
+    fieldName: input.fieldName,
+    columnCodecId: input.columnDescriptor.codecId,
+  };
+  const lowered = lowerDefaultFunctionWithRegistry({
+    call,
+    registry: input.defaultFunctionRegistry,
+    context,
+    source,
+  });
 
-    if (!lowered.ok) {
-      if (lowered.kind === 'owned') input.diagnostics.push(lowered.diagnostic);
-      else input.diagnostics.pushExternal(lowered.diagnostic);
-      return {};
-    }
-
-    if (lowered.value.kind === 'storage') {
-      return { defaultValue: lowered.value.defaultValue };
-    }
-
-    const generatorDescriptor = input.generatorDescriptorById.get(lowered.value.generated.id);
-    if (!generatorDescriptor) {
-      input.diagnostics.push({
-        code: 'PSL_INVALID_DEFAULT_APPLICABILITY',
-        message: `Default generator "${lowered.value.generated.id}" is not available in the composed mutation default registry.`,
-        ...source.at(value.span),
-      });
-      return {};
-    }
-
-    // Preset-only generators (e.g. `timestampNow`) co-register their codec through the preset descriptor, so they don't carry an `applicableCodecIds` list. Such a generator surfacing on the `@default(...)` lowering path is itself the bug — emit a diagnostic pointing the user at the correct authoring surface.
-    if (generatorDescriptor.applicableCodecIds === undefined) {
-      input.diagnostics.push({
-        code: 'PSL_INVALID_DEFAULT_APPLICABILITY',
-        message: `Default generator "${generatorDescriptor.id}" is not applicable to "@default(...)" lowering. Use the corresponding field preset (e.g. \`temporal.${generatorDescriptor.id === 'timestampNow' ? 'updatedAt' : generatorDescriptor.id}()\`) instead.`,
-        ...source.at(value.span),
-      });
-      return {};
-    }
-
-    if (!generatorDescriptor.applicableCodecIds.includes(input.columnDescriptor.codecId)) {
-      input.diagnostics.push({
-        code: 'PSL_INVALID_DEFAULT_APPLICABILITY',
-        message: `Default generator "${generatorDescriptor.id}" is not applicable to "${input.modelName}.${input.fieldName}" with codecId "${input.columnDescriptor.codecId}".`,
-        ...source.at(value.span),
-      });
-      return {};
-    }
-
-    return { executionDefaults: { onCreate: lowered.value.generated } };
+  if (!lowered.ok) {
+    if (lowered.kind === 'owned') input.diagnostics.push(lowered.diagnostic);
+    else input.diagnostics.pushExternal(lowered.diagnostic);
+    return {};
   }
 
-  return {};
+  if (lowered.value.kind === 'storage') {
+    return { defaultValue: lowered.value.defaultValue };
+  }
+
+  const generatorDescriptor = input.generatorDescriptorById.get(lowered.value.generated.id);
+  if (!generatorDescriptor) {
+    input.diagnostics.push({
+      code: 'PSL_INVALID_DEFAULT_APPLICABILITY',
+      message: `Default generator "${lowered.value.generated.id}" is not available in the composed mutation default registry.`,
+      ...source.at(call.span),
+    });
+    return {};
+  }
+
+  // Preset-only generators (e.g. `timestampNow`) co-register their codec through the preset descriptor, so they don't carry an `applicableCodecIds` list. Such a generator surfacing on the `@default(...)` lowering path is itself the bug — emit a diagnostic pointing the user at the correct authoring surface.
+  if (generatorDescriptor.applicableCodecIds === undefined) {
+    input.diagnostics.push({
+      code: 'PSL_INVALID_DEFAULT_APPLICABILITY',
+      message: `Default generator "${generatorDescriptor.id}" is not applicable to "@default(...)" lowering. Use the corresponding field preset (e.g. \`temporal.${generatorDescriptor.id === 'timestampNow' ? 'updatedAt' : generatorDescriptor.id}()\`) instead.`,
+      ...source.at(call.span),
+    });
+    return {};
+  }
+
+  if (!generatorDescriptor.applicableCodecIds.includes(input.columnDescriptor.codecId)) {
+    input.diagnostics.push({
+      code: 'PSL_INVALID_DEFAULT_APPLICABILITY',
+      message: `Default generator "${generatorDescriptor.id}" is not applicable to "${input.modelName}.${input.fieldName}" with codecId "${input.columnDescriptor.codecId}".`,
+      ...source.at(call.span),
+    });
+    return {};
+  }
+
+  return { executionDefaults: { onCreate: lowered.value.generated } };
 }
 
 export function resolveColumnDescriptor(

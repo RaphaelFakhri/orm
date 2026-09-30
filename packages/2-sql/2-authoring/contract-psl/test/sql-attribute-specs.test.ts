@@ -399,7 +399,7 @@ model Post {
 }
 `;
     expect(interpretDefault(schema('Low'), 'priority')).toEqual({
-      value: { value: 'Low' },
+      value: { value: { kind: 'member', name: 'Low' } },
       diagnostics: [],
     });
     const rejected = interpretDefault(schema('Urgent'), 'priority');
@@ -423,7 +423,7 @@ model Post {
 }
 `;
     expect(interpretDefault(schema, 'role')).toEqual({
-      value: { value: 'Member' },
+      value: { value: { kind: 'member', name: 'Member' } },
       diagnostics: [],
     });
   });
@@ -452,7 +452,7 @@ model Post {
     expect(interpretDefault(schema, 'price')).toEqual({
       value: {
         value: {
-          ok: true,
+          kind: 'scalar',
           written: { kind: 'number', text: '1.50' },
           span: spanOf(schema, '1.50'),
         },
@@ -463,18 +463,26 @@ model Post {
 
   it('accepts a list literal on a list field and on a scalar field, where the codec decides', () => {
     const element = (schema: string) => ({
-      ok: true,
+      kind: 'scalar',
       written: { kind: 'string', text: 'a' },
       span: spanOf(schema, '"a"'),
     });
     const listSchema = 'model Post {\n  id Int @id\n  tags String[] @default(["a"])\n}\n';
     const scalarSchema = 'model Post {\n  id Int @id\n  tag String @default(["a"])\n}\n';
     expect(interpretDefault(listSchema, 'tags')).toEqual({
-      value: { value: { elements: [element(listSchema)], span: spanOf(listSchema, '["a"]') } },
+      value: {
+        value: { kind: 'list', elements: [element(listSchema)], span: spanOf(listSchema, '["a"]') },
+      },
       diagnostics: [],
     });
     expect(interpretDefault(scalarSchema, 'tag')).toEqual({
-      value: { value: { elements: [element(scalarSchema)], span: spanOf(scalarSchema, '["a"]') } },
+      value: {
+        value: {
+          kind: 'list',
+          elements: [element(scalarSchema)],
+          span: spanOf(scalarSchema, '["a"]'),
+        },
+      },
       diagnostics: [],
     });
   });
@@ -482,7 +490,9 @@ model Post {
   it('accepts a registered default function and rejects an unregistered one', () => {
     expect(
       interpretDefault('model Post {\n  id Int @id @default(autoincrement())\n}\n', 'id').value,
-    ).toEqual({ value: expect.objectContaining({ fn: 'autoincrement' }) });
+    ).toEqual({
+      value: { kind: 'function', call: expect.objectContaining({ fn: 'autoincrement' }) },
+    });
     const rejected = interpretDefault('model Post {\n  id Int @id @default(nope())\n}\n', 'id');
     expect(rejected.value).toBeUndefined();
     expect(rejected.diagnostics).toHaveLength(1);

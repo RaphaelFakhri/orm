@@ -72,7 +72,7 @@ import {
   sqlTextFromCanonical,
 } from '@internal/sql-contract/sql-expression';
 import { blindCast } from '@internal/utils/casts';
-import { notOk } from '@internal/utils/result';
+import { notOk, ok } from '@internal/utils/result';
 import { removedDbgeneratedMessage } from './default-function-registry';
 import { getAttribute } from './psl-attribute-parsing';
 
@@ -255,7 +255,38 @@ const mapFieldSpec = fieldAttribute('map', {
   refine: validateMappedName,
 });
 
-type DefaultArgValue = ParsedWrittenScalar | ParsedWrittenList | TypedFuncCall | string;
+interface EnumMemberDefault {
+  readonly kind: 'member';
+  readonly name: string;
+}
+
+interface FunctionDefault {
+  readonly kind: 'function';
+  readonly call: TypedFuncCall;
+}
+
+type DefaultArgValue =
+  | ParsedWrittenScalar
+  | ParsedWrittenList
+  | FunctionDefault
+  | EnumMemberDefault;
+
+function functionDefaultArm(
+  name: string,
+  signature: FuncCallSig,
+): ArgType<FunctionDefault, AttributeCtx> {
+  const call = funcCall(name, signature);
+  return {
+    kind: 'funcCall',
+    label: call.label,
+    name: call.name,
+    signature: call.signature,
+    parse: (arg, ctx) => {
+      const parsed = call.parse(arg, ctx);
+      return parsed.ok ? ok({ kind: 'function', call: parsed.value }) : parsed;
+    },
+  };
+}
 
 function scalarDefaultArms(
   isList: boolean,
@@ -288,7 +319,7 @@ function scalarDefaultArms(
     );
   const listArm = () => writtenList(literal());
   const funcArms = [...defaultFunctionRegistry.entries()].map(([name, entry]) =>
-    funcCall(
+    functionDefaultArm(
       name,
       blindCast<
         FuncCallSig,
@@ -371,8 +402,21 @@ function enumDefaultArms(
 ): readonly [ArgType<DefaultArgValue, AttributeCtx>, ...ArgType<DefaultArgValue, AttributeCtx>[]] {
   const [first, ...rest] = members;
   if (first === undefined) return [noEnumMember()];
-  const member = (name: string) =>
-    identifier(name, { documentation: `The \`${name}\` member of enum \`${enumName}\`.` });
+  const member = (name: string): ArgType<EnumMemberDefault, AttributeCtx> => {
+    const arm = identifier(name, {
+      documentation: `The \`${name}\` member of enum \`${enumName}\`.`,
+    });
+    return {
+      kind: 'identifier',
+      label: arm.label,
+      name: arm.name,
+      documentation: arm.documentation,
+      parse: (arg, ctx) => {
+        const parsed = arm.parse(arg, ctx);
+        return parsed.ok ? ok({ kind: 'member', name: parsed.value }) : parsed;
+      },
+    };
+  };
   return [member(first), ...rest.map(member)];
 }
 

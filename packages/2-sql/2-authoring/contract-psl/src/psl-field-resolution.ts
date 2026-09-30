@@ -92,11 +92,8 @@ function lowerEnumDefaultForField(input: {
   });
   if (interpreted === undefined) return {};
   const member = interpreted.value;
-  invariant(
-    typeof member === 'string',
-    'the enum @default grammar admits only member identifiers, so the parsed value is a string',
-  );
-  const match = enumHandle.enumMembers.find((m) => m.name === member);
+  invariant(member.kind === 'member', 'the enum @default grammar admits only member identifiers');
+  const match = enumHandle.enumMembers.find((m) => m.name === member.name);
   if (!match) return {};
 
   return {

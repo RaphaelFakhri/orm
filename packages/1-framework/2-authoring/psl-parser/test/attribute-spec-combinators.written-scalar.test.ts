@@ -64,7 +64,7 @@ describe('writtenScalar', () => {
   ])('yields %s as a written scalar with its span', (_, arm, source, written) => {
     const { expr, ctx } = argOf(source);
     expect(writtenScalar(arm).parse(expr, ctx)).toEqual(
-      ok({ ok: true, written, span: spanOf(source) }),
+      ok({ kind: 'scalar', written, span: spanOf(source) }),
     );
   });
 
@@ -72,7 +72,7 @@ describe('writtenScalar', () => {
     const source = 'json`a\0b`';
     const { expr, ctx } = argOf(source);
     expect(writtenScalar(tag).parse(expr, ctx)).toEqual(
-      ok({ ok: false, reason: 'nul', span: spanOf(source) }),
+      ok({ kind: 'scalar', written: undefined, reason: 'nul', span: spanOf(source) }),
     );
   });
 
@@ -101,9 +101,10 @@ describe('writtenList', () => {
     });
     expect(type.parse(expr, ctx)).toEqual(
       ok({
+        kind: 'list',
         elements: [
-          { ok: true, written: { kind: 'string', text: 'a' }, span: at(1, 3) },
-          { ok: true, written: { kind: 'string', text: 'b' }, span: at(6, 3) },
+          { kind: 'scalar', written: { kind: 'string', text: 'a' }, span: at(1, 3) },
+          { kind: 'scalar', written: { kind: 'string', text: 'b' }, span: at(6, 3) },
         ],
         span: spanOf(source),
       }),
