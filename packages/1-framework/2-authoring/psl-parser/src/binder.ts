@@ -19,6 +19,7 @@ import type {
   PositionalParam,
 } from './attribute-spec/types';
 import { blockSpecFactoryOf } from './block-spec/descriptor';
+import { blockSpecContext } from './block-spec/spec-context';
 import { contributedTypeScope } from './contributed-type-scope';
 import { diagnosticSource } from './diagnostic';
 import { findBlockDescriptor } from './extension-block';
@@ -308,11 +309,12 @@ interface BlockBindContext extends ReferenceContext {
 function bindBlock(block: BlockSymbol, ctx: BlockBindContext): void {
   const descriptor = findBlockDescriptor(ctx.pslBlockDescriptors, block.keyword);
   if (descriptor === undefined) return;
-  const spec = blockSpecFactoryOf(descriptor)({
+  const specContext = blockSpecContext({
     symbols: ctx.symbolTable,
     block,
     dataTypes: ctx.dataTypes,
   });
+  const spec = blockSpecFactoryOf(descriptor)(specContext);
 
   for (const entry of block.node.entries()) {
     const key = entry.key()?.name();
@@ -336,7 +338,7 @@ function bindBlock(block: BlockSymbol, ctx: BlockBindContext): void {
     const attributeSpec = blindCast<
       BlockAttributeSpecFactory,
       'framework core cannot name AttributeSpec, so block-attribute factories transit the descriptor erased as unknown; the binder restores the factory type the descriptor surface documents'
-    >(factory)({ symbols: ctx.symbolTable, block, dataTypes: ctx.dataTypes });
+    >(factory)(specContext);
     bindArguments(attribute, attributeSpec, ctx);
   }
 }

@@ -21,6 +21,7 @@ import type { PslSources } from '../source-file';
 import type { BlockSymbol, SymbolTable } from '../symbol-table';
 import type { AstNode } from '../syntax/ast-helpers';
 import { blockSpecFactoryOf } from './descriptor';
+import { blockSpecContext } from './spec-context';
 import type { BlockSpec, InferBlock, MapBlockSpec, StructBlockSpec } from './types';
 
 export interface InterpretExtensionBlockInput<S> {
@@ -266,7 +267,7 @@ export function interpretExtensionBlockAttributes(input: InterpretExtensionBlock
       BlockAttributeSpecFactory,
       'framework core cannot name AttributeSpec, so block-attribute factories transit the descriptor erased as unknown; this is the single point that restores the factory type the descriptor surface documents'
     >(declared[name]);
-    const spec = factory({ symbols, block, dataTypes });
+    const spec = factory(blockSpecContext({ symbols, block, dataTypes }));
     const result = interpretAttribute(attribute, spec, {
       sources,
       symbols,
@@ -308,6 +309,7 @@ export interface InterpretExtensionBlocksInput {
   readonly sources: PslSources;
   readonly pslBlockDescriptors: AuthoringPslBlockDescriptorNamespace;
   readonly binder: Binder;
+  /** The data types `binder` was created with, so binding and interpretation build each block's spec from the same data types. */
   readonly dataTypes: DataTypeSupport;
 }
 
@@ -322,7 +324,9 @@ export function interpretExtensionBlocks(
     for (const block of Object.values(scope.blocks)) {
       const descriptor = findBlockDescriptor(pslBlockDescriptors, block.keyword);
       if (descriptor === undefined) continue;
-      const spec = blockSpecFactoryOf(descriptor)({ symbols: symbolTable, block, dataTypes });
+      const spec = blockSpecFactoryOf(descriptor)(
+        blockSpecContext({ symbols: symbolTable, block, dataTypes }),
+      );
       const parsed = interpretExtensionBlock({
         block,
         descriptor,

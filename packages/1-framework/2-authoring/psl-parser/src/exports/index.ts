@@ -133,6 +133,7 @@ export {
   interpretExtensionBlockAttributes,
   interpretExtensionBlocks,
 } from '../block-spec/interpret';
+export { blockSpecContext } from '../block-spec/spec-context';
 export type {
   BlockEntryValueSpec,
   BlockSpec,
