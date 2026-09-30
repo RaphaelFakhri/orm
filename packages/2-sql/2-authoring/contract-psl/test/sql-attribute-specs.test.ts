@@ -111,7 +111,14 @@ namespace scoped {
     const value = interpretModelAttribute({
       node,
       symbols: input.symbolTable,
-      spec: sqlAttributeSpecs.model.base(),
+      spec: sqlAttributeSpecs.model.base(
+        modelSpecContext({
+          symbols: input.symbolTable,
+          model,
+          defaultFunctionRegistry,
+          dataTypes: fixtureDataTypeSupport,
+        }),
+      ),
       model,
       sources: input.sources,
       binder: createSqlBinder({
@@ -199,7 +206,7 @@ describe('sqlAttributeSpecs', () => {
   });
 
   it('exposes the @relation named arguments through the spec', () => {
-    expect(Object.keys(sqlAttributeSpecs.field.relation().named).sort()).toEqual([
+    expect(Object.keys(sqlAttributeSpecs.field.relation(fieldCtx).named).sort()).toEqual([
       'fields',
       'index',
       'map',
@@ -211,7 +218,7 @@ describe('sqlAttributeSpecs', () => {
   });
 
   it('exposes SQL relation field-reference metadata from the actual factory', () => {
-    const spec = sqlAttributeSpecs.field.relation();
+    const spec = sqlAttributeSpecs.field.relation(fieldCtx);
     const fields = listMetadata(namedType(spec, 'fields'));
     const references = listMetadata(namedType(spec, 'references'));
 
@@ -227,7 +234,7 @@ describe('sqlAttributeSpecs', () => {
   });
 
   it('exposes SQL model container metadata from actual factories', () => {
-    const idFields = listMetadata(positionalType(sqlAttributeSpecs.model.id()));
+    const idFields = listMetadata(positionalType(sqlAttributeSpecs.model.id(modelCtx)));
     expect(idFields).toMatchObject({ kind: 'list', allowEmpty: false, unique: true });
     expect(idFields.of).toMatchObject({ kind: 'fieldRef' });
 

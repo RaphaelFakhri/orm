@@ -850,23 +850,24 @@ export function fieldSpecContext(input: {
   };
 }
 
+/** Every entry is a factory over the spec context, whether or not its spec reads it. ADR 249. */
 export const sqlAttributeSpecs = {
   model: {
-    map: () => mapModelSpec,
-    id: () => idModelSpec,
-    unique: () => uniqueModelSpec,
-    index: (ctx) => indexModelSpec(ctx),
-    check: (ctx) => checkModelSpec(ctx),
-    control: () => controlModelSpec,
-    discriminator: () => discriminatorModelSpec,
-    base: baseModelSpec,
+    map: (_ctx: AttributeSpecContext) => mapModelSpec,
+    id: (_ctx: AttributeSpecContext) => idModelSpec,
+    unique: (_ctx: AttributeSpecContext) => uniqueModelSpec,
+    index: indexModelSpec,
+    check: checkModelSpec,
+    control: (_ctx: AttributeSpecContext) => controlModelSpec,
+    discriminator: (_ctx: AttributeSpecContext) => discriminatorModelSpec,
+    base: (_ctx: AttributeSpecContext) => baseModelSpec(),
   },
   field: {
-    map: () => mapFieldSpec,
-    id: () => idFieldSpec,
-    unique: () => uniqueFieldSpec,
-    noCheck: () => noCheckFieldSpec,
-    relation: () => relationFieldSpec,
+    map: (_ctx: FieldAttributeSpecContext) => mapFieldSpec,
+    id: (_ctx: FieldAttributeSpecContext) => idFieldSpec,
+    unique: (_ctx: FieldAttributeSpecContext) => uniqueFieldSpec,
+    noCheck: (_ctx: FieldAttributeSpecContext) => noCheckFieldSpec,
+    relation: (_ctx: FieldAttributeSpecContext) => relationFieldSpec,
     default: defaultFieldSpec,
   },
 } as const satisfies AttributeSpecNamespace;

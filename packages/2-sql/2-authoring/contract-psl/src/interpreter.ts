@@ -49,6 +49,7 @@ import {
 } from '@internal/framework-components/psl-ast';
 import type { Binder } from '@internal/psl-parser';
 import {
+  type AttributeSpecContext,
   type BlockSymbol,
   type CompositeTypeSymbol,
   createPslDiagnosticCollector,
@@ -141,6 +142,7 @@ import {
 } from './psl-relation-resolution';
 import {
   createSqlBinder,
+  fieldSpecContext,
   interpretFieldAttribute,
   interpretModelAttribute,
   modelAttributeSpecsFrom,
@@ -769,6 +771,7 @@ function buildModelNodeFromPsl(input: BuildModelNodeInput): BuildModelNodeResult
       const parsedRelation = interpretRelationAttribute({
         selfModel: model,
         field,
+        specContext: fieldSpecContext({ ...specContext, field }),
         symbols: input.symbolTable,
         sources: input.sources,
         binder: input.binder,
@@ -865,7 +868,7 @@ function buildModelNodeFromPsl(input: BuildModelNodeInput): BuildModelNodeResult
       }
       const parsed = interpretModelAttribute({
         node,
-        spec: sqlAttributeSpecs.model.control(),
+        spec: sqlAttributeSpecs.model.control(specContext),
         model,
         symbols: input.symbolTable,
         sources: input.sources,
@@ -902,7 +905,7 @@ function buildModelNodeFromPsl(input: BuildModelNodeInput): BuildModelNodeResult
       }
       const parsed = interpretModelAttribute({
         node,
-        spec: sqlAttributeSpecs.model.id(),
+        spec: sqlAttributeSpecs.model.id(specContext),
         model,
         symbols: input.symbolTable,
         sources: input.sources,
@@ -948,7 +951,7 @@ function buildModelNodeFromPsl(input: BuildModelNodeInput): BuildModelNodeResult
       }
       const parsed = interpretModelAttribute({
         node,
-        spec: sqlAttributeSpecs.model.unique(),
+        spec: sqlAttributeSpecs.model.unique(specContext),
         model,
         symbols: input.symbolTable,
         sources: input.sources,
@@ -1204,6 +1207,7 @@ function buildModelNodeFromPsl(input: BuildModelNodeInput): BuildModelNodeResult
       const parsedRelation = interpretRelationAttribute({
         selfModel: model,
         field: relationAttribute.field,
+        specContext: fieldSpecContext({ ...specContext, field: relationAttribute.field }),
         symbols: input.symbolTable,
         sources: input.sources,
         binder: input.binder,
@@ -1358,6 +1362,7 @@ function buildModelNodeFromPsl(input: BuildModelNodeInput): BuildModelNodeResult
     const parsedRelation = interpretRelationAttribute({
       selfModel: model,
       field: relationAttribute.field,
+      specContext: fieldSpecContext({ ...specContext, field: relationAttribute.field }),
       symbols: input.symbolTable,
       sources: input.sources,
       binder: input.binder,
@@ -1647,6 +1652,7 @@ function collectPolymorphismDeclarations(
   symbols: SymbolTable,
   sources: PslSources,
   binder: Binder,
+  specContextFor: (model: ModelSymbol) => AttributeSpecContext,
   diagnostics: PslDiagnosticCollector,
 ): {
   discriminatorDeclarations: Map<string, DiscriminatorDeclaration>;
@@ -1662,7 +1668,7 @@ function collectPolymorphismDeclarations(
       const parsed = interpretModelAttribute({
         node: discriminatorNode,
         symbols,
-        spec: sqlAttributeSpecs.model.discriminator(),
+        spec: sqlAttributeSpecs.model.discriminator(specContextFor(model)),
         model,
         sources,
         binder,
@@ -1688,7 +1694,7 @@ function collectPolymorphismDeclarations(
       const parsed = interpretModelAttribute({
         node: baseNode,
         symbols,
-        spec: sqlAttributeSpecs.model.base(),
+        spec: sqlAttributeSpecs.model.base(specContextFor(model)),
         model,
         sources,
         binder,
@@ -2083,12 +2089,16 @@ export function interpretPslDocumentToSqlContract(
   const contributedModelSpecs = modelAttributeSpecsFrom(modelAttributesByName);
   const composedPslBlockDescriptors = input.authoringContributions?.pslBlockDescriptors ?? {};
   const { dataTypes } = input;
+  const defaultFunctionRegistry: ControlMutationDefaultRegistry =
+    input.controlMutationDefaults?.defaultFunctionRegistry ?? new Map();
+  const specContextFor = (model: ModelSymbol) =>
+    modelSpecContext({ symbols: input.symbolTable, model, defaultFunctionRegistry, dataTypes });
   const { binder, diagnostics: binderDiagnostics } = createSqlBinder({
     symbolTable: input.symbolTable,
     sources: input.sources,
     pslBlockDescriptors: composedPslBlockDescriptors,
     authoringContributions: input.authoringContributions,
-    defaultFunctionRegistry: input.controlMutationDefaults?.defaultFunctionRegistry ?? new Map(),
+    defaultFunctionRegistry,
     dataTypes,
     scalarColumnDescriptors: input.scalarColumnDescriptors,
     contributedModelAttributeSpecs: contributedModelSpecs,
@@ -2178,7 +2188,7 @@ export function interpretPslDocumentToSqlContract(
         : interpretModelAttribute({
             node: mapNode,
             symbols: input.symbolTable,
-            spec: sqlAttributeSpecs.model.map(),
+            spec: sqlAttributeSpecs.model.map(specContextFor(model)),
             model,
             sources: input.sources,
             binder,
@@ -2193,7 +2203,9 @@ export function interpretPslDocumentToSqlContract(
           : interpretFieldAttribute({
               node: mapNode,
               symbols: input.symbolTable,
-              spec: sqlAttributeSpecs.field.map(),
+              spec: sqlAttributeSpecs.field.map(
+                fieldSpecContext({ ...specContextFor(model), field }),
+              ),
               model,
               field,
               sources: input.sources,
@@ -2208,8 +2220,6 @@ export function interpretPslDocumentToSqlContract(
   const composedExtensions = new Set(input.composedExtensions ?? []);
   const composedExtensionContracts: ReadonlyMap<string, Contract> =
     input.composedExtensionContracts;
-  const defaultFunctionRegistry: ControlMutationDefaultRegistry =
-    input.controlMutationDefaults?.defaultFunctionRegistry ?? new Map();
   const generatorDescriptors = input.controlMutationDefaults?.generatorDescriptors ?? [];
   const generatorDescriptorById = new Map<string, MutationDefaultGeneratorDescriptor>();
   for (const descriptor of generatorDescriptors) {
@@ -2584,6 +2594,7 @@ export function interpretPslDocumentToSqlContract(
     input.symbolTable,
     input.sources,
     binder,
+    specContextFor,
     diagnostics,
   );
 

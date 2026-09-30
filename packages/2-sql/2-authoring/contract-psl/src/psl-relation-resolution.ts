@@ -1,6 +1,12 @@
 import type { AuthoringContributions } from '@internal/framework-components/authoring';
 import { checkUncomposedNamespace } from '@internal/framework-components/authoring';
-import type { Binder, FieldSymbol, ModelSymbol, SymbolTable } from '@internal/psl-parser';
+import type {
+  Binder,
+  FieldAttributeSpecContext,
+  FieldSymbol,
+  ModelSymbol,
+  SymbolTable,
+} from '@internal/psl-parser';
 import {
   diagnosticSource,
   type PslDiagnostic,
@@ -87,6 +93,7 @@ export function normalizeReferentialAction(actionToken: string): ReferentialActi
 export function interpretRelationAttribute(input: {
   readonly selfModel: ModelSymbol;
   readonly field: FieldSymbol;
+  readonly specContext: FieldAttributeSpecContext;
   readonly symbols: SymbolTable;
   readonly sources: PslSources;
   readonly binder: Binder;
@@ -97,7 +104,7 @@ export function interpretRelationAttribute(input: {
   return interpretFieldAttribute({
     symbols: input.symbols,
     node,
-    spec: sqlAttributeSpecs.field.relation(),
+    spec: sqlAttributeSpecs.field.relation(input.specContext),
     model: input.selfModel,
     field: input.field,
     sources: input.sources,

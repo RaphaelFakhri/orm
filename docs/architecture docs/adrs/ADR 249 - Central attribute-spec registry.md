@@ -25,7 +25,7 @@ export const sqlAttributeSpecs = {
 
 Every entry is a spec *factory* taking a framework-owned construction-time context, never a plain spec value. `index` and `check` build their specs from the context's `dataTypes`, because their SQL arguments receive the stack's `sql/expression` data type ([ADR 260](ADR%20260%20-%20Raw%20SQL%20is%20a%20value%20of%20the%20data%20type%20sql-expression.md)); `default` builds its spec from the declaring field, because `@default`'s accepted argument grammar depends on whether the field is a list, which enum members exist, and which mutation-default functions the composed stack registered.
 
-The family interpreter calls a factory through its own namespace, where the key set is statically known and access is total:
+The family interpreter calls a factory through its own namespace, where the key set is statically known and access is total. It passes the context to every factory, including one whose spec does not read it, so a spec that starts to read the context needs no call-site change:
 
 ```ts
 const spec = sqlAttributeSpecs.field.default(
