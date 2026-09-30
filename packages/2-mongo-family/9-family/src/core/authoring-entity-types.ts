@@ -41,7 +41,7 @@ export const mongoFamilyEnumEntityDescriptor = {
       }
       const { codecId, codecSpan } = resolved;
 
-      const descriptor = ctx.codecLookup?.descriptorFor?.(codecId);
+      const descriptor = ctx.codecLookup.descriptorFor?.(codecId);
       if (descriptor === undefined) {
         diagnostics?.push({
           code: 'PSL_EXTENSION_INVALID_VALUE',
@@ -76,7 +76,7 @@ export const mongoFamilyEnumEntityDescriptor = {
         return undefined;
       }
 
-      const codec = ctx.codecLookup?.get(codecId);
+      const codec = ctx.codecLookup.get(codecId);
       if (codec === undefined) {
         diagnostics?.push({
           code: 'PSL_EXTENSION_INVALID_VALUE',
