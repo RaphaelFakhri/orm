@@ -1,7 +1,7 @@
 import { strictEqual } from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { join, sep } from 'node:path';
 import { describe, it } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { printTaggedLiteral } from '../../packages/1-framework/1-core/framework-components/src/shared/tagged-literal.ts';
@@ -155,6 +155,24 @@ describe('rewriteSqlStrings and comments', () => {
     strictEqual(rewriteSqlStrings(source), source);
   });
 
+  it('rewrites a policy entry whose string holds //', () => {
+    strictEqual(
+      rewriteSqlStrings(
+        ['policy_select p {', '  target = Post', `  using = "url LIKE 'http://%'"`, '}'].join('\n'),
+      ),
+      ['policy_select p {', '  target = Post', "  using = sql`url LIKE 'http://%'`", '}'].join(
+        '\n',
+      ),
+    );
+  });
+
+  it('rewrites an attribute argument whose string holds //', () => {
+    strictEqual(
+      rewriteSqlStrings(`  @@index([url], where: "url LIKE 'http://%'", name: "i")`),
+      '  @@index([url], where: sql`url LIKE \'http://%\'`, name: "i")',
+    );
+  });
+
   it('writes a text with an escaped line break on its own lines', () => {
     strictEqual(
       rewriteSqlStrings('  @@check(expression: "a > 0\\nAND b > 0", name: "c")'),
@@ -179,16 +197,27 @@ describe('printSqlLiteral', () => {
   }
 });
 
-describe('the pending upgrade fragments', () => {
+const FRAGMENT_COPY =
+  /(^|\/)sql-expression-literals-psl\/[^/]+\/scripts\/rewrite-sql-strings\.mjs$/;
+
+function fragmentCopies() {
+  const root = join(repositoryRoot, 'upgrade-instructions');
+  return readdirSync(root, { recursive: true })
+    .map((path) => path.split(sep).join('/'))
+    .filter((path) => FRAGMENT_COPY.test(path))
+    .map((path) => join(root, path));
+}
+
+describe('the upgrade fragments', () => {
   const canonical = readFileSync(join(here, 'rewrite-sql-strings.mjs'), 'utf8');
-  for (const copy of ['app', 'extension']) {
-    it(`carry the ${copy} copy byte for byte`, () => {
-      const path = join(
-        repositoryRoot,
-        'upgrade-instructions/pending/sql-expression-literals-psl',
-        copy,
-        'scripts/rewrite-sql-strings.mjs',
-      );
+  const copies = fragmentCopies();
+
+  it('carry at least one copy of the script, wherever the release has moved them', () => {
+    strictEqual(copies.length > 0, true);
+  });
+
+  for (const path of copies) {
+    it(`carry ${path.slice(repositoryRoot.length + 1)} byte for byte`, () => {
       strictEqual(readFileSync(path, 'utf8'), canonical);
     });
   }
