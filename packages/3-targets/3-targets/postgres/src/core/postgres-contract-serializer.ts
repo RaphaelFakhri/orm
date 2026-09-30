@@ -22,6 +22,7 @@ import type { JsonObject } from '@internal/utils/json';
 import type { Type } from 'arktype';
 import { postgresAuthoringEntityTypes } from './authoring';
 import { PG_INT_CODEC_ID, PG_TEXT_CODEC_ID } from './codec-ids';
+import { createPostgresBuiltinCodecLookup } from './codec-registry';
 import { createPostgresBuiltinDataTypeLookup } from './data-types';
 import {
   nativeEnumEntityKind,
@@ -34,6 +35,7 @@ import { PostgresSchema } from './postgres-schema';
 const POSTGRES_AUTHORING_CTX: AuthoringEntityContext = {
   family: 'sql',
   target: 'postgres',
+  codecLookup: createPostgresBuiltinCodecLookup(),
   dataTypeLookup: createPostgresBuiltinDataTypeLookup(),
   enumInferenceCodecs: { text: PG_TEXT_CODEC_ID, int: PG_INT_CODEC_ID },
 };

@@ -6,6 +6,7 @@ import {
   crossRef,
   type StorageHashBase,
 } from '@internal/contract/types';
+import { emptyCodecLookup } from '@internal/framework-components/codec';
 import { UNBOUND_NAMESPACE_ID } from '@internal/framework-components/ir';
 import {
   buildMongoNamespace,
@@ -2221,6 +2222,7 @@ describe('interpretPslDocumentToMongoContract', () => {
           'schema.prisma',
         ),
         scalarTypeCodecIds: mongoScalarTypeDescriptors,
+        codecLookup: emptyCodecLookup,
         dataTypeLookup: mongoDataTypeLookup,
         controlMutationDefaults: {
           dataTypeEntries: {},
@@ -2256,6 +2258,7 @@ describe('interpretPslDocumentToMongoContract', () => {
           'schema.prisma',
         ),
         scalarTypeCodecIds: mongoScalarTypeDescriptors,
+        codecLookup: emptyCodecLookup,
         dataTypeLookup: mongoDataTypeLookup,
         controlMutationDefaults: {
           dataTypeEntries: {},
@@ -2283,6 +2286,7 @@ describe('interpretPslDocumentToMongoContract', () => {
           'schema.prisma',
         ),
         scalarTypeCodecIds: mongoScalarTypeDescriptors,
+        codecLookup: emptyCodecLookup,
         dataTypeLookup: mongoDataTypeLookup,
         controlMutationDefaults: {
           dataTypeEntries: {},

@@ -7,7 +7,7 @@ import {
   UNBOUND_DOMAIN_NAMESPACE_ID,
 } from '@internal/contract/types';
 import { MongoContractSerializer } from '@internal/family-mongo/ir';
-import { createDataTypeLookup } from '@internal/framework-components/codec';
+import { createDataTypeLookup, emptyCodecLookup } from '@internal/framework-components/codec';
 import { interpretPslDocumentToMongoContract } from '@internal/mongo-contract-psl';
 import { mongoOrm } from '@internal/mongo-orm';
 import { buildSymbolTable } from '@internal/psl-parser';
@@ -88,6 +88,7 @@ function interpretMongoPsl(schema: string) {
     symbolTable,
     sources,
     scalarTypeCodecIds: mongoScalarTypeDescriptors,
+    codecLookup: emptyCodecLookup,
     dataTypeLookup: createDataTypeLookup(mongoDataTypes),
     controlMutationDefaults: {
       dataTypeEntries: {},

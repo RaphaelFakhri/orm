@@ -99,7 +99,7 @@ export interface InterpretPslDocumentToMongoContractInput {
   readonly sources: PslSources;
   readonly scalarTypeCodecIds: ReadonlyMap<string, string>;
   readonly controlMutationDefaults: ControlDefaultRegistries;
-  readonly codecLookup?: CodecLookup;
+  readonly codecLookup: CodecLookup;
   readonly dataTypeLookup: DataTypeLookup;
   readonly seedDiagnostics?: readonly ContractSourceDiagnostic[];
   readonly authoringContributions?: AuthoringContributions;
@@ -1253,7 +1253,7 @@ export function interpretPslDocumentToMongoContract(
       family: 'mongo',
       target: 'mongo',
       ...ifDefined('enumInferenceCodecs', input.enumInferenceCodecs),
-      ...ifDefined('codecLookup', codecLookup),
+      codecLookup,
       dataTypeLookup: input.dataTypeLookup,
       diagnostics: {
         push: (d) => {

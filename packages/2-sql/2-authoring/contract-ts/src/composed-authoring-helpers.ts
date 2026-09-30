@@ -286,6 +286,7 @@ export function createComposedAuthoringHelpers<
       ctx: {
         family: options.family.familyId,
         target: options.target.targetId,
+        codecLookup: options.codecLookup,
         dataTypeLookup: options.dataTypeLookup,
       },
     }),

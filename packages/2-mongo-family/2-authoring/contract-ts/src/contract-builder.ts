@@ -1099,6 +1099,7 @@ function composeMongoAuthoringHelpers<
       ctx: {
         family: family.familyId,
         target: target.targetId,
+        codecLookup: extractCodecLookup(components),
         dataTypeLookup: assembleDataTypes(components).lookup,
       },
     }),

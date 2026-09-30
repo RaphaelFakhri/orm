@@ -1,4 +1,4 @@
-import { createDataTypeLookup } from '@internal/framework-components/codec';
+import { createDataTypeLookup, emptyCodecLookup } from '@internal/framework-components/codec';
 import { buildSymbolTable, type SymbolTable } from '@internal/psl-parser';
 import type { DocumentAst, PslSources } from '@internal/psl-parser/syntax';
 import { parse } from '@internal/psl-parser/syntax';
@@ -28,6 +28,7 @@ function diagnosticCodes(schema: string): readonly string[] {
   const result = interpretPslDocumentToMongoContract({
     ...symbolTableInput(schema),
     scalarTypeCodecIds,
+    codecLookup: emptyCodecLookup,
     dataTypeLookup: createDataTypeLookup([]),
     controlMutationDefaults: {
       defaultFunctionRegistry: new Map(),

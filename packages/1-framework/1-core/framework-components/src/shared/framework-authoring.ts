@@ -267,7 +267,7 @@ export interface AuthoringEntityContext {
   readonly family: string;
   readonly target: string;
   /** Codec registry available to factories that need to validate or decode values. */
-  readonly codecLookup?: CodecLookup;
+  readonly codecLookup: CodecLookup;
   /** The stack's data types, for factories that read the data type a codec represents. */
   readonly dataTypeLookup: DataTypeLookup;
   /** Source file identifier threaded into diagnostics emitted by the factory. */

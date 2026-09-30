@@ -38,14 +38,17 @@ export function isMongoDataType(type: DataType): type is MongoDataType {
  * The BSON types a value of the codec `codecId` is stored as, read from the data type the codec
  * represents; undefined when the stack registers no such codec or Mongo data type.
  */
+/** The lookups that find the Mongo data type a codec represents. */
+export interface MongoTypeLookups {
+  readonly codecLookup: Pick<CodecLookup, 'descriptorFor'>;
+  readonly dataTypeLookup: Pick<DataTypeLookup, 'get'>;
+}
+
 export function bsonTypesOfCodec(
   codecId: string,
-  lookups: {
-    readonly codecLookup: Pick<CodecLookup, 'descriptorFor'> | undefined;
-    readonly dataTypeLookup: Pick<DataTypeLookup, 'get'>;
-  },
+  lookups: MongoTypeLookups,
 ): readonly string[] | undefined {
-  const descriptor = lookups.codecLookup?.descriptorFor?.(codecId);
+  const descriptor = lookups.codecLookup.descriptorFor?.(codecId);
   const type =
     descriptor === undefined ? undefined : lookups.dataTypeLookup.get(descriptor.dataType);
   return type !== undefined && isMongoDataType(type) ? type.mongo.bsonTypes : undefined;

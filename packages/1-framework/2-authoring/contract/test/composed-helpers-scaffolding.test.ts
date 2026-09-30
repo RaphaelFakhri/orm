@@ -3,7 +3,7 @@ import type {
   AuthoringEntityTypeDescriptor,
   AuthoringEntityTypeNamespace,
 } from '@internal/framework-components/authoring';
-import { createDataTypeLookup } from '@internal/framework-components/codec';
+import { createDataTypeLookup, emptyCodecLookup } from '@internal/framework-components/codec';
 import { describe, expect, it } from 'vitest';
 import { createEntityHelpersFromNamespace } from '../src/composed-helpers-scaffolding';
 
@@ -22,6 +22,7 @@ function helperAt(surface: Record<string, unknown>, path: string): Helper {
 const ctx: AuthoringEntityContext = {
   family: 'sql',
   target: 'postgres',
+  codecLookup: emptyCodecLookup,
   dataTypeLookup: createDataTypeLookup([]),
 };
 

@@ -34,7 +34,10 @@ function fieldToBsonSchema(
   valueSets: FieldValueSets | undefined,
 ): Record<string, unknown> | undefined {
   if (field.type.kind === 'scalar') {
-    const bsonTypes = bsonTypesOfCodec(field.type.codecId, { codecLookup, dataTypeLookup });
+    const bsonTypes =
+      codecLookup === undefined
+        ? undefined
+        : bsonTypesOfCodec(field.type.codecId, { codecLookup, dataTypeLookup });
     if (bsonTypes === undefined) return undefined;
     if (bsonTypes.length === 0) return anyValueSchema(field);
     const bsonType = bsonTypeKeyword(bsonTypes);

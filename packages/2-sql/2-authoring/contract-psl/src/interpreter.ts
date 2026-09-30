@@ -600,7 +600,7 @@ interface BuildModelNodeInput {
     Readonly<Record<string, Readonly<Record<string, unknown>>>>
   >;
   /** Codec-id-keyed descriptor lookup — forwarded to `collectResolvedFields` for entity-ref type-constructor resolution (e.g. `pg.enum(Ref)`). */
-  readonly codecLookup?: CodecLookup;
+  readonly codecLookup: CodecLookup;
   /** Contributed model-attribute descriptors keyed by bare `@@` attribute name (the exact shape `buildModelAttributesByName` produces). */
   readonly modelAttributesByName: ReadonlyMap<string, AuthoringModelAttributeDescriptor>;
   readonly contributedModelAttributeSpecs: Readonly<Record<string, ModelAttributeSpecFactory>>;
@@ -701,7 +701,7 @@ function buildModelNodeFromPsl(input: BuildModelNodeInput): BuildModelNodeResult
     capabilities: input.capabilities,
     ...ifDefined('namespaceId', modelNamespaceId),
     ...ifDefined('namespaceExtensionEntities', namespaceExtensionEntitiesForModel),
-    ...ifDefined('codecLookup', input.codecLookup),
+    codecLookup: input.codecLookup,
   });
 
   const inlineIdFields = resolvedFields.filter((field) => field.isId);
@@ -1102,6 +1102,7 @@ function buildModelNodeFromPsl(input: BuildModelNodeInput): BuildModelNodeResult
       const lowered = lower(parsed, {
         family: input.familyId,
         target: input.targetId,
+        codecLookup: input.codecLookup,
         dataTypeLookup: input.dataTypeSupport.lookup,
         modelName: model.name,
         storageName: tableName,
@@ -2220,7 +2221,7 @@ export function interpretPslDocumentToSqlContract(
     entityContext: {
       family: input.target.familyId,
       target: input.target.targetId,
-      ...ifDefined('codecLookup', input.codecLookup),
+      codecLookup: input.codecLookup,
       dataTypeLookup: input.dataTypeLookup,
       sourceId: source.sources.sourceFileFor(source.node).filename,
       diagnostics: {
@@ -2264,7 +2265,7 @@ export function interpretPslDocumentToSqlContract(
     family: input.target.familyId,
     target: input.target.targetId,
     ...ifDefined('enumInferenceCodecs', input.enumInferenceCodecs),
-    ...ifDefined('codecLookup', input.codecLookup),
+    codecLookup: input.codecLookup,
     dataTypeLookup: input.dataTypeLookup,
     sourceId: source.sources.sourceFileFor(source.node).filename,
     diagnostics: {
@@ -2484,7 +2485,7 @@ export function interpretPslDocumentToSqlContract(
       ...(enumHandlesByName.size > 0 ? { enumHandles: enumHandlesByName } : {}),
       capabilities: input.capabilities,
       ...(namespaceExtensionEntities.size > 0 ? { namespaceExtensionEntities } : {}),
-      ...ifDefined('codecLookup', input.codecLookup),
+      codecLookup: input.codecLookup,
       modelAttributesByName,
       contributedModelAttributeSpecs: contributedModelSpecs,
       defaultNamespaceId,
