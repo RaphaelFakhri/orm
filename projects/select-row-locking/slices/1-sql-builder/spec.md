@@ -23,10 +23,10 @@ On a SQLite contract none of the four methods exists in the types, and a hand-bu
 
 Exactly as the design document states. The parts this slice owns:
 
-1. `LockingClause` (`strength`, `of`, `wait`) and `SelectAst.locking` in `packages/2-sql/4-lanes/relational-core/src/ast/types.ts`, carried through the constructor, `from()`, `noFrom()`, `toOptions()`, `rewrite()`, with `withLocking()`. The constructor refuses a lock with `distinct`, `distinctOn`, `groupBy` or `having` (`AST.LOCK_INCOMPATIBLE`).
+1. `LockingClause` (`strength`, `of`, `wait`) and `SelectAst.locking` in `packages/2-sql/4-lanes/relational-core/src/ast/types.ts`, carried through the constructor, `from()`, `noFrom()`, `toOptions()`, `rewrite()`, with `withLocking()`. The node carries no validity rule of its own.
 2. Seven flags reported by the Postgres adapter (`adapter.ts`, `descriptor-meta.ts`) and documented in `docs/reference/capabilities.md`.
-3. The Postgres renderer prints each clause after `OFFSET` and throws an adapter error for a strength or option the adapter did not report. The SQLite renderer throws a structured error for any lock.
-4. `SelectQuery` gains `forUpdate`, `forNoKeyUpdate`, `forShare`, `forKeyShare` as `GatedMethod`s on their flags, with `LockOptions` built from the flags; the runtime goes through `_gate` and appends to `BuilderState.locking`; `build()` refuses a lock with an aggregate projection or on a subquery (`SQL_BUILDER.LOCK_INCOMPATIBLE`).
+3. The Postgres renderer takes the adapter's capabilities as a required parameter, prints each clause after `OFFSET`, and throws `RUNTIME.AST_UNSUPPORTED` with `feature: 'locking-clause'` and the missing `capability` for a strength or option that set does not report. The SQLite renderer throws a structured error for any lock.
+4. `SelectQuery` gains `forUpdate`, `forNoKeyUpdate`, `forShare`, `forKeyShare` as `GatedMethod`s on their flags, with `LockOptions` built from the flags; the runtime goes through `_gate` and appends to `BuilderState.locking`; `build()` refuses a lock with `distinct`, `distinctOn`, `having`, an aggregate or window function in the projection, or on a subquery (`ORM.LOCK_INCOMPATIBLE`, `meta.conflict`).
 5. `STATUS.md` and `README.md` of the builder updated; a locking section in `docs/reference/query-patterns.md`; an integration test against PGlite.
 
 ## Coherence rationale

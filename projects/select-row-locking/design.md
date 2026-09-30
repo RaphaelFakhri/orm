@@ -203,20 +203,20 @@ Two things in the survey are semantics rather than syntax, and capabilities do n
 
 ```ts
 export type LockStrength = 'forUpdate' | 'forNoKeyUpdate' | 'forShare' | 'forKeyShare';
-export type LockWait = 'nowait' | 'skipLocked';
+export type LockWaitPolicy = 'nowait' | 'skipLocked';
 
 export class LockingClause {
   readonly strength: LockStrength;
   readonly of: ReadonlyArray<string> | undefined;
-  readonly wait: LockWait | undefined;
+  readonly waitPolicy: LockWaitPolicy | undefined;
 }
 ```
 
-`of` holds table names or aliases as they appear in `FROM` and the joins, never schema-qualified. `wait` is a single field rather than two booleans so that the tree cannot hold both.
+`of` holds table names or aliases as they appear in `FROM` and the joins, never schema-qualified. `waitPolicy` is a single field rather than two booleans so that the tree cannot hold both; the name is Postgres's own term for the choice between waiting, `NOWAIT` and `SKIP LOCKED`.
 
 `SelectAstOptions` and `SelectAst` gain `locking: ReadonlyArray<LockingClause> | undefined`. It is an array because Postgres allows several clauses on one select, each naming different tables. The constructor freezes a copy as it does for `joins` and `orderBy`; `from()`, `noFrom()`, `toOptions()` and `rewrite()` carry it; `withLocking(clauses)` is added beside `withDistinctOn`. `rewrite()` leaves the clause unchanged, because it holds names, not expressions. `LockingClause` follows the frozen-class pattern the other nodes use: `freezeNode` in the constructor and a static `of(...)` factory.
 
-The constructor refuses a tree that combines `locking` with `distinct`, `distinctOn`, `groupBy` or `having`, because Postgres refuses every such statement. A lock together with an aggregate or window function in the projection is refused by the builders at `build()` instead, because the constructor does not walk the projection today and the builders already know what they projected.
+The node itself carries no rule about which combinations are valid. Postgres refuses a lock together with `distinct`, `distinctOn`, `groupBy`, `having`, an aggregate or a window function, but MySQL accepts some of those, and the tree is shared by every target. The builders refuse those combinations at `build()`, in one place with one error code, because they know what they projected and the refusal reaches the author before any statement is sent. A hand-built tree that combines them is sent as is, and Postgres rejects the statement, which is safe: the failure mode is an error, never a lock silently dropped.
 
 ## What the renderer prints
 
@@ -228,7 +228,7 @@ SELECT "id" AS "id" FROM "public"."job" WHERE "state" = $1 ORDER BY "createdAt" 
 SELECT "c"."id" AS "id" FROM "public"."contact" AS "c" INNER JOIN "public"."identity" AS "i" ON ... FOR UPDATE OF "c" NOWAIT
 ```
 
-Before rendering, the renderer checks each clause against the adapter's own capabilities and throws an adapter error naming the missing flag if the tree carries a strength or option the adapter did not report. The builders already checked this for their own output; this check is what protects a tree someone built by hand.
+Before rendering, the renderer checks each clause against the capabilities the adapter passes in, which are required, never defaulted, and throws an adapter error naming the missing flag if the tree carries a strength or option that set does not report. Today every adapter that uses this renderer is the Postgres adapter, whose profile reports all seven flags, so the check cannot fail in production; it exists so that a future adapter reusing the renderer with fewer flags refuses rather than renders, and it is what refuses a tree someone built by hand against such an adapter.
 
 The SQLite renderer throws a structured error when `ast.locking` is set. Dropping the clause silently would turn a lock into no lock, which is the worst possible outcome.
 
@@ -241,12 +241,11 @@ Future renderers map the same node to their own syntax: MariaDB writes `LOCK IN 
 | A method called without its flag, builder | `_gate` | the capability error the builder already throws for `distinctOn` |
 | An option passed without its flag, builder | the method | the same error, naming the option's flag |
 | A method called without its flag, ORM | the method | `ORM.CAPABILITY_MISSING`, `meta.capability` = the flag |
-| A lock with `distinct`, `distinctOn`, `groupBy` or `having` | `SelectAst` constructor | a structured error, `RUNTIME.LOCK_INCOMPATIBLE` |
-| A lock with an aggregate or window function in the projection | builder `build()` | `ORM.LOCK_INCOMPATIBLE`, `meta.conflict: 'aggregate'`; the builder's errors already use the `ORM` namespace |
+| A lock with `distinct`, `distinctOn`, `groupBy`, `having`, or an aggregate or window function in the projection | builder `build()` | `ORM.LOCK_INCOMPATIBLE`, `meta.conflict` naming the clause; the builder's errors already use the `ORM` namespace. `groupBy()` already returns a type without the methods, so that case is a type error first |
 | A locked select used as a subquery, through `.as(...)` or as an `exists`, `in` or lateral source | the moment it becomes a subquery, one step before the outer `build()` | `ORM.LOCK_INCOMPATIBLE`, `meta.conflict: 'subquery'` |
 | A lock with `include`, `aggregate`, `distinct` or `distinctOn`, ORM | compile | a structured error, `ORM.LOCK_INCOMPATIBLE` |
 | A mutation terminal (`update`, `updateAll`, `updateAndCount`, `delete`, `deleteAll`, `deleteAndCount`, `create`, `upsert`) on a locked collection | the terminal | `ORM.LOCK_INCOMPATIBLE`; a mutation already locks the rows it changes, and dropping the requested lock silently would hide a mistake |
-| A strength or option the adapter did not report, in a tree | Postgres renderer | `RUNTIME.AST_UNSUPPORTED` with `meta: { target, capability }`, the code the renderers already use for a feature a target cannot render |
+| A strength or option the adapter did not report, in a tree | Postgres renderer | `RUNTIME.AST_UNSUPPORTED` with `meta: { target, feature: 'locking-clause', capability }`, the code the renderers already use for a feature a target cannot render |
 | Any lock, SQLite | renderer | `RUNTIME.AST_UNSUPPORTED` with `meta: { target: 'sqlite', feature: 'locking-clause' }` |
 | A row is locked and `nowait` was set | the database | SQLSTATE `55P03`, `lock_not_available`, surfaced as the driver error |
 
@@ -273,12 +272,12 @@ Slice 1 is about the size of the `DISTINCT ON` work.
 
 Slice 1:
 
-- `packages/2-sql/4-lanes/relational-core/test/ast/builders.test.ts`: `withLocking` keeps clauses through the other `with...` calls and `rewrite()`; the constructor refuses a lock with `distinct`, `distinctOn`, `groupBy` and `having`.
+- `packages/2-sql/4-lanes/relational-core/test/ast/builders.test.ts`: `withLocking` keeps clauses through the other `with...` calls and `rewrite()`.
 - `packages/3-targets/6-adapters/postgres/test/adapter.test.ts`: each of the four strengths renders; `nowait` and `skipLocked` render; `of` renders an unqualified quoted name; two clauses render in order; the clause follows `LIMIT` and `OFFSET`; a tree carrying a flag the adapter did not report is refused.
 - `packages/3-targets/6-adapters/sqlite/test/adapter.test.ts`: a select carrying a lock is refused with a structured error.
-- `packages/2-sql/4-lanes/sql-builder/test/runtime/builders.test.ts`: each method puts its clause on the built tree; two calls append; `build()` refuses a lock with an aggregate projection and a locked subquery.
+- `packages/2-sql/4-lanes/sql-builder/test/runtime/builders.test.ts`: each method puts its clause on the built tree; two calls append; `build()` refuses a lock with `distinct`, `distinctOn`, `having`, an aggregate or window function in the projection, and a locked subquery.
 - New `packages/2-sql/4-lanes/sql-builder/test/types/lock.types.test-d.ts`: the four methods exist on a Postgres `SelectQuery`, not on `GroupedQuery`, and not on a SQLite contract; `of` accepts only names in scope; `nowait` and `skipLocked` together is a type error; each option key is absent without its flag.
-- New `test/integration/test/sql-builder/lock.test.ts`: each variant runs inside a transaction against the embedded Postgres and returns the expected row. PGlite serves one connection, so this checks that Postgres accepts the statements, not that a second transaction waits.
+- New `test/integration/test/sql-builder/lock.test.ts`: each variant asserts the rendered SQL, then runs inside a transaction against the embedded Postgres and returns the expected row; where PGlite allows it, the test reads `xmax` in the same transaction to show the lock is held. PGlite serves one connection, so this checks that Postgres accepts the statements and holds the lock, not that a second transaction waits.
 
 Slice 2:
 
@@ -317,6 +316,10 @@ Commands that must pass: `pnpm typecheck`, `pnpm lint`, `pnpm lint:deps`, `pnpm 
 **A `wait: 'nowait' | 'skipLocked'` option instead of two booleans.** Rejected for the public API because `forUpdate({ skipLocked: true })` reads as the SQL. The union type gives the same exclusivity. The tree keeps a single `wait` field, because a tree should not be able to hold both.
 
 **Postgres spelling in the tree, for example `strength: 'FOR NO KEY UPDATE'`.** Rejected. The tree is shared by every target, and a SQL Server renderer would have to parse Postgres words to place its hints. The values use the same camel-case names as the methods, which read as SQL without being one dialect's spelling.
+
+**Refusing invalid combinations in the shared node's constructor.** Rejected after review. The rule that a lock cannot combine with `distinct`, `groupBy`, `having` or an aggregate is Postgres's, and MySQL accepts some of those combinations, so it does not belong in a node every target shares. The builder refuses at `build()` instead, and a hand-built tree that breaks the rule fails in Postgres with an error rather than silently.
+
+**Strength values without the `for` prefix, such as `'update'`, to match `JoinAst.joinType` storing `'inner'` for `innerJoin()`.** Rejected. The four strengths read as SQL only with the prefix (`'update'` alone is a different word in this codebase), and one name serves the tree, the builder methods and the ORM methods. The inconsistency with `joinType` is accepted on purpose.
 
 **Refusing a lock outside a transaction in the ORM.** Rejected. It is legal Postgres, and `nowait` outside a transaction is a way to test whether a row is free. The docs state the lifetime instead.
 
