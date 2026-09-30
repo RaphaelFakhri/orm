@@ -1,0 +1,97 @@
+// usage: node gen-repeat-probes.mjs <out-dir>
+// Writes probes where the same kind of site is repeated. Each probe is the header,
+// ten declared search values, and N statements (N = 0, 1 or 10).
+// r1: ternary in pipe on the root, same filter. r2: the bare ternary. r3: let and if.
+// r4: ternary in pipe on the root, a different filter each time.
+// r5: ten r1 statements, then K ternaries on User after where (K = 1 or 10).
+// Controls without a conditional: c1 is one plain Post.where; c5 is ten r1 statements and one plain User chain.
+import { mkdirSync, writeFileSync } from 'node:fs';
+
+const out = process.argv[2];
+mkdirSync(out, { recursive: true });
+
+const targets = {
+  pkg: {
+    header: `import { softDeleteSetup } from './pipe-fragments-fixture';
+
+const { db } = softDeleteSetup();
+const Post = db.public.Post;
+const User = db.public.User;
+`,
+    filters: [
+      (s) => `p.title.eq(${s})`,
+      (s) => `p.title.neq(${s})`,
+      (s) => `p.title.gt(${s})`,
+      (s) => `p.title.lt(${s})`,
+      (_s, n) => `p.views.gt(${n})`,
+      (_s, n) => `p.views.gte(${n})`,
+      (_s, n) => `p.views.lt(${n})`,
+      (_s, n) => `p.id.eq(${n})`,
+      (_s, n) => `p.userId.eq(${n})`,
+      (_s, n) => `p.userId.neq(${n})`,
+    ],
+  },
+  demo: {
+    header: `import { db } from '../src/prisma/db';
+
+const Post = db.orm.public.Post;
+const User = db.orm.public.User;
+`,
+    filters: [
+      (s) => `p.title.eq(${s})`,
+      (s) => `p.title.neq(${s})`,
+      (s) => `p.title.gt(${s})`,
+      (s) => `p.title.gte(${s})`,
+      (s) => `p.title.lt(${s})`,
+      (s) => `p.title.lte(${s})`,
+      (s) => `p.userId.eq(${s})`,
+      (s) => `p.userId.neq(${s})`,
+      (s) => `p.id.eq(${s})`,
+      (s) => `p.id.neq(${s})`,
+    ],
+  },
+};
+
+const numeric = (f) => f.toString().startsWith('(_s');
+
+const forms = {
+  r1: (_t, i) => `export const r${i} = Post.pipe((c) => (s${i} ? c.where((p) => p.title.eq(s${i})) : c)).limit(10);`,
+  r2: (_t, i) => `export const r${i} = (s${i} ? Post.where((p) => p.title.eq(s${i})) : Post).limit(10);`,
+  r3: (_t, i) =>
+    `let q${i} = Post;\nif (s${i}) q${i} = q${i}.where((p) => p.title.eq(s${i}));\nexport const r${i} = q${i}.limit(10);`,
+  r4: (t, i) => {
+    const f = t.filters[i - 1];
+    const cond = numeric(f) ? `n${i} !== undefined` : `s${i}`;
+    return `export const r${i} = Post.pipe((c) => (${cond} ? c.where((p) => ${f(`s${i}`, `n${i}`)}) : c)).limit(10);`;
+  },
+  user: (_t, i) =>
+    `export const u${i} = User.where((u) => u.email.neq('x')).pipe((c) => (s${i} ? c.where((u) => u.email.eq(s${i})) : c)).limit(10);`,
+};
+
+function probe(t, lines) {
+  const decls = Array.from(
+    { length: 10 },
+    (_, k) => `declare const s${k + 1}: string | undefined;\ndeclare const n${k + 1}: number | undefined;`,
+  ).join('\n');
+  return `${t.header}${decls}\nexport { Post, User };\n\n${lines.join('\n')}\n`;
+}
+
+const range = (n) => Array.from({ length: n }, (_, k) => k + 1);
+
+for (const [name, t] of Object.entries(targets)) {
+  writeFileSync(`${out}/${name}-r0.test-d.ts`, probe(t, []));
+  for (const form of ['r1', 'r2', 'r3', 'r4']) {
+    for (const n of [1, 10]) {
+      writeFileSync(`${out}/${name}-${form}-${n}.test-d.ts`, probe(t, range(n).map((i) => forms[form](t, i))));
+    }
+  }
+  writeFileSync(`${out}/${name}-c1-1.test-d.ts`, probe(t, [`export const r1 = Post.where((p) => p.title.eq('x')).limit(10);`]));
+  writeFileSync(
+    `${out}/${name}-c5-1.test-d.ts`,
+    probe(t, [...range(10).map((i) => forms.r1(t, i)), `export const u1 = User.where((u) => u.email.neq('x')).where((u) => u.email.eq('y')).limit(10);`]),
+  );
+  for (const k of [1, 10]) {
+    const lines = [...range(10).map((i) => forms.r1(t, i)), ...range(k).map((i) => forms.user(t, i))];
+    writeFileSync(`${out}/${name}-r5-${k}.test-d.ts`, probe(t, lines));
+  }
+}
