@@ -16,7 +16,6 @@ import {
   type Position,
   type PublishDiagnosticsParams,
   type Range,
-  RegistrationRequest,
   type RelatedFullDocumentDiagnosticReport,
   type SemanticTokens,
   type SignatureHelp,
@@ -28,9 +27,11 @@ import { type ConfigResolution, resolveConfigInputs } from './config-resolution'
 import { type LspDiagnostic, ParseDiagnosticSeverity } from './diagnostic-mapping';
 import type { DocumentStore } from './document-store';
 import { computeFoldingRanges } from './folding-ranges';
+import { requestWatcherRegistration } from './guarded-connection';
 import { InternalWatcher } from './internal-watcher';
 import { ProjectArtifacts } from './project-artifacts';
 import {
+  canonicalFileIdentity,
   isClientWatcherCompatible,
   normalizeFileUri,
   resolveSchemaInputs,
@@ -74,6 +75,7 @@ export class Project {
   #watcherGeneration = 0;
   #watcher: Disposable | undefined;
   #internalWatcher: InternalWatcher | undefined;
+  readonly #retainedConfigWatchers = new Set<InternalWatcher>();
   readonly #closing = new Set<Promise<void>>();
   readonly #diskUris = new Set<string>();
   readonly #pendingPaths = new Set<string>();
@@ -290,7 +292,7 @@ export class Project {
 
   #startLoad(): Promise<ResolvedProject> {
     this.#membershipSequence = this.#options.nextSequence();
-    this.#clearWatcher();
+    this.#clearWatcher(true);
     this.#invalidateSnapshots();
     const existing = this.#state;
     const previousLoad = existing.status === 'loading' ? existing.load : undefined;
@@ -365,7 +367,7 @@ export class Project {
     }
   }
 
-  #clearWatcher(): number {
+  #clearWatcher(retainConfigObservation = false): number {
     const generation = ++this.#watcherGeneration;
     this.#cancelRegistration?.();
     this.#cancelRegistration = undefined;
@@ -376,14 +378,20 @@ export class Project {
     this.#pendingPaths.clear();
     this.#reconcile = false;
     if (this.#internalWatcher !== undefined) {
-      const closing = this.#internalWatcher
-        .close()
-        .catch((error: unknown) => this.#watchError(error));
-      this.#closing.add(closing);
-      void closing.finally(() => this.#closing.delete(closing));
+      this.#retainedConfigWatchers.add(this.#internalWatcher);
       this.#internalWatcher = undefined;
     }
+    if (!retainConfigObservation) this.#closeRetainedConfigWatchers();
     return generation;
+  }
+
+  #closeRetainedConfigWatchers(): void {
+    for (const watcher of this.#retainedConfigWatchers) {
+      const closing = watcher.close().catch((error: unknown) => this.#watchError(error));
+      this.#closing.add(closing);
+      void closing.finally(() => this.#closing.delete(closing));
+    }
+    this.#retainedConfigWatchers.clear();
   }
 
   #watchError(error: unknown): void {
@@ -427,6 +435,7 @@ export class Project {
         const disposable = await Promise.race([registration, deadline]);
         if (disposable !== undefined && current()) {
           this.#watcher = disposable;
+          this.#closeRetainedConfigWatchers();
           this.#queueChanges([], true);
           return;
         }
@@ -440,23 +449,30 @@ export class Project {
       }
     }
     if (!current()) return;
-    this.#internalWatcher = new InternalWatcher(this.configPath, patterns, {
+    const watcher = new InternalWatcher(this.configPath, patterns, {
       onReady: () => {
-        if (current()) this.#queueChanges([], true);
+        if (current()) {
+          this.#closeRetainedConfigWatchers();
+          this.#queueChanges([], true);
+        }
       },
       onChange: (path) => {
-        if (current()) this.#queueChanges([pathToFileURL(path).toString()]);
+        const uri = pathToFileURL(path).toString();
+        if (current() || (this.#retainedConfigWatchers.has(watcher) && this.#isConfigUri(uri))) {
+          this.#queueChanges([uri]);
+        }
       },
       onError: (error) => {
-        if (current()) this.#watchError(error);
+        if (current() || this.#retainedConfigWatchers.has(watcher)) this.#watchError(error);
       },
     });
+    this.#internalWatcher = watcher;
   }
 
   async #registerClientWatcher(patterns: readonly string[]): Promise<Disposable> {
     const id = randomUUID();
     const method = DidChangeWatchedFilesNotification.type.method;
-    await this.#options.connection.sendRequest(RegistrationRequest.type, {
+    const result = await requestWatcherRegistration(this.#options.connection, {
       registrations: [
         {
           id,
@@ -467,6 +483,7 @@ export class Project {
         },
       ],
     });
+    if (!result.ok) throw result.error;
     return {
       dispose: () => {
         void this.#options.connection
@@ -476,6 +493,13 @@ export class Project {
           .catch(() => undefined);
       },
     };
+  }
+
+  #isConfigUri(uri: string): boolean {
+    return (
+      canonicalFileIdentity(uri) ===
+      canonicalFileIdentity(pathToFileURL(this.configPath).toString())
+    );
   }
 
   filesChanged(uris: readonly string[]): void {
@@ -511,7 +535,7 @@ export class Project {
     if (this.#disposed || generation !== this.#watcherGeneration) return;
     for (const uri of uris) this.#options.documents.invalidateTree(uri);
     if (reconcile) this.#invalidateSnapshots();
-    if (uris.some((uri) => normalizeFileUri(uri) === pathToFileURL(this.configPath).toString())) {
+    if (uris.some((uri) => this.#isConfigUri(uri))) {
       await this.reload().catch(() => undefined);
       if (!this.#disposed) this.#options.refreshDiagnostics();
       return;
