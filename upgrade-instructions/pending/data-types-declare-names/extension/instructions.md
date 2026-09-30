@@ -16,7 +16,7 @@ changes:
       `targetTypes` is removed from codec descriptors and templates, with `CodecLookup.targetTypesFor`
       and `CodecDescriptorRegistry.byTargetType`. A SQL codec's type names move to its data type's
       `texts`; a Mongo codec's BSON types move to its data type, declared with
-      `mongoDataType(id, { bsonTypes })` from `@internal/mongo-contract`.
+      `mongoDataType(id, { bsonTypes })` from `@internal/mongo-contract/data-type`.
     detection:
       glob: "**/*.{ts,mts,cts}"
       matches:
@@ -168,6 +168,14 @@ changes:
       matches:
         - '\bimplements\s+(?:[\w.]+\s*,\s*)*DataTypeLookup\b'
         - ':\s*DataTypeLookup\s*=\s*\{'
+  - id: authoring-entity-context-takes-data-type-lookup
+    summary: |
+      `AuthoringEntityContext` gains a required `dataTypeLookup`, the stack's data types. Code that
+      builds a context passes it.
+    detection:
+      glob: "**/*.{ts,mts,cts}"
+      matches:
+        - ':\s*AuthoringEntityContext\s*=\s*\{'
   - id: validate-scalar-type-codec-ids-removed
     summary: |
       `validateScalarTypeCodecIds` is removed. Stack assembly now refuses, with an `InternalError`,
@@ -254,7 +262,7 @@ override readonly targetTypes = ['vector'] as const;
 // after: the line is gone; the names are the data type's texts
 ```
 
-Code that read `codecLookup.targetTypesFor(codecId)` or `registry.byTargetType(name)` reads the data type instead: `dataTypeLookup.get(codecLookup.descriptorFor(codecId).dataType)`. For a SQL type, call `sqlBaseName(type, dataTypeParams(type, typeParams))` or `renderSqlTypeName(...)` from `@internal/sql-contract/data-type`. For a Mongo codec, move the list to the data type the codec names and read it with `bsonTypesOfCodec(codecId, { codecLookup, dataTypes })` from `@internal/mongo-contract`:
+Code that read `codecLookup.targetTypesFor(codecId)` or `registry.byTargetType(name)` reads the data type instead: `dataTypeLookup.get(codecLookup.descriptorFor(codecId).dataType)`. For a SQL type, call `sqlBaseName(type, dataTypeParams(type, typeParams))` or `renderSqlTypeName(...)` from `@internal/sql-contract/data-type`. For a Mongo codec, move the list to the data type the codec names and read it with `bsonTypesOfCodec(codecId, { codecLookup, dataTypeLookup })` from `@internal/mongo-contract/data-type`; the declared type keeps the list at `type.mongo.bsonTypes`:
 
 ```ts
 export const myDecimal = mongoDataType('my/decimal', { bsonTypes: ['decimal'] });
@@ -664,6 +672,22 @@ contractToSchemaIR(contract, { annotationNamespace: 'pg', dataTypeLookup, codecL
 ## `data-type-lookup-lists-all`
 
 Add `all()` to a hand-written `DataTypeLookup`, returning every registered data type in assembly order, or build the lookup with `createDataTypeLookup(types)`.
+
+## `authoring-entity-context-takes-data-type-lookup`
+
+```ts
+// before
+const ctx: AuthoringEntityContext = { family: 'sql', target: 'postgres' };
+
+// after
+const ctx: AuthoringEntityContext = {
+  family: 'sql',
+  target: 'postgres',
+  dataTypeLookup: createDataTypeLookup(postgresDataTypes),
+};
+```
+
+Pass the lookup of the stack the context serves; `createDataTypeLookup` from `@internal/framework-components/codec` builds one from a list of data types.
 
 ## `validate-scalar-type-codec-ids-removed`
 

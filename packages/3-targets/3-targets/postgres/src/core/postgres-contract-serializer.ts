@@ -8,7 +8,7 @@ import {
   type AuthoringEntityTypeNamespace,
   isAuthoringEntityTypeDescriptor,
 } from '@internal/framework-components/authoring';
-import { requiredSchemaKeys } from '@internal/framework-components/codec';
+import { createDataTypeLookup, requiredSchemaKeys } from '@internal/framework-components/codec';
 import {
   type AnyEntityKindDescriptor,
   type Namespace,
@@ -22,6 +22,7 @@ import type { JsonObject } from '@internal/utils/json';
 import type { Type } from 'arktype';
 import { postgresAuthoringEntityTypes } from './authoring';
 import { PG_INT_CODEC_ID, PG_TEXT_CODEC_ID } from './codec-ids';
+import { postgresDataTypes } from './data-types';
 import {
   nativeEnumEntityKind,
   policyEntityKind,
@@ -33,6 +34,7 @@ import { PostgresSchema } from './postgres-schema';
 const POSTGRES_AUTHORING_CTX: AuthoringEntityContext = {
   family: 'sql',
   target: 'postgres',
+  dataTypeLookup: createDataTypeLookup(postgresDataTypes),
   enumInferenceCodecs: { text: PG_TEXT_CODEC_ID, int: PG_INT_CODEC_ID },
 };
 

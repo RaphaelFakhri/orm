@@ -135,7 +135,7 @@ const testCodecLookup: CodecLookup = {
 
 const testDataTypes = createDataTypeLookup([textType, intType, jsonType, vectorType]);
 
-function makeContext(diagnostics: unknown[], withDataTypes = true): AuthoringEntityContext {
+function makeContext(diagnostics: unknown[]): AuthoringEntityContext {
   const sink: AuthoringDiagnosticSink = {
     push: (d) => diagnostics.push(d),
   };
@@ -143,7 +143,7 @@ function makeContext(diagnostics: unknown[], withDataTypes = true): AuthoringEnt
     family: 'sql',
     target: 'postgres',
     codecLookup: testCodecLookup,
-    ...(withDataTypes ? { dataTypeLookup: testDataTypes } : {}),
+    dataTypeLookup: testDataTypes,
     sourceId: 'schema.prisma',
     diagnostics: sink,
     enumInferenceCodecs: { text: TEXT_CODEC_ID, int: INT_CODEC_ID },
@@ -358,22 +358,6 @@ describe('sqlFamilyEnumEntityDescriptor: explicit @@type bypasses inference, nev
         sourceId: 'schema.prisma',
         span: SPAN,
       },
-    ]);
-  });
-
-  it('builds no enum when the context has no data types', () => {
-    const diagnostics: unknown[] = [];
-    const handle = factory(
-      enumBlock({ name: 'Role', values: { admin: 'admin' } }),
-      makeContext(diagnostics, false),
-    );
-
-    expect(handle).toBeUndefined();
-    expect(diagnostics).toEqual([
-      expect.objectContaining({
-        code: 'PSL_EXTENSION_INVALID_VALUE',
-        message: expect.stringContaining('which no component registers'),
-      }),
     ]);
   });
 

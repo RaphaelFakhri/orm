@@ -5,7 +5,7 @@
  */
 
 import type { DataType } from '@internal/framework-components/codec';
-import { mongoDataType } from '@internal/mongo-contract';
+import { mongoDataType } from '@internal/mongo-contract/data-type';
 import { type as arktype } from 'arktype';
 
 /** The vector's dimension, which only the TypeScript type `Vector<n>` reads. */

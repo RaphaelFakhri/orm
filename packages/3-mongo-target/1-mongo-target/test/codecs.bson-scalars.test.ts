@@ -1,6 +1,6 @@
 import type { JsonValue } from '@internal/contract/types';
 import { createDataTypeLookup } from '@internal/framework-components/codec';
-import { bsonTypesOfCodec } from '@internal/mongo-contract';
+import { bsonTypesOfCodec } from '@internal/mongo-contract/data-type';
 import { Binary, Decimal128, Long } from 'bson';
 import { describe, expect, it } from 'vitest';
 import {

@@ -5,7 +5,7 @@ import {
   createDataTypeLookup,
   type DataTypeLookup,
 } from '@internal/framework-components/codec';
-import { mongoDataType } from '@internal/mongo-contract';
+import { mongoDataType } from '@internal/mongo-contract/data-type';
 
 const bsonTypesByCodecId: Record<string, readonly string[]> = {
   'mongo/string@1': ['string'],

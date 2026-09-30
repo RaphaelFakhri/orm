@@ -17,16 +17,21 @@ export interface MongoDataTypeSpec extends Pick<DataTypeSpec, 'params' | 'casts'
   readonly bsonTypes: readonly string[];
 }
 
-export interface MongoDataType extends DataType {
+export interface MongoDataTypeFacts {
   readonly bsonTypes: readonly string[];
 }
 
+export interface MongoDataType extends DataType {
+  readonly mongo: MongoDataTypeFacts;
+}
+
 export function mongoDataType(id: string, spec: MongoDataTypeSpec): MongoDataType {
-  return { ...dataType(id, spec), bsonTypes: [...spec.bsonTypes] };
+  const { bsonTypes, ...frameworkSpec } = spec;
+  return { ...dataType(id, frameworkSpec), mongo: { bsonTypes: [...bsonTypes] } };
 }
 
 export function isMongoDataType(type: DataType): type is MongoDataType {
-  return 'bsonTypes' in type;
+  return 'mongo' in type;
 }
 
 /**
@@ -43,5 +48,5 @@ export function bsonTypesOfCodec(
   const descriptor = lookups.codecLookup?.descriptorFor?.(codecId);
   const type =
     descriptor === undefined ? undefined : lookups.dataTypeLookup.get(descriptor.dataType);
-  return type !== undefined && isMongoDataType(type) ? type.bsonTypes : undefined;
+  return type !== undefined && isMongoDataType(type) ? type.mongo.bsonTypes : undefined;
 }

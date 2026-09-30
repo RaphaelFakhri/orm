@@ -283,7 +283,11 @@ export function createComposedAuthoringHelpers<
     'the helpers are the same objects for every set of packs; the packs decide only their types'
   >({
     ...createEntityHelpersFromNamespace(entityNamespace, {
-      ctx: { family: options.family.familyId, target: options.target.targetId },
+      ctx: {
+        family: options.family.familyId,
+        target: options.target.targetId,
+        dataTypeLookup: options.dataTypeLookup,
+      },
     }),
     field: createComposedFieldHelpers(fieldNamespace, options),
     model,

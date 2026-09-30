@@ -1102,6 +1102,7 @@ function buildModelNodeFromPsl(input: BuildModelNodeInput): BuildModelNodeResult
       const lowered = lower(parsed, {
         family: input.familyId,
         target: input.targetId,
+        dataTypeLookup: input.dataTypeSupport.lookup,
         modelName: model.name,
         storageName: tableName,
         fieldStorageName: (fieldName) => mapping.fieldColumns.get(fieldName),

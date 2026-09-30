@@ -1,5 +1,5 @@
 import type { DataType } from '@internal/framework-components/codec';
-import { isMongoDataType } from '@internal/mongo-contract';
+import { isMongoDataType } from '@internal/mongo-contract/data-type';
 import { type } from 'arktype';
 import { describe, expect, it } from 'vitest';
 import { mongoCodecDescriptors } from '../src/core/codecs';
@@ -35,7 +35,9 @@ describe('the Mongo data type declarations', () => {
     '%s is declared as design 2.6 says',
     (id, type) => {
       expect(EXPECTED_BSON_TYPES).toHaveProperty([id]);
-      expect(isMongoDataType(type) ? type.bsonTypes : undefined).toEqual(EXPECTED_BSON_TYPES[id]);
+      expect(isMongoDataType(type) ? type.mongo.bsonTypes : undefined).toEqual(
+        EXPECTED_BSON_TYPES[id],
+      );
       expect(Object.keys(type.casts)).toEqual([]);
       expect(type.listCast).toBeUndefined();
     },

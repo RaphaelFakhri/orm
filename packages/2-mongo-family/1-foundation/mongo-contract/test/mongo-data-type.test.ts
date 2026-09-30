@@ -1,4 +1,4 @@
-import { dataType } from '@internal/framework-components/codec';
+import { type DataType, dataType } from '@internal/framework-components/codec';
 import { type } from 'arktype';
 import { describe, expect, it } from 'vitest';
 import { isMongoDataType, mongoDataType } from '../src/mongo-data-type';
@@ -6,11 +6,15 @@ import { isMongoDataType, mongoDataType } from '../src/mongo-data-type';
 describe('mongoDataType', () => {
   it('declares a data type with the BSON types it is stored as', () => {
     const declared = mongoDataType('demo/number', { bsonTypes: ['int', 'long'] });
-    expect(declared).toEqual({ id: 'demo/number', casts: {}, bsonTypes: ['int', 'long'] });
+    expect(declared).toEqual({
+      id: 'demo/number',
+      casts: {},
+      mongo: { bsonTypes: ['int', 'long'] },
+    });
   });
 
   it('allows a type stored as no one BSON type', () => {
-    expect(mongoDataType('demo/any', { bsonTypes: [] }).bsonTypes).toEqual([]);
+    expect(mongoDataType('demo/any', { bsonTypes: [] }).mongo.bsonTypes).toEqual([]);
   });
 
   it('keeps the parameter schema and the casts', () => {
@@ -39,5 +43,9 @@ describe('isMongoDataType', () => {
 
   it('does not claim a plain data type', () => {
     expect(isMongoDataType(dataType('demo/plain', {}))).toBe(false);
+  });
+
+  it('does not claim a data type of another family', () => {
+    expect(isMongoDataType({ ...dataType('demo/sql', {}), sql: {} } as DataType)).toBe(false);
   });
 });

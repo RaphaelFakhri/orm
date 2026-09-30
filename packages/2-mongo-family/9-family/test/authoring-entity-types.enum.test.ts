@@ -10,7 +10,7 @@ import {
   type CodecLookup,
   createDataTypeLookup,
 } from '@internal/framework-components/codec';
-import { mongoDataType } from '@internal/mongo-contract';
+import { mongoDataType } from '@internal/mongo-contract/data-type';
 import { describe, expect, it } from 'vitest';
 import { mongoFamilyEnumEntityDescriptor } from '../src/core/authoring-entity-types';
 
@@ -94,6 +94,7 @@ const dataTypeIdByCodecId: Record<string, string> = {
   'mongo/bson@1': 'test/mongo-bson',
   [JSON_CODEC_ID]: 'test/json',
   [FOLDING_CODEC_ID]: 'test/folding-text',
+  'test/orphan@1': 'test/unregistered',
 };
 
 const testDataTypes = createDataTypeLookup([
@@ -330,6 +331,25 @@ describe('mongoFamilyEnumEntityDescriptor: explicit @@type bypasses inference, n
     expect(handle).toBeUndefined();
     expect(diagnostics).toEqual([
       expect.objectContaining({ code: 'PSL_ENUM_BARE_MEMBER_NON_STRING_CODEC' }),
+    ]);
+  });
+
+  it('reports a known codec whose data type no component registers', () => {
+    const diagnostics: unknown[] = [];
+    const handle = factory(
+      enumBlock({ name: 'Role', values: { admin: 'admin' }, typeCodecId: 'test/orphan@1' }),
+      makeContext(diagnostics),
+    );
+
+    expect(handle).toBeUndefined();
+    expect(diagnostics).toEqual([
+      {
+        code: 'PSL_EXTENSION_INVALID_VALUE',
+        message:
+          'enum "Role" @@type codec "test/orphan@1" represents data type "test/unregistered", which no component registers',
+        sourceId: 'schema.prisma',
+        span: SPAN,
+      },
     ]);
   });
 
