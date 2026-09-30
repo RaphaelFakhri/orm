@@ -44,7 +44,7 @@ describe('Postgres Date codec wiring', () => {
     for (const name of ['timestamptzDate', 'createdAtDate', 'updatedAtDate']) {
       expect(postgresAuthoringFieldPresets.temporal).not.toHaveProperty(name);
     }
-    const input = { codecId, nativeType: 'timestamptz' };
+    const input = { codecId };
     const convenience = temporalAuthoringPresets(input);
     expect(postgresAuthoringFieldPresets.temporal).toMatchObject({
       timestamptzJsDate: temporalCodecPresetWithPrecision(input),

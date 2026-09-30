@@ -6,7 +6,7 @@ export const postgisAuthoringTypes = {
     Geometry: {
       kind: 'typeConstructor',
       inferred: true,
-      args: [{ kind: 'number', name: 'srid', integer: true, minimum: 0, optional: true }],
+      args: [{ kind: 'number', name: 'srid', integer: true, optional: true }],
       output: {
         codecId: POSTGIS_GEOMETRY_CODEC_ID,
         typeParams: {

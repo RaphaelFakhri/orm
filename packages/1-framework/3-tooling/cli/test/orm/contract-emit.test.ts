@@ -345,8 +345,7 @@ describe('contract emit', () => {
         sourceWarnings: [
           {
             code: 'PSL_DEPRECATED_SCALAR_NAME',
-            message:
-              'Scalar type "Int" is deprecated and will be removed; use "Int32" (stored as BSON int).',
+            message: 'Scalar type "Int" is deprecated and will be removed; use "Int32".',
             sourceId: 'prisma/schema.prisma',
             span: {
               start: { offset: 30, line: 3, column: 9 },
@@ -364,7 +363,7 @@ describe('contract emit', () => {
     expect(run.events).toContainEqual({
       kind: 'message',
       severity: 'warn',
-      text: 'warning prisma/schema.prisma:3:9 PSL_DEPRECATED_SCALAR_NAME Scalar type "Int" is deprecated and will be removed; use "Int32" (stored as BSON int).',
+      text: 'warning prisma/schema.prisma:3:9 PSL_DEPRECATED_SCALAR_NAME Scalar type "Int" is deprecated and will be removed; use "Int32".',
     });
   });
 

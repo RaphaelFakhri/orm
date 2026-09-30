@@ -33,19 +33,18 @@ import { printPslFromFlat } from './fixtures';
 
 /** The type constructors the printed schema names, bound to the codec `contract emit` resolves. */
 const authoringTypes = {
-  String: { kind: 'typeConstructor', output: { codecId: 'pg/text@1', nativeType: 'text' } },
-  Boolean: { kind: 'typeConstructor', output: { codecId: 'pg/bool@1', nativeType: 'bool' } },
-  Int: { kind: 'typeConstructor', output: { codecId: 'pg/int4@1', nativeType: 'int4' } },
-  SmallInt: { kind: 'typeConstructor', output: { codecId: 'pg/int2@1', nativeType: 'int2' } },
-  BigInt: { kind: 'typeConstructor', output: { codecId: 'pg/int8@1', nativeType: 'int8' } },
-  Float: { kind: 'typeConstructor', output: { codecId: 'pg/float8@1', nativeType: 'float8' } },
-  Jsonb: { kind: 'typeConstructor', output: { codecId: 'pg/jsonb@1', nativeType: 'jsonb' } },
+  String: { kind: 'typeConstructor', output: { codecId: 'pg/text@1' } },
+  Boolean: { kind: 'typeConstructor', output: { codecId: 'pg/bool@1' } },
+  Int: { kind: 'typeConstructor', output: { codecId: 'pg/int4@1' } },
+  SmallInt: { kind: 'typeConstructor', output: { codecId: 'pg/int2@1' } },
+  BigInt: { kind: 'typeConstructor', output: { codecId: 'pg/int8@1' } },
+  Float: { kind: 'typeConstructor', output: { codecId: 'pg/float8@1' } },
+  Jsonb: { kind: 'typeConstructor', output: { codecId: 'pg/jsonb@1' } },
   Timestamp: {
     kind: 'typeConstructor',
     args: [{ kind: 'number', name: 'precision', integer: true, minimum: 0, optional: true }],
     output: {
       codecId: 'pg/timestamp-temporal@1',
-      nativeType: 'timestamp',
       typeParams: { precision: { kind: 'arg', index: 0 } },
     },
   },
@@ -57,7 +56,6 @@ const authoringTypes = {
     ],
     output: {
       codecId: 'pg/numeric@1',
-      nativeType: 'numeric',
       typeParams: { precision: { kind: 'arg', index: 0 }, scale: { kind: 'arg', index: 1 } },
     },
   },

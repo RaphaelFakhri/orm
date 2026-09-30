@@ -1,5 +1,14 @@
 import sqlFamilyPack from '@internal/family-sql/pack';
-import type { ExtensionPackRef } from '@internal/framework-components/components';
+import {
+  type CodecLookup,
+  createDataTypeLookup,
+  type DataType,
+  type DataTypeLookup,
+} from '@internal/framework-components/codec';
+import type {
+  ComponentMetadata,
+  ExtensionPackRef,
+} from '@internal/framework-components/components';
 import type {
   SqlNamespaceBase,
   SqlNamespaceInput,
@@ -40,6 +49,8 @@ type PostgresResult<
       readonly extensions?: Extensions;
       readonly enums?: Enums;
       readonly createNamespace: (input: SqlNamespaceInput) => SqlNamespaceBase;
+      readonly codecLookup: CodecLookup;
+      readonly dataTypeLookup: DataTypeLookup;
     }
   >
 >;
@@ -48,8 +59,20 @@ type PostgresBaseScaffold<
   Extensions extends Record<string, ExtensionPackRef<'sql', string>> | undefined,
 > = Omit<
   ContractInput<SqlFamily, PostgresPack, Record<never, never>, Record<never, never>, Extensions>,
-  'family' | 'target' | 'types' | 'models' | 'enums' | 'createNamespace' | 'entities'
+  | 'family'
+  | 'target'
+  | 'types'
+  | 'models'
+  | 'enums'
+  | 'createNamespace'
+  | 'entities'
+  | 'codecLookup'
+  | 'dataTypeLookup'
 > & {
+  /** Overrides the codecs of the target and the extensions. */
+  readonly codecLookup?: CodecLookup;
+  /** Overrides the data types of the target and the extensions. */
+  readonly dataTypeLookup?: DataTypeLookup;
   /**
    * RLS handles (`policy*`, `rlsEnabled`, `role`), lowered by the generic
    * contract build through the postgres pack's entity-handle hook —
@@ -79,6 +102,10 @@ type PostgresScaffold<
   readonly models?: never;
   readonly enums?: Enums;
 };
+
+function dataTypesOf(pack: Pick<ComponentMetadata, 'dataTypes'>): readonly DataType[] {
+  return pack.dataTypes ?? [];
+}
 
 export function defineContract<
   const Types extends TypesConstraint = Record<never, never>,
@@ -115,12 +142,18 @@ export function defineContract(
     readonly enums?: EnumsConstraint;
   },
 ): PostgresResult<TypesConstraint, ModelsConstraint, undefined, EnumsConstraint> {
+  const extensionPacks: readonly Pick<ComponentMetadata, 'dataTypes'>[] = Object.values(
+    definition.extensions ?? {},
+  );
   const bound = {
     ...definition,
     createNamespace: postgresCreateNamespace,
     codecLookup:
       definition.codecLookup ??
       assemblePostgresCodecRegistryWithBuiltins(Object.values(definition.extensions ?? {})),
+    dataTypeLookup:
+      definition.dataTypeLookup ??
+      createDataTypeLookup([postgresPack, ...extensionPacks].flatMap(dataTypesOf)),
   };
   if (factory !== undefined) {
     return buildBoundContract(sqlFamilyPack, postgresPack, bound, factory);

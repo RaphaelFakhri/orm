@@ -25,6 +25,7 @@ import {
   postgresAuthoringModelAttributes,
   postgresAuthoringPslBlockDescriptors,
 } from '../../src/core/authoring';
+import { createPostgresBuiltinCodecLookup } from '../../src/core/codec-registry';
 import { PostgresCreateIndex } from '../../src/core/ddl/nodes';
 import { postgresTargetDescriptorMeta } from '../../src/core/descriptor-meta';
 import { createPostgresMigrationPlanner } from '../../src/core/migrations/planner';
@@ -34,6 +35,7 @@ import { PostgresNamespaceSchemaNode } from '../../src/core/schema-ir/postgres-n
 import { PostgresTableSchemaNode } from '../../src/core/schema-ir/postgres-table-schema-node';
 
 const postgresDataTypeLookup = createDataTypeLookup(postgresDataTypes);
+const postgresCodecLookup = createPostgresBuiltinCodecLookup();
 
 const TYPED_ATTRIBUTE_SCHEMA = `
 model Message {
@@ -58,8 +60,8 @@ const assembled = assembleAuthoringContributions([
       pslBlockDescriptors: postgresAuthoringPslBlockDescriptors,
       modelAttributes: postgresAuthoringModelAttributes,
       type: {
-        Int: { kind: 'typeConstructor', output: { codecId: 'pg/int4@1', nativeType: 'int4' } },
-        String: { kind: 'typeConstructor', output: { codecId: 'pg/text@1', nativeType: 'text' } },
+        Int: { kind: 'typeConstructor', output: { codecId: 'pg/int4@1' } },
+        String: { kind: 'typeConstructor', output: { codecId: 'pg/text@1' } },
       },
     },
   },
@@ -78,6 +80,7 @@ function authoredContract(schema: string): Contract<SqlStorage> {
     capabilities: {},
     target: postgresTargetDescriptorMeta,
     dataTypeLookup: postgresDataTypeLookup,
+    codecLookup: postgresCodecLookup,
     scalarColumnDescriptors: new Map([
       ['Int', { codecId: 'pg/int4@1', nativeType: 'int4' }],
       ['String', { codecId: 'pg/text@1', nativeType: 'text' }],

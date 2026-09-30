@@ -528,16 +528,15 @@ export const pgEnumDescriptor = new PgEnumDescriptor();
 export function postgresQualifyColumnType(
   input: {
     readonly codecId: string;
-    readonly nativeType: string;
     readonly typeParams?: Record<string, unknown>;
   },
   namespaceId: string,
-): { readonly nativeType: string; readonly typeParams?: Record<string, unknown> } {
+): { readonly typeParams?: Record<string, unknown> } {
   if (input.codecId !== PG_ENUM_CODEC_ID) return input;
   const bareTypeName = input.typeParams?.['typeName'];
   if (typeof bareTypeName !== 'string') return input;
   const qualified = pgEnumDescriptor.qualifyNativeType(bareTypeName, namespaceId);
-  return { nativeType: qualified, typeParams: { ...input.typeParams, typeName: qualified } };
+  return { typeParams: { ...input.typeParams, typeName: qualified } };
 }
 
 /**

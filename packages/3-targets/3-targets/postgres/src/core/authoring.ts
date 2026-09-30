@@ -174,7 +174,7 @@ export const postgresNativeAuthoringTypes = {
     kind: 'typeConstructor',
     inferred: true,
     documentation: 'Variable-length text with an optional maximum character length.',
-    args: [{ kind: 'number', name: 'length', integer: true, minimum: 1, optional: true }],
+    args: [{ kind: 'number', name: 'length', integer: true, optional: true }],
     output: {
       codecId: 'sql/varchar@1',
       typeParams: { length: { kind: 'arg', index: 0 } },
@@ -184,7 +184,7 @@ export const postgresNativeAuthoringTypes = {
     kind: 'typeConstructor',
     inferred: true,
     documentation: 'Fixed-length, blank-padded text with an optional character length.',
-    args: [{ kind: 'number', name: 'length', integer: true, minimum: 1, optional: true }],
+    args: [{ kind: 'number', name: 'length', integer: true, optional: true }],
     output: {
       codecId: 'sql/char@1',
       typeParams: { length: { kind: 'arg', index: 0 } },
@@ -195,8 +195,8 @@ export const postgresNativeAuthoringTypes = {
     inferred: true,
     documentation: 'An exact decimal value with optional precision and scale.',
     args: [
-      { kind: 'number', name: 'precision', integer: true, minimum: 1, optional: true },
-      { kind: 'number', name: 'scale', integer: true, minimum: 0, optional: true },
+      { kind: 'number', name: 'precision', integer: true, optional: true },
+      { kind: 'number', name: 'scale', integer: true, optional: true },
     ],
     output: {
       codecId: 'pg/numeric@1',
@@ -210,7 +210,7 @@ export const postgresNativeAuthoringTypes = {
     kind: 'typeConstructor',
     inferred: true,
     documentation: 'A date and time without a time zone, represented as Temporal.PlainDateTime.',
-    args: [{ kind: 'number', name: 'precision', integer: true, minimum: 0, optional: true }],
+    args: [{ kind: 'number', name: 'precision', integer: true, optional: true }],
     output: {
       codecId: 'pg/timestamp-temporal@1',
       typeParams: { precision: { kind: 'arg', index: 0 } },
@@ -221,7 +221,7 @@ export const postgresNativeAuthoringTypes = {
     inferred: true,
     documentation:
       'An instant represented as Temporal.Instant, with optional fractional-second precision.',
-    args: [{ kind: 'number', name: 'precision', integer: true, minimum: 0, optional: true }],
+    args: [{ kind: 'number', name: 'precision', integer: true, optional: true }],
     output: {
       codecId: 'pg/timestamptz-temporal@1',
       typeParams: { precision: { kind: 'arg', index: 0 } },
@@ -231,7 +231,7 @@ export const postgresNativeAuthoringTypes = {
     kind: 'typeConstructor',
     inferred: true,
     documentation: 'A time of day without a time zone, represented as Temporal.PlainTime.',
-    args: [{ kind: 'number', name: 'precision', integer: true, minimum: 0, optional: true }],
+    args: [{ kind: 'number', name: 'precision', integer: true, optional: true }],
     output: {
       codecId: 'pg/time-temporal@1',
       typeParams: { precision: { kind: 'arg', index: 0 } },
@@ -241,7 +241,7 @@ export const postgresNativeAuthoringTypes = {
     kind: 'typeConstructor',
     inferred: true,
     documentation: 'A time of day with a UTC offset stored as PostgreSQL timetz.',
-    args: [{ kind: 'number', name: 'precision', integer: true, minimum: 0, optional: true }],
+    args: [{ kind: 'number', name: 'precision', integer: true, optional: true }],
     output: {
       codecId: 'pg/timetz@1',
       typeParams: { precision: { kind: 'arg', index: 0 } },
@@ -289,7 +289,7 @@ export const postgresNativeAuthoringTypes = {
   TimestampString: {
     kind: 'typeConstructor',
     documentation: 'A timestamp without a time zone represented as PostgreSQL text.',
-    args: [{ kind: 'number', name: 'precision', integer: true, minimum: 0, optional: true }],
+    args: [{ kind: 'number', name: 'precision', integer: true, optional: true }],
     output: {
       codecId: 'pg/timestamp-string@1',
       typeParams: { precision: { kind: 'arg', index: 0 } },
@@ -299,7 +299,7 @@ export const postgresNativeAuthoringTypes = {
     kind: 'typeConstructor',
     documentation:
       'An instant stored as PostgreSQL timestamptz and represented as a JavaScript Date.',
-    args: [{ kind: 'number', name: 'precision', integer: true, minimum: 0, optional: true }],
+    args: [{ kind: 'number', name: 'precision', integer: true, optional: true }],
     output: {
       codecId: PG_TIMESTAMPTZ_DATE_CODEC_ID,
       typeParams: { precision: { kind: 'arg', index: 0 } },
@@ -308,7 +308,7 @@ export const postgresNativeAuthoringTypes = {
   TimestamptzString: {
     kind: 'typeConstructor',
     documentation: 'A timestamp with time zone represented as PostgreSQL text.',
-    args: [{ kind: 'number', name: 'precision', integer: true, minimum: 0, optional: true }],
+    args: [{ kind: 'number', name: 'precision', integer: true, optional: true }],
     output: {
       codecId: 'pg/timestamptz-string@1',
       typeParams: { precision: { kind: 'arg', index: 0 } },
@@ -317,7 +317,7 @@ export const postgresNativeAuthoringTypes = {
   TimeString: {
     kind: 'typeConstructor',
     documentation: 'A time of day without a time zone represented as PostgreSQL text.',
-    args: [{ kind: 'number', name: 'precision', integer: true, minimum: 0, optional: true }],
+    args: [{ kind: 'number', name: 'precision', integer: true, optional: true }],
     output: {
       codecId: 'pg/time-string@1',
       typeParams: { precision: { kind: 'arg', index: 0 } },

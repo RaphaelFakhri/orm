@@ -8,28 +8,24 @@ import { parse } from '@internal/psl-parser/syntax';
 import { describe, expect, it } from 'vitest';
 import { interpretPslDocumentToMongoContract } from '../src/interpreter';
 
-function scalar(
-  codecId: string,
-  nativeType: string,
-  replacement?: string,
-): AuthoringTypeConstructorDescriptor {
+function scalar(codecId: string, replacement?: string): AuthoringTypeConstructorDescriptor {
   return {
     kind: 'typeConstructor',
-    output: { codecId, nativeType },
+    output: { codecId },
     ...(replacement === undefined ? {} : { deprecated: { replacement } }),
   };
 }
 
 const type = {
-  ObjectId: scalar('mongo/objectId@1', 'objectId'),
-  Int32: scalar('mongo/int32@1', 'int'),
-  Double: scalar('mongo/double@1', 'double'),
-  Bool: scalar('mongo/bool@1', 'bool'),
-  Date: scalar('mongo/date@1', 'date'),
-  Int: scalar('mongo/int32@1', 'int', 'Int32'),
-  Float: scalar('mongo/double@1', 'double', 'Double'),
-  Boolean: scalar('mongo/bool@1', 'bool', 'Bool'),
-  DateTime: scalar('mongo/date@1', 'date', 'Date'),
+  ObjectId: scalar('mongo/objectId@1'),
+  Int32: scalar('mongo/int32@1'),
+  Double: scalar('mongo/double@1'),
+  Bool: scalar('mongo/bool@1'),
+  Date: scalar('mongo/date@1'),
+  Int: scalar('mongo/int32@1', 'Int32'),
+  Float: scalar('mongo/double@1', 'Double'),
+  Boolean: scalar('mongo/bool@1', 'Bool'),
+  DateTime: scalar('mongo/date@1', 'Date'),
 };
 
 const scalarTypeCodecIds: ReadonlyMap<string, string> = new Map(
@@ -64,20 +60,20 @@ const schemaWith = (typeName: string) =>
 
 describe('deprecated Mongo PSL scalar names', () => {
   it.each([
-    ['Int', 'Int32', 'int'],
-    ['Float', 'Double', 'double'],
-    ['Boolean', 'Bool', 'bool'],
-    ['DateTime', 'Date', 'date'],
+    ['Int', 'Int32'],
+    ['Float', 'Double'],
+    ['Boolean', 'Bool'],
+    ['DateTime', 'Date'],
   ])(
     'accepts %s with a warning at the type, and gives the contract %s gives',
-    (oldName, newName, bsonType) => {
+    (oldName, newName) => {
       const deprecated = interpret(schemaWith(oldName));
       const current = interpret(schemaWith(newName));
 
       expect(deprecated.warnings).toEqual([
         {
           code: 'PSL_DEPRECATED_SCALAR_NAME',
-          message: `Scalar type "${oldName}" is deprecated and will be removed; use "${newName}" (stored as BSON ${bsonType}).`,
+          message: `Scalar type "${oldName}" is deprecated and will be removed; use "${newName}".`,
           sourceId: 'schema.prisma',
           span: expect.objectContaining({
             start: expect.objectContaining({ line: 3, column: 9 }),

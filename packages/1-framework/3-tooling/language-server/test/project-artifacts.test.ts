@@ -139,8 +139,7 @@ describe('createProjectArtifacts', () => {
     const { interpretation } = interpretationDouble((_input, context) => {
       context.reportWarning?.({
         code: 'PSL_DEPRECATED_SCALAR_NAME',
-        message:
-          'Scalar type "Int" is deprecated and will be removed; use "Int32" (stored as BSON int).',
+        message: 'Scalar type "Int" is deprecated and will be removed; use "Int32".',
         sourceId: schemaUri,
         span: {
           start: { offset: 34, line: 3, column: 6 },
@@ -161,8 +160,7 @@ describe('createProjectArtifacts', () => {
       {
         range: { start: { line: 2, character: 5 }, end: { line: 2, character: 8 } },
         code: 'PSL_DEPRECATED_SCALAR_NAME',
-        message:
-          'Scalar type "Int" is deprecated and will be removed; use "Int32" (stored as BSON int).',
+        message: 'Scalar type "Int" is deprecated and will be removed; use "Int32".',
         severity: 2,
       },
     ]);

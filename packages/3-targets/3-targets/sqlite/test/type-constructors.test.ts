@@ -1,6 +1,10 @@
 import { collectScalarTypeConstructors } from '@internal/framework-components/authoring';
+import { createDataTypeLookup } from '@internal/framework-components/codec';
+import { storedSqlTypeNameOfCodec } from '@internal/sql-contract/data-type';
 import { describe, expect, it } from 'vitest';
 import { sqliteAuthoringTypes, sqliteScalarAuthoringTypes } from '../src/core/authoring';
+import { createSqliteBuiltinCodecLookup } from '../src/core/codec-registry';
+import { sqliteDataTypes } from '../src/core/data-types';
 import sqliteTargetPack from '../src/exports/pack';
 
 describe('the type constructors the SQLite target contributes', () => {
@@ -12,17 +16,39 @@ describe('the type constructors the SQLite target contributes', () => {
     ]);
   });
 
-  it('pins every base scalar to its codec and native type', () => {
-    expect(Object.fromEntries(collectScalarTypeConstructors(sqliteScalarAuthoringTypes))).toEqual({
-      String: { codecId: 'sqlite/text@1', nativeType: 'text' },
-      Int: { codecId: 'sqlite/integer@1', nativeType: 'integer' },
-      BigInt: { codecId: 'sqlite/bigint@1', nativeType: 'integer' },
-      Float: { codecId: 'sqlite/real@1', nativeType: 'real' },
-      Decimal: { codecId: 'sqlite/text@1', nativeType: 'text' },
-      DateTime: { codecId: 'sqlite/datetime@1', nativeType: 'text' },
-      Json: { codecId: 'sqlite/json@1', nativeType: 'text' },
-      Bytes: { codecId: 'sqlite/blob@1', nativeType: 'blob' },
-    });
+  const scalarNames = [
+    ['String', 'sqlite/text@1', 'text'],
+    ['Int', 'sqlite/integer@1', 'integer'],
+    ['BigInt', 'sqlite/bigint@1', 'integer'],
+    ['Float', 'sqlite/real@1', 'real'],
+    ['Decimal', 'sqlite/text@1', 'text'],
+    ['DateTime', 'sqlite/datetime@1', 'text'],
+    ['Json', 'sqlite/json@1', 'text'],
+    ['Bytes', 'sqlite/blob@1', 'blob'],
+  ] as const;
+
+  it('pins every base scalar to its codec', () => {
+    expect(Object.fromEntries(collectScalarTypeConstructors(sqliteScalarAuthoringTypes))).toEqual(
+      Object.fromEntries(scalarNames.map(([name, codecId]) => [name, { codecId }])),
+    );
+  });
+
+  it.each(scalarNames)(
+    '%s keeps its type name, now its codec’s data type’s',
+    (_name, codecId, typeName) => {
+      expect(
+        storedSqlTypeNameOfCodec(codecId, undefined, {
+          codecLookup: createSqliteBuiltinCodecLookup(),
+          dataTypeLookup: createDataTypeLookup(sqliteDataTypes),
+        }),
+      ).toBe(typeName);
+    },
+  );
+
+  it('marks no constructor inferred, because SQLite has no contract infer', () => {
+    expect(
+      Object.values(sqliteAuthoringTypes).filter((descriptor) => 'inferred' in descriptor),
+    ).toEqual([]);
   });
 
   it.each(Object.entries(sqliteAuthoringTypes))('documents %s', (_name, descriptor) => {

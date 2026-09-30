@@ -24,7 +24,7 @@ import {
 
 interface ColumnSpecShape {
   readonly codecId: string;
-  readonly nativeType: string;
+  readonly nativeType?: string;
   readonly typeParams: Record<string, unknown> | undefined;
 }
 

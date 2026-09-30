@@ -9,7 +9,6 @@ describe('sqliteAuthoringFieldPresets', () => {
   it('contributes BigIntNumber as its only integer-representation type', () => {
     expect(sqliteAuthoringTypes.BigIntNumber.output).toEqual({
       codecId: 'sqlite/bigintnumber@1',
-      nativeType: 'integer',
     });
     expect(sqliteAuthoringTypes).not.toHaveProperty('UnboundedInt');
   });
@@ -27,7 +26,7 @@ describe('sqliteAuthoringFieldPresets', () => {
 describe('sqlite temporal per-codec presets', () => {
   it('registers datetime against sqlite/datetime@1, named for the codec base name', () => {
     expect(sqliteAuthoringFieldPresets.temporal.datetime).toEqual(
-      temporalCodecPreset({ codecId: 'sqlite/datetime@1', nativeType: 'text' }),
+      temporalCodecPreset({ codecId: 'sqlite/datetime@1' }),
     );
   });
 
@@ -41,8 +40,8 @@ describe('sqlite temporal per-codec presets', () => {
 
   it('keeps the createdAt/updatedAt convenience presets alongside the new sibling', () => {
     expect(sqliteAuthoringFieldPresets.temporal).toEqual({
-      ...temporalAuthoringPresets({ codecId: 'sqlite/datetime@1', nativeType: 'text' }),
-      datetime: temporalCodecPreset({ codecId: 'sqlite/datetime@1', nativeType: 'text' }),
+      ...temporalAuthoringPresets({ codecId: 'sqlite/datetime@1' }),
+      datetime: temporalCodecPreset({ codecId: 'sqlite/datetime@1' }),
     });
   });
 });

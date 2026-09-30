@@ -321,7 +321,7 @@ describe('value objects', () => {
         ext: {
           Citext: {
             kind: 'typeConstructor',
-            output: { codecId: extensionCodec.codecId, nativeType: 'citext' },
+            output: { codecId: extensionCodec.codecId },
           },
         },
       },

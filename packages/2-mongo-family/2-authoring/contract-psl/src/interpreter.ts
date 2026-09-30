@@ -134,7 +134,7 @@ function deprecatedScalarWarner(input: {
       [
         {
           code: 'PSL_DEPRECATED_SCALAR_NAME',
-          message: `Scalar type "${field.typeName}" is deprecated and will be removed; use "${descriptor.deprecated.replacement}" (stored as BSON ${descriptor.output.nativeType}).`,
+          message: `Scalar type "${field.typeName}" is deprecated and will be removed; use "${descriptor.deprecated.replacement}".`,
           ...diagnosticSource(input.sources, typeNode).at(),
         },
       ],
