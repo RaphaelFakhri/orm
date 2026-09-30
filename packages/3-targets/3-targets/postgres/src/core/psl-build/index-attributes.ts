@@ -44,7 +44,7 @@ export type AttributeNaming =
  * live name parses as a wire name AND that hash recomputes from the
  * introspected content; otherwise exact.
  */
-function detectIndexNaming(index: IndexAttributeSource): AttributeNaming {
+export function detectIndexNaming(index: IndexAttributeSource): AttributeNaming {
   const parsed = parseWireName(index.name);
   const recomputed = computeIndexContentHash({
     ...(index.columns !== undefined ? { columns: index.columns } : {}),

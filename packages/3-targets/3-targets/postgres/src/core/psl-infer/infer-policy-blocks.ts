@@ -1,20 +1,13 @@
 import type { PslExtensionBlock } from '@internal/framework-components/psl-ast';
 import { isPslIdentifier } from '@internal/psl-parser';
-import { printSqlExpressionLiteral, sqlTextReadsBack } from '@internal/sql-contract/sql-expression';
+import { printSqlExpressionLiteral, sqlTextsReadBack } from '@internal/sql-contract/sql-expression';
 import { escapePslString } from '@internal/sql-relational-core/ast';
 import { parseWireName } from '@internal/sql-schema-ir/naming';
 import { assertDefined } from '@internal/utils/assertions';
 import { POLICY_BLOCK_KEYWORDS } from '../authoring';
 import { SYNTHETIC_SPAN } from '../psl-build/psl-literals';
 import type { PostgresPolicySchemaNode } from '../schema-ir/postgres-policy-schema-node';
-
-/** Why `contract infer` skips an object whose SQL a `sql` literal would change. */
-export const SQL_DOES_NOT_READ_BACK =
-  'its SQL cannot be written as a sql literal that reads back unchanged';
-
-function readsBackOrAbsent(text: string | undefined): boolean {
-  return text === undefined || sqlTextReadsBack(text);
-}
+import { SQL_DOES_NOT_READ_BACK } from './infer-sql-text';
 
 /** Replaces invalid character runs with `_`; prepends `_` when the first character is invalid. */
 function sanitizePolicyHead(raw: string): string {
@@ -89,7 +82,7 @@ export function buildIntrospectedPolicyBlocks(
       );
       continue;
     }
-    if (![policy.using, policy.withCheck].every(readsBackOrAbsent)) {
+    if (!sqlTextsReadBack([policy.using, policy.withCheck])) {
       skipNote(SQL_DOES_NOT_READ_BACK);
       continue;
     }

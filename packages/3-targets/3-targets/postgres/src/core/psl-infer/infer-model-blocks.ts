@@ -18,7 +18,7 @@ import type {
   PslModelAttribute,
   PslTypeConstructorCall,
 } from '@internal/framework-components/psl-ast';
-import { sqlTextReadsBack } from '@internal/sql-contract/sql-expression';
+import { sqlTextsReadBack } from '@internal/sql-contract/sql-expression';
 import { escapePslString } from '@internal/sql-relational-core/ast';
 import {
   composeCheckWirePrefix,
@@ -50,7 +50,7 @@ import { createUniqueFieldName } from '../psl-build/unique-name';
 import { dataTypeForInferredType, inferredDefaultReadsBack } from './infer-default-codec';
 import { buildDanglingForeignKeyWarning, type DanglingForeignKeyInfo } from './infer-foreign-keys';
 import { resolveColumnFieldName, type TableColumnFieldNameMap } from './infer-names';
-import { SQL_DOES_NOT_READ_BACK } from './infer-policy-blocks';
+import { printableIndex, SQL_DOES_NOT_READ_BACK } from './infer-sql-text';
 
 export function buildModel(
   table: SqlTableIR,
@@ -128,28 +128,28 @@ export function buildModel(
   }
 
   const sqlSkipNotes: string[] = [];
-  const skipsSql = (
-    kind: 'index' | 'check',
-    name: string,
-    texts: readonly (string | undefined)[],
-  ) => {
-    if (texts.every((text) => text === undefined || sqlTextReadsBack(text))) return false;
+  const skipNote = (kind: 'index' | 'check', name: string) =>
     sqlSkipNotes.push(`// prisma: skipped ${kind} "${name}": ${SQL_DOES_NOT_READ_BACK}`);
-    return true;
-  };
 
   for (const index of table.indexes) {
-    if (skipsSql('index', index.name, [index.expression, index.where])) continue;
-    const indexFieldNames = index.columns?.map((columnName) =>
+    const printable = printableIndex(index);
+    if (printable === undefined) {
+      skipNote('index', index.name);
+      continue;
+    }
+    const indexFieldNames = printable.columns?.map((columnName) =>
       resolveColumnFieldName(fieldNamesByTable, table.name, columnName),
     );
-    modelAttributes.push(buildIndexAttribute(index, indexFieldNames));
+    modelAttributes.push(buildIndexAttribute(printable, indexFieldNames));
   }
 
   for (const check of table.checks ?? []) {
-    if (!derivedCheckNames.has(check.name) && !skipsSql('check', check.name, [check.expression])) {
-      modelAttributes.push(buildCheckAttribute(check));
+    if (derivedCheckNames.has(check.name)) continue;
+    if (!sqlTextsReadBack([check.expression])) {
+      skipNote('check', check.name);
+      continue;
     }
+    modelAttributes.push(buildCheckAttribute(check));
   }
 
   if (mapName) {

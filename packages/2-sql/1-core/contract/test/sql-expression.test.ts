@@ -8,7 +8,7 @@ import {
   sqlExpressionAuthoringEntry,
   sqlExpressionDataType,
   sqlTextFromCanonical,
-  sqlTextReadsBack,
+  sqlTextsReadBack,
 } from '../src/sql-expression';
 
 describe('sqlExpressionDataType', () => {
@@ -66,6 +66,12 @@ describe('printSqlExpressionLiteral', () => {
   it('prints a sql literal', () => {
     expect(printSqlExpressionLiteral('gen_random_uuid()')).toBe('sql`gen_random_uuid()`');
   });
+
+  it('throws for a text that would not read back unchanged', () => {
+    expect(() => printSqlExpressionLiteral('  a = 1')).toThrow(
+      'A sql literal cannot hold "  a = 1": it would read back as different text.',
+    );
+  });
 });
 
 describe('assertNothingCastsFromSqlExpression', () => {
@@ -115,17 +121,13 @@ describe('assertNothingCastsFromSqlExpression', () => {
   });
 });
 
-describe('sqlTextReadsBack', () => {
+describe('sqlTextsReadBack', () => {
   it.each([
-    ['a single line', 'a = 1', true],
-    ['several lines', 'a = 1\n  AND b = 2', true],
-    ['an empty text', '', true],
-    ['indented text', '  a = 1', false],
-    ['a blank first line', '\na = 1', false],
-    ['a blank last line', 'a = 1\n', false],
-    ['a carriage return', 'a = 1\r\nAND b = 2', false],
-    ['a NUL character', 'a\u0000', false],
-  ])('%s reads back: %s', (_, text, expected) => {
-    expect(sqlTextReadsBack(text)).toBe(expected);
+    ['no texts', [], true],
+    ['absent texts', [undefined, undefined], true],
+    ['texts that read back', ['a = 1', undefined, 'a = 1\n  AND b = 2'], true],
+    ['one text that does not', ['a = 1', 'a = 1\n'], false],
+  ] as const)('%s: %s', (_, texts, expected) => {
+    expect(sqlTextsReadBack(texts)).toBe(expected);
   });
 });

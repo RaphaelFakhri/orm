@@ -1,9 +1,14 @@
 /**
- * `contract infer` prints the SQL of indexes, checks and policies as `sql` literals, and skips,
- * with a note on the model, an object whose SQL would not read back unchanged.
+ * `contract infer` prints the SQL of indexes, checks and policies as `sql` literals. It skips, with
+ * a note on the model, an exact-named object whose SQL would not read back unchanged, and prints a
+ * wire-named one with its canonical text.
  */
 import { printPsl } from '@internal/psl-printer';
-import { parseNaming } from '@internal/sql-schema-ir/naming';
+import {
+  computeIndexContentHash,
+  formatWireName,
+  parseNaming,
+} from '@internal/sql-schema-ir/naming';
 import type { SqlCheckConstraintIRInput, SqlIndexIRInput } from '@internal/sql-schema-ir/types';
 import { describe, expect, it } from 'vitest';
 import { postgresAuthoringPslBlockDescriptors } from '../../src/core/authoring';
@@ -79,7 +84,7 @@ function infer(input: {
 }
 
 const SKIP_NOTE = (kind: string, name: string) =>
-  `// prisma: skipped ${kind} "${name}": its SQL cannot be written as a sql literal that reads back unchanged`;
+  `// prisma: skipped ${kind} "${name}": its SQL cannot be written as a sql literal that reads back unchanged. It is not in this schema; add it by hand before running migration plan, or the plan will drop it.`;
 
 describe('contract infer prints raw SQL as sql literals', () => {
   it('prints index expression and where as sql literals', () => {
@@ -144,6 +149,20 @@ describe('contract infer skips SQL that would not read back', () => {
     expect(psl).not.toContain('@@index');
     expect(psl).toContain(SKIP_NOTE('index', 'profile_indented'));
     expect(psl).toContain(SKIP_NOTE('index', 'profile_crlf_expr'));
+  });
+
+  it('prints a wire-named index whose where would not read back with its canonical text', () => {
+    const where = '(owner_id > 0)\n';
+    const name = formatWireName(
+      'profile_owner_idx',
+      computeIndexContentHash({ columns: ['owner_id'], where, unique: false }),
+    );
+    const psl = infer({ indexes: [index(name, { columns: ['owner_id'], where })] });
+
+    expect(psl).toContain(
+      '@@index([ownerId], name: "profile_owner_idx", where: sql`(owner_id > 0)`)',
+    );
+    expect(psl).not.toContain('prisma: skipped');
   });
 
   it('skips a policy whose using or withCheck would not read back, with a note', () => {

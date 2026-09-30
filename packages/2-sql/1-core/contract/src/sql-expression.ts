@@ -1,8 +1,8 @@
 import type { JsonValue } from '@internal/contract/types';
 import type { DataTypeAuthoringEntry } from '@internal/framework-components/authoring';
 import {
-  canonicalizeTaggedLiteralBody,
   printTaggedLiteral,
+  taggedLiteralTextReadsBack,
 } from '@internal/framework-components/authoring';
 import type { DataType, DataTypeId } from '@internal/framework-components/codec';
 import { dataType, dataTypeId } from '@internal/framework-components/codec';
@@ -29,15 +29,19 @@ export function sqlTextFromCanonical(value: JsonValue): string {
   throw new InternalError(`A sql/expression value is a string, got ${JSON.stringify(value)}.`);
 }
 
-/** A `sql` literal holding `text`, as `contract infer` prints it. */
+/** A `sql` literal holding `text`. Throws when the literal would read back as different text; check with `sqlTextsReadBack` first. */
 export function printSqlExpressionLiteral(text: string): string {
+  if (!taggedLiteralTextReadsBack(text)) {
+    throw new InternalError(
+      `A sql literal cannot hold ${JSON.stringify(text)}: it would read back as different text.`,
+    );
+  }
   return printTaggedLiteral(SQL_EXPRESSION_TAG, text);
 }
 
-/** Whether `text` reads back unchanged when printed as a `sql` literal. */
-export function sqlTextReadsBack(text: string): boolean {
-  const canonical = canonicalizeTaggedLiteralBody(text);
-  return canonical.ok && canonical.text === text;
+/** Whether every present text reads back unchanged when printed as a `sql` literal. */
+export function sqlTextsReadBack(texts: readonly (string | undefined)[]): boolean {
+  return texts.every((text) => text === undefined || taggedLiteralTextReadsBack(text));
 }
 
 function castFromSqlExpression(type: DataType): string | undefined {

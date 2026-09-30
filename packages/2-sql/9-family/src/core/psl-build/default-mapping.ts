@@ -21,7 +21,7 @@ import type {
 import { printTaggedLiteral } from '@internal/framework-components/authoring';
 import type { DataTypeId, DataTypeLookup } from '@internal/framework-components/codec';
 import { dataTypeId } from '@internal/framework-components/codec';
-import { printSqlExpressionLiteral } from '@internal/sql-contract/sql-expression';
+import { SQL_EXPRESSION_TAG } from '@internal/sql-contract/sql-expression';
 import { escapePslString, numeralText } from '@internal/sql-relational-core/ast';
 import { defaultInCanonicalForm } from '@internal/sql-schema-ir/types';
 
@@ -47,7 +47,9 @@ export type DefaultMappingResult = { readonly attribute: string };
 
 /**
  * The attribute a stored default prints as: a named function, a literal the column takes, or any
- * other expression as a `sql` literal. `undefined` when a literal has no written form.
+ * other expression as a `sql` literal. `undefined` when a literal has no written form. An expression
+ * prints even when the literal would read back as different text, because a default is compared by
+ * parsing both sides (ADR 129).
  */
 export function mapDefault(
   columnDefault: ColumnDefault,
@@ -62,7 +64,7 @@ export function mapDefault(
       const attribute =
         options?.functionAttributes?.[columnDefault.expression] ??
         DEFAULT_FUNCTION_ATTRIBUTES[columnDefault.expression] ??
-        `@default(${printSqlExpressionLiteral(columnDefault.expression)})`;
+        `@default(${printTaggedLiteral(SQL_EXPRESSION_TAG, columnDefault.expression)})`;
       return { attribute };
     }
   }
