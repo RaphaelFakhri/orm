@@ -45,13 +45,13 @@ import {
   instantiateAuthoringFieldPreset,
   validateAuthoringHelperArguments,
 } from '@internal/framework-components/authoring';
-import { type CodecLookup, createDataTypeLookup } from '@internal/framework-components/codec';
+import type { CodecLookup } from '@internal/framework-components/codec';
 import type {
   ExtensionPackRef,
   FamilyPackRef,
   TargetPackRef,
 } from '@internal/framework-components/components';
-import { extractCodecLookup } from '@internal/framework-components/control';
+import { assembleDataTypes, extractCodecLookup } from '@internal/framework-components/control';
 import { UNBOUND_NAMESPACE_ID } from '@internal/framework-components/ir';
 import {
   applyPolymorphicScopeToMongoIndex,
@@ -1098,9 +1098,7 @@ function composeMongoAuthoringHelpers<
       ctx: {
         family: family.familyId,
         target: target.targetId,
-        dataTypeLookup: createDataTypeLookup(
-          components.flatMap((component) => component.dataTypes ?? []),
-        ),
+        dataTypeLookup: assembleDataTypes(components).lookup,
       },
     }),
     field: composeMongoFieldHelpers(fieldNamespace),
