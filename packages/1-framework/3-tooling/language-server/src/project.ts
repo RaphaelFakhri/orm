@@ -524,7 +524,7 @@ export class Project {
           this.#batch = undefined;
           if (this.#pendingPaths.size > 0 || this.#reconcile) this.#queueChanges([]);
         });
-    }, 20);
+    }, 50);
   }
 
   async #applyChanges(
