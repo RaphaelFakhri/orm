@@ -82,7 +82,7 @@ export const sqlFamilyPslBlockDescriptors = {
 
 ## Decision
 
-Top-level extension blocks have one value grammar: a **block spec** built from the shared argument combinators. The spec is a factory — `(ctx: BlockSpecContext) => BlockSpec` with `BlockSpecContext = { symbols: SymbolTable; block: BlockSymbol }` — registered on the block's `AuthoringPslBlockDescriptor` as the `spec` field. Symbol-table construction collects every declaration without interpreting blocks. Consumers then create the snapshot's binder with the registered block descriptors and interpret each registered block's member expressions and `@@` attributes directly against the expression AST. Only blocks whose values and attributes all interpret successfully publish a **typed envelope** (`ParsedPslExtensionBlock`), and lowering consumes envelopes exclusively. Parsed AST is never rendered back to text: `PslExtensionBlock` is a **producer-only print shape**, constructed by generators whose text is born from their own values (database inference among them) and consumed by the printer alone; no validator, classifier, or lowering path reads it.
+Top-level extension blocks have one value grammar: a **block spec** built from the shared argument combinators. The spec is a factory — `(ctx: BlockSpecContext) => BlockSpec` with `BlockSpecContext = { symbols: SymbolTable; block: BlockSymbol; dataTypes: DataTypeSupport }` — registered on the block's `AuthoringPslBlockDescriptor` as the `spec` field. Symbol-table construction collects every declaration without interpreting blocks. Consumers then create the snapshot's binder with the registered block descriptors and interpret each registered block's member expressions and `@@` attributes directly against the expression AST. Only blocks whose values and attributes all interpret successfully publish a **typed envelope** (`ParsedPslExtensionBlock`), and lowering consumes envelopes exclusively. Parsed AST is never rendered back to text: `PslExtensionBlock` is a **producer-only print shape**, constructed by generators whose text is born from their own values (database inference among them) and consumed by the printer alone; no validator, classifier, or lowering path reads it.
 
 Two constructors cover the block shapes PSL has:
 
@@ -159,6 +159,8 @@ The hook picks only the destination namespace — entity kind and key stay fixed
 `AuthoringPslBlockDescriptor.requiresModelAttribute: { parameter, attribute }` declares that the model selected by a ref parameter must carry a bare `@@` attribute (Postgres policies require `@@rls` on their target). The family interpreter enforces it generically over the whole document — declaration order does not matter — and anchors `PSL_EXTENSION_TARGET_MODEL_MISSING_ATTRIBUTE` on the original parameter span.
 
 ---
+
+A block spec may depend on the stack's data types. `BlockSpecContext.dataTypes` is the same value as `AttributeSpecContext.dataTypes`, and `interpretExtensionBlocks` and the binder put it into every block spec and block attribute context they build. This is how a policy's `using` and `withCheck` receive `sql/expression` through `dataTypeValue` (ADR 256). Admitting a value of a data type chooses no codec and no stored representation, so the reason below for keeping codec registries out of parsing does not apply.
 
 ## Consequences
 
