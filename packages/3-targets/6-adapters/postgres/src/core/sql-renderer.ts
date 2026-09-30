@@ -1,7 +1,8 @@
-import type { JsonValue } from '@internal/contract/types';
 import { isPlainRecord } from '@internal/contract/is-plain-record';
+import type { JsonValue } from '@internal/contract/types';
 import type { CodecRef, DataTypeLookup } from '@internal/framework-components/codec';
 import { runtimeError } from '@internal/framework-components/runtime';
+import { dataTypeParams, sqlBaseName, sqlDataTypeOfCodec } from '@internal/sql-contract/data-type';
 import {
   type AggregateExpr,
   type AnyExpression,
@@ -39,11 +40,6 @@ import {
   type UpdateAst,
   type WindowFuncExpr,
 } from '@internal/sql-relational-core/ast';
-import {
-  dataTypeParams,
-  sqlBaseName,
-  sqlDataTypeOfCodec,
-} from '@internal/sql-contract/data-type';
 import type { PostgresCodecDescriptorRegistry } from '@internal/target-postgres/codec-descriptor';
 import {
   pgBit,
@@ -64,10 +60,7 @@ import {
   pgVarbit,
   pgVarchar,
 } from '@internal/target-postgres/data-types';
-import {
-  escapeLiteral,
-  quoteIdentifier,
-} from '@internal/target-postgres/sql-utils';
+import { escapeLiteral, quoteIdentifier } from '@internal/target-postgres/sql-utils';
 import { ifDefined } from '@internal/utils/defined';
 import { assertNever, InternalError } from '@internal/utils/internal-error';
 import { adapterError } from './adapter-errors';

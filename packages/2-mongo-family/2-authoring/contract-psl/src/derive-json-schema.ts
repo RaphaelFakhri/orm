@@ -139,7 +139,13 @@ export function derivePolymorphicJsonSchema(
   codecLookup?: CodecLookup,
   valueSets?: FieldValueSets,
 ): MongoValidator {
-  const baseSchema = deriveObjectSchema(baseFields, dataTypes, valueObjects, codecLookup, valueSets);
+  const baseSchema = deriveObjectSchema(
+    baseFields,
+    dataTypes,
+    valueObjects,
+    codecLookup,
+    valueSets,
+  );
   const baseProperties = isRecord(baseSchema['properties']) ? baseSchema['properties'] : {};
 
   const oneOf: Record<string, unknown>[] = [];

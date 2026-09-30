@@ -45,16 +45,8 @@ export async function buildAddNotNullColumnWithTemporaryDefaultOperation(options
   readonly temporaryDefault: string;
   readonly lowerer: ExecuteRequestLowerer;
 }): Promise<SqlMigrationPlanOperation<PostgresPlanTargetDetails>> {
-  const {
-    schema,
-    tableName,
-    columnName,
-    column,
-    types,
-    storageTypes,
-    temporaryDefault,
-    lowerer,
-  } = options;
+  const { schema, tableName, columnName, column, types, storageTypes, temporaryDefault, lowerer } =
+    options;
 
   // The recipe handles NOT NULL columns that carry no contract default, so the
   // temporary backfill value is the only default. It is a pre-rendered SQL

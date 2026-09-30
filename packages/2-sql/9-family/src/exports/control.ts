@@ -47,13 +47,13 @@ export {
   runnerSuccess,
 } from '../core/migrations/plan-helpers';
 export { INIT_ADDITIVE_POLICY } from '../core/migrations/policies';
-export type { SqlComponentTypes } from '../core/migrations/sql-type-lookups';
-export { sqlComponentTypes } from '../core/migrations/sql-type-lookups';
 export type {
   SqlSchemaDiffFn,
   SqlSchemaDiffInput,
   SqlSchemaDiffResult,
 } from '../core/migrations/schema-differ';
+export type { SqlComponentTypes } from '../core/migrations/sql-type-lookups';
+export { sqlComponentTypes } from '../core/migrations/sql-type-lookups';
 export type { TableNameCaseGuardTable } from '../core/migrations/table-name-case-guard';
 export {
   detectTableNameCaseChanges,

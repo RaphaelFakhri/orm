@@ -3,7 +3,16 @@ import {
   renderSqlTypeName,
   type SqlDataType,
 } from '@internal/sql-contract/data-type';
-import { pgBytea, pgDate, pgJson, pgJsonb, pgTime, pgTimestamp, pgTimestamptz, pgTimetz } from './data-types';
+import {
+  pgBytea,
+  pgDate,
+  pgJson,
+  pgJsonb,
+  pgTime,
+  pgTimestamp,
+  pgTimestamptz,
+  pgTimetz,
+} from './data-types';
 import { postgresTargetDescriptorMeta } from './descriptor-meta';
 import { postgresNowGeneratorIdFor } from './now-generators';
 import { postgresCreateNamespace } from './postgres-schema';

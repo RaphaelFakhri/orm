@@ -153,7 +153,6 @@ import {
 type LengthParams = { readonly length?: number };
 type NumericParams = { readonly precision?: number; readonly scale?: number };
 
-
 /**
  * Projects the expression unchanged, for codecs whose canonical JSON is what
  * PostgreSQL's own JSON conversion already produces.
@@ -1183,7 +1182,6 @@ export const pgByteaColumn = () =>
 pgByteaColumn satisfies ColumnHelperFor<PgByteaDescriptor>;
 pgByteaColumn satisfies ColumnHelperForStrict<PgByteaDescriptor>;
 
-
 export class PgUuidCodec extends CodecImpl<
   typeof PG_UUID_CODEC_ID,
   readonly ['equality', 'order'],
@@ -1225,7 +1223,6 @@ export const pgUuidColumn = () =>
 pgUuidColumn satisfies ColumnHelperFor<PgUuidDescriptor>;
 pgUuidColumn satisfies ColumnHelperForStrict<PgUuidDescriptor>;
 
-
 export class PgInetCodec extends CodecImpl<
   typeof PG_INET_CODEC_ID,
   readonly ['equality', 'order'],
@@ -1266,7 +1263,6 @@ export const pgInetColumn = () =>
 
 pgInetColumn satisfies ColumnHelperFor<PgInetDescriptor>;
 pgInetColumn satisfies ColumnHelperForStrict<PgInetDescriptor>;
-
 
 /**
  * A `tsquery` value as the application holds it: text that only Postgres produces, when a query
@@ -1473,7 +1469,6 @@ pgJsonbColumn satisfies ColumnHelperForStrict<PgJsonbDescriptor>;
 // (`SqlCharCodec` etc.) passing `this` (the pg-alias descriptor), so `codec.id`
 // resolves to the pg-alias codec id via `CodecImpl`'s `descriptor.codecId`
 // proxy.
-
 
 export class PgIntCodec extends SqlIntCodec {
   override async decode(wire: string | number, _ctx: CodecCallContext): Promise<number> {

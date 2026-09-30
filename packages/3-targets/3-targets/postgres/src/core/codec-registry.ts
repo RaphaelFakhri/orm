@@ -40,7 +40,9 @@ function buildPostgresCodecRegistry(
 }
 
 export function assemblePostgresCodecRegistry(
-  components: ReadonlyArray<Pick<ComponentMetadata, 'types' | 'dataTypes'> & { readonly id?: string }>,
+  components: ReadonlyArray<
+    Pick<ComponentMetadata, 'types' | 'dataTypes'> & { readonly id?: string }
+  >,
 ): PostgresCodecRegistry {
   const descriptors = components.flatMap(
     (component) => component.types?.codecTypes?.codecDescriptors ?? [],

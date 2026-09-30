@@ -130,7 +130,10 @@ function convertColumn(
  * The column's type as the database reports it: the written name with its parameters, or for a
  * type that claims a kind (an enum), its type name as stored.
  */
-function schemaTypeText(type: SqlDataType, typeParams: Record<string, unknown> | undefined): string {
+function schemaTypeText(
+  type: SqlDataType,
+  typeParams: Record<string, unknown> | undefined,
+): string {
   return type.sql.claimsKind === undefined
     ? renderSqlTypeName(type, dataTypeParams(type, typeParams))
     : storedSqlTypeName(type, typeParams);

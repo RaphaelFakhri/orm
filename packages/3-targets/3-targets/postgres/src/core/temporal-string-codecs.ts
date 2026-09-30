@@ -19,8 +19,6 @@ import {
   PG_TIMESTAMPTZ_STRING_CODEC_ID,
 } from './codec-ids';
 import { pgDate, pgPrecisionParams, pgTime, pgTimestamp, pgTimestamptz } from './data-types';
-import {
-} from './temporal-codec-helpers';
 
 export class PgDateStringCodec extends CodecImpl<
   typeof PG_DATE_STRING_CODEC_ID,

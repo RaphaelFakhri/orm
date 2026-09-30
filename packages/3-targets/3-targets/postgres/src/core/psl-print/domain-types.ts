@@ -1,13 +1,13 @@
 import type { Contract, ContractField, ScalarFieldType } from '@internal/contract/types';
 import type { SqlPslBuildContext } from '@internal/family-sql/control';
 import type { PslTypeMap } from '@internal/family-sql/psl-build';
+import { requiredParamKeys } from '@internal/framework-components/codec';
 import type {
   PslCompositeType,
   PslField,
   PslNamedTypeDeclaration,
   PslTypesBlock,
 } from '@internal/framework-components/psl-ast';
-import { requiredParamKeys } from '@internal/framework-components/codec';
 import { isSqlDataType, storedSqlTypeName } from '@internal/sql-contract/data-type';
 import type { SqlStorage } from '@internal/sql-contract/types';
 import { StorageColumn } from '@internal/sql-contract/types';

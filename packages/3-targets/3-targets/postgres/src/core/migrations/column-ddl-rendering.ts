@@ -22,10 +22,7 @@ import { buildExpectedFormatType } from './planner-sql-checks';
  */
 function columnLike(
   column: SqlColumnIR,
-): Pick<
-  StorageColumn,
-  'nativeType' | 'codecId' | 'nullable' | 'many' | 'typeParams' | 'default'
-> {
+): Pick<StorageColumn, 'nativeType' | 'codecId' | 'nullable' | 'many' | 'typeParams' | 'default'> {
   return {
     ...columnTypeLike(`column "${column.name}"`, column),
     nullable: column.nullable,
@@ -67,7 +64,11 @@ function columnTypeLike(
  * Builds the `CREATE TABLE` / `ADD COLUMN` DDL column for an expected column
  * node, writing its type from the data type the node's codec represents.
  */
-export function renderColumnDdl(name: string, column: SqlColumnIR, types: SqlTypeLookups): DdlColumn {
+export function renderColumnDdl(
+  name: string,
+  column: SqlColumnIR,
+  types: SqlTypeLookups,
+): DdlColumn {
   const like = columnLike(column);
   const typeSql = buildColumnTypeSql(like, types);
   const ddlDefault = postgresDefaultToDdlColumnDefault(like.default);
@@ -110,7 +111,10 @@ export function resolveColumnTemporaryDefault(
 /**
  * The column's `SET DEFAULT` clause SQL, from a column-default diff node's authored default, or its resolved one when nothing was authored. `''` when the node carries neither. A list default is cast to the column type as the column's DDL writes it.
  */
-export function renderColumnDefaultSql(defaultNode: SqlColumnDefaultIR, types: SqlTypeLookups): string {
+export function renderColumnDefaultSql(
+  defaultNode: SqlColumnDefaultIR,
+  types: SqlTypeLookups,
+): string {
   const columnDefault = defaultNode.authored ?? defaultNode.resolved;
   if (columnDefault === undefined) return '';
   const typeLike = columnTypeLike('column default', defaultNode);

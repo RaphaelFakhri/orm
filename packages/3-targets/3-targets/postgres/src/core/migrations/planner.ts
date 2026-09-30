@@ -10,11 +10,11 @@ import {
   controlPolicyForCall,
   detectTableNameCaseChanges,
   extractCodecControlHooks,
-  sqlComponentTypes,
   partitionCallsByControlPolicy,
   partitionIssuesByControlPolicy,
   planFieldEventOperations,
   plannerFailure,
+  sqlComponentTypes,
 } from '@internal/family-sql/control';
 import type { ExecuteRequestLowerer } from '@internal/family-sql/control-adapter';
 import type { TargetBoundComponentDescriptor } from '@internal/framework-components/components';
