@@ -89,13 +89,15 @@ Integer representation authoring surface:
 `@@index` parameter surface:
 
 ```prisma
-@@index([email], where: "(archived_at IS NULL)", name: "users_email_active")
-@@index(expression: "eql_v3.eq_term(email)", name: "users_email_eq")
-@@index(expression: "lower(email)", unique: true, name: "users_email_lower_key")
+@@index([email], where: sql`(archived_at IS NULL)`, name: "users_email_active")
+@@index(expression: sql`eql_v3.eq_term(email)`, name: "users_email_eq")
+@@index(expression: sql`lower(email)`, unique: true, name: "users_email_lower_key")
 @@index([email], type: "hash", name: "users_email_hash")
+@@check(expression: sql`length(email) > 3`, name: "users_email_length")
 ```
 
-- Exactly one of a fields list or `expression:` (the whole CREATE INDEX element list as one opaque string); violating this raises `PSL_INDEX_FIELDS_XOR_EXPRESSION`.
+- Every argument that holds raw SQL takes a `sql` literal and nothing else: `@@index(where:)`, `@@index(expression:)`, `@@check(expression:)`, and on Postgres `@@fullTextIndex(where:)` and a policy's `using` and `withCheck`. Each receives the data type `sql/expression`, which casts from nothing, so a plain string is `PSL_VALUE_TYPE_INCOMPATIBLE` with the rewrite, ``sql/expression has no cast from pg/text; write it as sql`(archived_at IS NULL)` ``. A number, a boolean or another tag is refused the same way, and an identifier is `PSL_INVALID_ATTRIBUTE_SYNTAX`. The literal's canonical text is stored. See [ADR 260](../../../../docs/architecture%20docs/adrs/ADR%20260%20-%20Raw%20SQL%20is%20a%20value%20of%20the%20data%20type%20sql-expression.md).
+- Exactly one of a fields list or `expression:` (the whole CREATE INDEX element list as one opaque SQL text); violating this raises `PSL_INDEX_FIELDS_XOR_EXPRESSION`.
 - `expression:` requires `name:` or `map:` (`PSL_INDEX_EXPRESSION_REQUIRES_NAME` — no default name can be derived from an expression); at most one of `name:`/`map:` (`PSL_INDEX_NAME_XOR_MAP`).
 - `name:` declares a wire-named index — the physical name is `<name>_<8-hex content hash>` and renames plan as `ALTER INDEX … RENAME`. `map:` adopts an exact physical name verbatim, intended for objects captured by `contract infer`.
 - `where:` is a partial-index predicate (WHERE body, without the keyword); `unique:` a boolean; `type:` plus `options:` select a target-registered index access method (e.g. `type: "hash"`). Unlike the TS builder (whose pack-typed arm requires the `options` key at compile time), PSL accepts `type:` without `options:` — absent options validate as `{}` and lower to the same IR.

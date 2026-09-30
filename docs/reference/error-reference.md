@@ -788,7 +788,11 @@ A backtick string appears somewhere other than after a tag, for example `` @map(
 
 ### PSL_UNKNOWN_LITERAL_TAG
 
-A tagged literal uses a tag no pack in the stack registered: `Unknown literal tag "<tag>". Known tags: <tags in registration order>.` In a `@default` the message starts with the field it is about, `Field "<Model>.<field>": `, with ` at element <n>` after the field when the literal is one element of a written list. The SQL family registers `sql`, and every SQL target registers `json`. `pg.sql` and `sqlite.sql` are not registered; write `sql`. Reported at the literal.
+A tagged literal uses a tag no pack in the stack registered: `Unknown literal tag "<tag>". Known tags: <tags in registration order>.` In a `@default` the message starts with the field it is about, `Field "<Model>.<field>": `, with ` at element <n>` after the field when the literal is one element of a written list. The SQL family registers `sql`, and every SQL target registers `json`. `pg.sql` and `sqlite.sql` are not registered; write `sql`. At a place that takes raw SQL (`@@index(where:)`, `@@index(expression:)`, `@@fullTextIndex(where:)`, `@@check(expression:)`, a policy's `using` and `withCheck`) the message has no prefix. Reported at the literal.
+
+### PSL_INVALID_ATTRIBUTE_SYNTAX
+
+An attribute or block argument is not written in a form its specification accepts. At a place that takes raw SQL, an argument that is not a literal, such as an identifier, reads ``Expected sql`...`, got an identifier``; write the SQL as a `sql` literal. Reported at the argument.
 
 ### PSL_DEPRECATED_SCALAR_NAME
 
@@ -800,11 +804,13 @@ A written value has a data type the receiving type neither is nor casts from: `<
 
 The same code reports a written form this target has no data type for at all: `This target has no data type for a <string|boolean|number> value; write <forms>`, after `Field "<Model>.<field>"[ at element <n>]: ` in a `@default` — `true` on SQLite, for instance, which registers no boolean entry.
 
+At a place that takes raw SQL, the receiving type is `sql/expression`, which casts from nothing, so every value other than a `sql` literal is refused and the message has no prefix. A quoted string gets the exact rewrite, ``sql/expression has no cast from pg/text; write it as sql`(archived_at IS NULL)` ``, unless the string's text would read back from a `sql` literal as different text (it has indentation shared by every line, a blank first or last line, or a carriage return); then the message ends `write it as a sql literal`. A number or a boolean reads ``sql/expression has no cast from pg/int2; write sql`...` ``. See [ADR 260](../architecture%20docs/adrs/ADR%20260%20-%20Raw%20SQL%20is%20a%20value%20of%20the%20data%20type%20sql-expression.md).
+
 Reported at the written value, or at the list element the message names. See [ADR 254](../architecture%20docs/adrs/ADR%20254%20-%20Data%20types%20and%20casts.md).
 
 ### PSL_INVALID_LITERAL
 
-A written value that the authoring entry's parse or a cast refused: a magnitude no double holds written on a `Float` column, a text a tag's parse cannot read, such as the text of a `json` literal that is not a JSON document, or a number no data type of the target holds — `no data type of this target holds the number <text>`, which is how SQLite refuses a whole number past 64 bits. The message is `Field "<Model>.<field>": <the message of whatever refused it>`, with ` at element <n>` after the field path when it is one element of a written list. Reported at the written value, or at the list element the message names. See [ADR 254](../architecture%20docs/adrs/ADR%20254%20-%20Data%20types%20and%20casts.md).
+A written value that the authoring entry's parse or a cast refused: a magnitude no double holds written on a `Float` column, a text a tag's parse cannot read, such as the text of a `json` literal that is not a JSON document, or a number no data type of the target holds — `no data type of this target holds the number <text>`, which is how SQLite refuses a whole number past 64 bits. The message is `Field "<Model>.<field>": <the message of whatever refused it>`, with ` at element <n>` after the field path when it is one element of a written list. At an argument typed by a data type, such as a place that takes raw SQL, the message has no prefix. Reported at the written value, or at the list element the message names. See [ADR 254](../architecture%20docs/adrs/ADR%20254%20-%20Data%20types%20and%20casts.md).
 
 ### PSL_DEFAULT_LIST_EXPECTED
 
@@ -828,7 +834,7 @@ A list column declares `@default(autoincrement())`: `Field "<Model>.<field>" is 
 
 ### PSL_INVALID_DEFAULT_SQL
 
-A `` @default(sql`...`) `` text fails the check `@default` runs on raw SQL: `Default SQL must not contain semicolons, SQL comment tokens, dollar-quoting, or subqueries.` (the rule the migration planners apply at DDL time, run at authoring time so it has a source span), or is exactly `now()` or `autoincrement()`: `` Write @default(now()) instead of sql`now()`; now() is a Prisma default function, not raw SQL. `` The tag is always `sql`. Only `@default` reports this code. Reported at the literal.
+A `` @default(sql`...`) `` text fails the check `@default` runs on raw SQL: `Default SQL must not contain semicolons, SQL comment tokens, dollar-quoting, or subqueries.` (the rule the migration planners apply at DDL time, run at authoring time so it has a source span), or is exactly `now()` or `autoincrement()`: `` Write @default(now()) instead of sql`now()`; now() is a Prisma default function, not raw SQL. `` The tag is always `sql`. Only `@default` reports this code; the other places that take a `sql` literal check nothing about its text. Reported at the literal.
 
 ### PSL_UNSUPPORTED_ENUM_MEMBER_ATTRIBUTE
 
