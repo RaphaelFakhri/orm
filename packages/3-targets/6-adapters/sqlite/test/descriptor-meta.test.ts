@@ -17,6 +17,7 @@ import { SQL_CHAR_CODEC_ID, SQL_VARCHAR_CODEC_ID } from '@internal/sql-relationa
 import { sqliteCodecRegistry } from '@internal/target-sqlite/codecs';
 import { describe, expect, it } from 'vitest';
 import { sqliteAdapterDescriptorMeta } from '../src/core/descriptor-meta';
+import sqliteAdapterDescriptor from '../src/exports/control';
 
 const executionCodecDescriptors = sqliteAdapterDescriptorMeta.types.codecTypes.codecDescriptors;
 
@@ -47,5 +48,15 @@ describe('SQLite descriptor-meta codec filter invariant', () => {
       .map((d) => d.codecId)
       .sort();
     expect(excludedIds).toEqual([SQL_CHAR_CODEC_ID, SQL_VARCHAR_CODEC_ID].sort());
+  });
+});
+
+describe('what the SQLite adapter no longer contributes', () => {
+  it('registers no data types, because the target registers them', () => {
+    expect(sqliteAdapterDescriptorMeta).not.toHaveProperty('dataTypes');
+  });
+
+  it('contributes no type constructors, because the target contributes them', () => {
+    expect(sqliteAdapterDescriptor.authoring).not.toHaveProperty('type');
   });
 });

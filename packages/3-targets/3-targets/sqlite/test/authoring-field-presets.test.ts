@@ -1,5 +1,4 @@
 import {
-  collectScalarTypeConstructors,
   temporalAuthoringPresets,
   temporalCodecPreset,
 } from '@internal/framework-components/authoring';
@@ -8,12 +7,11 @@ import { sqliteAuthoringFieldPresets, sqliteAuthoringTypes } from '../src/core/a
 
 describe('sqliteAuthoringFieldPresets', () => {
   it('contributes BigIntNumber as its only integer-representation type', () => {
-    expect(Object.fromEntries(collectScalarTypeConstructors(sqliteAuthoringTypes))).toEqual({
-      BigIntNumber: {
-        codecId: 'sqlite/bigintnumber@1',
-        nativeType: 'integer',
-      },
+    expect(sqliteAuthoringTypes.BigIntNumber.output).toEqual({
+      codecId: 'sqlite/bigintnumber@1',
+      nativeType: 'integer',
     });
+    expect(sqliteAuthoringTypes).not.toHaveProperty('UnboundedInt');
   });
 
   it('does not expose integer representations as field presets', () => {
