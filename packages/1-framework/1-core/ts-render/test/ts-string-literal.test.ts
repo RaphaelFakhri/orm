@@ -19,7 +19,7 @@ describe('tsQuotedTextSource', () => {
     });
 
     it('escapes an interpolation opener inside the template', () => {
-      expect(tsQuotedTextSource(`"a" = '\${b}'`)).toBe('`"a" = \'\\${b}\'`');
+      expect(tsQuotedTextSource(`"a" = '\${b}'`)).toBe(`\`"a" = '\\\${b}'\``);
     });
   });
 
