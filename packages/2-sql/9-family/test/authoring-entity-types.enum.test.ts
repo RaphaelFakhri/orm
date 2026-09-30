@@ -92,6 +92,9 @@ const foldingCodec: Codec = {
 const VECTOR_CODEC_ID = 'test/vector@1';
 const vectorCodec: Codec = { ...textCodec, id: VECTOR_CODEC_ID };
 
+const ORPHAN_CODEC_ID = 'test/orphan@1';
+const orphanCodec: Codec = { ...textCodec, id: ORPHAN_CODEC_ID };
+
 const textType = sqlDataType('test/text', { texts: [{ text: 'text', written: true }] });
 const intType = sqlDataType('test/int', { texts: [{ text: 'int', written: true }] });
 const jsonType = sqlDataType('test/json', { texts: [{ text: 'json', written: true }] });
@@ -115,9 +118,13 @@ const testCodecLookup: CodecLookup = {
     if (id === JSON_CODEC_ID) return jsonCodec;
     if (id === FOLDING_CODEC_ID) return foldingCodec;
     if (id === VECTOR_CODEC_ID) return vectorCodec;
+    if (id === ORPHAN_CODEC_ID) return orphanCodec;
     return undefined;
   },
   descriptorFor(id: string): AnyCodecDescriptor | undefined {
+    if (id === ORPHAN_CODEC_ID) {
+      return { codecId: id, dataType: 'test/unregistered' } as AnyCodecDescriptor;
+    }
     const dataType = dataTypeOfCodec[id];
     return dataType === undefined
       ? undefined
@@ -365,8 +372,27 @@ describe('sqlFamilyEnumEntityDescriptor: explicit @@type bypasses inference, nev
     expect(diagnostics).toEqual([
       expect.objectContaining({
         code: 'PSL_EXTENSION_INVALID_VALUE',
-        message: expect.stringContaining('unknown codec'),
+        message: expect.stringContaining('which no component registers'),
       }),
+    ]);
+  });
+
+  it('reports a known codec whose data type no component registers', () => {
+    const diagnostics: unknown[] = [];
+    const handle = factory(
+      enumBlock({ name: 'Role', values: { admin: 'admin' }, typeCodecId: ORPHAN_CODEC_ID }),
+      makeContext(diagnostics),
+    );
+
+    expect(handle).toBeUndefined();
+    expect(diagnostics).toEqual([
+      {
+        code: 'PSL_EXTENSION_INVALID_VALUE',
+        message:
+          'enum "Role" @@type codec "test/orphan@1" represents data type "test/unregistered", which no component registers',
+        sourceId: 'schema.prisma',
+        span: SPAN,
+      },
     ]);
   });
 

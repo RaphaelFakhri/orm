@@ -31,13 +31,18 @@ describe('sqlDataTypeOfCodec', () => {
       expect.objectContaining({
         code: 'CONTRACT.CODEC_DESCRIPTOR_MISSING',
         meta: { codecId: 't/unknown@1' },
+        fix: expect.stringContaining('pack that provides the codec'),
       }),
     );
   });
 
   it('refuses a codec whose data type the stack does not register', () => {
     expect(() => sqlDataTypeOfCodec('t/orphan@1', lookups)).toThrow(
-      expect.objectContaining({ code: 'CONTRACT.DATA_TYPE_UNREGISTERED' }),
+      expect.objectContaining({
+        code: 'CONTRACT.DATA_TYPE_UNREGISTERED',
+        meta: { codecId: 't/orphan@1', dataType: 't/gone' },
+        fix: expect.stringContaining('pack that provides the codec'),
+      }),
     );
   });
 

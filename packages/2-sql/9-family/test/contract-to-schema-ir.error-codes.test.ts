@@ -1,4 +1,5 @@
 import { type Contract, profileHash, type StorageHashBase } from '@internal/contract/types';
+import type { CodecLookup } from '@internal/framework-components/codec';
 import { UNBOUND_NAMESPACE_ID } from '@internal/framework-components/ir';
 import { SqlStorage, type StorageColumn, type StorageTable } from '@internal/sql-contract/types';
 import { isStructuredError } from '@internal/utils/structured-error';
@@ -63,6 +64,36 @@ describe('contract-to-schema-ir structured error codes', () => {
     expect(error).toMatchObject({
       code: 'CONTRACT.TYPE_UNKNOWN',
       meta: { typeRef: 'missing_type' },
+    });
+  });
+
+  it('names the table and column whose codec is not registered', () => {
+    const storage = new SqlStorage({
+      storageHash: 'test' as StorageHashBase<string>,
+      namespaces: {
+        [UNBOUND_NAMESPACE_ID]: createTestSqlNamespace({
+          id: UNBOUND_NAMESPACE_ID,
+          entries: {
+            table: { widget: table({ size: { ...intColumn, codecId: 'app/unknown@1' } }) },
+          },
+        }),
+      },
+    });
+
+    const codecLookup: CodecLookup = {
+      ...testTypeLookups.codecLookup,
+      descriptorFor: (codecId) =>
+        codecId === 'app/unknown@1'
+          ? undefined
+          : testTypeLookups.codecLookup.descriptorFor?.(codecId),
+    };
+    const error = captureError(() =>
+      contractToSchemaIR(wrap(storage), { annotationNamespace: 'pg', ...types, codecLookup }),
+    );
+    expect(error).toMatchObject({
+      code: 'CONTRACT.CODEC_DESCRIPTOR_MISSING',
+      meta: { codecId: 'app/unknown@1', table: 'widget', column: 'size' },
+      fix: expect.stringContaining('pack that provides the codec'),
     });
   });
 

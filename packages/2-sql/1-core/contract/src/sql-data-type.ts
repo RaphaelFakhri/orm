@@ -80,13 +80,11 @@ const PLACEHOLDER = /\{([A-Za-z][A-Za-z0-9]*)\}/g;
 const LITERAL_CHARACTERS = /^[a-z0-9_ (),.]*$/;
 const REGEXP_SPECIAL = /[.*+?^${}()|[\]\\]/g;
 
-function paramKeysOf(schema: Type<unknown> | undefined): readonly string[] {
+function paramKeysOf(id: DataTypeId, schema: Type<unknown> | undefined): readonly string[] {
   if (schema === undefined) return [];
   const keys = objectSchemaKeys(schema);
   if (keys === undefined) {
-    throw new InternalError(
-      'A data type parameter schema must be an arktype object schema; this one exposes no props.',
-    );
+    refuseDeclaration(id, 'its parameter schema must be an arktype object schema.');
   }
   return keys;
 }
@@ -185,7 +183,7 @@ export function sqlDataType<Params extends SqlTypeParams = SqlTypeParams>(
 ): SqlDataType<Params> {
   const declared = dataType(id, spec);
   const texts = spec.texts ?? [];
-  const paramKeys = paramKeysOf(spec.params);
+  const paramKeys = paramKeysOf(declared.id, spec.params);
   for (const text of texts) checkText(declared.id, text, paramKeys);
   checkMarks(declared.id, texts);
   checkKindClaim(declared.id, spec);
@@ -215,7 +213,7 @@ export function dataTypeParams(
 ): SqlTypeParams {
   if (typeParams === undefined) return {};
   const kept: Record<string, unknown> = {};
-  for (const key of paramKeysOf(type.params)) {
+  for (const key of paramKeysOf(type.id, type.params)) {
     if (Object.hasOwn(typeParams, key)) kept[key] = typeParams[key];
   }
   return kept;
@@ -344,6 +342,9 @@ export interface SqlTypeLookups {
   readonly dataTypeLookup: Pick<DataTypeLookup, 'get'>;
 }
 
+const ADD_THE_CODEC_PACK =
+  'Add the pack that provides the codec, and so declares its data type, to the configuration: to `extensions` in prisma.config or in defineContract.';
+
 /** The SQL data type the codec `codecId` represents. */
 export function sqlDataTypeOfCodec(codecId: string, lookups: SqlTypeLookups): SqlDataType {
   const descriptor = lookups.codecLookup.descriptorFor?.(codecId);
@@ -351,7 +352,7 @@ export function sqlDataTypeOfCodec(codecId: string, lookups: SqlTypeLookups): Sq
     throw contractError(
       'CONTRACT.CODEC_DESCRIPTOR_MISSING',
       `No codec "${codecId}" is registered, so its column type cannot be named.`,
-      { meta: { codecId } },
+      { fix: ADD_THE_CODEC_PACK, meta: { codecId } },
     );
   }
   const type = lookups.dataTypeLookup.get(descriptor.dataType);
@@ -359,7 +360,7 @@ export function sqlDataTypeOfCodec(codecId: string, lookups: SqlTypeLookups): Sq
     throw contractError(
       'CONTRACT.DATA_TYPE_UNREGISTERED',
       `Codec "${codecId}" represents data type "${descriptor.dataType}", which no component registers.`,
-      { meta: { codecId, dataType: descriptor.dataType } },
+      { fix: ADD_THE_CODEC_PACK, meta: { codecId, dataType: descriptor.dataType } },
     );
   }
   if (!isSqlDataType(type)) {

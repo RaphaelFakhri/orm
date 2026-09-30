@@ -37,6 +37,7 @@ import {
 import { blindCast } from '@internal/utils/casts';
 import { ifDefined } from '@internal/utils/defined';
 import { InternalError } from '@internal/utils/internal-error';
+import { isStructuredError, structuredError } from '@internal/utils/structured-error';
 import { sqlFamilyError } from '../errors';
 
 /**
@@ -308,6 +309,25 @@ function convertForeignKey(fk: ForeignKey, storage: SqlStorage): SqlForeignKeyIR
   };
 }
 
+const COLUMN_TYPE_ERROR_CODES: ReadonlySet<string> = new Set([
+  'CONTRACT.CODEC_DESCRIPTOR_MISSING',
+  'CONTRACT.DATA_TYPE_UNREGISTERED',
+]);
+
+function withColumnInErrors<T>(table: string, column: string, build: () => T): T {
+  try {
+    return build();
+  } catch (cause) {
+    if (!isStructuredError(cause) || !COLUMN_TYPE_ERROR_CODES.has(cause.code)) throw cause;
+    throw structuredError(cause.code, cause.message, {
+      cause,
+      ...ifDefined('why', cause.why),
+      ...ifDefined('fix', cause.fix),
+      meta: { ...cause.meta, table, column },
+    });
+  }
+}
+
 function convertTable(
   name: string,
   table: StorageTable,
@@ -319,13 +339,8 @@ function convertTable(
 ): SqlTableIR {
   const columns: Record<string, SqlColumnIRInput> = {};
   for (const [colName, colDef] of Object.entries(table.columns)) {
-    columns[colName] = convertColumn(
-      colName,
-      colDef,
-      storageTypes,
-      types,
-      renderDefault,
-      resolveDefault,
+    columns[colName] = withColumnInErrors(name, colName, () =>
+      convertColumn(colName, colDef, storageTypes, types, renderDefault, resolveDefault),
     );
   }
 

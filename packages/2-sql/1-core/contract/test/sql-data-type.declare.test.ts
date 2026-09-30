@@ -20,6 +20,15 @@ describe('sqlDataType', () => {
     expect(int4.sql.fromReported).toBeUndefined();
   });
 
+  it('refuses a parameter schema that is not an object schema, naming the data type', () => {
+    expect(() => sqlDataType('t/scalar-params', { params: type('string') as never })).toThrow(
+      InternalError,
+    );
+    expect(() => sqlDataType('t/scalar-params', { params: type('string') as never })).toThrow(
+      /t\/scalar-params/,
+    );
+  });
+
   it('normalizes with the identity unless a normal form is declared', () => {
     expect(int4.sql.normalize({})).toEqual({});
     expect(numeric.sql.normalize({ precision: 10 })).toEqual({ precision: 10, scale: 0 });

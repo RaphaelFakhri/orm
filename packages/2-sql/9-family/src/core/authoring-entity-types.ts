@@ -41,13 +41,21 @@ export const sqlFamilyEnumEntityDescriptor = {
       const { codecId, codecSpan } = resolved;
 
       const descriptor = ctx.codecLookup?.descriptorFor?.(codecId);
-      const dataType =
-        descriptor === undefined ? undefined : ctx.dataTypes?.get(descriptor.dataType);
       const codec = ctx.codecLookup?.get(codecId);
-      if (dataType === undefined || codec === undefined) {
+      if (descriptor === undefined || codec === undefined) {
         diagnostics?.push({
           code: 'PSL_EXTENSION_INVALID_VALUE',
           message: `enum "${block.name}" @@type references unknown codec "${codecId}"`,
+          sourceId,
+          span: codecSpan,
+        });
+        return undefined;
+      }
+      const dataType = ctx.dataTypes?.get(descriptor.dataType);
+      if (dataType === undefined) {
+        diagnostics?.push({
+          code: 'PSL_EXTENSION_INVALID_VALUE',
+          message: `enum "${block.name}" @@type codec "${codecId}" represents data type "${descriptor.dataType}", which no component registers`,
           sourceId,
           span: codecSpan,
         });

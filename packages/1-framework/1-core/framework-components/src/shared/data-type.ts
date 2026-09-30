@@ -105,11 +105,17 @@ function isSchemaPropList(value: unknown): value is readonly SchemaProp[] {
   );
 }
 
+function describesObjects(schema: object): boolean {
+  const extendsType: unknown = Reflect.get(schema, 'extends');
+  return typeof extendsType === 'function' && extendsType.call(schema, 'object') === true;
+}
+
 function objectSchemaProps(schema: unknown): readonly SchemaProp[] | undefined {
   if (schema === null || (typeof schema !== 'object' && typeof schema !== 'function')) {
     return undefined;
   }
-  const props = 'props' in schema ? schema.props : undefined;
+  if (!describesObjects(schema)) return undefined;
+  const props: unknown = Reflect.get(schema, 'props');
   return isSchemaPropList(props) ? props : undefined;
 }
 
