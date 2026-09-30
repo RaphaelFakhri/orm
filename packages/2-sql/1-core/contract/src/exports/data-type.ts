@@ -2,6 +2,7 @@ export type {
   ReportedSqlType,
   ResolvedSqlType,
   SqlDataType,
+  SqlDataTypeCollision,
   SqlDataTypeFacts,
   SqlDataTypeSpec,
   SqlTypeLookups,
@@ -9,8 +10,8 @@ export type {
   SqlTypeText,
 } from '../sql-data-type';
 export {
-  claimingSqlTexts,
   dataTypeParams,
+  findSqlDataTypeCollision,
   isSqlDataType,
   renderSqlCatalogText,
   renderSqlColumnTypeName,
@@ -19,7 +20,6 @@ export {
   sqlBaseName,
   sqlDataType,
   sqlDataTypeOfCodec,
-  sqlTypeTextsCollide,
   storedSqlTypeName,
   storedSqlTypeNameOfCodec,
   validateSqlTypeParams,

@@ -436,17 +436,53 @@ function claims(text: SqlTypeText): boolean {
   return text.catalog === true || text.written !== true;
 }
 
-/** The texts by which `type` recognises a reported type: those marked catalog, and those with neither mark. */
-export function claimingSqlTexts<Params extends SqlTypeParams>(
-  type: SqlDataType<Params>,
-): readonly string[] {
+function claimingTexts<Params extends SqlTypeParams>(type: SqlDataType<Params>): readonly string[] {
   return type.sql.texts.filter(claims).map((text) => text.text);
 }
 
-/** Two claiming texts collide when either one's pattern matches the other with each placeholder written as 1. */
-export function sqlTypeTextsCollide(a: string, b: string): boolean {
+function textsCollide(a: string, b: string): boolean {
   const withOnes = (text: string) => text.replace(PLACEHOLDER, '1');
   return patternOf(a).test(withOnes(b)) || patternOf(b).test(withOnes(a));
+}
+
+/** Two SQL data types that would both recognise one reported type, and what each claims. */
+export interface SqlDataTypeCollision {
+  readonly first: SqlDataType;
+  readonly second: SqlDataType;
+  readonly claims:
+    | { readonly by: 'text'; readonly first: string; readonly second: string }
+    | { readonly by: 'kind'; readonly kind: string };
+}
+
+function collisionBetween(
+  first: SqlDataType,
+  second: SqlDataType,
+): SqlDataTypeCollision['claims'] | undefined {
+  const kind = first.sql.claimsKind;
+  if (kind !== undefined && kind === second.sql.claimsKind) return { by: 'kind', kind };
+  for (const a of claimingTexts(first)) {
+    const b = claimingTexts(second).find((text) => textsCollide(a, text));
+    if (b !== undefined) return { by: 'text', first: a, second: b };
+  }
+  return undefined;
+}
+
+/**
+ * The first two SQL data types in `types` that would both recognise one reported type: a claiming
+ * text of each collides, or both claim the same kind. Two texts collide when either one's pattern
+ * matches the other with each placeholder written as 1.
+ */
+export function findSqlDataTypeCollision(
+  types: readonly DataType[],
+): SqlDataTypeCollision | undefined {
+  const sqlTypes = types.filter(isSqlDataType);
+  for (const [index, first] of sqlTypes.entries()) {
+    for (const second of sqlTypes.slice(index + 1)) {
+      const claims = collisionBetween(first, second);
+      if (claims !== undefined) return { first, second, claims };
+    }
+  }
+  return undefined;
 }
 
 /**

@@ -1,12 +1,7 @@
-import type { DataType } from '@internal/framework-components/codec';
+import type { DataType, DataTypeLookup } from '@internal/framework-components/codec';
 import type { TargetBoundComponentDescriptor } from '@internal/framework-components/components';
 import { assertUniqueCodecOwner } from '@internal/framework-components/control';
-import {
-  claimingSqlTexts,
-  isSqlDataType,
-  type SqlDataType,
-  sqlTypeTextsCollide,
-} from '@internal/sql-contract/data-type';
+import { findSqlDataTypeCollision } from '@internal/sql-contract/data-type';
 import { blindCast } from '@internal/utils/casts';
 import { InternalError } from '@internal/utils/internal-error';
 import type { CodecControlHooks } from './migrations/types';
@@ -67,52 +62,36 @@ interface DataTypeContributor {
   readonly dataTypes?: ReadonlyArray<DataType>;
 }
 
-interface ContributedSqlDataType {
-  readonly type: SqlDataType;
-  readonly contributedBy: string;
-}
-
-function describe(entry: ContributedSqlDataType): string {
-  return `data type "${entry.type.id}" contributed by "${entry.contributedBy}"`;
-}
-
 /**
- * Refuses two SQL data types in one stack that would both recognise one reported type: their claiming texts collide, or they claim the same kind. Each error names both data types and their contributors.
+ * Refuses two SQL data types in the stack's data type lookup that would both recognise one reported type: their claiming texts collide, or they claim the same kind. Each error names both data types and their contributors.
  */
 export function enforceSqlDataTypeInvariants(stack: {
   readonly family: DataTypeContributor;
   readonly target: DataTypeContributor;
   readonly adapter?: DataTypeContributor | undefined;
   readonly extensions: ReadonlyArray<DataTypeContributor>;
+  readonly dataTypeLookup: Pick<DataTypeLookup, 'all'>;
 }): void {
+  const collision = findSqlDataTypeCollision(stack.dataTypeLookup.all());
+  if (collision === undefined) return;
+
   const contributors = [
     stack.family,
     stack.target,
     ...(stack.adapter === undefined ? [] : [stack.adapter]),
     ...stack.extensions,
   ];
-  const sqlTypes: ContributedSqlDataType[] = contributors.flatMap((contributor) =>
-    (contributor.dataTypes ?? [])
-      .filter(isSqlDataType)
-      .map((type) => ({ type, contributedBy: contributor.id })),
+  const describe = (type: DataType): string => {
+    const contributor = contributors.find((candidate) => candidate.dataTypes?.includes(type));
+    return `data type "${type.id}" contributed by "${contributor?.id ?? '<unknown>'}"`;
+  };
+  const { first, second, claims } = collision;
+  if (claims.by === 'kind') {
+    throw new InternalError(
+      `The ${describe(first)} and the ${describe(second)} both claim the kind "${claims.kind}".`,
+    );
+  }
+  throw new InternalError(
+    `The ${describe(first)} claims the text "${claims.first}", which collides with the text "${claims.second}" claimed by the ${describe(second)}.`,
   );
-
-  sqlTypes.forEach((first, index) => {
-    for (const second of sqlTypes.slice(index + 1)) {
-      const kind = first.type.sql.claimsKind;
-      if (kind !== undefined && kind === second.type.sql.claimsKind) {
-        throw new InternalError(
-          `The ${describe(first)} and the ${describe(second)} both claim the kind "${kind}".`,
-        );
-      }
-      for (const a of claimingSqlTexts(first.type)) {
-        const b = claimingSqlTexts(second.type).find((text) => sqlTypeTextsCollide(a, text));
-        if (b !== undefined) {
-          throw new InternalError(
-            `The ${describe(first)} claims the text "${a}", which collides with the text "${b}" claimed by the ${describe(second)}.`,
-          );
-        }
-      }
-    }
-  });
 }

@@ -1,4 +1,4 @@
-import { dataType } from '@internal/framework-components/codec';
+import { createDataTypeLookup, dataType } from '@internal/framework-components/codec';
 import { sqlDataType } from '@internal/sql-contract/data-type';
 import { blindCast } from '@internal/utils/casts';
 import { InternalError } from '@internal/utils/internal-error';
@@ -28,6 +28,7 @@ const stackWith = (extensionTypes: readonly ReturnType<typeof dataType>[]) => ({
   target: { id: 'postgres', dataTypes: [int4, numeric, enumType] },
   adapter: { id: 'postgres-adapter' },
   extensions: [{ id: 'ext', dataTypes: extensionTypes }],
+  dataTypeLookup: createDataTypeLookup([int4, numeric, enumType, ...extensionTypes]),
 });
 
 describe('enforceSqlDataTypeInvariants', () => {
@@ -67,6 +68,15 @@ describe('enforceSqlDataTypeInvariants', () => {
     expect(() => enforceSqlDataTypeInvariants(stackWith([other]))).toThrow(
       /pg\/enum.*postgres.*ext\/enum.*ext|ext\/enum.*ext.*pg\/enum.*postgres/s,
     );
+  });
+
+  it('checks the data types of the assembled lookup', () => {
+    const other = sqlDataType('ext/integer', { texts: [{ text: 'integer', catalog: true }] });
+    const stack = {
+      ...stackWith([]),
+      dataTypeLookup: createDataTypeLookup([int4, numeric, enumType, other]),
+    };
+    expect(() => enforceSqlDataTypeInvariants(stack)).toThrow(/pg\/int4.*postgres.*ext\/integer/s);
   });
 
   it('ignores data types that are not SQL data types', () => {
