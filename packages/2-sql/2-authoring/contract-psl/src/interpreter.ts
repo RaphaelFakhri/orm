@@ -580,7 +580,7 @@ interface BuildModelNodeInput {
   readonly targetId: string;
   readonly authoringContributions: AuthoringContributions | undefined;
   readonly defaultFunctionRegistry: ControlMutationDefaultRegistry;
-  readonly dataTypeSupport: DataTypeSupport;
+  readonly dataTypes: DataTypeSupport;
   readonly generatorDescriptorById: ReadonlyMap<string, MutationDefaultGeneratorDescriptor>;
   readonly scalarColumnDescriptors: ReadonlyMap<string, ColumnDescriptor>;
   readonly sources: PslSources;
@@ -694,7 +694,7 @@ function buildModelNodeFromPsl(input: BuildModelNodeInput): BuildModelNodeResult
     familyId: input.familyId,
     targetId: input.targetId,
     defaultFunctionRegistry: input.defaultFunctionRegistry,
-    dataTypeSupport: input.dataTypeSupport,
+    dataTypes: input.dataTypes,
     generatorDescriptorById: input.generatorDescriptorById,
     diagnostics,
     sources: input.sources,
@@ -1082,7 +1082,7 @@ function buildModelNodeFromPsl(input: BuildModelNodeInput): BuildModelNodeResult
           symbols: input.symbolTable,
           model,
           controlMutationDefaults: { defaultFunctionRegistry: input.defaultFunctionRegistry },
-          dataTypes: input.dataTypeSupport,
+          dataTypes: input.dataTypes,
         }),
         model,
         symbols: input.symbolTable,
@@ -2059,7 +2059,7 @@ export function interpretPslDocumentToSqlContract(
   const modelAttributesByName = buildModelAttributesByName(input.authoringContributions);
   const contributedModelSpecs = modelAttributeSpecsFrom(modelAttributesByName);
   const composedPslBlockDescriptors = input.authoringContributions?.pslBlockDescriptors ?? {};
-  const dataTypeSupport: DataTypeSupport = {
+  const dataTypes: DataTypeSupport = {
     entries: input.authoringContributions?.dataTypes ?? {},
     lookup: input.dataTypeLookup,
   };
@@ -2071,7 +2071,7 @@ export function interpretPslDocumentToSqlContract(
     controlMutationDefaults: {
       defaultFunctionRegistry: input.controlMutationDefaults?.defaultFunctionRegistry ?? new Map(),
     },
-    dataTypes: dataTypeSupport,
+    dataTypes,
     scalarColumnDescriptors: input.scalarColumnDescriptors,
     contributedModelAttributeSpecs: contributedModelSpecs,
     describeUnsupportedAttribute: describeUnsupportedSqlAttribute({
@@ -2469,7 +2469,7 @@ export function interpretPslDocumentToSqlContract(
       targetId: input.target.targetId,
       authoringContributions: input.authoringContributions,
       defaultFunctionRegistry,
-      dataTypeSupport,
+      dataTypes,
       generatorDescriptorById,
       scalarColumnDescriptors: input.scalarColumnDescriptors,
       sources: input.sources,

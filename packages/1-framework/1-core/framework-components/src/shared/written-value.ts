@@ -19,7 +19,7 @@ export type WrittenValue =
 
 export type WrittenScalar = Exclude<WrittenValue, { readonly kind: 'list' }>;
 
-/** The assembled data types of a stack and the PSL support for them. */
+/** A stack's registered data types with their authoring entries. */
 export interface DataTypeSupport {
   readonly entries: Readonly<Record<string, DataTypeAuthoringEntry>>;
   readonly lookup: DataTypeLookup;

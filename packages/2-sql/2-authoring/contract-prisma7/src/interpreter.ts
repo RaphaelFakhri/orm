@@ -1124,7 +1124,7 @@ function readField(args: ReadFieldArgs): void {
           codecId: resolved.descriptor.codecId,
           typeParams: resolved.descriptor.typeParams,
           codecLookup: input.codecLookup,
-          dataTypeSupport: {
+          dataTypes: {
             entries: input.authoringContributions?.dataTypes ?? {},
             lookup: input.dataTypeLookup,
           },

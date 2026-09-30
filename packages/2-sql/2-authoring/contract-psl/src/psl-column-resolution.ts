@@ -583,7 +583,7 @@ export function lowerDefaultForField(input: {
   readonly columnDescriptor: ColumnDescriptor;
   readonly generatorDescriptorById: ReadonlyMap<string, MutationDefaultGeneratorDescriptor>;
   readonly defaultFunctionRegistry: ControlMutationDefaultRegistry;
-  readonly dataTypeSupport: DataTypeSupport;
+  readonly dataTypes: DataTypeSupport;
   readonly codecLookup: CodecLookup | undefined;
   readonly diagnostics: PslDiagnosticCollector;
 }): {
@@ -599,7 +599,7 @@ export function lowerDefaultForField(input: {
       model: input.model,
       field: input.field,
       controlMutationDefaults: { defaultFunctionRegistry: input.defaultFunctionRegistry },
-      dataTypes: input.dataTypeSupport,
+      dataTypes: input.dataTypes,
     }),
   );
   const interpreted = interpretFieldAttribute({
@@ -634,7 +634,7 @@ export function lowerDefaultForField(input: {
       isList: input.field.list,
       column: input.columnDescriptor,
       codecLookup: input.codecLookup,
-      support: input.dataTypeSupport,
+      dataTypes: input.dataTypes,
       fieldPath: `${input.modelName}.${input.fieldName}`,
     });
     if (!lowered.ok) {
@@ -715,7 +715,7 @@ export function lowerDefaultForField(input: {
   if ('tag' in value) {
     const written = writtenScalar(value);
     if ('ok' in written) return {};
-    const read = readWrittenValue(input.dataTypeSupport, written);
+    const read = readWrittenValue(input.dataTypes, written);
     if (read.ok && read.value.type === SQL_EXPRESSION_DATA_TYPE_ID) {
       return sqlExpressionDefault(sqlTextFromCanonical(read.value.value), value.span);
     }

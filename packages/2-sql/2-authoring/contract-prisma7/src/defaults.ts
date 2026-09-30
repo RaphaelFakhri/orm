@@ -44,7 +44,7 @@ export interface LowerPrisma7DefaultInput {
   readonly enumMembers: ReadonlyMap<string, string> | undefined;
   readonly controlMutationDefaults: ControlMutationDefaults;
   /** The stack's data types and the PSL support for them, which this reader maps its syntax onto. */
-  readonly dataTypeSupport: DataTypeSupport;
+  readonly dataTypes: DataTypeSupport;
   readonly sourceId: string;
   readonly diagnostics: ContractSourceDiagnostic[];
 }
@@ -166,7 +166,7 @@ function scalarValue(
     isList: input.field.list,
     column: { codecId: input.codecId, typeParams: input.typeParams },
     codecLookup: input.codecLookup,
-    support: input.dataTypeSupport,
+    dataTypes: input.dataTypes,
     fieldPath: `${input.modelName}.${input.field.name}`,
   });
   return read.ok ? read.value : unknown(refusalReason(read.refusal), span);
@@ -290,7 +290,7 @@ function jsonDocumentOf(
   written: WrittenValue,
   input: LowerPrisma7DefaultInput,
 ): JsonValue | undefined {
-  const entry = entryForTag(input.dataTypeSupport, 'json');
+  const entry = entryForTag(input.dataTypes, 'json');
   if (entry === undefined || entry.entry.written.kind !== 'tag') return undefined;
   const bodies =
     written.kind === 'list'

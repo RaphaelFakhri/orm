@@ -140,7 +140,7 @@ export function readDataTypeDefault(input: {
   readonly isList: boolean;
   readonly column: DefaultColumn;
   readonly codecLookup: CodecLookup | undefined;
-  readonly support: DataTypeSupport;
+  readonly dataTypes: DataTypeSupport;
   readonly fieldPath: string;
 }): ReadDefaultResult {
   const descriptorFor = input.codecLookup?.descriptorFor;
@@ -183,9 +183,9 @@ export function readDataTypeDefault(input: {
   };
 
   const readOne = (written: WrittenScalar, elementIndex: number | undefined): ReadDefaultResult => {
-    const read = readOneValue(input.support, written, elementIndex);
+    const read = readOneValue(input.dataTypes, written, elementIndex);
     if (!read.ok) return read;
-    const cast = castInto(input.support, columnType, read.typed, elementIndex);
+    const cast = castInto(input.dataTypes, columnType, read.typed, elementIndex);
     if (!cast.ok) return cast;
     return validate(cast.value, elementIndex);
   };
@@ -223,11 +223,11 @@ export function readDataTypeDefault(input: {
 /** A written list on a column that is not a list: the column's type takes it through its list cast. */
 function readListIntoScalar(input: {
   readonly written: Extract<WrittenValue, { kind: 'list' }>;
-  readonly support: DataTypeSupport;
+  readonly dataTypes: DataTypeSupport;
   readonly columnType: DataTypeId;
   readonly validate: (value: JsonValue, elementIndex: number | undefined) => ReadDefaultResult;
 }): ReadDefaultResult {
-  const listCast = input.support.lookup.get(input.columnType)?.listCast;
+  const listCast = input.dataTypes.lookup.get(input.columnType)?.listCast;
   if (listCast === undefined) {
     return {
       ok: false,
@@ -235,7 +235,7 @@ function readListIntoScalar(input: {
         kind: 'no-cast',
         columnType: input.columnType,
         valueType: 'a list',
-        casts: Object.keys(input.support.lookup.get(input.columnType)?.casts ?? {}),
+        casts: Object.keys(input.dataTypes.lookup.get(input.columnType)?.casts ?? {}),
         elementIndex: undefined,
       },
     };
@@ -253,7 +253,7 @@ function readListIntoScalar(input: {
         },
       };
     }
-    const read = readOneValue(input.support, written, elementIndex);
+    const read = readOneValue(input.dataTypes, written, elementIndex);
     if (!read.ok) return read;
     if (!listCast.of.includes(read.typed.type)) {
       return {
@@ -295,7 +295,7 @@ export function lowerDataTypeDefault(input: {
   readonly isList: boolean;
   readonly column: DefaultColumn;
   readonly codecLookup: CodecLookup | undefined;
-  readonly support: DataTypeSupport;
+  readonly dataTypes: DataTypeSupport;
   readonly fieldPath: string;
 }): LowerDefaultResult {
   const read = readDataTypeDefault(input);

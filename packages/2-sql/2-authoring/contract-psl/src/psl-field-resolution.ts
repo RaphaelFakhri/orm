@@ -60,7 +60,7 @@ function lowerEnumDefaultForField(input: {
   readonly binder: Binder;
   readonly enumHandle: EnumTypeHandle;
   readonly defaultFunctionRegistry: ControlMutationDefaultRegistry;
-  readonly dataTypeSupport: DataTypeSupport;
+  readonly dataTypes: DataTypeSupport;
   readonly diagnostics: PslDiagnosticCollector;
 }): LoweredFieldDefault {
   const { field, model, enumHandle, diagnostics } = input;
@@ -73,7 +73,7 @@ function lowerEnumDefaultForField(input: {
       model,
       field,
       controlMutationDefaults: { defaultFunctionRegistry: input.defaultFunctionRegistry },
-      dataTypes: input.dataTypeSupport,
+      dataTypes: input.dataTypes,
     }),
   );
   const interpreted = interpretFieldAttribute({
@@ -163,7 +163,7 @@ export interface CollectResolvedFieldsInput {
   readonly familyId: string;
   readonly targetId: string;
   readonly defaultFunctionRegistry: ControlMutationDefaultRegistry;
-  readonly dataTypeSupport: DataTypeSupport;
+  readonly dataTypes: DataTypeSupport;
   readonly generatorDescriptorById: ReadonlyMap<string, MutationDefaultGeneratorDescriptor>;
   readonly diagnostics: PslDiagnosticCollector;
   readonly sources: PslSources;
@@ -425,7 +425,7 @@ export function collectResolvedFields(input: CollectResolvedFieldsInput): Resolv
     familyId,
     targetId,
     defaultFunctionRegistry,
-    dataTypeSupport,
+    dataTypes,
     generatorDescriptorById,
     diagnostics,
     sources,
@@ -599,7 +599,7 @@ export function collectResolvedFields(input: CollectResolvedFieldsInput): Resolv
             binder: input.binder,
             enumHandle,
             defaultFunctionRegistry,
-            dataTypeSupport,
+            dataTypes,
             diagnostics,
           })
         : lowerDefaultForField({
@@ -613,7 +613,7 @@ export function collectResolvedFields(input: CollectResolvedFieldsInput): Resolv
             columnDescriptor: descriptor,
             generatorDescriptorById,
             defaultFunctionRegistry,
-            dataTypeSupport,
+            dataTypes,
             codecLookup,
             diagnostics,
           })

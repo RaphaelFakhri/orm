@@ -200,7 +200,7 @@ model Other {
       columnDescriptor: { codecId: 'pg/text@1', nativeType: 'text' },
       generatorDescriptorById: new Map(),
       defaultFunctionRegistry: new Map(),
-      dataTypeSupport: fixtureDataTypeSupport,
+      dataTypes: fixtureDataTypeSupport,
       codecLookup: context.codecLookup,
       diagnostics,
     });
