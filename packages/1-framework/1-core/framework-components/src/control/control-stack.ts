@@ -470,7 +470,7 @@ function enforceConstructorInvariants(input: DataTypeInvariantInput): void {
     }
     if (descriptor.kind !== 'typeConstructor') continue;
 
-    const codecKeys = objectSchemaKeys(codec.paramsSchema);
+    const codecKeys = codec.paramsSchema === undefined ? [] : objectSchemaKeys(codec.paramsSchema);
     if (codecKeys !== undefined) {
       const declared = new Set([
         ...codecKeys,

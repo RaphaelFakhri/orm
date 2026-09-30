@@ -26,6 +26,7 @@ const codecDescriptors: Readonly<
   'demo/text@1': { dataType: text.id },
   'demo/also-text@1': { dataType: text.id },
   'demo/sized@1': { dataType: sized.id, paramsSchema: sized.params },
+  'demo/sized-plain@1': { dataType: sized.id },
   'demo/labelled@1': {
     dataType: sized.id,
     paramsSchema: type({ 'length?': 'number.integer >= 1', 'label?': 'string' }),
@@ -252,6 +253,21 @@ describe('enforceDataTypeInvariants on type constructors and field presets', () 
     expect(check([constructorNamed('Sized', 'demo/sized@1', { typeParamKey: 'width' })])).toThrow(
       /Sized.*x-pack.*width/s,
     );
+  });
+
+  it('refuses an argument mapped onto a key of a codec with no parameter schema and a data type without params', () => {
+    expect(check([constructorNamed('Text', 'demo/text@1', { typeParamKey: 'length' })])).toThrow(
+      /Text.*x-pack.*length/s,
+    );
+  });
+
+  it('checks a codec with no parameter schema against its data type’s params', () => {
+    expect(
+      check([constructorNamed('Sized', 'demo/sized-plain@1', { typeParamKey: 'length' })]),
+    ).not.toThrow();
+    expect(
+      check([constructorNamed('Sized', 'demo/sized-plain@1', { typeParamKey: 'width' })]),
+    ).toThrow(/width/);
   });
 
   it('passes a constructor mapping an argument onto a key of the data type', () => {
