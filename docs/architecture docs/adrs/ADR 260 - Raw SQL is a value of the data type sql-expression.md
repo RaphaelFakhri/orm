@@ -61,7 +61,7 @@ Raw SQL is a value of one data type, `sql/expression`. The SQL family defines it
 
 ## Why
 
-**The type, not the syntax, decides what a place admits.** [ADR 254](ADR%20254%20-%20Data%20types%20and%20casts.md) gives every written value a data type, and `sql` was its one exception. Once `sql` names a data type, a place that takes raw SQL is a position of a fixed type, like any other, and the rule that refuses `@default("abc")` on an `Int` column also refuses `where: "x > 0"`. No second mechanism exists to keep in step with the first.
+**The type, not the syntax, decides what a place admits.** [ADR 254](ADR%20254%20-%20Data%20types%20and%20casts.md) gives every written value a data type, `sql` included. Because `sql` names a data type, a place that takes raw SQL is a position of a fixed type, like any other, and the rule that refuses `@default("abc")` on an `Int` column also refuses `where: "x > 0"`. No second mechanism exists to keep in step with the first.
 
 **SQL in these places is hard to write as a quoted string.** Prisma names columns after fields, so the SQL usually quotes camelCase column names. A quoted PSL string needs `\"` for each of them, as in `"\"userId\"::uuid = auth.uid()"`. A `sql` literal needs no escaping, may span lines, and shows that its text is raw SQL.
 
@@ -69,7 +69,7 @@ Raw SQL is a value of one data type, `sql/expression`. The SQL family defines it
 
 ## Every place takes a `sql` literal, and plain strings are refused
 
-The places are `@default`, `@@index(where:)`, `@@index(expression:)`, `@@fullTextIndex(where:)`, `@@check(expression:)`, and a policy's `using` and `withCheck`. The canonical text of a literal is what the contract stores (ADR 129). For a string written before this decision, that text is the string's text, except where canonicalization removes leading indentation, a blank first or last line or a carriage return; the stored text then changes once. The hash behind wire names is computed from whitespace-collapsed text, so no wire name changes.
+The places are `@default`, `@@index(where:)`, `@@index(expression:)`, `@@fullTextIndex(where:)`, `@@check(expression:)`, and a policy's `using` and `withCheck`. The canonical text of a literal is what the contract stores (ADR 129). A quoted string rewritten as a `sql` literal keeps its text, except where canonicalization removes indentation shared by every line, a blank first or last line, a whitespace-only line or a carriage return; the stored text then changes once. The hash behind wire names is computed from whitespace-collapsed text, so no wire name changes, except for a text that holds both `--` and a line break, which gets a new name once (see below).
 
 Plain strings are refused everywhere. This is a breaking change; the project keeps no code for backward compatibility, and upgrade instructions with a codemod rewrite existing schemas.
 
@@ -79,7 +79,7 @@ Plain strings are refused everywhere. This is a breaking change; the project kee
 
 ## The SQL family defines and registers `sql/expression`
 
-`@@index` and `@@check` belong to the SQL family, so the family must name the type they receive. It exports the id `sql/expression`, the data type (no casts) and its authoring entry, from `@internal/sql-contract/sql-expression`, and registers them itself, so every SQL target has the same type and the same tag. The rule "nothing casts from `sql/expression`" is what refuses a plain string, so the family also refuses a stack in which a data type declares such a cast (`CONTRACT.DATA_TYPE_CASTS_FROM_SQL_EXPRESSION`).
+`@@index` and `@@check` belong to the SQL family, so the family must name the type they receive. It exports the id `sql/expression`, the data type (no casts) and its authoring entry, from `@internal/sql-contract/sql-expression`, and registers them itself, so every SQL target has the same type and the same tag. A stack holds one target, so the family's registration never meets another. The rule "nothing casts from `sql/expression`" is what refuses a plain string, so the family also refuses a stack in which a data type declares such a cast (`CONTRACT.DATA_TYPE_CASTS_FROM_SQL_EXPRESSION`).
 
 This is not the "family-level vocabulary of written types" ADR 254 rejects. That alternative put family types in front of each target's real types through pass-through casts. `sql/expression` has no casts and no column has it.
 
@@ -129,8 +129,8 @@ Why: PSL removes the common indentation of a multi-line literal, and a TypeScrip
 ## Consequences
 
 - A PSL or TypeScript schema that writes raw SQL as a plain string stops working. The upgrade instructions carry a codemod that rewrites every place in a `.prisma` file.
-- A stored text may change once, where canonicalization removes indentation, a blank first or last line or a carriage return. Wire names do not change. One `migration plan` after upgrading records it; the migration has no operations.
-- `contract infer` prints each place as a `sql` literal, and skips an object whose text would not read back unchanged, with a note (ADR 129). `contract print` refuses such an object.
+- A stored text may change once, where canonicalization removes indentation shared by every line, a blank first or last line, a whitespace-only line or a carriage return. Wire names do not change, except for a text that holds both `--` and a line break, which gets a new name once. For a wire-named index, check or policy, one `migration plan` after upgrading records the new text, and the migration has no operations. For an index or check named with `map:`, `migration plan` stops with a conflict that asks for a custom migration written with `migration new`; the database needs no change, so that migration has no operations.
+- `contract infer` prints each place as a `sql` literal. It prints a wire-named index whose text would not read back unchanged with its canonical text, which hashes to the same name. It skips an exact-named object whose text would not read back, with a note that the object is not in the schema and that the next plan will drop it unless it is added by hand (ADR 129). `contract print` refuses any object whose text would not read back.
 - An extension that builds spec contexts supplies the stack's data types in `AttributeSpecContext.dataTypes` and `BlockSpecContext.dataTypes`.
 
 ## Alternatives considered
@@ -142,7 +142,7 @@ Why: PSL removes the common indentation of a multi-line literal, and a TypeScrip
 - **The SQL family listing tag names in its own code.** Rejected. A new target would have to edit the family.
 - **Prefixed tags, `pg.sql` and `sqlite.sql`.** Rejected. They add nothing the stack does not say.
 - **Special handling of `--` inside `sql/expression` text.** Rejected. The problem is placing SQL inside a larger statement, so it is solved where DDL is rendered, not in the type.
-- **Wait for ADR 254's follow-up work to build typed arguments.** Rejected. That work had no spec, and the six places needed typed arguments now.
+- **Wait for ADR 254's follow-up work to build typed arguments.** Rejected. Typed arguments are needed by the raw-SQL places, and that work has no specification.
 - **A separate step that types block values in the family interpreter.** Rejected. Block specs already parse values with the same combinators as attributes (ADR 255), so a second mechanism would duplicate it.
 - **Leave the TypeScript builder on plain strings.** Rejected. PSL and TypeScript would stop emitting identical contracts for multi-line text.
 - **A `SqlExpression` class with a private constructor and no interpolation.** Rejected. Authors would repeat SQL text across policies, or find another way to build values and skip the canonicalization.
@@ -152,6 +152,9 @@ Why: PSL removes the common indentation of a multi-line literal, and a TypeScrip
 - [ADR 129 — Tagged literals write values of data types](ADR%20129%20-%20Template-Tagged%20Literals%20for%20Extensions.md)
 - [ADR 231 — Declarative attribute specifications](ADR%20231%20-%20Declarative%20attribute%20specifications.md)
 - [ADR 234 — Content-addressed wire names for Postgres-normalized objects](ADR%20234%20-%20Content-addressed%20wire%20names%20for%20Postgres-normalized%20objects.md)
+- [ADR 236 — Target-contributed model attributes](ADR%20236%20-%20Target-contributed%20model%20attributes.md)
+- [ADR 243 — Name-identified indexes and exact-name adoption](ADR%20243%20-%20Name-identified%20indexes%20and%20exact-name%20adoption.md)
+- [ADR 244 — Check constraints are opaque wire-named expressions](ADR%20244%20-%20Check%20constraints%20are%20opaque%20wire-named%20expressions.md)
 - [ADR 249 — Central attribute-spec registry](ADR%20249%20-%20Central%20attribute-spec%20registry.md)
 - [ADR 254 — Data types and casts](ADR%20254%20-%20Data%20types%20and%20casts.md)
 - [ADR 255 — Block specs bind top-level block values](ADR%20255%20-%20Block%20specs%20bind%20top-level%20block%20values.md)

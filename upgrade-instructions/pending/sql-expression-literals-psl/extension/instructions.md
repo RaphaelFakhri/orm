@@ -11,7 +11,7 @@ changes:
     script: ./scripts/rewrite-sql-strings.mjs
   - id: storage-hash-may-change-once
     summary: |
-      A raw SQL text with indentation, a blank first or last line or CRLF line breaks is stored as its canonical text once it is written as a `sql` literal, which changes the contract's storage hash once.
+      A raw SQL text with indentation shared by every line, a blank first or last line, a whitespace-only line or CRLF line breaks is stored as its canonical text once it is written as a `sql` literal, which changes the contract's storage hash once. For an index or check named with `map:`, `migration plan` then stops with a conflict and asks for a migration written with `migration new`.
     detection:
       glob: "**/*.prisma"
       matches:
@@ -19,12 +19,21 @@ changes:
         - '^\s*(using|withCheck)\s*=\s*["'']'
   - id: spec-contexts-carry-data-types
     summary: |
-      `BlockSpecContext` gains `dataTypes`, and `interpretExtensionBlocks`, `interpretExtensionBlock` and `interpretExtensionBlockAttributes` take a required `dataTypes`. `ControlDefaultRegistries` is deleted: an attribute spec context, `createBinder` and the Mongo PSL interpreter take `defaultFunctionRegistry` directly.
+      `BlockSpecContext` gains `dataTypes`, and `interpretExtensionBlocks`, `interpretExtensionBlock` and `interpretExtensionBlockAttributes` take a required `dataTypes`. `ControlDefaultRegistries` is deleted: an attribute spec context, `createBinder` and the Mongo PSL interpreter take `defaultFunctionRegistry` directly. Every factory in `sqlAttributeSpecs` takes the spec context.
     detection:
       glob: "**/*.{ts,mts,cts}"
       matches:
         - '\b(BlockSpecContext|ControlDefaultRegistries|interpretExtensionBlocks|interpretExtensionBlock|interpretExtensionBlockAttributes)\b'
         - 'controlMutationDefaults:\s*\{\s*defaultFunctionRegistry'
+        - 'sqlAttributeSpecs\.(model|field)\.\w+\(\)'
+  - id: tagged-literal-text-helpers
+    summary: |
+      `canonicalizeTaggedLiteralBody` is exported from `@internal/framework-components/authoring` only, beside the new `taggedLiteralTextReadsBack`. `printSqlExpressionLiteral` throws for a text that would read back as different text; check with `sqlTextsReadBack` first.
+    detection:
+      glob: "**/*.{ts,mts,cts}"
+      matches:
+        - '\bcanonicalizeTaggedLiteralBody\b'
+        - '\bprintSqlExpressionLiteral\b'
   - id: supabase-contract-writes-sql-literals
     summary: |
       A pack's PSL contract, such as the Supabase pack's `src/contract/contract.prisma`, writes its raw SQL as `sql` literals. Its `contract.json` does not change.
@@ -56,15 +65,15 @@ Inside a `sql` literal no quote is escaped. Run the script from the package root
 node <this-directory>/scripts/rewrite-sql-strings.mjs '**/*.prisma'
 ```
 
-It decodes each quoted string's escapes and writes the same text as a `sql` literal, in the double-quote form `sql"..."` when the text holds a backtick. It prints each changed file and its number of rewrites. It does not see PSL written inline in TypeScript, such as a schema string in a test; rewrite those by hand the same way.
+It skips `//` and `///` comments, decodes each quoted string's escapes, and writes the same text as a `sql` literal, in the double-quote form `sql"..."` when the text holds a backtick. It prints each changed file and its number of rewrites. It does not see PSL written inline in TypeScript, such as a schema string in a test; rewrite those by hand the same way.
 
 A place left as a quoted string is refused when the schema is interpreted: ``sql/expression has no cast from pg/text; write it as sql`(archived_at IS NULL)` ``, or `... write it as a sql literal` when the text would read back from a `sql` literal as different text. A test that asserts the old acceptance, or the text of these messages, needs the new form.
 
-`contract infer` writes these places as `sql` literals and skips an object whose SQL would read back as different text, with a comment such as `// prisma: skipped check "c": its SQL cannot be written as a sql literal that reads back unchanged`. `contract print` refuses such an object with `CONTRACT.PRINT_UNSUPPORTED`. A test that snapshots printed PSL expects `sql` literals.
+`contract infer` writes these places as `sql` literals. It writes the canonical text of an index with a Prisma-generated name, which keeps the name, and skips an object named with `map:` whose SQL would read back as different text, with a comment such as `// prisma: skipped check "c": its SQL cannot be written as a sql literal that reads back unchanged. It is not in this schema; add it by hand before running migration plan, or the plan will drop it.` `contract print` refuses such an object with `CONTRACT.PRINT_UNSUPPORTED`. A test that snapshots printed PSL expects `sql` literals.
 
 ## The storage hash may change once
 
-A `sql` literal stores its canonical text: common indentation, a blank first and last line, and carriage returns are removed. A quoted string whose text had any of these is stored differently once it is rewritten, so the contract's storage hash changes once. Wire names of indexes, checks and policies do not change. Emit the contract again, and for a pack with migrations run `prisma migration plan` once and commit the migration, which has no operations.
+A `sql` literal stores its canonical text: indentation shared by every line, a blank first and last line, whitespace-only lines and carriage returns are removed. A quoted string whose text had any of these is stored differently once it is rewritten, so the contract's storage hash changes once. Wire names of indexes, checks and policies do not change. Emit the contract again, and for a pack with migrations run `prisma migration plan` once and commit the migration, which has no operations for wire-named objects. For an index or check named with `map:` whose text changed, `migration plan` stops with a conflict and asks for a migration written with `migration new`; the database needs no change, so that migration has no operations.
 
 ## Spec contexts carry the stack's data types
 
@@ -90,6 +99,8 @@ function policyUsingParam(ctx: BlockSpecContext) {
 
 A spec factory that read `ctx.controlMutationDefaults.defaultFunctionRegistry` reads `ctx.defaultFunctionRegistry`.
 
+`blockSpecContext({ symbols, block, dataTypes })` from `@internal/psl-parser` builds a `BlockSpecContext`. Every factory in `sqlAttributeSpecs` (from `@internal/sql-contract-psl/attribute-specs`) takes the spec context, including those whose spec does not read it: call `sqlAttributeSpecs.model.map(ctx)`, not `sqlAttributeSpecs.model.map()`.
+
 This supersedes the `ControlDefaultRegistries` text of the `spec-contexts-carry-data-types` change in the pending `arguments-typed-by-data-type` extension instructions: `ControlDefaultRegistries` no longer exists, and its one field is on the context directly.
 
 A spec that takes raw SQL can do what the SQL family and Postgres now do: declare `dataTypeValue(SQL_EXPRESSION_DATA_TYPE_ID, ctx.dataTypes)`, with `SQL_EXPRESSION_DATA_TYPE_ID` from `@internal/sql-contract/sql-expression`. The value it returns holds the canonical text; `sqlTextFromCanonical(value.value)` reads it.
@@ -97,3 +108,14 @@ A spec that takes raw SQL can do what the SQL family and Postgres now do: declar
 ## A pack's PSL contract writes `sql` literals
 
 A pack that ships a PSL contract, such as the Supabase pack's `src/contract/contract.prisma`, rewrites its raw SQL with the script above and regenerates its contract (for Supabase, `pnpm --filter @internal/extension-supabase run contract:generate`). The texts in the Supabase contract are already canonical, so its `contract.json` and `contract.d.ts` do not change.
+
+## Tagged literal text helpers
+
+`canonicalizeTaggedLiteralBody` is no longer exported from `@internal/framework-components/control`. Import it from `@internal/framework-components/authoring`:
+
+```diff
+- import { canonicalizeTaggedLiteralBody } from '@internal/framework-components/control';
++ import { canonicalizeTaggedLiteralBody } from '@internal/framework-components/authoring';
+```
+
+The same entry exports `taggedLiteralTextReadsBack(text)`, which says whether a tagged literal printed with `text` reads back as the same text. `printSqlExpressionLiteral` from `@internal/sql-contract/sql-expression` now throws an internal error for a text that would read back as different text. Check the texts first with `sqlTextsReadBack(texts)` from the same module, and skip or refuse the object when it returns `false`, as `contract infer` and `contract print` do.

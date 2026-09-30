@@ -193,7 +193,7 @@ This is intentionally narrower than an arbitrary JSON value. Its shipped use is 
 
 ### Tagged literals and JSON values
 
-`taggedLiteral(tags, { documentation })` reads a tagged literal (`` tag`...` ``, `tag"..."` or `tag'...'`) and returns its tag, its canonicalization and its span. It accepts any tag; `tags` and `documentation` describe the registered tags for completion. `@default` uses it for its tagged-literal arm, and lowering reads the tag through the stack's authoring entries ([ADR 129](ADR%20129%20-%20Template-Tagged%20Literals%20for%20Extensions.md)).
+`taggedLiteral(tags, { documentation })` reads a tagged literal (`` tag`...` ``, `tag"..."` or `tag'...'`) and returns its tag, its canonicalization and its span. It accepts any tag; `tags` and `documentation` describe the registered tags for completion. `@default` uses it, wrapped in `writtenScalar`, for its tagged-literal arms, and lowering reads the tag through the stack's authoring entries ([ADR 129](ADR%20129%20-%20Template-Tagged%20Literals%20for%20Extensions.md)).
 
 `jsonValue()` reads a native JSON-compatible literal (a string, a finite number, a boolean, `null`, a list or a record of such values) and returns it as JSON. Block specs use it for members whose value is arbitrary JSON ([ADR 255](ADR%20255%20-%20Block%20specs%20bind%20top-level%20block%20values.md)).
 
@@ -204,6 +204,8 @@ This is intentionally narrower than an arbitrary JSON value. Its shipped use is 
 Building the argument never throws, because the language server builds every spec, including on stacks that lack the type. Parsing throws an internal error when the stack does not register `dataType`: a spec that names a type its stack lacks is a pack bug. The argument carries `tags` and `documentation` for completion.
 
 `dataTypeValue` is used as a named attribute argument, such as `@@index(where:)`, as a block parameter, such as a policy's `using`, or as a parameter in a `funcCall` signature. It is never a bare arm of `oneOf`, whose aggregate diagnostic would hide the message that says how to write the value. The places that take raw SQL receive `sql/expression` through it, so only a `sql` literal is admitted there ([ADR 260 — Raw SQL is a value of the data type `sql/expression`](ADR%20260%20-%20Raw%20SQL%20is%20a%20value%20of%20the%20data%20type%20sql-expression.md)).
+
+`writtenScalar(arm)` wraps a literal arm and yields the literal as a written scalar with its span; `writtenList(of)` does the same for a list of them. They are the reading step that `dataTypeValue` performs before it casts, for a position whose receiving type is known only at lowering, such as `@default`, which receives the column's type. They leave a tagged literal that cannot be canonicalized for lowering to report, because a parse failure inside `oneOf` would be replaced by `Expected one of: …`. The wrapped arm keeps its `kind` and metadata, which describe the syntax it accepts, for tooling.
 
 ### Alternatives
 
