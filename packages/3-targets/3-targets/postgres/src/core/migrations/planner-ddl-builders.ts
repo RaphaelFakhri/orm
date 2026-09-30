@@ -73,7 +73,7 @@ export function buildColumnTypeSql(
 export interface DefaultLiteralColumn {
   readonly many?: boolean | undefined;
   readonly nativeType: string;
-  readonly dataType?: string;
+  readonly dataType: string;
 }
 
 /** Autoincrement columns use SERIAL types, so this returns empty for them. */
@@ -101,7 +101,7 @@ export function buildColumnDefaultSql(
 }
 
 export function renderDefaultLiteral(value: unknown, column?: DefaultLiteralColumn): string {
-  const isJsonColumn = column?.dataType !== undefined && JSON_DATA_TYPES.has(column.dataType);
+  const isJsonColumn = column !== undefined && JSON_DATA_TYPES.has(column.dataType);
 
   if (column?.many && Array.isArray(value)) {
     return renderArrayLiteralDefault(value, column.nativeType);
@@ -133,7 +133,7 @@ export function renderDefaultLiteral(value: unknown, column?: DefaultLiteralColu
  * value as ISO text. `nativeType` is the element type or the list type, written as SQL, so a
  * user-defined type name arrives already quoted.
  */
-function renderArrayLiteralDefault(elements: unknown[], nativeType: string): string {
+export function renderArrayLiteralDefault(elements: unknown[], nativeType: string): string {
   if (elements.length === 0) {
     return "'{}'";
   }

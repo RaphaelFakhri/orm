@@ -73,7 +73,7 @@ import type {
 import { parsePostgresDefault } from '@internal/target-postgres/default-normalizer';
 import { postgresError } from '@internal/target-postgres/errors';
 import { normalizeSchemaNativeType } from '@internal/target-postgres/native-type-normalizer';
-import { renderDefaultLiteral } from '@internal/target-postgres/planner-ddl-builders';
+import { renderArrayLiteralDefault } from '@internal/target-postgres/planner-ddl-builders';
 import { escapeLiteral, quoteIdentifier } from '@internal/target-postgres/sql-utils';
 import {
   PostgresDatabaseSchemaNode,
@@ -1861,7 +1861,7 @@ async function pgRenderDdlColumnDefault(
     return `DEFAULT (${def.expression})`;
   }
   if (Array.isArray(def.value) && nativeType.endsWith('[]')) {
-    return `DEFAULT ${renderDefaultLiteral(def.value, { many: true, nativeType })}`;
+    return `DEFAULT ${renderArrayLiteralDefault(def.value, nativeType)}`;
   }
   if (codecRef !== undefined) {
     // Built with the column's own `typeParams`: a parameterized codec answers for them when it

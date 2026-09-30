@@ -45,6 +45,7 @@ import {
   type SqlSchemaIR,
 } from '@internal/sql-schema-ir/types';
 import { blindCast } from '@internal/utils/casts';
+import { InternalError } from '@internal/utils/internal-error';
 import { pgFloat4, pgFloat8, pgInt2, pgInt4, pgInt8 } from '../data-types';
 import { isPostgresSchema } from '../postgres-schema';
 import {
@@ -242,11 +243,14 @@ const SAFE_WIDENINGS = new Set([
   `${pgFloat4.id}→${pgFloat8.id}`,
 ]);
 
-/** The id of the data type a column node's codec represents, when the node carries its codec. */
-function columnDataType(column: SqlColumnIR, types: SqlTypeLookups): string | undefined {
-  return column.codecRef === undefined
-    ? undefined
-    : sqlDataTypeOfCodec(column.codecRef.codecId, types).id;
+/** The id of the data type a column node's codec represents. */
+function columnDataType(column: SqlColumnIR, types: SqlTypeLookups): string {
+  if (column.codecRef === undefined) {
+    throw new InternalError(
+      `Column "${column.name}" carries no codec, so its data type is unknown; a type change is planned only between columns built from contracts.`,
+    );
+  }
+  return sqlDataTypeOfCodec(column.codecRef.codecId, types).id;
 }
 
 /**

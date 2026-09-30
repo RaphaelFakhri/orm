@@ -6,6 +6,7 @@ import { postgresDataTypes } from '@internal/target-postgres/data-types';
 import {
   buildColumnDefaultSql,
   buildColumnTypeSql,
+  type DefaultLiteralColumn,
   renderDefaultLiteral,
 } from '@internal/target-postgres/planner-ddl-builders';
 import { describe, expect, it } from 'vitest';
@@ -17,6 +18,10 @@ const types: SqlTypeLookups = {
 
 function col(overrides: Partial<StorageColumn> & { nativeType: string }): StorageColumn {
   return { codecId: 'pg/text@1', nullable: true, ...overrides };
+}
+
+function listColumn(nativeType: string): DefaultLiteralColumn {
+  return { nativeType, dataType: 'pg/text', many: true };
 }
 
 // ---------------------------------------------------------------------------
@@ -188,34 +193,31 @@ describe('renderDefaultLiteral', () => {
   });
 
   it('renders an empty array literal for a list column', () => {
-    const result = renderDefaultLiteral([], col({ nativeType: 'text', many: true }));
+    const result = renderDefaultLiteral([], listColumn('text'));
     expect(result).toBe("'{}'");
   });
 
   it('renders a populated array literal for a list column, cast to the list type', () => {
-    const result = renderDefaultLiteral(['a', 'b'], col({ nativeType: 'text', many: true }));
+    const result = renderDefaultLiteral(['a', 'b'], listColumn('text'));
     expect(result).toBe(`ARRAY['a', 'b']::text[]`);
   });
 
   it('renders a mixed-type array literal element-by-element', () => {
-    const result = renderDefaultLiteral([1, true, null], col({ nativeType: 'int4', many: true }));
+    const result = renderDefaultLiteral([1, true, null], listColumn('int4'));
     expect(result).toBe('ARRAY[1, true, NULL]::int4[]');
   });
 });
 
 describe('buildColumnDefaultSql with a list column', () => {
   it('renders DEFAULT with an empty array literal', () => {
-    const result = buildColumnDefaultSql(
-      { kind: 'literal', value: [] },
-      col({ nativeType: 'text', many: true }),
-    );
+    const result = buildColumnDefaultSql({ kind: 'literal', value: [] }, listColumn('text'));
     expect(result).toBe("DEFAULT '{}'");
   });
 
   it('renders DEFAULT with a populated array literal', () => {
     const result = buildColumnDefaultSql(
       { kind: 'literal', value: ['a', 'b'] },
-      col({ nativeType: 'text', many: true }),
+      listColumn('text'),
     );
     expect(result).toBe(`DEFAULT ARRAY['a', 'b']::text[]`);
   });
@@ -223,7 +225,7 @@ describe('buildColumnDefaultSql with a list column', () => {
   it('renders DEFAULT with int8 text elements cast to the list type', () => {
     const result = buildColumnDefaultSql(
       { kind: 'literal', value: ['1', '9007199254740993'] },
-      col({ nativeType: 'int8[]', many: true }),
+      listColumn('int8[]'),
     );
     expect(result).toBe(`DEFAULT ARRAY['1', '9007199254740993']::int8[]`);
   });

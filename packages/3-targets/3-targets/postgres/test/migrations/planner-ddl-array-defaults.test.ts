@@ -3,17 +3,13 @@ import { describe, expect, it } from 'vitest';
 import {
   buildColumnDefaultSql,
   buildColumnTypeSql,
+  type DefaultLiteralColumn,
   renderDefaultLiteral,
 } from '../../src/core/migrations/planner-ddl-builders';
 import { postgresTypeLookups } from '../postgres-type-lookups';
 
-function arrayColumn(nativeType: string): StorageColumn {
-  return {
-    nativeType,
-    codecId: 'pg/text@1',
-    nullable: false,
-    many: true,
-  } as StorageColumn;
+function arrayColumn(nativeType: string): DefaultLiteralColumn {
+  return { nativeType, dataType: 'pg/text', many: true };
 }
 
 describe('renderDefaultLiteral array columns', () => {
@@ -78,7 +74,7 @@ describe('renderDefaultLiteral array columns', () => {
       expect(
         buildColumnDefaultSql(
           { kind: 'literal', value: ['asc'] },
-          { many: true, nativeType: columnTypeSql },
+          { many: true, nativeType: columnTypeSql, dataType: 'pg/enum' },
         ),
       ).toBe(`DEFAULT ARRAY['asc']::${cast}`);
     },

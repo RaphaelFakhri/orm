@@ -10,6 +10,7 @@ import {
 import { parseNaming } from '@internal/sql-schema-ir/naming';
 import { SqlForeignKeyIR } from '@internal/sql-schema-ir/types';
 import { ifDefined } from '@internal/utils/defined';
+import { InternalError } from '@internal/utils/internal-error';
 import { applicationDomainOf } from '@repo/test-utils';
 import { describe, expect, it } from 'vitest';
 import { buildPostgresPlanDiff } from '../../src/core/migrations/diff-database-schema';
@@ -302,6 +303,53 @@ describe('buildPostgresPlanDiff + planNodeIssues (one-differ path)', () => {
       formatTypeExpected: 'bigint',
       rawTargetTypeForLabel: 'int8',
     });
+  });
+
+  it('refuses to plan a type change for a live column that carries no codec', () => {
+    const contract = makeContract({
+      user: {
+        columns: {
+          id: { nativeType: 'uuid', codecId: 'pg/uuid@1', nullable: false },
+          age: { nativeType: 'int8', codecId: 'pg/int8@1', nullable: false },
+        },
+        primaryKey: { columns: ['id'] },
+        foreignKeys: [],
+        uniques: [],
+        indexes: [],
+      },
+    });
+    const actual = rootOf({
+      user: new PostgresTableSchemaNode({
+        name: 'user',
+        columns: {
+          id: { name: 'id', nativeType: 'uuid', nullable: false, resolvedNativeType: 'uuid' },
+          age: { name: 'age', nativeType: 'int4', nullable: false, resolvedNativeType: 'int4' },
+        },
+        primaryKey: { columns: ['id'] },
+        foreignKeys: [],
+        uniques: [],
+        indexes: [],
+        policies: [],
+        rlsEnabled: false,
+      }),
+    });
+    const { issues } = buildPostgresPlanDiff({
+      contract,
+      actualSchema: actual,
+      frameworkComponents: postgresTypeComponents,
+    });
+
+    expect(() =>
+      planNodeIssues({
+        issues: coalesceSubtreeIssues(issues),
+        toContract: contract,
+        fromContract: contract,
+        schemaName: 'public',
+        codecHooks: new Map(),
+        types: postgresTypeLookups,
+        storageTypes: {},
+      }),
+    ).toThrow(InternalError);
   });
 
   it('an extra live table becomes DropTable (strict)', () => {
