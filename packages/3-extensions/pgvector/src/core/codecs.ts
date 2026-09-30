@@ -4,8 +4,8 @@
  * Mirrors the patterns in `postgres/codecs-class.ts` and `sqlite/codecs-class.ts` for the single `pg/vector@1` codec. Three artifacts:
  *
  * 1. `PgVectorCodec` extends {@link CodecImpl} with the runtime encode/decode/encodeJson/decodeJson conversions inline. Conversions are simple enough (PostgreSQL `[1,2,3]` text format) that no shared helper module is warranted; the class body is the source of truth.
- * 2. `PgVectorDescriptor` extends {@link PostgresCodecDescriptor} with the codec id, traits, params schema (the `pgvector/vector` data type's: an integer `length` from 1 to `VECTOR_MAX_DIM`), explicit target behavior, and the emit-path `renderOutputType` producing `Vector<${length}>`.
- * 3. `pgVectorColumn(length)` per-codec column helper invoking `descriptor.factory({ length })` directly. The `pgvector/vector` data type writes the column type (`vector(1536)`) from `typeParams`.
+ * 2. `PgVectorDescriptor` extends {@link PostgresCodecDescriptor} with the codec id, traits, target types, params schema (`{ length: number }`, validated against {@link VECTOR_MAX_DIM}), the postgres native type `vector`, explicit target behavior, and the emit-path `renderOutputType` producing `Vector<${length}>`.
+ * 3. `pgVectorColumn(length)` per-codec column helper invoking `descriptor.factory({ length })` directly + passing the bare `nativeType: 'vector'`.
  *
  * `length` threads into the runtime codec via the constructor so encode/decode/encodeJson/decodeJson enforce the declared dimension at every ingress path. Without this, `vector(3)` and `vector(1536)` would produce codecs with identical behaviour and a dimension-mismatched value would round-trip undetected.
  */

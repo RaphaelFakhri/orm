@@ -1,10 +1,10 @@
 /**
  * Control-plane extension descriptor for arktype-json.
  *
- * Unlike pgvector, arktype-json has no database extension to install
- * (`jsonb` is a built-in Postgres type), no contract space, no query
- * operations and no control-plane hooks: the schema in typeParams
- * affects runtime validation only, never DDL.
+ * Composes pack metadata and the control-plane hooks into the migration-
+ * plane shape the framework's control stack consumes. Lives at the
+ * control-plane entrypoint so `src/core/**` stays free of migration-plane
+ * imports (per `.cursor/rules/multi-plane-entrypoints.mdc`).
  */
 
 import type { SqlControlExtensionDescriptor } from '@internal/family-sql/control';

@@ -20,10 +20,6 @@
  *
  *   - `contractSpace.{contractJson,migrations,headRef}` — sourced from
  *     the on-disk artefacts emitted by `build:contract-space`.
- *   - `types.codecTypes.controlPlaneHooks[PGVECTOR_CODEC_ID]` — codec
- *     control hook (`resolveIdentityValue`) the SQL planner extracts via
- *     `extractCodecControlHooks` and uses to render the canonical
- *     zero-vector identity literal.
  *
  * @see docs/architecture docs/adrs/ADR 212 - Contract spaces.md
  *   (contract-space package layout convention).

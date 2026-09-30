@@ -1,5 +1,5 @@
 /**
- * Column type descriptor factory for pgvector extension. `vector(N)` is the canonical authoring surface; every pgvector column must declare a dimension via this factory. The dimension threads into the runtime codec through `paramsSchema.length` and into the DDL through the `pgvector/vector` data type (e.g. `vector(1536)`).
+ * Column type descriptor factory for pgvector extension. `vector(N)` is the canonical authoring surface; every pgvector column must declare a dimension via this factory.
  */
 
 import type { ColumnTypeDescriptor } from '@internal/framework-components/codec';

@@ -9,7 +9,6 @@ const pgvectorRuntimeDescriptor: SqlRuntimeExtensionDescriptor<'postgres'> = {
   dataTypes: pgvectorPackMeta.dataTypes,
   familyId: 'sql' as const,
   targetId: 'postgres' as const,
-  // Expose the unified descriptor list so `extractCodecLookup` reads `renderOutputType` directly off the descriptors and materializes the representative `Codec` for the SQL renderer's cast-policy lookup.
   types: {
     codecTypes: {
       codecDescriptors: Array.from(pgvectorCodecRegistry.values()),
