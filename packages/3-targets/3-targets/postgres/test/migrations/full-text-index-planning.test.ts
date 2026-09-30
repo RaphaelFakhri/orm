@@ -33,6 +33,7 @@ import { postgresCreateNamespace } from '../../src/core/postgres-schema';
 import { PostgresDatabaseSchemaNode } from '../../src/core/schema-ir/postgres-database-schema-node';
 import { PostgresNamespaceSchemaNode } from '../../src/core/schema-ir/postgres-namespace-schema-node';
 import { PostgresTableSchemaNode } from '../../src/core/schema-ir/postgres-table-schema-node';
+import { postgresTypeComponents } from '../postgres-type-lookups';
 
 const postgresDataTypeLookup = createDataTypeLookup(postgresDataTypes);
 const postgresCodecLookup = createPostgresBuiltinCodecLookup();
@@ -139,7 +140,7 @@ async function plannedCreateIndexNodes(schema: string): Promise<readonly Postgre
     schema: liveSchemaWithoutTheIndex(),
     policy: { allowedOperationClasses: ['additive', 'widening', 'destructive'] },
     fromContract: null,
-    frameworkComponents: [],
+    frameworkComponents: postgresTypeComponents,
     spaceId: APP_SPACE_ID,
     snapshotsImportPath: '../../snapshots',
   });

@@ -17,6 +17,7 @@ import { PostgresSchema } from '../../src/core/postgres-schema';
 import { PostgresDatabaseSchemaNode } from '../../src/core/schema-ir/postgres-database-schema-node';
 import { PostgresNamespaceSchemaNode } from '../../src/core/schema-ir/postgres-namespace-schema-node';
 import { PostgresTableSchemaNode } from '../../src/core/schema-ir/postgres-table-schema-node';
+import { postgresTypeComponents, postgresTypeLookups } from '../postgres-type-lookups';
 
 /**
  * Direct coverage for the node-based Postgres planner (the one-differ path):
@@ -94,7 +95,7 @@ function planFor(contract: Contract<SqlStorage>, actual: PostgresDatabaseSchemaN
   const { issues } = buildPostgresPlanDiff({
     contract,
     actualSchema: actual,
-    frameworkComponents: [],
+    frameworkComponents: postgresTypeComponents,
   });
   // Subtree coalescing is the planner's responsibility (per the differ's
   // contract) — the total differ emits an issue for every node in a
@@ -106,6 +107,7 @@ function planFor(contract: Contract<SqlStorage>, actual: PostgresDatabaseSchemaN
     fromContract: null,
     schemaName: 'public',
     codecHooks: new Map(),
+    types: postgresTypeLookups,
     storageTypes: contract.storage.types ?? {},
     // The default per-issue mapper is what this suite pins — the real
     // strategy list is covered elsewhere (see module docstring).
@@ -292,10 +294,11 @@ describe('mapNodeIssueToCall — synthesized namespace issue', () => {
       fromContract: null,
       schemaName: 'public',
       codecHooks: new Map(),
+      types: postgresTypeLookups,
       storageTypes: {},
       schema: undefined as never,
       policy: { allowedOperationClasses: ['additive'] as const },
-      frameworkComponents: [],
+      frameworkComponents: postgresTypeComponents,
     };
     const result = mapNodeIssueToCall(issue, ctx);
     expect(result.ok).toBe(true);
@@ -464,10 +467,11 @@ describe('mapNodeIssueToCall — table rlsEnabled drift', () => {
     fromContract: null,
     schemaName: 'public',
     codecHooks: new Map(),
+    types: postgresTypeLookups,
     storageTypes: {},
     schema: undefined as never,
     policy: { allowedOperationClasses: ['additive', 'widening', 'destructive'] as const },
-    frameworkComponents: [],
+    frameworkComponents: postgresTypeComponents,
   };
 
   function tableNode(rlsEnabled: boolean): PostgresTableSchemaNode {
@@ -527,7 +531,7 @@ describe('coalesceSubtreeIssues', () => {
     const { issues } = buildPostgresPlanDiff({
       contract,
       actualSchema: emptyRoot(),
-      frameworkComponents: [],
+      frameworkComponents: postgresTypeComponents,
     });
     // The total differ emits the table not-found plus every column/PK under it.
     expect(issues.length).toBeGreaterThan(1);
@@ -544,7 +548,7 @@ describe('operation-class gating of a RenameIndexCall', () => {
     const { issues } = buildPostgresPlanDiff({
       contract,
       actualSchema: emptyRoot(),
-      frameworkComponents: [],
+      frameworkComponents: postgresTypeComponents,
     });
     const coalesced = coalesceSubtreeIssues(issues);
     const renameCall = new RenameIndexCall(
@@ -562,6 +566,7 @@ describe('operation-class gating of a RenameIndexCall', () => {
       fromContract: null,
       schemaName: 'public',
       codecHooks: new Map(),
+      types: postgresTypeLookups,
       storageTypes: contract.storage.types ?? {},
       policy: { allowedOperationClasses: ['additive'] },
       strategies: [renameEmittingStrategy],

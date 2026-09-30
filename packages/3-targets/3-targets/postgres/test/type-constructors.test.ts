@@ -107,16 +107,16 @@ describe('postgresScalarAuthoringTypes', () => {
   // The legacy scalar-type map channel (name-to-codecId, retired in TML-2985) is gone; the pinned
   // name → codecId pairs below carry the retired map's claims forward.
   const expectedScalars = [
-    ['String', 'pg/text@1'],
-    ['Boolean', 'pg/bool@1'],
-    ['Int', 'pg/int4@1'],
-    ['BigInt', 'pg/int8@1'],
-    ['Float', 'pg/float8@1'],
-    ['Decimal', 'pg/numeric@1'],
-    ['DateTime', 'pg/timestamptz-temporal@1'],
-    ['Json', 'pg/json@1'],
-    ['Jsonb', 'pg/jsonb@1'],
-    ['Bytes', 'pg/bytea@1'],
+    ['String', 'pg/text@1', 'text'],
+    ['Boolean', 'pg/bool@1', 'bool'],
+    ['Int', 'pg/int4@1', 'int4'],
+    ['BigInt', 'pg/int8@1', 'int8'],
+    ['Float', 'pg/float8@1', 'float8'],
+    ['Decimal', 'pg/numeric@1', 'numeric'],
+    ['DateTime', 'pg/timestamptz-temporal@1', 'timestamptz'],
+    ['Json', 'pg/json@1', 'json'],
+    ['Jsonb', 'pg/jsonb@1', 'jsonb'],
+    ['Bytes', 'pg/bytea@1', 'bytea'],
   ] as const;
 
   it('pins every base scalar as a zero-arg type constructor naming its codec', () => {
@@ -133,13 +133,13 @@ describe('postgresScalarAuthoringTypes', () => {
 
   it.each(expectedScalars)(
     '%s keeps its type name, now its codec’s data type’s',
-    (_name, codecId) => {
+    (_name, codecId, typeName) => {
       expect(
         storedSqlTypeNameOfCodec(codecId, undefined, {
           codecLookup,
           dataTypeLookup: createDataTypeLookup(postgresDataTypes),
         }),
-      ).toBe(codecLookup.targetTypesFor(codecId)?.[0]);
+      ).toBe(typeName);
     },
   );
 });

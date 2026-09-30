@@ -6,11 +6,10 @@ import {
   renderColumnDefaultSql,
   resolveColumnTemporaryDefault,
 } from '../../src/core/migrations/column-ddl-rendering';
+import { postgresTypeLookups as types } from '../postgres-type-lookups';
 
 describe('renderColumnDdl', () => {
-  const noHooks = new Map();
-
-  it('renders a non-null array column with typeParams, an explicit many flag, and a named-type codec', () => {
+  it('renders a non-null array column with typeParams, an explicit many flag', () => {
     const column = new SqlColumnIR({
       name: 'tags',
       nativeType: 'text[]',
@@ -19,13 +18,12 @@ describe('renderColumnDdl', () => {
       resolvedDefault: { kind: 'literal', value: ['a', 'b'] },
       codecRef: { codecId: 'pg/text@1', typeParams: {} },
       codecBaseNativeType: 'text',
-      codecNamedType: true,
     });
 
-    const result = renderColumnDdl('tags', column, noHooks);
+    const result = renderColumnDdl('tags', column, types);
 
     expect(result.name).toBe('tags');
-    expect(result.type).toBe('"text"[]');
+    expect(result.type).toBe('text[]');
     expect(result.notNull).toBe(true);
     expect(result.default).toEqual({ kind: 'literal', value: ['a', 'b'] });
     expect(result.codecRef).toEqual({ codecId: 'pg/text@1', typeParams: {} });
@@ -41,7 +39,7 @@ describe('renderColumnDdl', () => {
       codecBaseNativeType: 'uuid',
     });
 
-    const result = renderColumnDdl('id2', column, noHooks);
+    const result = renderColumnDdl('id2', column, types);
 
     expect(result.name).toBe('id2');
     expect(result.type).toBe('uuid');
@@ -60,7 +58,7 @@ describe('renderColumnDdl', () => {
       codecBaseNativeType: 'int4',
     });
 
-    const result = renderColumnDdl('id', column, noHooks);
+    const result = renderColumnDdl('id', column, types);
 
     expect(result.type).toBe('SERIAL');
     expect(result.default).toBeUndefined();
@@ -69,7 +67,7 @@ describe('renderColumnDdl', () => {
   it('throws when the column carries no codec identity at all', () => {
     const column = new SqlColumnIR({ name: 'x', nativeType: 'text', nullable: true });
 
-    expect(() => renderColumnDdl('x', column, noHooks)).toThrow(
+    expect(() => renderColumnDdl('x', column, types)).toThrow(
       /column "x" carries no codec identity/,
     );
   });
@@ -82,7 +80,7 @@ describe('renderColumnDdl', () => {
       codecRef: { codecId: 'pg/text@1' },
     });
 
-    expect(() => renderColumnDdl('y', column, noHooks)).toThrow(
+    expect(() => renderColumnDdl('y', column, types)).toThrow(
       /column "y" carries no codec identity/,
     );
   });
@@ -99,7 +97,7 @@ describe('renderColumnAlterType', () => {
       codecBaseNativeType: 'int4',
     });
 
-    expect(renderColumnAlterType(column, new Map())).toEqual({
+    expect(renderColumnAlterType(column, types)).toEqual({
       qualifiedTargetType: 'int4',
       formatTypeExpected: 'integer',
     });
@@ -116,19 +114,17 @@ describe('resolveColumnTemporaryDefault', () => {
       codecBaseNativeType: 'uuid',
     });
 
-    expect(resolveColumnTemporaryDefault(column, new Map())).toBe(
+    expect(resolveColumnTemporaryDefault(column, new Map(), types)).toBe(
       "'00000000-0000-0000-0000-000000000000'",
     );
   });
 });
 
 describe('renderColumnDefaultSql', () => {
-  const noHooks = new Map();
-
   it('renders an empty string when the diff node carries no resolved default', () => {
     const defaultNode = new SqlColumnDefaultIR({ raw: "'hello'::text" });
 
-    expect(renderColumnDefaultSql(defaultNode, noHooks)).toBe('');
+    expect(renderColumnDefaultSql(defaultNode, types)).toBe('');
   });
 
   it('renders a DEFAULT clause for a scalar literal', () => {
@@ -139,7 +135,7 @@ describe('renderColumnDefaultSql', () => {
       codecBaseNativeType: 'text',
     });
 
-    expect(renderColumnDefaultSql(defaultNode, noHooks)).toBe("DEFAULT 'hello'");
+    expect(renderColumnDefaultSql(defaultNode, types)).toBe("DEFAULT 'hello'");
   });
 
   it('renders a DEFAULT clause for a number literal', () => {
@@ -150,7 +146,7 @@ describe('renderColumnDefaultSql', () => {
       codecBaseNativeType: 'int4',
     });
 
-    expect(renderColumnDefaultSql(defaultNode, noHooks)).toBe('DEFAULT 42');
+    expect(renderColumnDefaultSql(defaultNode, types)).toBe('DEFAULT 42');
   });
 
   it.each([
@@ -169,7 +165,7 @@ describe('renderColumnDefaultSql', () => {
         codecBaseNativeType: typeName,
       });
 
-      expect(renderColumnDefaultSql(defaultNode, noHooks)).toBe(`DEFAULT ARRAY['asc']::${cast}`);
+      expect(renderColumnDefaultSql(defaultNode, types)).toBe(`DEFAULT ARRAY['asc']::${cast}`);
     },
   );
 
@@ -179,6 +175,6 @@ describe('renderColumnDefaultSql', () => {
       nativeTypeContext: 'int4',
     });
 
-    expect(() => renderColumnDefaultSql(defaultNode, noHooks)).toThrow(/carries no codec identity/);
+    expect(() => renderColumnDefaultSql(defaultNode, types)).toThrow(/carries no codec identity/);
   });
 });

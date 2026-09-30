@@ -124,13 +124,7 @@ class DirectVectorDescriptor extends PostgresCodecDescriptor<VectorParams> {
   override readonly codecId = 'demo/direct-vector@1' as const;
   override readonly traits = ['equality'] as const;
   override readonly paramsSchema = vectorParamsSchema;
-  readonly nativeTypeParams: VectorParams[] = [];
   readonly jsonProjectionParams: VectorParams[] = [];
-
-  protected override nativeType(params: VectorParams): string {
-    this.nativeTypeParams.push(params);
-    return `custom_schema.vector_${params.length}`;
-  }
 
   protected override jsonProjection(
     expression: ProjectionExpr,
@@ -168,25 +162,19 @@ function vectorRef(typeParams: JsonValue, many?: true): CodecRef {
 }
 
 describe('PostgresCodecDescriptor', () => {
-  it('exposes the stable structural discriminant and trusted native type string', () => {
+  it('exposes the stable structural discriminant', () => {
     const descriptor = new DirectVectorDescriptor();
 
     expect(descriptor.descriptorKind).toBe('postgres-codec');
-    expect(descriptor.nativeTypeFor(vectorRef({ length: 3 }))).toBe('custom_schema.vector_3');
-    expect(descriptor.nativeTypeParams).toEqual([{ length: 3 }]);
   });
 
   it('validates erased type parameters before invoking typed hooks', () => {
     const descriptor = new DirectVectorDescriptor();
     const expression = ColumnRef.of('items', 'embedding');
 
-    expect(() => descriptor.nativeTypeFor(vectorRef({ length: 'bad' }))).toThrow(
-      'Invalid typeParams',
-    );
     expect(() => descriptor.projectJson(expression, vectorRef({ length: 'bad' }))).toThrow(
       'Invalid typeParams',
     );
-    expect(descriptor.nativeTypeParams).toEqual([]);
     expect(descriptor.jsonProjectionParams).toEqual([]);
 
     const projected = descriptor.projectJson(expression, vectorRef({ length: 4 }));
@@ -282,7 +270,6 @@ describe('postgresCodec', () => {
   it('preserves the wrapped descriptor contract and materialization behavior', () => {
     const descriptor = postgresCodec(genericVectorDescriptor, {
       dataType: fixtureVectorType,
-      nativeType: (params) => `vector(${params.length})`,
       jsonProjection: (expression, params) =>
         FunctionCallExpr.of('project_generic_vector', [expression, LiteralExpr.of(params.length)]),
     });
@@ -290,7 +277,6 @@ describe('postgresCodec', () => {
     expect(descriptor.descriptorKind).toBe('postgres-codec');
     expect(descriptor.codecId).toBe(genericVectorDescriptor.codecId);
     expect(descriptor.traits).toBe(genericVectorDescriptor.traits);
-    expect(descriptor.targetTypes).toBe(genericVectorDescriptor.targetTypes);
     expect(descriptor.dataType).toBe(fixtureVectorType.id);
     expect(descriptor.isParameterized).toBe(genericVectorDescriptor.isParameterized);
     expect(descriptor.renderOutputType?.({ length: 6 })).toBe('Vector<6>');
@@ -310,12 +296,10 @@ describe('postgresCodec', () => {
   it('takes its parameter schema from the data type, not the template', () => {
     const descriptor = postgresCodec(genericVectorDescriptor, {
       dataType: fixtureVectorType,
-      nativeType: (params) => `vector(${params.length})`,
       jsonProjection: (expression) => expression,
     });
     const withoutParams = postgresCodec(genericVectorDescriptor, {
       dataType: dataType('demo/plain', {}),
-      nativeType: () => 'vector',
       jsonProjection: (expression) => expression,
     });
 
@@ -329,7 +313,6 @@ describe('postgresCodec', () => {
     const overrideCalls: VectorParams[] = [];
     const descriptor = postgresCodec(genericVectorDescriptor, {
       dataType: fixtureVectorType,
-      nativeType: (params) => `vector(${params.length})`,
       jsonProjection: (expression) => expression,
       jsonArrayProjection: (expression, params) => {
         overrideCalls.push(params);
@@ -368,7 +351,6 @@ describe('Postgres codec descriptor registry', () => {
       paramsSchema: descriptor.paramsSchema,
       isParameterized: descriptor.isParameterized,
       factory: descriptor.factory.bind(descriptor),
-      nativeTypeFor: descriptor.nativeTypeFor.bind(descriptor),
       projectJson: descriptor.projectJson.bind(descriptor),
     };
 
@@ -390,7 +372,6 @@ describe('Postgres codec descriptor registry', () => {
       paramsSchema: descriptor.paramsSchema,
       isParameterized: descriptor.isParameterized,
       factory: descriptor.factory.bind(descriptor),
-      nativeTypeFor: descriptor.nativeTypeFor.bind(descriptor),
       projectJson: descriptor.projectJson.bind(descriptor),
     };
 

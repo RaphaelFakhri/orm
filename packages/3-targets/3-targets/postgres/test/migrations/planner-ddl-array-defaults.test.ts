@@ -5,6 +5,7 @@ import {
   buildColumnTypeSql,
   renderDefaultLiteral,
 } from '../../src/core/migrations/planner-ddl-builders';
+import { postgresTypeLookups } from '../postgres-type-lookups';
 
 function arrayColumn(nativeType: string): StorageColumn {
   return {
@@ -72,7 +73,7 @@ describe('renderDefaultLiteral array columns', () => {
         many: true,
         typeParams: { typeName },
       } as StorageColumn;
-      const columnTypeSql = buildColumnTypeSql(enumList, new Map(), {}, false);
+      const columnTypeSql = buildColumnTypeSql(enumList, postgresTypeLookups, {}, false);
 
       expect(
         buildColumnDefaultSql(

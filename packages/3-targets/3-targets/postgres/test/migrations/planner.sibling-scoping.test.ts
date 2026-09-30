@@ -24,6 +24,7 @@ import { postgresCreateNamespace } from '../../src/core/postgres-schema';
 import { PostgresDatabaseSchemaNode } from '../../src/core/schema-ir/postgres-database-schema-node';
 import { PostgresNamespaceSchemaNode } from '../../src/core/schema-ir/postgres-namespace-schema-node';
 import { PostgresTableSchemaNode } from '../../src/core/schema-ir/postgres-table-schema-node';
+import { postgresTypeComponents } from '../postgres-type-lookups';
 
 const stubLowerer: ExecuteRequestLowerer = {
   lower(_ast, _ctx) {
@@ -248,7 +249,7 @@ describe('Postgres planner ownership consultation', () => {
       schema: buildLiveSchema(),
       policy: DB_UPDATE_POLICY,
       fromContract: null,
-      frameworkComponents: [],
+      frameworkComponents: postgresTypeComponents,
       spaceId: APP_SPACE_ID,
       snapshotsImportPath: '../../snapshots',
     });
@@ -270,7 +271,7 @@ describe('Postgres planner ownership consultation', () => {
       schema: buildLiveSchema(),
       policy: DB_UPDATE_POLICY,
       fromContract: null,
-      frameworkComponents: [],
+      frameworkComponents: postgresTypeComponents,
       spaceId: APP_SPACE_ID,
       snapshotsImportPath: '../../snapshots',
       ownership: ownsOnly(inPublic('app_user'), inPublic('cipher_state')),
@@ -291,7 +292,7 @@ describe('Postgres planner ownership consultation', () => {
       schema: buildLiveSchema(),
       policy: INIT_ADDITIVE_POLICY,
       fromContract: null,
-      frameworkComponents: [],
+      frameworkComponents: postgresTypeComponents,
       spaceId: APP_SPACE_ID,
       snapshotsImportPath: '../../snapshots',
     });
@@ -338,7 +339,7 @@ describe('Postgres planner ownership consultation', () => {
       schema: liveWithDriftColumn,
       policy: DB_UPDATE_POLICY,
       fromContract: null,
-      frameworkComponents: [],
+      frameworkComponents: postgresTypeComponents,
       spaceId: APP_SPACE_ID,
       snapshotsImportPath: '../../snapshots',
       ownership: ownsOnly(inPublic('app_user')),
@@ -364,7 +365,7 @@ describe('Postgres planner ownership consultation', () => {
       schema: buildLiveSchemaWithCrossNamespaceOrphan(),
       policy: DB_UPDATE_POLICY,
       fromContract: null,
-      frameworkComponents: [],
+      frameworkComponents: postgresTypeComponents,
       spaceId: APP_SPACE_ID,
       snapshotsImportPath: '../../snapshots',
       ownership: ownsOnly(inPublic('app_user'), inPublic('orphan_table')),
@@ -388,7 +389,7 @@ describe('Postgres planner ownership consultation', () => {
       schema: buildLiveSchema(),
       policy: DB_UPDATE_POLICY,
       fromContract: null,
-      frameworkComponents: [],
+      frameworkComponents: postgresTypeComponents,
       spaceId: APP_SPACE_ID,
       snapshotsImportPath: '../../snapshots',
       ownership: ownsOnly(

@@ -12,6 +12,7 @@ import {
   buildColumnTypeSql,
 } from '../src/core/migrations/planner-ddl-builders';
 import { createPostgresMigrationRunner } from '../src/core/migrations/runner';
+import { postgresTypeLookups } from './postgres-type-lookups';
 
 describe('errorPostgresMigrationStackMissing', () => {
   it('renders under the stable MIGRATION.POSTGRES_CONTROL_STACK_MISSING code', () => {
@@ -61,38 +62,15 @@ describe('postgresError sites', () => {
     });
   });
 
-  it('buildColumnTypeSql rejects an unsafe native type as CONTRACT.NATIVE_TYPE_INVALID', () => {
-    const column = {
-      nativeType: 'text; DROP TABLE users',
-      codecId: 'pg/text@1',
-      nullable: false,
-    } as StorageColumn;
-    const error = catchError(() => buildColumnTypeSql(column, new Map()));
-    expect(isStructuredError(error)).toBe(true);
-    expect(error).toMatchObject({ code: 'CONTRACT.NATIVE_TYPE_INVALID' });
-  });
-
   it('buildColumnTypeSql without a codecId for typeParams throws CONTRACT.CODEC_DESCRIPTOR_MISSING', () => {
     const column = {
       nativeType: 'varchar',
       nullable: false,
       typeParams: { length: 10 },
     } as unknown as StorageColumn;
-    const error = catchError(() => buildColumnTypeSql(column, new Map()));
+    const error = catchError(() => buildColumnTypeSql(column, postgresTypeLookups));
     expect(isStructuredError(error)).toBe(true);
     expect(error).toMatchObject({ code: 'CONTRACT.CODEC_DESCRIPTOR_MISSING' });
-  });
-
-  it('buildColumnTypeSql without an expandNativeType hook throws CONTRACT.PACK_CONTRIBUTION_INVALID', () => {
-    const column = {
-      nativeType: 'varchar',
-      codecId: 'pg/varchar@1',
-      nullable: false,
-      typeParams: { length: 10 },
-    } as StorageColumn;
-    const error = catchError(() => buildColumnTypeSql(column, new Map()));
-    expect(isStructuredError(error)).toBe(true);
-    expect(error).toMatchObject({ code: 'CONTRACT.PACK_CONTRIBUTION_INVALID' });
   });
 
   it('buildColumnDefaultSql rejects an unsafe default expression as CONTRACT.DEFAULT_INVALID', () => {

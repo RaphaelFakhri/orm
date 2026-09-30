@@ -20,10 +20,9 @@ const citextTemplate: CodecDescriptorTemplate = {
   },
 };
 
-/** A codec the target does not own, as an extension would contribute it: text stored as `citext`. */
+/** A codec the target does not own, as an extension would contribute it, representing text. */
 export const extensionCodec: AnyPostgresCodecDescriptor = postgresCodec(citextTemplate, {
   dataType: pgText,
-  nativeType: () => 'citext',
   jsonProjection: (expression) => expression,
 });
 

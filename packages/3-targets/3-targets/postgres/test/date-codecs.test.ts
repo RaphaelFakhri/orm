@@ -101,6 +101,5 @@ describe('pg/timestamptz-date@1', () => {
       CastExpr.as(expression, 'text'),
     );
     expect(pgTimestamptzDateDescriptor.renderOutputType({ precision: 6 })).toBe('Date');
-    expect(pgTimestamptzDateDescriptor.targetTypes).toEqual([]);
   });
 });

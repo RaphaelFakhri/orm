@@ -29,18 +29,18 @@ const UNREPRESENTABLE_VALUES = [
 ] as const;
 
 const CODECS = [
-  { id: PG_DATE_STRING_CODEC_ID, descriptor: pgDateStringDescriptor, nativeType: 'date' },
+  { id: PG_DATE_STRING_CODEC_ID, descriptor: pgDateStringDescriptor, dataType: 'pg/date' },
   {
     id: PG_TIMESTAMP_STRING_CODEC_ID,
     descriptor: pgTimestampStringDescriptor,
-    nativeType: 'timestamp without time zone',
+    dataType: 'pg/timestamp',
   },
   {
     id: PG_TIMESTAMPTZ_STRING_CODEC_ID,
     descriptor: pgTimestamptzStringDescriptor,
-    nativeType: 'timestamp with time zone',
+    dataType: 'pg/timestamptz',
   },
-  { id: PG_TIME_STRING_CODEC_ID, descriptor: pgTimeStringDescriptor, nativeType: 'time' },
+  { id: PG_TIME_STRING_CODEC_ID, descriptor: pgTimeStringDescriptor, dataType: 'pg/time' },
 ] as const;
 
 async function withoutTemporalGlobal<T>(body: () => Promise<T>): Promise<T> {
@@ -57,7 +57,7 @@ async function withoutTemporalGlobal<T>(body: () => Promise<T>): Promise<T> {
 }
 
 describe('representation-explicit temporal string codecs', () => {
-  for (const { id, descriptor, nativeType } of CODECS) {
+  for (const { id, descriptor, dataType } of CODECS) {
     describe(id, () => {
       const codec = descriptor.factory({})(instanceCtx);
 
@@ -72,15 +72,15 @@ describe('representation-explicit temporal string codecs', () => {
         expect(codec.decodeJson(value)).toBe(value);
       });
 
-      it('declares no target types, so introspection ownership stays with the temporal codecs', () => {
+      it('declares its traits and the data type of the column it serves', () => {
         expect({
           codecId: descriptor.codecId,
           traits: descriptor.traits,
-          nativeType: descriptor.nativeTypeFor({ codecId: id }),
+          dataType: descriptor.dataType,
         }).toEqual({
           codecId: id,
           traits: ['equality', 'order'],
-          nativeType,
+          dataType,
         });
       });
 

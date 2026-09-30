@@ -32,6 +32,7 @@ import { PostgresNamespaceSchemaNode } from '../../src/core/schema-ir/postgres-n
 import { PostgresNativeEnumSchemaNode } from '../../src/core/schema-ir/postgres-native-enum-schema-node';
 import { PostgresPolicySchemaNode } from '../../src/core/schema-ir/postgres-policy-schema-node';
 import { PostgresTableSchemaNode } from '../../src/core/schema-ir/postgres-table-schema-node';
+import { postgresTypeComponents } from '../postgres-type-lookups';
 
 const stubLowerer: ExecuteRequestLowerer = {
   lower: () => ({ sql: 'stub', params: [] }),
@@ -250,7 +251,7 @@ async function planOpIds(
     schema,
     policy: { allowedOperationClasses: ['additive', 'widening', 'destructive'] },
     fromContract,
-    frameworkComponents,
+    frameworkComponents: [...postgresTypeComponents, ...frameworkComponents],
     spaceId: APP_SPACE_ID,
     snapshotsImportPath: '../../snapshots',
   });

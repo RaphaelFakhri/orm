@@ -4,6 +4,7 @@ import {
   buildExpectedFormatType,
   qualifyTableName,
 } from '../../src/core/migrations/planner-sql-checks';
+import { postgresTypeLookups as types } from '../postgres-type-lookups';
 
 describe('qualifyTableName', () => {
   it('quotes schema and table', () => {
@@ -16,14 +17,12 @@ describe('qualifyTableName', () => {
 });
 
 describe('buildExpectedFormatType', () => {
-  const noHooks = new Map();
-
   describe('FORMAT_TYPE_DISPLAY mappings', () => {
     it('maps int2 to smallint', () => {
       expect(
         buildExpectedFormatType(
           { nativeType: 'int2', codecId: 'pg/int2@1', nullable: false },
-          noHooks,
+          types,
         ),
       ).toBe('smallint');
     });
@@ -32,7 +31,7 @@ describe('buildExpectedFormatType', () => {
       expect(
         buildExpectedFormatType(
           { nativeType: 'timestamptz', codecId: 'pg/timestamptz-temporal@1', nullable: false },
-          noHooks,
+          types,
         ),
       ).toBe('timestamp with time zone');
     });
@@ -43,7 +42,7 @@ describe('buildExpectedFormatType', () => {
       expect(
         buildExpectedFormatType(
           { nativeType: 'text', codecId: 'pg/text@1', nullable: false },
-          noHooks,
+          types,
         ),
       ).toBe('text');
     });
@@ -53,8 +52,14 @@ describe('buildExpectedFormatType', () => {
     it('returns simple lowercase UDT name unquoted', () => {
       expect(
         buildExpectedFormatType(
-          { nativeType: 'my_status', codecId: 'app/udt@1', nullable: false, typeRef: 'MyStatus' },
-          noHooks,
+          {
+            nativeType: 'my_status',
+            codecId: 'pg/enum@1',
+            nullable: false,
+            typeParams: { typeName: 'my_status' },
+            typeRef: 'MyStatus',
+          },
+          types,
         ),
       ).toBe('my_status');
     });
@@ -62,8 +67,14 @@ describe('buildExpectedFormatType', () => {
     it('quotes reserved word used as UDT name', () => {
       expect(
         buildExpectedFormatType(
-          { nativeType: 'user', codecId: 'app/udt@1', nullable: false, typeRef: 'User' },
-          noHooks,
+          {
+            nativeType: 'user',
+            codecId: 'pg/enum@1',
+            nullable: false,
+            typeParams: { typeName: 'user' },
+            typeRef: 'User',
+          },
+          types,
         ),
       ).toBe('"user"');
     });
@@ -73,46 +84,33 @@ describe('buildExpectedFormatType', () => {
         buildExpectedFormatType(
           {
             nativeType: 'OrderStatus',
-            codecId: 'app/udt@1',
+            codecId: 'pg/enum@1',
             nullable: false,
+            typeParams: { typeName: 'OrderStatus' },
             typeRef: 'OrderStatus',
           },
-          noHooks,
+          types,
         ),
       ).toBe('"OrderStatus"');
     });
   });
 
-  describe('codec hook expansion', () => {
-    it('delegates to expandNativeType when typeParams and codec hook exist', () => {
-      const hooks = new Map([
-        [
-          'pg/decimal@1',
-          {
-            expandNativeType: ({
-              nativeType,
-              typeParams,
-            }: {
-              nativeType: string;
-              typeParams?: Record<string, unknown>;
-            }) => `${nativeType}(${typeParams?.['precision']},${typeParams?.['scale']})`,
-          },
-        ],
-      ]);
+  describe('parameterized data types', () => {
+    it('renders the data type with its parameters', () => {
       expect(
         buildExpectedFormatType(
           {
             nativeType: 'numeric',
-            codecId: 'pg/decimal@1',
+            codecId: 'pg/numeric@1',
             nullable: false,
             typeParams: { precision: 10, scale: 2 },
           },
-          hooks,
+          types,
         ),
       ).toBe('numeric(10,2)');
     });
 
-    it('falls back to display map when typeParams present but no matching hook entry', () => {
+    it('falls back to display map when typeParams are ones the data type does not declare', () => {
       expect(
         buildExpectedFormatType(
           {
@@ -121,28 +119,13 @@ describe('buildExpectedFormatType', () => {
             nullable: false,
             typeParams: { someParam: true },
           },
-          noHooks,
+          types,
         ),
       ).toBe('integer');
     });
 
-    it('falls back to display map when the matching hook has no expandNativeType', () => {
-      const hooks = new Map([['pg/int4@1', {}]]);
-      expect(
-        buildExpectedFormatType(
-          {
-            nativeType: 'int4',
-            codecId: 'pg/int4@1',
-            nullable: false,
-            typeParams: { someParam: true },
-          },
-          hooks,
-        ),
-      ).toBe('integer');
-    });
-
-    it('falls back to display map when typeParams is present but codecId is missing', () => {
-      expect(
+    it('throws CONTRACT.CODEC_DESCRIPTOR_MISSING when codecId is missing', () => {
+      expect(() =>
         buildExpectedFormatType(
           {
             nativeType: 'int4',
@@ -150,9 +133,9 @@ describe('buildExpectedFormatType', () => {
             nullable: false,
             typeParams: { someParam: true },
           },
-          noHooks,
+          types,
         ),
-      ).toBe('integer');
+      ).toThrow(expect.objectContaining({ code: 'CONTRACT.CODEC_DESCRIPTOR_MISSING' }));
     });
   });
 
@@ -161,7 +144,7 @@ describe('buildExpectedFormatType', () => {
       expect(
         buildExpectedFormatType(
           { nativeType: 'unused', codecId: 'unused', nullable: false, typeRef: 'MyStatus' },
-          noHooks,
+          types,
           { MyStatus: toStorageTypeInstance({ codecId: 'pg/int4@1', nativeType: 'int4' }) },
         ),
       ).toBe('int4');

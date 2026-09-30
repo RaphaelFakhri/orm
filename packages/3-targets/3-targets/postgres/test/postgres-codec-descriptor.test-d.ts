@@ -84,10 +84,6 @@ class DirectVectorDescriptor extends PostgresCodecDescriptor<VectorParams> {
   override readonly traits = ['equality'] as const;
   override readonly paramsSchema = vectorParamsSchema;
 
-  protected override nativeType(params: VectorParams): string {
-    return `vector(${params.length})`;
-  }
-
   protected override jsonProjection(
     expression: ProjectionExpr,
     _params: VectorParams,
@@ -106,10 +102,6 @@ const genericDescriptor = new GenericVectorDescriptor();
 const directDescriptor = new DirectVectorDescriptor();
 const adaptedDescriptor = postgresCodec(genericDescriptor, {
   dataType: dataType('demo/fixture', {}),
-  nativeType(params) {
-    expectTypeOf(params).toEqualTypeOf<VectorParams>();
-    return `vector(${params.length})`;
-  },
   jsonProjection(expression, params) {
     expectTypeOf(expression).toEqualTypeOf<ProjectionExpr>();
     expectTypeOf(params).toEqualTypeOf<VectorParams>();
@@ -126,7 +118,6 @@ test('direct and adapted descriptors preserve codec and factory literals', () =>
   expectTypeOf(directDescriptor.codecId).toEqualTypeOf<'demo/direct-vector@1'>();
   expectTypeOf(adaptedDescriptor.codecId).toEqualTypeOf<'demo/vector@1'>();
   expectTypeOf(adaptedDescriptor.traits).toEqualTypeOf<readonly ['equality']>();
-  expectTypeOf(adaptedDescriptor.targetTypes).toEqualTypeOf<readonly ['vector']>();
 
   expectTypeOf(adaptedDescriptor.factory({ length: 1536 })).toEqualTypeOf<
     (ctx: CodecInstanceContext) => VectorCodec<1536>
@@ -153,11 +144,9 @@ test('definePostgresCodecs rejects an unadapted generic descriptor', () => {
   definePostgresCodecs([genericDescriptor] as const);
 });
 
-test('postgresCodec requires explicit native and scalar projection behavior', () => {
-  // @ts-expect-error -- nativeType is mandatory
-  postgresCodec(genericDescriptor, { jsonProjection: (expression) => expression });
+test('postgresCodec requires explicit scalar projection behavior', () => {
   // @ts-expect-error -- jsonProjection is mandatory
-  postgresCodec(genericDescriptor, { nativeType: () => 'vector' });
+  postgresCodec(genericDescriptor, { dataType: dataType('demo/fixture', {}) });
 });
 
 // @ts-expect-error -- direct descriptors must implement scalar JSON projection
@@ -166,27 +155,9 @@ class MissingJsonProjection extends PostgresCodecDescriptor<VectorParams> {
   override readonly codecId = 'demo/missing-json@1' as const;
   override readonly traits: readonly CodecTrait[] = [];
   override readonly paramsSchema = vectorParamsSchema;
-  protected override nativeType(): string {
-    return 'vector';
-  }
-  override factory(): (ctx: CodecInstanceContext) => VectorCodec<number> {
-    return () => new VectorCodec(this, 1);
-  }
-}
-
-// @ts-expect-error -- direct descriptors must implement native type resolution
-class MissingNativeType extends PostgresCodecDescriptor<VectorParams> {
-  override readonly dataType = dataTypeId('demo/fixture');
-  override readonly codecId = 'demo/missing-native@1' as const;
-  override readonly traits: readonly CodecTrait[] = [];
-  override readonly paramsSchema = vectorParamsSchema;
-  protected override jsonProjection(expression: ProjectionExpr): ProjectionExpr {
-    return expression;
-  }
   override factory(): (ctx: CodecInstanceContext) => VectorCodec<number> {
     return () => new VectorCodec(this, 1);
   }
 }
 
 void MissingJsonProjection;
-void MissingNativeType;

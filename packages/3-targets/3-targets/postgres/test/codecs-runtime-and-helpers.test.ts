@@ -188,12 +188,9 @@ describe('pg/text-array@1 codec', () => {
     expect(codec.id).toBe(PG_TEXT_ARRAY_CODEC_ID);
   });
 
-  it('exposes equality-only traits and the text[] target/native types', () => {
+  it('exposes equality-only traits and the text-array data type', () => {
     expect(pgTextArrayDescriptor.traits).toEqual(['equality']);
-    expect(pgTextArrayDescriptor.targetTypes).toEqual(['text[]']);
-    expect(pgTextArrayDescriptor.nativeTypeFor({ codecId: pgTextArrayDescriptor.codecId })).toBe(
-      'text[]',
-    );
+    expect(pgTextArrayDescriptor.dataType).toBe('pg/text-array');
   });
 
   it('round-trips a string array verbatim', async () => {

@@ -26,6 +26,7 @@ import { PostgresDatabaseSchemaNode } from '../../src/core/schema-ir/postgres-da
 import { PostgresNamespaceSchemaNode } from '../../src/core/schema-ir/postgres-namespace-schema-node';
 import { PostgresPolicySchemaNode } from '../../src/core/schema-ir/postgres-policy-schema-node';
 import { PostgresTableSchemaNode } from '../../src/core/schema-ir/postgres-table-schema-node';
+import { postgresTypeComponents } from '../postgres-type-lookups';
 
 const TABLE_NAME = 'profiles';
 const stubLowerer: ExecuteRequestLowerer = {
@@ -151,7 +152,7 @@ async function planOpIds(
     schema,
     policy: { allowedOperationClasses: [...policy.allowedOperationClasses] },
     fromContract: null,
-    frameworkComponents: [],
+    frameworkComponents: postgresTypeComponents,
     spaceId: APP_SPACE_ID,
     snapshotsImportPath: '../../snapshots',
   });
@@ -172,7 +173,7 @@ async function planOpLabels(
     schema,
     policy: { allowedOperationClasses: [...policy.allowedOperationClasses] },
     fromContract: null,
-    frameworkComponents: [],
+    frameworkComponents: postgresTypeComponents,
     spaceId: APP_SPACE_ID,
     snapshotsImportPath: '../../snapshots',
   });
@@ -355,7 +356,7 @@ describe('external-table grading', () => {
       schema,
       policy: { allowedOperationClasses: ['additive', 'widening', 'destructive'] as const },
       fromContract: null,
-      frameworkComponents: [],
+      frameworkComponents: postgresTypeComponents,
       spaceId: APP_SPACE_ID,
       snapshotsImportPath: '../../snapshots',
     });
