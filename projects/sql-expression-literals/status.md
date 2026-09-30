@@ -6,7 +6,7 @@ Read this first when you resume the project. It records where the work stands an
 
 - Planning is finished. No slice has merged.
 - PR #30349 (the binder) merged on 2026-09-25 and PR #30381 (block specs) on 2026-09-28. Nothing outside the project blocks it.
-- Slice 2a (TML-3296) is implemented on branch `tml-3296-sql-expression-data-type`, which also carries these project files. It is pushed to the `bot` remote and has no pull request yet. Read [handover.md](handover.md) for the next steps.
+- Slice 2a (TML-3296) is implemented on branch `tml-3296-sql-expression-data-type`, which also carries these project files. Two review rounds are done and every finding is fixed. Pull request: https://github.com/prisma/orm/pull/30534 (opened 2026-09-30, CI monitor on). Next: slice 2t (TML-3367) once it merges. [handover.md](handover.md) is the earlier handover and is superseded by this file.
 - Slice 2a changed nothing in `examples/` or `packages/3-extensions/`, so `check:upgrade-coverage` required no declaration; the two fragments under `upgrade-instructions/pending/sql-is-a-data-type/` are the ones design section 20 names.
 - The three publish-shell tarball tests (`all-shells-tarball`, `module-identity`, `cross-shell-tarball`) fail on this machine because `pnpm install` in the scratch project refuses `@vercel/detect-agent@1.2.5` as a "high-risk trust downgrade". That is the registry, not this branch. Check them in CI.
 
@@ -46,7 +46,7 @@ Verification (logs in the gitignored `wip/v4/`): `build`, `typecheck`, `lint`, `
 
 | Order | Plan slice | Ticket | State |
 | --- | --- | --- | --- |
-| 1 | 2a: `sql` is the data type `sql/expression` | TML-3296 | Implemented; all review findings fixed; branch pushed; `test:integration`, second review and PR still to do |
+| 1 | 2a: `sql` is the data type `sql/expression` | TML-3296 | PR #30534 open; two review rounds done, all findings fixed |
 | 2 | 2t: an argument declares the data type it receives | TML-3367 | Waiting for 2a |
 | 3 | 2b: the six places take `sql` literals | TML-3288 | Waiting for 2t |
 | 4 | 3: the TypeScript builder takes `sql` values | TML-3289 | Waiting for 2b |
@@ -95,6 +95,8 @@ Will has not agreed to these. Do not act on them without asking.
 - Skip a second full verification pass of the design.
 
 ## Rules from Will that apply to every slice
+
+- Never run `pnpm test:integration`, `pnpm test:e2e` or `pnpm test:all` in full locally (Will, 2026-09-30). Run the integration files the slice touches alone; CI runs the full suites.
 
 - Plain strings are refused everywhere; there is no fallback.
 - A `sql` literal is a value of a data type. Other literals are refused by the cast rule, never by a syntax check. Prisma never parses the SQL inside a literal.
