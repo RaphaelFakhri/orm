@@ -40,22 +40,22 @@
  * @see docs/architecture docs/adrs/ADR 212 - Contract spaces.md
  */
 
-import { createDataTypeLookup } from '@internal/framework-components/codec';
 import { defineContract } from '@internal/postgres/contract-builder';
 import { assemblePostgresCodecRegistryWithBuiltins } from '@internal/target-postgres/codecs';
-import { postgresDataTypes } from '@internal/target-postgres/data-types';
 import { VECTOR_CODEC_ID } from './core/constants';
 import { PGVECTOR_NATIVE_TYPE } from './core/contract-space-constants';
 import { pgvectorDataTypes } from './core/data-types';
 import { pgvectorCodecRegistry } from './core/registry';
 
-export const contract = defineContract(
+const codecLookup = assemblePostgresCodecRegistryWithBuiltins([
   {
-    codecLookup: assemblePostgresCodecRegistryWithBuiltins([
-      { types: { codecTypes: { codecDescriptors: [...pgvectorCodecRegistry.values()] } } },
-    ]),
-    dataTypeLookup: createDataTypeLookup([...postgresDataTypes, ...pgvectorDataTypes]),
+    types: { codecTypes: { codecDescriptors: [...pgvectorCodecRegistry.values()] } },
+    dataTypes: pgvectorDataTypes,
   },
+]);
+
+export const contract = defineContract(
+  { codecLookup, dataTypeLookup: codecLookup.dataTypes },
   () => ({
     types: {
       [PGVECTOR_NATIVE_TYPE]: {

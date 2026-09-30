@@ -1,14 +1,6 @@
 import sqlFamilyPack from '@internal/family-sql/pack';
-import {
-  type CodecLookup,
-  createDataTypeLookup,
-  type DataType,
-  type DataTypeLookup,
-} from '@internal/framework-components/codec';
-import type {
-  ComponentMetadata,
-  ExtensionPackRef,
-} from '@internal/framework-components/components';
+import type { CodecLookup, DataTypeLookup } from '@internal/framework-components/codec';
+import type { ExtensionPackRef } from '@internal/framework-components/components';
 import type {
   SqlNamespaceBase,
   SqlNamespaceInput,
@@ -103,8 +95,22 @@ type PostgresScaffold<
   readonly enums?: Enums;
 };
 
-function dataTypesOf(pack: Pick<ComponentMetadata, 'dataTypes'>): readonly DataType[] {
-  return pack.dataTypes ?? [];
+function typeLookupsOf(definition: {
+  readonly extensions?: Record<string, ExtensionPackRef<'sql', string>> | undefined;
+  readonly codecLookup?: CodecLookup | undefined;
+  readonly dataTypeLookup?: DataTypeLookup | undefined;
+}): { readonly codecLookup: CodecLookup; readonly dataTypeLookup: DataTypeLookup } {
+  const { codecLookup, dataTypeLookup } = definition;
+  if (codecLookup !== undefined && dataTypeLookup !== undefined) {
+    return { codecLookup, dataTypeLookup };
+  }
+  const registry = assemblePostgresCodecRegistryWithBuiltins(
+    Object.values(definition.extensions ?? {}),
+  );
+  return {
+    codecLookup: codecLookup ?? registry,
+    dataTypeLookup: dataTypeLookup ?? registry.dataTypes,
+  };
 }
 
 export function defineContract<
@@ -142,18 +148,10 @@ export function defineContract(
     readonly enums?: EnumsConstraint;
   },
 ): PostgresResult<TypesConstraint, ModelsConstraint, undefined, EnumsConstraint> {
-  const extensionPacks: readonly Pick<ComponentMetadata, 'dataTypes'>[] = Object.values(
-    definition.extensions ?? {},
-  );
   const bound = {
     ...definition,
     createNamespace: postgresCreateNamespace,
-    codecLookup:
-      definition.codecLookup ??
-      assemblePostgresCodecRegistryWithBuiltins(Object.values(definition.extensions ?? {})),
-    dataTypeLookup:
-      definition.dataTypeLookup ??
-      createDataTypeLookup([postgresPack, ...extensionPacks].flatMap(dataTypesOf)),
+    ...typeLookupsOf(definition),
   };
   if (factory !== undefined) {
     return buildBoundContract(sqlFamilyPack, postgresPack, bound, factory);

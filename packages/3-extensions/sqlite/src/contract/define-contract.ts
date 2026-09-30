@@ -1,15 +1,7 @@
 import sqlFamilyPack from '@internal/family-sql/pack';
-import {
-  type CodecLookup,
-  createDataTypeLookup,
-  type DataType,
-  type DataTypeLookup,
-} from '@internal/framework-components/codec';
-import type {
-  ComponentMetadata,
-  ExtensionPackRef,
-  TargetPackRef,
-} from '@internal/framework-components/components';
+import type { CodecLookup, DataTypeLookup } from '@internal/framework-components/codec';
+import type { ExtensionPackRef, TargetPackRef } from '@internal/framework-components/components';
+import { assembleDataTypes } from '@internal/framework-components/control';
 import type {
   SqlNamespaceBase,
   SqlNamespaceInput,
@@ -77,10 +69,6 @@ type SqliteScaffold<
 
 const target: TargetPackRef<'sql', 'sqlite'> = sqlitePack;
 
-function dataTypesOf(pack: Pick<ComponentMetadata, 'dataTypes'>): readonly DataType[] {
-  return pack.dataTypes ?? [];
-}
-
 export function defineContract<
   const Types extends TypesConstraint = Record<never, never>,
   const Models extends ModelsConstraint = Record<never, never>,
@@ -108,18 +96,15 @@ export function defineContract(
     readonly models?: ModelsConstraint;
   },
 ): SqliteResult<TypesConstraint, ModelsConstraint, undefined> {
-  const extensionPacks: readonly Pick<ComponentMetadata, 'dataTypes'>[] = Object.values(
+  const extensionPacks: readonly ExtensionPackRef<'sql', string>[] = Object.values(
     definition.extensions ?? {},
   );
   const bound = {
     ...definition,
     createNamespace: sqliteCreateNamespace,
-    codecLookup:
-      definition.codecLookup ??
-      assembleSqliteCodecRegistry(target, Object.values(definition.extensions ?? {})),
+    codecLookup: definition.codecLookup ?? assembleSqliteCodecRegistry(target, extensionPacks),
     dataTypeLookup:
-      definition.dataTypeLookup ??
-      createDataTypeLookup([target, ...extensionPacks].flatMap(dataTypesOf)),
+      definition.dataTypeLookup ?? assembleDataTypes([target, ...extensionPacks]).lookup,
   };
   if (factory !== undefined) {
     return buildBoundContract(sqlFamilyPack, sqlitePack, bound, factory);
