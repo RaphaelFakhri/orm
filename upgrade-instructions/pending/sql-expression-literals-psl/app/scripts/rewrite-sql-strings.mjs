@@ -36,6 +36,37 @@ function stringEnd(source, start) {
   return -1;
 }
 
+/** The index of the line break that ends the `//` comment starting at `start`, or the source length. */
+function commentEnd(source, start) {
+  const newline = source.indexOf('\n', start);
+  return newline === -1 ? source.length : newline;
+}
+
+/** The `[start, end)` ranges of `//` and `///` comments, found outside strings and tagged literals. */
+function commentRanges(source) {
+  const ranges = [];
+  for (let i = 0; i < source.length; i += 1) {
+    const ch = source[i];
+    if (ch === '"' || ch === "'") {
+      const end = stringEnd(source, i);
+      i = end === -1 ? commentEnd(source, i) : end - 1;
+      continue;
+    }
+    if (ch === '`') {
+      const end = source.indexOf('`', i + 1);
+      if (end === -1) break;
+      i = end;
+      continue;
+    }
+    if (ch === '/' && source[i + 1] === '/') {
+      const end = commentEnd(source, i);
+      ranges.push([i, end]);
+      i = end;
+    }
+  }
+  return ranges;
+}
+
 /** The end (exclusive) of the bracketed region opening at `open`, skipping strings and tagged literals. */
 function closingEnd(source, open, openChar, closeChar) {
   let depth = 0;
@@ -125,8 +156,11 @@ export function printSqlLiteral(text) {
 
 /** The quoted strings to rewrite, as `[start, end)` ranges of `source`. */
 function stringRanges(source) {
+  const comments = commentRanges(source);
+  const inComment = (index) => comments.some(([start, end]) => index >= start && index < end);
   const ranges = [];
   for (const match of source.matchAll(ATTRIBUTE_START)) {
+    if (inComment(match.index)) continue;
     const open = match.index + match[0].length - 1;
     const close = closingEnd(source, open, '(', ')');
     if (close === -1) continue;
@@ -134,6 +168,10 @@ function stringRanges(source) {
     let argumentStart = open + 1;
     for (let i = open + 1; i < close - 1; i += 1) {
       const ch = source[i];
+      if (ch === '/' && source[i + 1] === '/') {
+        i = commentEnd(source, i);
+        continue;
+      }
       if (ch === '"' || ch === "'") {
         const end = stringEnd(source, i);
         if (end === -1) break;
@@ -153,11 +191,16 @@ function stringRanges(source) {
     }
   }
   for (const match of source.matchAll(POLICY_START)) {
+    if (inComment(match.index + match[0].search(/\S/))) continue;
     const open = match.index + match[0].length - 1;
     const close = closingEnd(source, open, '{', '}');
     if (close === -1) continue;
     for (let i = open + 1; i < close - 1; i += 1) {
       const ch = source[i];
+      if (ch === '/' && source[i + 1] === '/') {
+        i = commentEnd(source, i);
+        continue;
+      }
       if (ch === '"' || ch === "'") {
         const end = stringEnd(source, i);
         if (end === -1) break;

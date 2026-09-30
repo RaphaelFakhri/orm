@@ -4,9 +4,11 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'nod
 import { join } from 'node:path';
 import { describe, it } from 'node:test';
 import { fileURLToPath } from 'node:url';
-import { rewriteSqlStrings } from './rewrite-sql-strings.mjs';
+import { printTaggedLiteral } from '../../packages/1-framework/1-core/framework-components/src/shared/tagged-literal.ts';
+import { printSqlLiteral, rewriteSqlStrings } from './rewrite-sql-strings.mjs';
 
 const here = fileURLToPath(new URL('.', import.meta.url));
+const repositoryRoot = join(here, '..', '..');
 
 describe('rewriteSqlStrings', () => {
   it('rewrites the where and expression arguments of @@index', () => {
@@ -96,9 +98,105 @@ describe('rewriteSqlStrings', () => {
   });
 });
 
+describe('rewriteSqlStrings and comments', () => {
+  it('rewrites a policy after an apostrophe in a comment inside the block', () => {
+    const before = [
+      'policy_select p {',
+      '  target = Post',
+      "  // owner's rows",
+      '  using = "owner_id = 1"',
+      '}',
+    ].join('\n');
+    strictEqual(
+      rewriteSqlStrings(before),
+      [
+        'policy_select p {',
+        '  target = Post',
+        "  // owner's rows",
+        '  using = sql`owner_id = 1`',
+        '}',
+      ].join('\n'),
+    );
+  });
+
+  it('rewrites an attribute after an apostrophe in a comment inside its arguments', () => {
+    const before = [
+      '  @@index(',
+      "    // the owner's active rows",
+      '    [ownerId],',
+      '    where: "archived_at IS NULL",',
+      '  )',
+    ].join('\n');
+    strictEqual(
+      rewriteSqlStrings(before),
+      [
+        '  @@index(',
+        "    // the owner's active rows",
+        '    [ownerId],',
+        '    where: sql`archived_at IS NULL`,',
+        '  )',
+      ].join('\n'),
+    );
+  });
+
+  it('leaves attributes and policy entries inside // and /// comments alone', () => {
+    const source = [
+      'model Post {',
+      '  id Int @id',
+      '  // @@index([id], where: "id > 0")',
+      '  /// @@check(expression: "id > 0")',
+      '}',
+      'policy_select p {',
+      '  target = Post',
+      '  // using = "old"',
+      '  using = sql`true`',
+      '}',
+    ].join('\n');
+    strictEqual(rewriteSqlStrings(source), source);
+  });
+
+  it('writes a text with an escaped line break on its own lines', () => {
+    strictEqual(
+      rewriteSqlStrings('  @@check(expression: "a > 0\\nAND b > 0", name: "c")'),
+      '  @@check(expression: sql`\na > 0\nAND b > 0\n`, name: "c")',
+    );
+  });
+});
+
+describe('printSqlLiteral', () => {
+  for (const text of [
+    'a > 0',
+    "a <> '`'",
+    '"quoted" = 1',
+    "a ~ '\\\\d'",
+    'a > 0\nAND b > 0',
+    'a\n\nb',
+    'x`y\nz',
+  ]) {
+    it(`prints ${JSON.stringify(text)} as the framework printer does`, () => {
+      strictEqual(printSqlLiteral(text), printTaggedLiteral('sql', text));
+    });
+  }
+});
+
+describe('the pending upgrade fragments', () => {
+  const canonical = readFileSync(join(here, 'rewrite-sql-strings.mjs'), 'utf8');
+  for (const copy of ['app', 'extension']) {
+    it(`carry the ${copy} copy byte for byte`, () => {
+      const path = join(
+        repositoryRoot,
+        'upgrade-instructions/pending/sql-expression-literals-psl',
+        copy,
+        'scripts/rewrite-sql-strings.mjs',
+      );
+      strictEqual(readFileSync(path, 'utf8'), canonical);
+    });
+  }
+});
+
 describe('rewrite-sql-strings CLI', () => {
   it('rewrites matched schemas, reports each file and skips node_modules and dist', () => {
-    const wip = join(here, '..', '..', 'wip');
+    const wip = join(repositoryRoot, 'wip');
     mkdirSync(wip, { recursive: true });
     const root = mkdtempSync(join(wip, 'rewrite-sql-strings-cli-'));
     const schema = 'model P {\n  id Int @id\n  @@check(expression: "id > 0", name: "c")\n}\n';
