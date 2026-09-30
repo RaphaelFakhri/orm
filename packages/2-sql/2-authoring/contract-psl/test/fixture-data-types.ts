@@ -7,7 +7,10 @@
  */
 
 import type { JsonValue } from '@internal/contract/types';
-import type { DataTypeAuthoringEntry } from '@internal/framework-components/authoring';
+import type {
+  DataTypeAuthoringEntry,
+  DataTypeSupport,
+} from '@internal/framework-components/authoring';
 import {
   type Cast,
   createDataTypeLookup,
@@ -20,7 +23,6 @@ import {
   sqlExpressionDataType,
 } from '@internal/sql-contract/sql-expression';
 import { structuredError } from '@internal/utils/structured-error';
-import type { DataTypeSupport } from '../src/data-type-default';
 
 const unchanged: Cast = (value) => value;
 const asText: Cast = (value) => String(value);

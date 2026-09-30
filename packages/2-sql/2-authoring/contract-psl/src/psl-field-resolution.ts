@@ -2,7 +2,10 @@ import type {
   ColumnDefaultLiteralInputValue,
   ExecutionMutationDefaultPhases,
 } from '@internal/contract/types';
-import type { AuthoringContributions } from '@internal/framework-components/authoring';
+import type {
+  AuthoringContributions,
+  DataTypeSupport,
+} from '@internal/framework-components/authoring';
 import { checkUncomposedNamespace } from '@internal/framework-components/authoring';
 import type { CodecLookup } from '@internal/framework-components/codec';
 import type { CapabilityMatrix } from '@internal/framework-components/components';
@@ -29,7 +32,6 @@ import { invariant } from '@internal/utils/assertions';
 import { blindCast } from '@internal/utils/casts';
 import { ifDefined } from '@internal/utils/defined';
 import { InternalError } from '@internal/utils/internal-error';
-import type { DataTypeSupport } from './data-type-default';
 import { defaultTableName } from './default-table-name';
 import { formatDbAttributeMigrationMessage, getAttribute } from './psl-attribute-parsing';
 import type { ColumnDescriptor, FieldPresetContributions } from './psl-column-resolution';

@@ -23,6 +23,7 @@ import type {
   AuthoringModelAttributeLoweringOutput,
   AuthoringPslBlockDescriptorNamespace,
   AuthoringWarning,
+  DataTypeSupport,
   ParsedPslExtensionBlock,
 } from '@internal/framework-components/authoring';
 import {
@@ -106,7 +107,6 @@ import { ifDefined } from '@internal/utils/defined';
 import { InternalError } from '@internal/utils/internal-error';
 import { notOk, ok, type Result } from '@internal/utils/result';
 import { contractError } from './contract-errors';
-import type { DataTypeSupport } from './data-type-default';
 import { getAttribute, getNamedArgument, mapFieldNamesToColumns } from './psl-attribute-parsing';
 import type { ColumnDescriptor } from './psl-column-resolution';
 import { getAuthoringEntity, resolveFieldTypeDescriptor } from './psl-column-resolution';

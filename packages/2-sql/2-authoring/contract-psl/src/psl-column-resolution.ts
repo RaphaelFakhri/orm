@@ -12,12 +12,17 @@ import type {
 } from '@internal/framework-components/authoring';
 import {
   checkUncomposedNamespace,
+  type DataTypeSupport,
+  entryForTag,
   getAuthoringFieldPreset,
   hasRegisteredFieldNamespace,
   instantiateAuthoringTypeConstructor,
   isAuthoringEntityTypeDescriptor,
   isAuthoringTypeConstructorDescriptor,
+  knownTags,
+  readWrittenValue,
   validateAuthoringHelperArguments,
+  type WrittenValue,
 } from '@internal/framework-components/authoring';
 import type { AnyCodecDescriptor, CodecLookup } from '@internal/framework-components/codec';
 import {
@@ -59,14 +64,7 @@ import { checkSqlDefaultBody, reservedSqlDefaultBody } from '@internal/sql-contr
 import type { AuthoredColumnDefault } from '@internal/sql-contract-ts/contract-builder';
 import { InternalError } from '@internal/utils/internal-error';
 import { contractError } from './contract-errors';
-import {
-  type DataTypeSupport,
-  entryForTag,
-  knownTags,
-  lowerDataTypeDefault,
-  readValue,
-  type WrittenValue,
-} from './data-type-default';
+import { lowerDataTypeDefault } from './data-type-default';
 import { lowerDefaultFunctionWithRegistry } from './default-function-registry';
 
 import {
@@ -721,9 +719,9 @@ export function lowerDefaultForField(input: {
       input.diagnostics.push(literal.diagnostic);
       return {};
     }
-    const read = readValue(input.dataTypeSupport, literal.written, undefined);
-    if (read.ok && read.typed.type === SQL_EXPRESSION_DATA_TYPE_ID) {
-      return sqlExpressionDefault(sqlTextFromCanonical(read.typed.value), value.span);
+    const read = readWrittenValue(input.dataTypeSupport, literal.written);
+    if (read.ok && read.value.type === SQL_EXPRESSION_DATA_TYPE_ID) {
+      return sqlExpressionDefault(sqlTextFromCanonical(read.value.value), value.span);
     }
     return readAsLiteral(literal.written);
   }

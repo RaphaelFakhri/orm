@@ -1,5 +1,10 @@
 import type { ContractSourceDiagnostic } from '@internal/config/config-types';
 import type { ExecutionMutationDefaultValue, JsonValue } from '@internal/contract/types';
+import {
+  type DataTypeSupport,
+  entryForTag,
+  type WrittenValue,
+} from '@internal/framework-components/authoring';
 import type { CodecLookup } from '@internal/framework-components/codec';
 import type { ControlMutationDefaults } from '@internal/framework-components/control';
 import type { FieldSymbol, PslSpan, ResolvedAttribute } from '@internal/psl-parser';
@@ -14,13 +19,7 @@ import {
   printSyntax,
   StringLiteralExprAst,
 } from '@internal/psl-parser/syntax';
-import {
-  type DataTypeSupport,
-  type DefaultRefusal,
-  entryForTag,
-  readDataTypeDefault,
-  type WrittenValue,
-} from '@internal/sql-contract-psl/resolution';
+import { type DefaultRefusal, readDataTypeDefault } from '@internal/sql-contract-psl/resolution';
 import type {
   AuthoredColumnDefault,
   AuthoredColumnDefaultLiteralValue,

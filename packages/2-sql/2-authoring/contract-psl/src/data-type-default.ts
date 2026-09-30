@@ -7,8 +7,15 @@
  */
 
 import type { JsonValue } from '@internal/contract/types';
-import type { DataTypeAuthoringEntry } from '@internal/framework-components/authoring';
-import type { CodecLookup, DataTypeId, DataTypeLookup } from '@internal/framework-components/codec';
+import {
+  castTypedValue,
+  type DataTypeSupport,
+  readWrittenValue,
+  type TypedValue,
+  type WrittenScalar,
+  type WrittenValue,
+} from '@internal/framework-components/authoring';
+import type { CodecLookup, DataTypeId } from '@internal/framework-components/codec';
 import { materializeCodec } from '@internal/framework-components/codec';
 import type { ContributedPslDiagnosticCode } from '@internal/framework-components/psl-ast';
 import { blindCast } from '@internal/utils/casts';
@@ -22,29 +29,9 @@ export const PSL_INVALID_DEFAULT_LITERAL: ContributedPslDiagnosticCode =
 /** A single value written as the default of a column that holds a list. */
 export const PSL_DEFAULT_LIST_EXPECTED: ContributedPslDiagnosticCode = 'PSL_DEFAULT_LIST_EXPECTED';
 
-/** One written value, in the syntax a contract source wrote it in. */
-export type WrittenValue =
-  | { readonly kind: 'tag'; readonly tag: string; readonly text: string }
-  | { readonly kind: 'string'; readonly text: string }
-  | { readonly kind: 'boolean'; readonly value: boolean }
-  | { readonly kind: 'number'; readonly text: string }
-  | { readonly kind: 'list'; readonly elements: readonly WrittenValue[] };
-
-/** The assembled data types of a stack and the PSL support for them. */
-export interface DataTypeSupport {
-  readonly entries: Readonly<Record<string, DataTypeAuthoringEntry>>;
-  readonly lookup: DataTypeLookup;
-}
-
 export interface DefaultColumn {
   readonly codecId: string;
   readonly typeParams?: Record<string, unknown> | undefined;
-}
-
-/** A value of a known data type: what an authoring entry reads written text into. */
-interface TypedValue {
-  readonly type: DataTypeId;
-  readonly value: JsonValue;
 }
 
 /**
@@ -77,144 +64,45 @@ export type LowerDefaultResult =
   | { readonly ok: true; readonly value: JsonValue }
   | { readonly ok: false; readonly code: string; readonly message: string };
 
-/** The entry a tag names, or `undefined` when no pack registered that tag. */
-export function entryForTag(
-  support: DataTypeSupport,
-  tag: string,
-): { readonly key: string; readonly entry: DataTypeAuthoringEntry } | undefined {
-  for (const [key, entry] of Object.entries(support.entries)) {
-    if (entry.written.kind === 'tag' && entry.written.tag === tag) return { key, entry };
-  }
-  return undefined;
-}
-
-/** Every tag a stack registers, in the order the entries were merged, for a diagnostic. */
-export function knownTags(support: DataTypeSupport): readonly string[] {
-  return Object.values(support.entries).flatMap((entry) =>
-    entry.written.kind === 'tag' ? [entry.written.tag] : [],
-  );
-}
-
-function entryForPlain(
-  support: DataTypeSupport,
-  syntax: 'string' | 'boolean' | 'number',
-): { readonly key: string; readonly entry: DataTypeAuthoringEntry } | undefined {
-  for (const [key, entry] of Object.entries(support.entries)) {
-    if (entry.written.kind === 'plain' && entry.written.syntax === syntax) return { key, entry };
-  }
-  return undefined;
-}
-
-/** The text an entry reads: a tag's text, a string's value, or the word a boolean is written as. */
-function plainText(written: Exclude<WrittenValue, { kind: 'list' }>): string {
-  switch (written.kind) {
-    case 'tag':
-      return written.text;
-    case 'string':
-      return written.text;
-    case 'boolean':
-      return String(written.value);
-    case 'number':
-      return written.text;
-  }
-}
-
 function messageOf(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
-/** Read one written value through the entry for its syntax. */
-export function readValue(
+function readOneValue(
   support: DataTypeSupport,
-  written: Exclude<WrittenValue, { kind: 'list' }>,
+  written: WrittenScalar,
   elementIndex: number | undefined,
 ):
   | { readonly ok: true; readonly typed: TypedValue }
   | { readonly ok: false; readonly refusal: DefaultRefusal } {
-  type RefusalBody = DefaultRefusal extends infer R
-    ? R extends { readonly elementIndex: number | undefined }
-      ? Omit<R, 'elementIndex'>
-      : never
-    : never;
-  const refuse = (refusal: RefusalBody) => ({
-    ok: false as const,
-    refusal: blindCast<DefaultRefusal, 'every refusal kind carries the same element index'>({
-      ...refusal,
-      elementIndex,
-    }),
-  });
-
-  const found =
-    written.kind === 'tag'
-      ? entryForTag(support, written.tag)
-      : entryForPlain(support, written.kind);
-  if (found === undefined) {
-    return written.kind === 'tag'
-      ? refuse({ kind: 'unknown-tag', tag: written.tag, known: knownTags(support) })
-      : refuse({ kind: 'unwritable', syntax: written.kind });
-  }
-
-  const form = found.entry.written;
-  if (form.kind === 'plain' && form.syntax === 'number') {
-    const text = plainText(written);
-    const classified = form.classify(text);
-    if (classified === undefined) {
-      return refuse({
-        kind: 'unreadable',
-        message: `no data type of this target holds the number ${text}`,
-      });
-    }
-    return { ok: true, typed: classified };
-  }
-
-  const text = plainText(written);
-  try {
-    return {
-      ok: true,
-      typed: {
-        type: blindCast<DataTypeId, 'an entry key is the id of the type it reads'>(found.key),
-        value: form.parse(text),
-      },
-    };
-  } catch (error) {
-    return refuse({ kind: 'unreadable', message: messageOf(error) });
-  }
+  const read = readWrittenValue(support, written);
+  return read.ok
+    ? { ok: true, typed: read.value }
+    : { ok: false, refusal: { ...read.failure, elementIndex } };
 }
 
-/** Convert a value of one data type into the form another stores, when that type takes it. */
 function castInto(
   support: DataTypeSupport,
   columnType: DataTypeId,
   typed: TypedValue,
   elementIndex: number | undefined,
 ): ReadDefaultResult {
-  if (typed.type === columnType) return { ok: true, value: typed.value };
-  const declaration = support.lookup.get(columnType);
-  const cast = declaration?.casts[typed.type];
-  if (cast === undefined) {
-    return {
-      ok: false,
-      refusal: {
-        kind: 'no-cast',
-        columnType,
-        valueType: typed.type,
-        casts: Object.keys(declaration?.casts ?? {}),
-        elementIndex,
-      },
-    };
-  }
-  try {
-    return { ok: true, value: cast(typed.value) };
-  } catch (error) {
-    return {
-      ok: false,
-      refusal: {
-        kind: 'unreadable',
-        message: messageOf(error),
-        elementIndex,
-      },
-    };
-  }
+  const cast = castTypedValue(support, columnType, typed);
+  if (cast.ok) return { ok: true, value: cast.value.value };
+  const refusal = cast.failure;
+  return {
+    ok: false,
+    refusal:
+      refusal.kind === 'no-cast'
+        ? {
+            kind: 'no-cast',
+            columnType: refusal.receivingType,
+            valueType: refusal.valueType,
+            casts: refusal.casts,
+            elementIndex,
+          }
+        : { ...refusal, elementIndex },
+  };
 }
 
 /** The column's `typeParams` as the codec reference carries them, so `vector(3)` checks its length. */
@@ -281,11 +169,8 @@ export function readDataTypeDefault(input: {
     }
   };
 
-  const readOne = (
-    written: Exclude<WrittenValue, { kind: 'list' }>,
-    elementIndex: number | undefined,
-  ): ReadDefaultResult => {
-    const read = readValue(input.support, written, elementIndex);
+  const readOne = (written: WrittenScalar, elementIndex: number | undefined): ReadDefaultResult => {
+    const read = readOneValue(input.support, written, elementIndex);
     if (!read.ok) return read;
     const cast = castInto(input.support, columnType, read.typed, elementIndex);
     if (!cast.ok) return cast;
@@ -355,7 +240,7 @@ function readListIntoScalar(input: {
         },
       };
     }
-    const read = readValue(input.support, written, elementIndex);
+    const read = readOneValue(input.support, written, elementIndex);
     if (!read.ok) return read;
     if (!listCast.of.includes(read.typed.type)) {
       return {
