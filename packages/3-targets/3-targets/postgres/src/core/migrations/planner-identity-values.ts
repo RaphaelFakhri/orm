@@ -42,6 +42,7 @@ export function resolveIdentityValue(
   const referencedType = column.typeRef ? storageTypes[column.typeRef] : undefined;
   const codecId = referencedType?.codecId ?? column.codecId;
   const typeParams = referencedType?.typeParams ?? column.typeParams;
+  if (column.many === true) return "'{}'";
   const dataType = sqlDataTypeOfCodec(codecId, types).id;
 
   const hookDefault = codecHooks.get(codecId)?.resolveIdentityValue?.({
