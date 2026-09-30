@@ -2,7 +2,7 @@ import type { CodecLookup } from '@internal/framework-components/codec';
 import { createDataTypeLookup, dataType } from '@internal/framework-components/codec';
 import { InternalError } from '@internal/utils/internal-error';
 import { describe, expect, it } from 'vitest';
-import { renderSqlColumnTypeName, sqlDataTypeOfCodec } from '../src/sql-data-type';
+import { sqlDataTypeOfCodec } from '../src/sql-data-type';
 import { enumType, int4, numeric, vector } from './sql-data-type-fixtures';
 
 const plain = dataType('t/plain', {});
@@ -48,31 +48,5 @@ describe('sqlDataTypeOfCodec', () => {
 
   it('refuses a data type that is not a SQL data type', () => {
     expect(() => sqlDataTypeOfCodec('t/plain@1', lookups)).toThrow(InternalError);
-  });
-
-  describe('renderSqlColumnTypeName', () => {
-    it('writes the codec’s data type with its parameters', () => {
-      expect(renderSqlColumnTypeName('t/int4@1', undefined, lookups)).toBe('int4');
-      expect(renderSqlColumnTypeName('t/numeric@1', { precision: 10 }, lookups)).toBe(
-        'numeric(10)',
-      );
-      expect(renderSqlColumnTypeName('t/vector@1', { length: 3 }, lookups)).toBe('vector(3)');
-    });
-
-    it('ignores keys the data type does not declare', () => {
-      expect(
-        renderSqlColumnTypeName(
-          't/numeric@1',
-          { precision: 10, scale: 2, expression: 'x' },
-          lookups,
-        ),
-      ).toBe('numeric(10,2)');
-    });
-
-    it('renders a type that claims a kind', () => {
-      expect(renderSqlColumnTypeName('t/enum@1', { typeName: 'app.mood' }, lookups)).toBe(
-        '"app"."mood"',
-      );
-    });
   });
 });

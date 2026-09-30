@@ -8,7 +8,7 @@ import type {
 } from '@internal/psl-parser';
 import { diagnosticSource } from '@internal/psl-parser';
 import { reportUncomposedNamespace } from '@internal/psl-parser/interpret';
-import { storedSqlTypeNameOfCodec } from '@internal/sql-contract/data-type';
+import { unquotedSqlBaseNameOfCodec } from '@internal/sql-contract/data-type';
 import type { StorageTypeInstance } from '@internal/sql-contract/types';
 import { formatDbAttributeMigrationMessage } from './psl-attribute-parsing';
 import {
@@ -96,7 +96,7 @@ export function resolveNamedTypeDeclarations(input: ResolveNamedTypeDeclarations
     return {
       kind: 'codec-instance',
       codecId: descriptor.codecId,
-      nativeType: storedSqlTypeNameOfCodec(descriptor.codecId, typeParams, input),
+      nativeType: unquotedSqlBaseNameOfCodec(descriptor.codecId, typeParams, input),
       typeParams,
     };
   };

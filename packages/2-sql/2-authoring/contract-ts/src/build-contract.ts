@@ -48,8 +48,8 @@ import {
   dataTypeParams,
   type SqlDataType,
   sqlDataTypeOfCodec,
-  storedSqlTypeName,
-  storedSqlTypeNameOfCodec,
+  unquotedSqlBaseName,
+  unquotedSqlBaseNameOfCodec,
   validateSqlTypeParams,
 } from '@internal/sql-contract/data-type';
 import { tableEntityKind, valueSetEntityKind } from '@internal/sql-contract/entity-kinds';
@@ -904,7 +904,7 @@ function buildStorageColumn(
   const valueSet = storageValueSetRef ?? field.descriptor.valueSet;
 
   return {
-    nativeType: storedSqlTypeName(dataType, typeParams),
+    nativeType: unquotedSqlBaseName(dataType, typeParams),
     codecId,
     nullable: field.nullable,
     ...(field.many ? { many: true as const } : {}),
@@ -1669,7 +1669,7 @@ export function buildSqlContractFromDefinition(
         name,
         toStorageTypeInstance({
           codecId: entry.codecId,
-          nativeType: storedSqlTypeNameOfCodec(entry.codecId, typeParams, lookups),
+          nativeType: unquotedSqlBaseNameOfCodec(entry.codecId, typeParams, lookups),
           typeParams,
         }),
       ];

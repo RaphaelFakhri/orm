@@ -40,7 +40,7 @@ import type {
   SourceFile,
 } from '@internal/psl-parser/syntax';
 import { StringLiteralExprAst } from '@internal/psl-parser/syntax';
-import { sqlDataTypeOfCodec, storedSqlTypeNameOfCodec } from '@internal/sql-contract/data-type';
+import { sqlDataTypeOfCodec, unquotedSqlBaseNameOfCodec } from '@internal/sql-contract/data-type';
 import type { SqlNamespaceBase, SqlNamespaceInput } from '@internal/sql-contract/types';
 import { deriveValueSetFromEntity } from '@internal/sql-contract/value-set-derivation-hook';
 import {
@@ -1086,7 +1086,7 @@ function readField(args: ReadFieldArgs): void {
     }
     return;
   }
-  const columnTypeName = storedSqlTypeNameOfCodec(
+  const columnTypeName = unquotedSqlBaseNameOfCodec(
     resolved.descriptor.codecId,
     resolved.descriptor.typeParams,
     input,

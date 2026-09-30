@@ -14,7 +14,11 @@
 
 import type { JsonValue } from '@internal/contract/types';
 import { type CodecRef, createDataTypeLookup } from '@internal/framework-components/codec';
-import { renderSqlColumnTypeName } from '@internal/sql-contract/data-type';
+import {
+  dataTypeParams,
+  renderSqlTypeName,
+  sqlDataTypeOfCodec,
+} from '@internal/sql-contract/data-type';
 import { buildSqlAggregateDescriptorRegistry } from '@internal/sql-relational-core/aggregate-descriptor-registry';
 import { postgresAggregateDescriptors } from '@internal/target-postgres/aggregates';
 import {
@@ -201,10 +205,13 @@ const UNWRITTEN_COLUMN_TYPES: Readonly<Record<string, string>> = { 'pg/text-arra
 export function nativeTypeOf(ref: CodecRef): string {
   const unwritten = UNWRITTEN_COLUMN_TYPES[ref.codecId];
   if (unwritten !== undefined) return unwritten;
-  return renderSqlColumnTypeName(
-    ref.codecId,
-    ref.typeParams as Readonly<Record<string, unknown>> | undefined,
-    { codecLookup: postgresCodecDescriptorRegistry, dataTypeLookup: postgresDataTypeLookup },
+  const type = sqlDataTypeOfCodec(ref.codecId, {
+    codecLookup: postgresCodecDescriptorRegistry,
+    dataTypeLookup: postgresDataTypeLookup,
+  });
+  return renderSqlTypeName(
+    type,
+    dataTypeParams(type, ref.typeParams as Readonly<Record<string, unknown>> | undefined),
   );
 }
 

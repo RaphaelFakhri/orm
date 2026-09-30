@@ -1,6 +1,6 @@
 import { collectScalarTypeConstructors } from '@internal/framework-components/authoring';
 import { createDataTypeLookup } from '@internal/framework-components/codec';
-import { storedSqlTypeNameOfCodec } from '@internal/sql-contract/data-type';
+import { unquotedSqlBaseNameOfCodec } from '@internal/sql-contract/data-type';
 import { describe, expect, it } from 'vitest';
 import { sqliteAuthoringTypes, sqliteScalarAuthoringTypes } from '../src/core/authoring';
 import { createSqliteBuiltinCodecLookup } from '../src/core/codec-registry';
@@ -37,7 +37,7 @@ describe('the type constructors the SQLite target contributes', () => {
     '%s keeps its type name, now its codec’s data type’s',
     (_name, codecId, typeName) => {
       expect(
-        storedSqlTypeNameOfCodec(codecId, undefined, {
+        unquotedSqlBaseNameOfCodec(codecId, undefined, {
           codecLookup: createSqliteBuiltinCodecLookup(),
           dataTypeLookup: createDataTypeLookup(sqliteDataTypes),
         }),

@@ -10,7 +10,7 @@ import {
   type SqlDataType,
   type SqlTypeLookups,
   sqlDataTypeOfCodec,
-  storedSqlTypeName,
+  unquotedSqlBaseName,
 } from '@internal/sql-contract/data-type';
 import {
   type CheckConstraint,
@@ -137,7 +137,7 @@ function schemaTypeText(
 ): string {
   return type.sql.claimsKind === undefined
     ? renderSqlTypeName(type, dataTypeParams(type, typeParams))
-    : storedSqlTypeName(type, typeParams);
+    : unquotedSqlBaseName(type, typeParams);
 }
 
 /**

@@ -318,10 +318,12 @@ export function sqlBaseName<Params extends SqlTypeParams>(
 }
 
 /**
- * The type name a contract stores for a column or storage type of `type` with `typeParams`: the
- * base name, or for a type that claims a kind, its `typeName` parameter as written.
+ * The base name of `type` with `typeParams`, unquoted. It differs from {@link sqlBaseName} only for
+ * a type that claims a kind: there it is the `typeName` parameter as written (`app.status`), where
+ * `sqlBaseName` gives the quoted name `render` writes into SQL (`"app"."status"`). It serves the
+ * contract writers, the type text of a schema IR column, and the PSL printer.
  */
-export function storedSqlTypeName(type: DataType, typeParams: SqlTypeParams | undefined): string {
+export function unquotedSqlBaseName(type: DataType, typeParams: SqlTypeParams | undefined): string {
   if (!isSqlDataType(type)) {
     throw new InternalError(`Data type ${type.id} is not a SQL data type, so it has no type name.`);
   }
@@ -369,23 +371,13 @@ export function sqlDataTypeOfCodec(codecId: string, lookups: SqlTypeLookups): Sq
   return type;
 }
 
-/** {@link storedSqlTypeName} of the data type the codec `codecId` represents. */
-export function storedSqlTypeNameOfCodec(
+/** {@link unquotedSqlBaseName} of the data type the codec `codecId` represents. */
+export function unquotedSqlBaseNameOfCodec(
   codecId: string,
   typeParams: SqlTypeParams | undefined,
   lookups: SqlTypeLookups,
 ): string {
-  return storedSqlTypeName(sqlDataTypeOfCodec(codecId, lookups), typeParams);
-}
-
-/** {@link renderSqlTypeName} of the data type the codec `codecId` represents, with the parameters that type declares. */
-export function renderSqlColumnTypeName(
-  codecId: string,
-  typeParams: SqlTypeParams | undefined,
-  lookups: SqlTypeLookups,
-): string {
-  const type = sqlDataTypeOfCodec(codecId, lookups);
-  return renderSqlTypeName(type, dataTypeParams(type, typeParams));
+  return unquotedSqlBaseName(sqlDataTypeOfCodec(codecId, lookups), typeParams);
 }
 
 /** The text a migration writes for `type` with the raw `params`. */

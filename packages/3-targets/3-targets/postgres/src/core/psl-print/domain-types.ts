@@ -8,7 +8,7 @@ import type {
   PslNamedTypeDeclaration,
   PslTypesBlock,
 } from '@internal/framework-components/psl-ast';
-import { isSqlDataType, storedSqlTypeName } from '@internal/sql-contract/data-type';
+import { isSqlDataType, unquotedSqlBaseName } from '@internal/sql-contract/data-type';
 import type { SqlStorage } from '@internal/sql-contract/types';
 import { StorageColumn } from '@internal/sql-contract/types';
 import { ifDefined } from '@internal/utils/defined';
@@ -42,7 +42,7 @@ function nativeTypeOfValueObjectField(
   if (requiredParamKeys(dataType).length > 0) {
     refuseValueObjectFieldCodecNeedingTypeParameters(codecId, coordinate);
   }
-  return storedSqlTypeName(dataType, undefined);
+  return unquotedSqlBaseName(dataType, undefined);
 }
 
 /** The PSL type position of a domain field: a value object by name, or a scalar as a column would print. */

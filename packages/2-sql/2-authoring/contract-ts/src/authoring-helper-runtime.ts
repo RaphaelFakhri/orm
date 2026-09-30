@@ -11,7 +11,7 @@ import {
   validateAuthoringTypeParams,
 } from '@internal/framework-components/authoring';
 import type { CodecLookup, DataTypeLookup } from '@internal/framework-components/codec';
-import { storedSqlTypeNameOfCodec } from '@internal/sql-contract/data-type';
+import { unquotedSqlBaseNameOfCodec } from '@internal/sql-contract/data-type';
 import { type StorageTypeInstance, toStorageTypeInstance } from '@internal/sql-contract/types';
 import { contractError } from './contract-errors';
 
@@ -63,7 +63,7 @@ export function createTypeHelpersFromNamespace(
         );
         return toStorageTypeInstance({
           codecId: output.codecId,
-          nativeType: storedSqlTypeNameOfCodec(output.codecId, output.typeParams, lookups),
+          nativeType: unquotedSqlBaseNameOfCodec(output.codecId, output.typeParams, lookups),
           typeParams: output.typeParams ?? {},
         });
       };
