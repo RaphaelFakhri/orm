@@ -10,7 +10,7 @@ import {
 import type { BsonInputValue, BsonValue } from '@internal/mongo-value';
 import { blindCast } from '@internal/utils/casts';
 import { ifDefined } from '@internal/utils/defined';
-import { type Binary, type Decimal128, type Long, ObjectId } from 'bson';
+import type { Binary, Decimal128, Double, Long, ObjectId } from 'bson';
 import {
   decodeBsonJson,
   decodeBsonValue,
@@ -22,15 +22,27 @@ import {
   binaryDecodeJson,
   binaryEncode,
   binaryEncodeJson,
+  booleanEncode,
+  dateEncode,
   decimal128Decode,
   decimal128DecodeJson,
   decimal128Encode,
   decimal128EncodeJson,
   decimalTextBigintLiteral,
+  decimalTextNumberLiteral,
+  doubleEncode,
+  int32Encode,
   int64Decode,
   int64DecodeJson,
   int64Encode,
   int64EncodeJson,
+  int64NumberDecode,
+  int64NumberDecodeJson,
+  int64NumberEncode,
+  int64NumberEncodeJson,
+  objectIdEncode,
+  stringEncode,
+  vectorEncode,
 } from './bson-scalar-helpers';
 import {
   MONGO_BINARY_CODEC_ID,
@@ -41,6 +53,7 @@ import {
   MONGO_DOUBLE_CODEC_ID,
   MONGO_INT32_CODEC_ID,
   MONGO_INT64_CODEC_ID,
+  MONGO_INT64_NUMBER_CODEC_ID,
   MONGO_JSON_CODEC_ID,
   MONGO_OBJECTID_CODEC_ID,
   MONGO_STRING_CODEC_ID,
@@ -66,37 +79,37 @@ import { mongoTargetError } from './mongo-target-errors';
 export const mongoObjectIdCodec = mongoCodec({
   typeId: MONGO_OBJECTID_CODEC_ID,
   decode: (wire: ObjectId) => wire.toHexString(),
-  encode: (value: string) => new ObjectId(value),
+  encode: (value: string) => objectIdEncode(MONGO_OBJECTID_CODEC_ID, value),
 });
 
 export const mongoStringCodec = mongoCodec({
   typeId: MONGO_STRING_CODEC_ID,
   decode: (wire: string) => wire,
-  encode: (value: string) => value,
+  encode: (value: string) => stringEncode(MONGO_STRING_CODEC_ID, value),
 });
 
 export const mongoDoubleCodec = mongoCodec({
   typeId: MONGO_DOUBLE_CODEC_ID,
-  decode: (wire: number) => wire,
-  encode: (value: number) => value,
+  decode: (wire: number | Double) => Number(wire),
+  encode: (value: number): number | Double => doubleEncode(MONGO_DOUBLE_CODEC_ID, value),
 });
 
 export const mongoInt32Codec = mongoCodec({
   typeId: MONGO_INT32_CODEC_ID,
   decode: (wire: number) => wire,
-  encode: (value: number) => value,
+  encode: (value: number) => int32Encode(MONGO_INT32_CODEC_ID, value),
 });
 
 export const mongoBooleanCodec = mongoCodec({
   typeId: MONGO_BOOLEAN_CODEC_ID,
   decode: (wire: boolean) => wire,
-  encode: (value: boolean) => value,
+  encode: (value: boolean) => booleanEncode(MONGO_BOOLEAN_CODEC_ID, value),
 });
 
 export const mongoDateCodec = mongoCodec({
   typeId: MONGO_DATE_CODEC_ID,
   decode: (wire: Date) => wire,
-  encode: (value: Date) => value,
+  encode: (value: Date) => dateEncode(MONGO_DATE_CODEC_ID, value),
   encodeJson: (value: Date) => value.toISOString(),
   decodeJson: (json) => {
     if (typeof json !== 'string') {
@@ -111,7 +124,7 @@ export const mongoDateCodec = mongoCodec({
 export const mongoVectorCodec = mongoCodec({
   typeId: MONGO_VECTOR_CODEC_ID,
   decode: (wire: readonly number[]) => wire,
-  encode: (value: readonly number[]) => value,
+  encode: (value: readonly number[]) => vectorEncode(MONGO_VECTOR_CODEC_ID, value),
 });
 
 /**
@@ -123,6 +136,18 @@ export const mongoInt64Codec = mongoCodec({
   encode: (value: bigint): Long | number | bigint => int64Encode(MONGO_INT64_CODEC_ID, value),
   encodeJson: (value: bigint) => int64EncodeJson(MONGO_INT64_CODEC_ID, value),
   decodeJson: (json) => int64DecodeJson(MONGO_INT64_CODEC_ID, json),
+});
+
+/**
+ * A BSON `long` read and written as a `number` from -(2^53 - 1) to 2^53 - 1, the value a Prisma 6 `Int` presents. A value outside that range, or with a fraction, is refused rather than rounded.
+ */
+export const mongoInt64NumberCodec = mongoCodec({
+  typeId: MONGO_INT64_NUMBER_CODEC_ID,
+  decode: (wire: Long | number | bigint) => int64NumberDecode(MONGO_INT64_NUMBER_CODEC_ID, wire),
+  encode: (value: number): Long | number | bigint =>
+    int64NumberEncode(MONGO_INT64_NUMBER_CODEC_ID, value),
+  encodeJson: (value: number) => int64NumberEncodeJson(MONGO_INT64_NUMBER_CODEC_ID, value),
+  decodeJson: (json) => int64NumberDecodeJson(MONGO_INT64_NUMBER_CODEC_ID, json),
 });
 
 /**
@@ -141,7 +166,7 @@ export const mongoDecimal128Codec = mongoCodec({
  */
 export const mongoBinaryCodec = mongoCodec({
   typeId: MONGO_BINARY_CODEC_ID,
-  decode: (wire: Binary) => binaryDecode(MONGO_BINARY_CODEC_ID, wire),
+  decode: (wire: Binary | Uint8Array) => binaryDecode(MONGO_BINARY_CODEC_ID, wire),
   encode: (value: Uint8Array) => binaryEncode(MONGO_BINARY_CODEC_ID, value),
   encodeJson: binaryEncodeJson,
   decodeJson: (json) => binaryDecodeJson(MONGO_BINARY_CODEC_ID, json),
@@ -187,6 +212,7 @@ export const mongoStandardCodecs = [
   mongoDateCodec,
   mongoVectorCodec,
   mongoInt64Codec,
+  mongoInt64NumberCodec,
   mongoDecimal128Codec,
   mongoBinaryCodec,
   mongoJsonCodec,
@@ -298,6 +324,12 @@ export const mongoCodecDescriptors: ReadonlyArray<CodecDescriptor> = [
     traits: ['equality', 'order', 'numeric'],
     targetTypes: ['long'],
     renderValueLiteral: decimalTextBigintLiteral,
+  }),
+  descriptorFor(mongoInt64NumberCodec, {
+    dataType: mongoInt64.id,
+    traits: ['equality', 'order', 'numeric'],
+    targetTypes: ['long'],
+    renderValueLiteral: decimalTextNumberLiteral,
   }),
   descriptorFor(mongoDecimal128Codec, {
     dataType: mongoDecimal128.id,
