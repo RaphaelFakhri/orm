@@ -1,6 +1,7 @@
 import type { CodecControlHooks } from '@internal/family-sql/control';
 import { checkSqlDefaultBody } from '@internal/family-sql/control';
 import type { StorageColumn, StorageTypeInstance } from '@internal/sql-contract/types';
+import { opaqueSql, renderOpaqueSql } from '@internal/sql-relational-core/ast';
 import { ifDefined } from '@internal/utils/defined';
 import { isPgEnumParams } from '../codecs';
 import { postgresDateTimeDdlText } from '../date-time-ddl-text';
@@ -165,7 +166,7 @@ export function buildColumnDefaultSql(
         return '';
       }
       assertSafeDefaultExpression(columnDefault.expression);
-      return `DEFAULT (${columnDefault.expression})`;
+      return `DEFAULT (${renderOpaqueSql(opaqueSql(columnDefault.expression))})`;
     }
     case 'sequence':
       return `DEFAULT nextval('${escapeLiteral(quoteIdentifier(columnDefault.name))}'::regclass)`;

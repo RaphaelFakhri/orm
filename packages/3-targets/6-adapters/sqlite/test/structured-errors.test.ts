@@ -1,7 +1,6 @@
 import type { Codec } from '@internal/framework-components/codec';
 import type { SqlControlDriverInstance } from '@internal/sql-contract/types';
 import {
-  CheckExpressionConstraint,
   DefaultValueExpr,
   InsertAst,
   LiteralExpr,
@@ -10,7 +9,7 @@ import {
   SelectAst,
   TableSource,
 } from '@internal/sql-relational-core/ast';
-import { col, lit } from '@internal/sql-relational-core/contract-free';
+import { checkExpression, col, lit } from '@internal/sql-relational-core/contract-free';
 import type { SqliteCodecRegistry } from '@internal/target-sqlite/codecs';
 import { createSqliteBuiltinCodecLookup } from '@internal/target-sqlite/codecs';
 import { createTable } from '@internal/target-sqlite/contract-free';
@@ -160,9 +159,7 @@ describe('structured error codes', () => {
     const ast = createTable({
       table: 'arr',
       columns: [col('a', 'TEXT')],
-      constraints: [
-        new CheckExpressionConstraint({ name: 'chk_a', expression: 'length("a") > 0' }),
-      ],
+      constraints: [checkExpression('chk_a', 'length("a") > 0')],
     });
     const err = await catchAsyncError(() =>
       controlAdapter.lowerToExecuteRequest(ast, { contract }),

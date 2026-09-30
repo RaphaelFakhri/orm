@@ -17,6 +17,7 @@ import { buildSymbolTable } from '@internal/psl-parser';
 import { parse } from '@internal/psl-parser/syntax';
 import type { SqlStorage } from '@internal/sql-contract/types';
 import { interpretPslDocumentToSqlContract } from '@internal/sql-contract-psl';
+import { opaqueSql } from '@internal/sql-relational-core/ast';
 import { postgresDataTypes } from '@internal/target-postgres/data-types';
 import { blindCast } from '@internal/utils/casts';
 import { describe, expect, it } from 'vitest';
@@ -152,7 +153,7 @@ describe('a GIN index over to_tsvector, authored in PSL', () => {
     expect(nodes).toHaveLength(1);
     const node = nodes[0]!;
     expect(node.type).toBe('gin');
-    expect(node.elements).toEqual({ expression: `to_tsvector('english', "text")` });
+    expect(node.elements).toEqual({ expression: opaqueSql(`to_tsvector('english', "text")`) });
     expect(node.table).toBe('Message');
     expect(node.name.startsWith('message_text_search')).toBe(true);
   });
@@ -162,7 +163,7 @@ describe('a GIN index over to_tsvector, authored in PSL', () => {
     expect(nodes).toHaveLength(1);
     const node = nodes[0]!;
     expect(node.type).toBe('gin');
-    expect(node.elements).toEqual({ expression: `to_tsvector('english', "text")` });
+    expect(node.elements).toEqual({ expression: opaqueSql(`to_tsvector('english', "text")`) });
     expect(node.table).toBe('Message');
     expect(node.name.startsWith('message_text_search')).toBe(true);
   });

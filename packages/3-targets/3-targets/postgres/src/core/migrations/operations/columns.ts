@@ -1,5 +1,5 @@
 import type { ExecuteRequestLowerer } from '@internal/family-sql/control-adapter';
-import type { DdlColumn } from '@internal/sql-relational-core/ast';
+import { type DdlColumn, opaqueSql, renderOpaqueSql } from '@internal/sql-relational-core/ast';
 import { ifDefined } from '@internal/utils/defined';
 import {
   columnDefaultAst,
@@ -77,7 +77,7 @@ export async function alterColumnType(
 ): Promise<Op> {
   const qualified = qualifyTableName(schemaName, tableName);
   const usingClause = options.using
-    ? ` USING ${options.using}`
+    ? ` USING ${renderOpaqueSql(opaqueSql(options.using))}`
     : ` USING ${quoteIdentifier(columnName)}::${options.qualifiedTargetType}`;
   const { present } = await columnExistsSteps(lowerer, {
     schema: schemaName,

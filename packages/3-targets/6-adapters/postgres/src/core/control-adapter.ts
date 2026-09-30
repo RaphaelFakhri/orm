@@ -31,7 +31,7 @@ import type {
   MarkerReadResult,
   SqlExecuteRequest,
 } from '@internal/sql-relational-core/ast';
-import { isDdlNode } from '@internal/sql-relational-core/ast';
+import { isDdlNode, renderOpaqueSql } from '@internal/sql-relational-core/ast';
 import type { ColumnDescriptor, ExcludedProxy } from '@internal/sql-relational-core/contract-free';
 import { namingOfLiveName } from '@internal/sql-schema-ir/naming';
 import type {
@@ -1853,7 +1853,7 @@ async function pgRenderDdlColumnDefault(
   codecRef: CodecRef | undefined,
 ): Promise<string> {
   if (def.kind === 'function') {
-    if (def.expression === 'autoincrement()') {
+    if (def.expression.text === 'autoincrement()') {
       if (!SERIAL_FAMILY_TYPES.has(nativeType.toLowerCase())) {
         throw postgresError(
           'CONTRACT.DEFAULT_INVALID',
@@ -1865,7 +1865,7 @@ async function pgRenderDdlColumnDefault(
       }
       return '';
     }
-    return `DEFAULT (${def.expression})`;
+    return `DEFAULT (${renderOpaqueSql(def.expression)})`;
   }
   const dataTypeId =
     codecRef === undefined ? undefined : codecLookup.descriptorFor?.(codecRef.codecId)?.dataType;
@@ -1941,7 +1941,7 @@ function pgRenderDdlConstraint(constraint: DdlTableConstraint): string {
     return sql;
   }
   if (constraint.kind === 'check-expression') {
-    return `CONSTRAINT ${quoteIdentifier(constraint.name)} CHECK (${constraint.expression})`;
+    return `CONSTRAINT ${quoteIdentifier(constraint.name)} CHECK (${renderOpaqueSql(constraint.expression)})`;
   }
   const cols = constraint.columns.map(quoteIdentifier).join(', ');
   if (constraint.name !== undefined) {
@@ -2051,10 +2051,10 @@ function pgRenderCreatePolicy(node: PostgresCreatePolicy): SqlExecuteRequest {
   const roles = node.roles.length === 0 ? 'PUBLIC' : node.roles.join(', ');
   let sql = `CREATE POLICY ${quoteIdentifier(node.name)} ON ${tableRef} AS ${permissiveness} FOR ${command} TO ${roles}`;
   if (node.using !== undefined) {
-    sql += ` USING (${node.using})`;
+    sql += ` USING (${renderOpaqueSql(node.using)})`;
   }
   if (node.withCheck !== undefined) {
-    sql += ` WITH CHECK (${node.withCheck})`;
+    sql += ` WITH CHECK (${renderOpaqueSql(node.withCheck)})`;
   }
   return { sql, params: [] };
 }
@@ -2102,7 +2102,7 @@ function pgRenderCreateIndex(node: PostgresCreateIndex): SqlExecuteRequest {
   const elementList =
     'columns' in node.elements
       ? node.elements.columns.map(quoteIdentifier).join(', ')
-      : node.elements.expression;
+      : renderOpaqueSql(node.elements.expression);
   const unique = node.unique ? 'UNIQUE ' : '';
   const using = node.type !== undefined ? ` USING ${quoteIdentifier(node.type)}` : '';
   const withClause =
@@ -2113,7 +2113,7 @@ function pgRenderCreateIndex(node: PostgresCreateIndex): SqlExecuteRequest {
           )
           .join(', ')})`
       : '';
-  const whereClause = node.where !== undefined ? ` WHERE (${node.where})` : '';
+  const whereClause = node.where !== undefined ? ` WHERE (${renderOpaqueSql(node.where)})` : '';
   return {
     sql: `CREATE ${unique}INDEX ${quoteIdentifier(node.name)} ON ${pgQualify(node.schema, node.table)}${using} (${elementList})${withClause}${whereClause}`,
     params: [],

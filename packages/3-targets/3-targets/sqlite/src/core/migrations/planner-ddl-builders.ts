@@ -14,6 +14,7 @@ import type {
   StorageTable,
   StorageTypeInstance,
 } from '@internal/sql-contract/types';
+import { opaqueSql, renderOpaqueSql } from '@internal/sql-relational-core/ast';
 import { SQLITE_DATETIME_CODEC_ID } from '../codec-ids';
 import { decodeSqliteDatetime, encodeSqliteDatetime } from '../codecs';
 import { sqliteError } from '../errors';
@@ -78,7 +79,7 @@ export function buildColumnDefaultSql(
       if (columnDefault.expression === 'autoincrement()') return '';
       if (columnDefault.expression === 'now()') return "DEFAULT (datetime('now'))";
       assertSafeDefaultExpression(columnDefault.expression);
-      return `DEFAULT (${columnDefault.expression})`;
+      return `DEFAULT (${renderOpaqueSql(opaqueSql(columnDefault.expression))})`;
     }
   }
 }

@@ -5,6 +5,7 @@ import {
   ForeignKeyConstraint,
   FunctionColumnDefault,
   LiteralColumnDefault,
+  opaqueSql,
   PrimaryKeyConstraint,
   UniqueConstraint,
 } from '@internal/sql-relational-core/ast';
@@ -93,7 +94,7 @@ function sqliteDefaultToDdlColumnDefault(
       // `INTEGER PRIMARY KEY AUTOINCREMENT` inline on the column. Skip it
       // here; the renderer also has a defensive guard for the same case.
       if (columnDefault.expression === 'autoincrement()') return undefined;
-      return new FunctionColumnDefault(columnDefault.expression);
+      return new FunctionColumnDefault(opaqueSql(columnDefault.expression));
     default: {
       const exhaustive: never = columnDefault;
       return assertNever(

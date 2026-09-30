@@ -21,7 +21,7 @@ import type {
   MarkerReadResult,
   SqlExecuteRequest,
 } from '@internal/sql-relational-core/ast';
-import { isDdlNode } from '@internal/sql-relational-core/ast';
+import { isDdlNode, renderOpaqueSql } from '@internal/sql-relational-core/ast';
 import type {
   PrimaryKeyInput,
   SqlColumnIRInput,
@@ -744,12 +744,12 @@ async function sqliteRenderDdlColumnDefault(
   codecRef: CodecRef | undefined,
 ): Promise<string> {
   if (def.kind === 'function') {
-    if (def.expression === 'autoincrement()') return '';
+    if (def.expression.text === 'autoincrement()') return '';
     // SQLite has no `now()` function; the contract canonicalizes
     // `CURRENT_TIMESTAMP` / `datetime('now')` to `now()`, so map it back to a
     // valid SQLite expression on the way out.
-    if (def.expression === 'now()') return "DEFAULT (datetime('now'))";
-    return `DEFAULT (${def.expression})`;
+    if (def.expression.text === 'now()') return "DEFAULT (datetime('now'))";
+    return `DEFAULT (${renderOpaqueSql(def.expression)})`;
   }
   if (codecRef !== undefined) {
     const codec = codecLookup.get(codecRef.codecId);
