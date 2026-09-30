@@ -42,7 +42,7 @@ function nativeTypeOfValueObjectField(
   if (requiredParamKeys(dataType).length > 0) {
     refuseValueObjectFieldCodecNeedingTypeParameters(codecId, coordinate);
   }
-  return unquotedSqlBaseName(dataType, undefined);
+  return unquotedSqlBaseName(dataType, {});
 }
 
 /** The PSL type position of a domain field: a value object by name, or a scalar as a column would print. */

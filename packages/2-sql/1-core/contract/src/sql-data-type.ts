@@ -318,16 +318,14 @@ export function sqlBaseName<Params extends SqlTypeParams>(
 }
 
 /**
- * The base name of `type` with `typeParams`, unquoted. It differs from {@link sqlBaseName} only for
- * a type that claims a kind: there it is the `typeName` parameter as written (`app.status`), where
- * `sqlBaseName` gives the quoted name `render` writes into SQL (`"app"."status"`). It serves the
- * contract writers, the type text of a schema IR column, and the PSL printer.
+ * The base name of `type` with `params`, unquoted. It differs from {@link sqlBaseName} only for a
+ * type that claims a kind: there it is the `typeName` parameter as written (`app.status`), where
+ * `sqlBaseName` gives the quoted name `render` writes into SQL (`"app"."status"`).
  */
-export function unquotedSqlBaseName(type: DataType, typeParams: SqlTypeParams | undefined): string {
-  if (!isSqlDataType(type)) {
-    throw new InternalError(`Data type ${type.id} is not a SQL data type, so it has no type name.`);
-  }
-  const params = dataTypeParams(type, typeParams);
+export function unquotedSqlBaseName<Params extends SqlTypeParams>(
+  type: SqlDataType<Params>,
+  params: SqlTypeParams,
+): string {
   if (type.sql.claimsKind === undefined) return sqlBaseName(type, params);
   const { typeName } = validateSqlTypeParams(type, params);
   if (typeof typeName !== 'string') {
@@ -377,7 +375,8 @@ export function unquotedSqlBaseNameOfCodec(
   typeParams: SqlTypeParams | undefined,
   lookups: SqlTypeLookups,
 ): string {
-  return unquotedSqlBaseName(sqlDataTypeOfCodec(codecId, lookups), typeParams);
+  const type = sqlDataTypeOfCodec(codecId, lookups);
+  return unquotedSqlBaseName(type, dataTypeParams(type, typeParams));
 }
 
 /** The text a migration writes for `type` with the raw `params`. */

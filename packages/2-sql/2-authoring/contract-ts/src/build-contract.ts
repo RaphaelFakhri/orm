@@ -904,7 +904,7 @@ function buildStorageColumn(
   const valueSet = storageValueSetRef ?? field.descriptor.valueSet;
 
   return {
-    nativeType: unquotedSqlBaseName(dataType, typeParams),
+    nativeType: unquotedSqlBaseName(dataType, dataTypeParams(dataType, typeParams)),
     codecId,
     nullable: field.nullable,
     ...(field.many ? { many: true as const } : {}),

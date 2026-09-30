@@ -135,9 +135,10 @@ function schemaTypeText(
   type: SqlDataType,
   typeParams: Record<string, unknown> | undefined,
 ): string {
+  const params = dataTypeParams(type, typeParams);
   return type.sql.claimsKind === undefined
-    ? renderSqlTypeName(type, dataTypeParams(type, typeParams))
-    : unquotedSqlBaseName(type, typeParams);
+    ? renderSqlTypeName(type, params)
+    : unquotedSqlBaseName(type, params);
 }
 
 /**

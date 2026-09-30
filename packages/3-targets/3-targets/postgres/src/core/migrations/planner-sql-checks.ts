@@ -46,13 +46,13 @@ export function buildExpectedFormatType(
   const resolved = resolveColumnTypeMetadata(column, storageTypes);
 
   const dataType = sqlDataTypeOfCodec(resolved.codecId, types);
+  const params = dataTypeParams(dataType, resolved.typeParams);
   if (dataType.sql.claimsKind !== undefined) {
-    return unquotedSqlBaseName(dataType, resolved.typeParams)
+    return unquotedSqlBaseName(dataType, params)
       .split('.')
       .map(quoteIdentifierWhereNeeded)
       .join('.');
   }
-  const params = dataTypeParams(dataType, resolved.typeParams);
   if (Object.keys(params).length > 0) {
     return renderSqlTypeName(dataType, params);
   }
