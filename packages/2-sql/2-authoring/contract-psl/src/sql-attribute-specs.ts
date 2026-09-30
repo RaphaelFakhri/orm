@@ -47,6 +47,7 @@ import {
   interpretAttribute,
   leafDiagnostic,
   list,
+  mapArg,
   modelAttribute,
   nodePslSpan,
   numLiteral,
@@ -72,7 +73,7 @@ import {
   sqlTextFromCanonical,
 } from '@internal/sql-contract/sql-expression';
 import { blindCast } from '@internal/utils/casts';
-import { notOk, ok } from '@internal/utils/result';
+import { notOk } from '@internal/utils/result';
 import { removedDbgeneratedMessage } from './default-function-registry';
 import { getAttribute } from './psl-attribute-parsing';
 
@@ -276,17 +277,7 @@ function defaultFunctionArm(
   name: string,
   signature: FuncCallSig,
 ): ArgType<DefaultFunctionCall, AttributeCtx> {
-  const call = funcCall(name, signature);
-  return {
-    kind: 'funcCall',
-    label: call.label,
-    name: call.name,
-    signature: call.signature,
-    parse: (arg, ctx) => {
-      const parsed = call.parse(arg, ctx);
-      return parsed.ok ? ok({ kind: 'default-function', call: parsed.value }) : parsed;
-    },
-  };
+  return mapArg(funcCall(name, signature), (call) => ({ kind: 'default-function', call }));
 }
 
 function scalarDefaultArms(
@@ -403,21 +394,11 @@ function enumDefaultArms(
 ): readonly [ArgType<DefaultArgValue, AttributeCtx>, ...ArgType<DefaultArgValue, AttributeCtx>[]] {
   const [first, ...rest] = members;
   if (first === undefined) return [noEnumMember()];
-  const member = (name: string): ArgType<EnumMemberDefault, AttributeCtx> => {
-    const arm = identifier(name, {
-      documentation: `The \`${name}\` member of enum \`${enumName}\`.`,
-    });
-    return {
-      kind: 'identifier',
-      label: arm.label,
-      name: arm.name,
-      documentation: arm.documentation,
-      parse: (arg, ctx) => {
-        const parsed = arm.parse(arg, ctx);
-        return parsed.ok ? ok({ kind: 'member', name: parsed.value }) : parsed;
-      },
-    };
-  };
+  const member = (name: string): ArgType<EnumMemberDefault, AttributeCtx> =>
+    mapArg(
+      identifier(name, { documentation: `The \`${name}\` member of enum \`${enumName}\`.` }),
+      (parsed) => ({ kind: 'member', name: parsed }),
+    );
   return [member(first), ...rest.map(member)];
 }
 

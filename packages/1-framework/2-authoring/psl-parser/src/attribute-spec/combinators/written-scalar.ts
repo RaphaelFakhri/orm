@@ -1,12 +1,11 @@
 import type { WrittenScalar } from '@internal/framework-components/authoring';
 import type { PslSpan } from '@internal/framework-components/psl-ast';
-import { blindCast } from '@internal/utils/casts';
 import { InternalError } from '@internal/utils/internal-error';
-import { ok } from '@internal/utils/result';
 import { nodePslSpan } from '../../resolve';
 import { readWrittenScalar } from '../../written-scalar';
 import type { ArgType, AttributeCtx } from '../types';
 import { list } from './list';
+import { mapArg } from './map-arg';
 
 /** A literal argument read as a written scalar, with its span. A tagged literal whose text cannot be canonicalized has no `written` value and carries why. */
 export type ParsedWrittenScalar =
@@ -27,21 +26,15 @@ export type ParsedWrittenScalar =
 export function writtenScalar<Ctx extends AttributeCtx>(
   arm: ArgType<unknown, Ctx>,
 ): ArgType<ParsedWrittenScalar, Ctx> {
-  const parse: ArgType<ParsedWrittenScalar, Ctx>['parse'] = (arg, ctx) => {
-    const accepted = arm.parse(arg, ctx);
-    if (!accepted.ok) return accepted;
+  return mapArg(arm, (_accepted, arg, ctx): ParsedWrittenScalar => {
     const span = nodePslSpan(arg.syntax, ctx.sources);
     const literal = readWrittenScalar(arg);
-    if (literal.ok) return ok({ kind: 'scalar', written: literal.written, span });
+    if (literal.ok) return { kind: 'scalar', written: literal.written, span };
     if (literal.reason === 'not-a-literal') {
       throw new InternalError(`writtenScalar wraps an arm that accepted ${literal.found}.`);
     }
-    return ok({ kind: 'scalar', written: undefined, reason: literal.reason, span });
-  };
-  return blindCast<
-    ArgType<ParsedWrittenScalar, Ctx>,
-    "The arm's metadata does not depend on its output type, but TypeScript cannot carry a spread of the ArgType union over to a new output type."
-  >({ ...arm, parse });
+    return { kind: 'scalar', written: undefined, reason: literal.reason, span };
+  });
 }
 
 /** A written list with its span, so a refusal about the whole list is reported at it. */
@@ -55,22 +48,12 @@ export interface ParsedWrittenList {
 export function writtenList<Ctx extends AttributeCtx>(
   of: ArgType<ParsedWrittenScalar, Ctx>,
 ): ArgType<ParsedWrittenList, Ctx> {
-  const arm = list(of, { label: `list of (${of.label})` });
-  return {
-    kind: 'list',
-    label: arm.label,
-    of: arm.of,
-    allowEmpty: arm.allowEmpty,
-    unique: arm.unique,
-    parse: (arg, ctx) => {
-      const parsed = arm.parse(arg, ctx);
-      return parsed.ok
-        ? ok({
-            kind: 'list',
-            elements: parsed.value,
-            span: nodePslSpan(arg.syntax, ctx.sources),
-          })
-        : parsed;
-    },
-  };
+  return mapArg(
+    list(of, { label: `list of (${of.label})` }),
+    (elements, arg, ctx): ParsedWrittenList => ({
+      kind: 'list',
+      elements,
+      span: nodePslSpan(arg.syntax, ctx.sources),
+    }),
+  );
 }

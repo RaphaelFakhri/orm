@@ -3,7 +3,16 @@ import { describe, expect, it } from 'vitest';
 import { EMPTY_DATA_TYPES } from '../src/attribute-spec/spec-context';
 import { createBinder } from '../src/binder';
 import type { AttributeCtx } from '../src/exports';
-import { bool, numLiteral, str, taggedLiteral, writtenList, writtenScalar } from '../src/exports';
+import {
+  bool,
+  identifier,
+  mapArg,
+  numLiteral,
+  str,
+  taggedLiteral,
+  writtenList,
+  writtenScalar,
+} from '../src/exports';
 import { Cursor, parseAttribute } from '../src/parse';
 import { PslSources } from '../src/source-file';
 import { FieldAttributeAst } from '../src/syntax/ast/attributes';
@@ -109,5 +118,40 @@ describe('writtenList', () => {
         span: spanOf(source),
       }),
     );
+  });
+});
+
+describe('mapArg', () => {
+  const member = identifier('Active', { documentation: 'The Active member.' });
+  const mapped = mapArg(member, (name) => ({ kind: 'member', name }) as const);
+
+  it('keeps the kind and metadata of the arm it maps', () => {
+    expect({
+      kind: mapped.kind,
+      label: mapped.label,
+      name: Reflect.get(mapped, 'name'),
+      documentation: Reflect.get(mapped, 'documentation'),
+    }).toEqual({
+      kind: 'identifier',
+      label: member.label,
+      name: 'Active',
+      documentation: 'The Active member.',
+    });
+  });
+
+  it('maps the value the arm parses', () => {
+    const { expr, ctx } = argOf('Active');
+    expect(mapped.parse(expr, ctx)).toEqual(ok({ kind: 'member', name: 'Active' }));
+  });
+
+  it('passes the arm refusal through unchanged', () => {
+    const { expr, ctx } = argOf('Other');
+    expect(mapped.parse(expr, ctx)).toEqual(member.parse(expr, ctx));
+  });
+
+  it('gives the mapping the argument and the context', () => {
+    const { expr, ctx } = argOf('Active');
+    const withSpan = mapArg(member, (_name, arg) => arg.syntax.kind);
+    expect(withSpan.parse(expr, ctx)).toEqual(ok(expr.syntax.kind));
   });
 });
