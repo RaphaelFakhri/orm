@@ -136,7 +136,7 @@ export function createSqlBinder(input: {
   readonly symbolTable: SymbolTable;
   readonly sources: PslSources;
   readonly authoringContributions?: AuthoringContributions | undefined;
-  readonly defaultFunctionRegistry?: ControlMutationDefaultRegistry | undefined;
+  readonly defaultFunctionRegistry: ControlMutationDefaultRegistry;
   readonly dataTypes: DataTypeSupport;
   readonly scalarColumnDescriptors?: ReadonlyMap<string, { readonly codecId: string }> | undefined;
   readonly pslBlockDescriptors?: AuthoringPslBlockDescriptorNamespace | undefined;
@@ -168,7 +168,7 @@ export function createSqlBinder(input: {
       ),
       field: sqlAttributeSpecs.field,
     },
-    defaultFunctionRegistry: input.defaultFunctionRegistry ?? new Map(),
+    defaultFunctionRegistry: input.defaultFunctionRegistry,
     dataTypes: input.dataTypes,
     describeUnsupportedAttribute: input.describeUnsupportedAttribute,
   });

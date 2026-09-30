@@ -195,6 +195,7 @@ model Other {
       binder: createSqlBinder({
         symbolTable: input.symbolTable,
         sources: input.sources,
+        defaultFunctionRegistry: new Map(),
         dataTypes: fixtureDataTypeSupport,
       }).binder,
       symbolTable: input.symbolTable,

@@ -89,7 +89,12 @@ function interpretDefault(schema: string, fieldName: string) {
     model,
     field: target,
     sources,
-    binder: createSqlBinder({ symbolTable, sources, dataTypes: fixtureDataTypeSupport }).binder,
+    binder: createSqlBinder({
+      symbolTable,
+      sources,
+      defaultFunctionRegistry,
+      dataTypes: fixtureDataTypeSupport,
+    }).binder,
     diagnostics,
   });
   return { value, diagnostics: diagnostics.toExternal() };
@@ -124,6 +129,7 @@ namespace scoped {
       binder: createSqlBinder({
         symbolTable: input.symbolTable,
         sources: input.sources,
+        defaultFunctionRegistry,
         dataTypes: fixtureDataTypeSupport,
       }).binder,
       diagnostics,
