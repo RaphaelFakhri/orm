@@ -107,18 +107,16 @@ describe('a: search ? c.where(...) : c', () => {
     r.cursor({ id: 1 });
   });
 
-  test('a custom class root keeps a union: include is refused, update is refused', () => {
+  test('a custom class root reduces to the class: include works, update is refused', () => {
     const r = search ? custom.public.Post.where((p) => p.title.eq(search)) : custom.public.Post;
-    expectTypeOf(r).toEqualTypeOf<SoftPostCollection | ReturnType<SoftPostCollection['where']>>();
+    expectTypeOf(r).toEqualTypeOf<SoftPostCollection>();
     expectTypeOf(r.where({ id: 1 })).not.toBeAny();
     expectTypeOf(r.first()).not.toBeAny();
-    // @ts-expect-error TS2349: the union members' include signatures are not compatible
-    r.include('author');
-    // @ts-expect-error popular exists only on one member
-    r.popular();
-    // @ts-expect-error update is locked on one member
+    expectTypeOf(r.include('author').all()).not.toBeAny();
+    expectTypeOf(r.popular()).not.toBeAny();
+    // @ts-expect-error update is locked
     r.update({ title: 'x' });
-    // @ts-expect-error delete is locked on one member
+    // @ts-expect-error delete is locked
     r.delete();
   });
 });
@@ -177,9 +175,8 @@ describe('c: let and if', () => {
     q.update({ title: 'x' });
   });
 
-  test('a custom class still cannot take the filtered collection back', () => {
+  test('a custom class takes the filtered collection back', () => {
     let q = custom.public.Post;
-    // @ts-expect-error TS2741: the filtered collection lacks the custom method
     if (search) q = q.where((p) => p.title.eq(search));
     q.popular();
   });
@@ -281,7 +278,6 @@ class ConditionalPosts extends Collection<SoftDeleteContract, 'Post'> {
   }
   letForm(term: string | undefined) {
     let q = this;
-    // @ts-expect-error TS2322: the filtered base collection is not assignable to this
     if (term) q = q.where((p) => p.title.eq(term));
     return q;
   }
@@ -294,31 +290,28 @@ class ConditionalPosts extends Collection<SoftDeleteContract, 'Post'> {
 
 describe('f: custom class, this', () => {
   const instance = null as unknown as ConditionalPosts;
-  type ClassFiltered = ReturnType<ConditionalPosts['where']>;
-
-  test('the ternary keeps a union of the class and the filtered base collection', () => {
+  test('the ternary reduces to the class', () => {
     const r = instance.ternary('x');
-    expectTypeOf(r).toEqualTypeOf<ConditionalPosts | ClassFiltered>();
+    expectTypeOf(r).toEqualTypeOf<ConditionalPosts>();
     expectTypeOf(r.where({ id: 1 })).not.toBeAny();
     expectTypeOf(r.orderBy((p) => p.id.asc())).not.toBeAny();
     expectTypeOf(r.select('id')).not.toBeAny();
     expectTypeOf(r.limit(1).all()).not.toBeAny();
     expectTypeOf(r.first()).not.toBeAny();
-    // @ts-expect-error TS2349 on include
-    r.include('author');
-    // @ts-expect-error update is locked on one member
+    expectTypeOf(r.include('author').all()).not.toBeAny();
+    // @ts-expect-error update is locked
     r.update({ title: 'x' });
-    // @ts-expect-error delete is locked on one member
+    // @ts-expect-error delete is locked
     r.delete();
     // @ts-expect-error cursor is locked
     r.cursor({ id: 1 });
-    // @ts-expect-error ternary is a method of the class only
-    r.ternary('y');
+    expectTypeOf(r.ternary('y')).toEqualTypeOf<ConditionalPosts>();
   });
 
-  test('the early return and pipe forms give the same union', () => {
-    expectTypeOf(instance.earlyReturn('x')).toEqualTypeOf<ConditionalPosts | ClassFiltered>();
-    expectTypeOf(instance.viaPipe('x')).toEqualTypeOf<ConditionalPosts | ClassFiltered>();
+  test('the early return, let and pipe forms reduce to the class', () => {
+    expectTypeOf(instance.earlyReturn('x')).toEqualTypeOf<ConditionalPosts>();
+    expectTypeOf(instance.viaPipe('x')).toEqualTypeOf<ConditionalPosts>();
+    expectTypeOf(instance.letForm('x')).toEqualTypeOf<ConditionalPosts>();
   });
 
   test('an annotated let gives the base type', () => {

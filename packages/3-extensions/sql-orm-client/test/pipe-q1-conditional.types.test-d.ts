@@ -53,15 +53,15 @@ describe('a: conditional steps inside pipe', () => {
     expectTypeOf(bare).toEqualTypeOf<Base>();
   });
 
-  test('with a checked state, a custom class keeps a union of the class and the filtered base type', () => {
+  test('with this-typed chaining, a custom class reduces to the class', () => {
     const c = custom.public.Post.pipe((q) => (search ? q.where((p) => p.title.eq(search)) : q));
-    expectTypeOf(c).toEqualTypeOf<SoftPostCollection | CustomFiltered>();
-    // @ts-expect-error popular is a method of the custom class only
-    c.popular();
-    // @ts-expect-error update is locked on one member
+    expectTypeOf(c).toEqualTypeOf<SoftPostCollection>();
+    expectTypeOf(c.popular()).not.toBeAny();
+    // @ts-expect-error update is locked
     c.update({ title: 'x' });
     const bare = search ? custom.public.Post.where((p) => p.title.eq(search)) : custom.public.Post;
-    expectTypeOf(bare).toEqualTypeOf<SoftPostCollection | CustomFiltered>();
+    expectTypeOf(bare).toEqualTypeOf<SoftPostCollection>();
+    expectTypeOf<CustomFiltered>().toExtend<SoftPostCollection>();
   });
 
   test('with a checked state, where in one branch and orderBy in the other keeps a union', () => {
@@ -97,9 +97,8 @@ describe('b: the plain chain with let', () => {
     q.update({ title: 'x' });
   });
 
-  test('a custom class cannot take the filtered collection back', () => {
+  test('a custom class takes the filtered collection back', () => {
     let q = custom.public.Post;
-    // @ts-expect-error TS2741: the filtered collection lacks the custom method
     if (search) q = q.where((p) => p.title.eq(search));
     q.popular();
   });
@@ -154,7 +153,7 @@ describe('d: when', () => {
   test('this inside a custom class', () => {
     const instance = null as unknown as ConditionalPosts;
     expectTypeOf(instance.search('x')).toEqualTypeOf<ConditionalPosts>();
-    expectTypeOf(instance.plainConditional('x')).not.toEqualTypeOf<ConditionalPosts>();
+    expectTypeOf(instance.plainConditional('x')).toEqualTypeOf<ConditionalPosts>();
   });
 
   test('include refinement', () => {

@@ -49,10 +49,10 @@ describe('the class survives chaining', () => {
     expectTypeOf(Post.where((p) => p.views.gt(1)).published()).toExtend<PostCollection>();
   });
 
-  test('custom method after include without a refinement', () => {
-    const r = Post.include('author').published();
-    expectTypeOf(r).toExtend<PostCollection>();
-    expectTypeOf(r.all()).not.toBeAny();
+  test('custom method after include is refused: include changes the row, so it returns a plain Collection', () => {
+    // @ts-expect-error include returns Collection, not the class
+    Post.include('author').published();
+    expectTypeOf(Post.published().include('author').all()).not.toBeAny();
   });
 
   test('custom method on the related class inside an include refinement', () => {
@@ -165,9 +165,18 @@ describe('conditionals reduce to the class', () => {
     q.update({ title: 'x' });
   });
 
-  test('where against orderBy on the class', () => {
+  test('where against orderBy on the class stays a union of the class', () => {
     const r = flag ? Post.published() : Post.recent();
+    expectTypeOf(r).toEqualTypeOf<
+      ReturnType<PostCollection['published']> | ReturnType<PostCollection['recent']>
+    >();
     expectTypeOf(r.limit(1).all()).not.toBeAny();
+    expectTypeOf(r.published().recent()).toExtend<PostCollection>();
+    expectTypeOf(r.select('id').all()).not.toBeAny();
+    // @ts-expect-error TS2349: include is not callable on a union of differently flagged collections
+    r.include('author');
+    // @ts-expect-error cursor needs an orderBy on every branch
+    r.cursor({ id: 1 });
     // @ts-expect-error update needs a where
     r.update({ title: 'x' });
   });
@@ -195,9 +204,13 @@ describe('row-changing methods', () => {
     r.published();
   });
 
-  test('include keeps the class and the widened row', async () => {
-    const rows = await Post.include('author').published().all();
+  test('include keeps the flags and the widened row, but not the class', async () => {
+    const c = Post.published().include('author');
+    const rows = await c.all();
     expectTypeOf(rows[0]!.author).not.toBeAny();
     expectTypeOf(rows[0]!.title).toEqualTypeOf<string>();
+    expectTypeOf(c.delete()).not.toBeAny();
+    // @ts-expect-error the class does not survive include
+    c.published();
   });
 });

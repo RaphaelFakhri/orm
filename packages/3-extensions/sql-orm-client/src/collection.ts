@@ -254,7 +254,7 @@ interface MtiCreateContext {
   pkColumns: readonly string[];
 }
 
-class CollectionImpl<
+export class CollectionImpl<
   TContract extends Contract<SqlStorage>,
   ModelName extends string,
   Row = SimplifyDeep<InferRootRow<TContract, ModelName>>,
@@ -377,9 +377,7 @@ class CollectionImpl<
       model: VariantAwareModelAccessor<TContract, ModelName, State['variantName'], State['nsId']>,
     ) => WhereArg,
   ): this & HasWhere;
-  where(
-    filters: ShorthandWhereFilter<TContract, State['nsId'], ModelName>,
-  ): this & HasWhere;
+  where(filters: ShorthandWhereFilter<TContract, State['nsId'], ModelName>): this & HasWhere;
   where(
     input:
       | WhereDirectInput
@@ -1030,9 +1028,8 @@ class CollectionImpl<
    * ```
    */
   cursor(
-    cursorValues: this[typeof StateType]['hasOrderBy'] extends true
-      ? Partial<Record<keyof DefaultModelRow<TContract, ModelName> & string, unknown>>
-      : never,
+    this: this & HasOrderBy,
+    cursorValues: Partial<Record<keyof DefaultModelRow<TContract, ModelName> & string, unknown>>,
   ): this {
     assertCursorCompatibleOrder(this.state.orderBy);
     const mappedCursor = mapCursorValuesToColumns(
@@ -1100,11 +1097,8 @@ class CollectionImpl<
       ...(keyof DefaultModelRow<TContract, ModelName> & string)[],
     ],
   >(
-    ...fields: TContract['capabilities'] extends { postgres: { distinctOn: true } }
-      ? this[typeof StateType]['hasOrderBy'] extends true
-        ? Fields
-        : never
-      : never
+    this: this & HasOrderBy,
+    ...fields: TContract['capabilities'] extends { postgres: { distinctOn: true } } ? Fields : never
   ): this {
     assertDistinctOnCapability(this.contract, 'distinctOn');
     assertDistinctOnCompatibleOrder(this.state.orderBy, fields.length);
@@ -2144,9 +2138,8 @@ class CollectionImpl<
    * statements nor the read-back query carry them.
    */
   async update(
-    data: this[typeof StateType]['hasWhere'] extends true
-      ? MutationUpdateInput<TContract, ModelName, State['nsId']>
-      : never,
+    this: this & HasWhere,
+    data: MutationUpdateInput<TContract, ModelName, State['nsId']>,
     configure?: (meta: MetaBuilder<'write'>) => void,
   ): Promise<Row | null> {
     assertReturningCapability(this.contract, 'update()');
@@ -2231,9 +2224,8 @@ class CollectionImpl<
    * `MetaBuilder<'write'>` for attaching typed annotations.
    */
   updateAll(
-    data: this[typeof StateType]['hasWhere'] extends true
-      ? Partial<DefaultModelRow<TContract, ModelName, State['nsId']>>
-      : never,
+    this: this & HasWhere,
+    data: Partial<DefaultModelRow<TContract, ModelName, State['nsId']>>,
     configure?: (meta: MetaBuilder<'write'>) => void,
   ): AsyncIterableResult<Row> {
     return this.#updateAllWithAnnotations(
@@ -2304,9 +2296,8 @@ class CollectionImpl<
    * ```
    */
   async updateAndCount(
-    data: this[typeof StateType]['hasWhere'] extends true
-      ? Partial<DefaultModelRow<TContract, ModelName, State['nsId']>>
-      : never,
+    this: this & HasWhere,
+    data: Partial<DefaultModelRow<TContract, ModelName, State['nsId']>>,
     configure?: (meta: MetaBuilder<'write'>) => void,
   ): Promise<number> {
     const mappedData = mapModelDataToStorageRow(
@@ -2354,7 +2345,7 @@ class CollectionImpl<
    * `MetaBuilder<'write'>` for attaching typed annotations.
    */
   async delete(
-    this: this[typeof StateType]['hasWhere'] extends true ? this : never,
+    this: this & HasWhere,
     configure?: (meta: MetaBuilder<'write'>) => void,
   ): Promise<Row | null> {
     assertReturningCapability(this.contract, 'delete()');
@@ -2395,7 +2386,7 @@ class CollectionImpl<
    * `MetaBuilder<'write'>` for attaching typed annotations.
    */
   deleteAll(
-    this: this[typeof StateType]['hasWhere'] extends true ? this : never,
+    this: this & HasWhere,
     configure?: (meta: MetaBuilder<'write'>) => void,
   ): AsyncIterableResult<Row> {
     return blindCast<
@@ -2508,7 +2499,7 @@ class CollectionImpl<
    * ```
    */
   async deleteAndCount(
-    this: this[typeof StateType]['hasWhere'] extends true ? this : never,
+    this: this & HasWhere,
     configure?: (meta: MetaBuilder<'write'>) => void,
   ): Promise<number> {
     const annotationsMap = this.#collectAnnotationsFromMeta(configure, 'write', 'deleteAndCount');
