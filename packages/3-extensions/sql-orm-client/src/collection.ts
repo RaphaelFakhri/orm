@@ -379,19 +379,6 @@ class CollectionImpl<
   ): Collection<TContract, ModelName, Row, WithWhereState<State>>;
   where(
     input:
-      | ((
-          model: VariantAwareModelAccessor<
-            TContract,
-            ModelName,
-            State['variantName'],
-            State['nsId']
-          >,
-        ) => WhereArg)
-      | ShorthandWhereFilter<TContract, State['nsId'], ModelName>
-      | undefined,
-  ): Collection<TContract, ModelName, Row, State>;
-  where(
-    input:
       | WhereDirectInput
       | ((
           model: VariantAwareModelAccessor<
@@ -409,15 +396,8 @@ class CollectionImpl<
             State['nsId']
           >,
         ) => WhereArg)
-      | ShorthandWhereFilter<TContract, State['nsId'], ModelName>
-      | undefined,
+      | ShorthandWhereFilter<TContract, State['nsId'], ModelName>,
   ): Collection<TContract, ModelName, Row, WithWhereState<State>> {
-    if (input === undefined) {
-      return blindCast<
-        Collection<TContract, ModelName, Row, WithWhereState<State>>,
-        'spike: where(undefined) returns the collection unchanged'
-      >(this);
-    }
     const whereArg =
       typeof input === 'function'
         ? input(
@@ -905,57 +885,7 @@ class CollectionImpl<
             >,
           ) => OrderByItem
         >,
-  ): Collection<TContract, ModelName, Row, WithOrderByState<State>>;
-  orderBy(
-    selection:
-      | ((
-          model: VariantAwareModelAccessor<
-            TContract,
-            ModelName,
-            State['variantName'],
-            State['nsId']
-          >,
-        ) => OrderByItem)
-      | ReadonlyArray<
-          (
-            model: VariantAwareModelAccessor<
-              TContract,
-              ModelName,
-              State['variantName'],
-              State['nsId']
-            >,
-          ) => OrderByItem
-        >
-      | undefined,
-  ): Collection<TContract, ModelName, Row, State>;
-  orderBy(
-    selection:
-      | ((
-          model: VariantAwareModelAccessor<
-            TContract,
-            ModelName,
-            State['variantName'],
-            State['nsId']
-          >,
-        ) => OrderByItem)
-      | ReadonlyArray<
-          (
-            model: VariantAwareModelAccessor<
-              TContract,
-              ModelName,
-              State['variantName'],
-              State['nsId']
-            >,
-          ) => OrderByItem
-        >
-      | undefined,
   ): Collection<TContract, ModelName, Row, WithOrderByState<State>> {
-    if (selection === undefined) {
-      return blindCast<
-        Collection<TContract, ModelName, Row, WithOrderByState<State>>,
-        'spike: orderBy(undefined) returns the collection unchanged'
-      >(this);
-    }
     const accessor = createModelAccessor<TContract, ModelName, State['variantName'], State['nsId']>(
       this.ctx.context,
       this.namespaceId,
