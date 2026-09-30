@@ -258,10 +258,9 @@ interface MtiCreateContext {
 interface ContractHashTuple {
   readonly storageHash: Contract<SqlStorage>['storage']['storageHash'];
   readonly profileHash: Contract<SqlStorage>['profileHash'];
-  readonly hasExecutionHash: boolean;
-  readonly executionHash: Contract<SqlStorage>['execution'] extends undefined
-    ? undefined
-    : NonNullable<Contract<SqlStorage>['execution']>['executionHash'] | undefined;
+  readonly executionHash:
+    | NonNullable<Contract<SqlStorage>['execution']>['executionHash']
+    | undefined;
 }
 
 interface RegisteredRoot {
@@ -276,7 +275,6 @@ function contractHashTuple(contract: Contract<SqlStorage>): ContractHashTuple {
   return {
     storageHash: contract.storage.storageHash,
     profileHash: contract.profileHash,
-    hasExecutionHash: contract.execution !== undefined && 'executionHash' in contract.execution,
     executionHash: contract.execution?.executionHash,
   };
 }
@@ -285,7 +283,6 @@ function contractHashTuplesEqual(left: ContractHashTuple, right: ContractHashTup
   return (
     left.storageHash === right.storageHash &&
     left.profileHash === right.profileHash &&
-    left.hasExecutionHash === right.hasExecutionHash &&
     left.executionHash === right.executionHash
   );
 }
