@@ -218,7 +218,7 @@ Brief: `dispatches/2b-review-fixes-brief.md`. Reviews: `slice-reviews/2b/`. Comm
 - **F05, F06**: whole assertions. **F08**: nothing in code; the pull request description says the hook change rode in `0e83ea5e3f`.
 - Build fix: `EnumMemberDefault` and `FunctionDefault` are exported from `@internal/sql-contract-psl/attribute-specs`, so `family-sql` declarations can name them.
 
-Verification at HEAD (F01), logs in `wip/2b-review-fixes/`: `build`, `typecheck`, `lint`, `lint:deps`, `lint:skills`, `check:error-reference`, `lint:framework-vocabulary`, `fixtures:check` (tree clean) pass; `lint:casts` and `lint:throws` delta 0. `test:scripts`: 590 pass. `test:packages`: 1452 files pass, 7 fail; the three tarball tests are the known failures, and the other four pass alone (`rerun-failed.log`). Integration files alone: 60 files, 982 tests pass (`integration.log`). Supabase pack: 18 files pass (`supabase-tests.log`). `check:upgrade-coverage`: `upgrade-coverage.log`.
+Verification at HEAD (F01), logs in `wip/2b-review-fixes/`: `build`, `typecheck`, `lint`, `lint:deps`, `lint:skills`, `check:error-reference`, `lint:framework-vocabulary`, `fixtures:check` (tree clean) pass; `lint:casts` and `lint:throws` delta 0. `test:scripts`: 590 pass. `test:packages`: 1452 files pass, 7 fail; the three tarball tests are the known failures, and the other four pass alone (`rerun-failed.log`). Integration files alone: 60 files, 982 tests pass (`integration.log`). Supabase pack: 18 files pass (`supabase-tests.log`). `check:upgrade-coverage` after committing: pass (`upgrade-coverage.log`).
 
 ## Slice order and tickets
 
