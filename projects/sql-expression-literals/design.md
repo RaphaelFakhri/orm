@@ -141,7 +141,7 @@ In `control-stack.ts`: delete the two `isLoweringEntryKey` skips (rule 2 and the
 New file `packages/1-framework/1-core/framework-components/src/shared/written-value.ts`, exported from `src/exports/authoring.ts`. It holds the family-blind half of `packages/2-sql/2-authoring/contract-psl/src/data-type-default.ts`, so that the parser's combinator (section 6) can run the ADR 254 cast rule.
 
 ```ts
-/** One written value, in the syntax a contract source wrote it in. ADR 254. */
+/** One written value, in the syntax a contract source wrote it in. The framework defines the list shape, and the family's default reader is the only reader of it. ADR 254. */
 export type WrittenValue =
   | { readonly kind: 'tag'; readonly tag: string; readonly text: string }
   | { readonly kind: 'string'; readonly text: string }
@@ -151,7 +151,7 @@ export type WrittenValue =
 
 export type WrittenScalar = Exclude<WrittenValue, { readonly kind: 'list' }>;
 
-/** The assembled data types of a stack and the PSL support for them. */
+/** A stack's registered data types with their authoring entries. */
 export interface DataTypeSupport {
   readonly entries: Readonly<Record<string, DataTypeAuthoringEntry>>;
   readonly lookup: DataTypeLookup;
@@ -181,6 +181,13 @@ export function readWrittenValue(support: DataTypeSupport, written: WrittenScala
 export function castTypedValue(support: DataTypeSupport, receivingType: DataTypeId, typed: TypedValue): Result<TypedValue, CastRefusal>;
 export function admittedTags(support: DataTypeSupport, dataType: DataTypeId): readonly string[];
 export function describeAdmittedForms(support: DataTypeSupport, dataType: DataTypeId): string;
+
+/** A cast-rule refusal worded for a diagnostic. */
+export interface RefusalDescription {
+  readonly code: 'PSL_UNKNOWN_LITERAL_TAG' | 'PSL_VALUE_TYPE_INCOMPATIBLE' | 'PSL_INVALID_LITERAL';
+  readonly message: string;
+}
+export function describeRefusal(refusal: ReadRefusal | CastRefusal, forms: string): RefusalDescription;
 ```
 
 `Result`, `ok` and `notOk` come from `@internal/utils/result`. The `tag` arm of `WrittenValue` names its field `text`, like the others (renamed in slice 2a, section 10).
@@ -190,24 +197,25 @@ Behaviour:
 - `entryForTag` and `entryForPlain` convert the matching entry's string key with `dataTypeId(key)`; assembly guarantees every key is a registered id (section 3.4).
 - `entryForTag`, `entryForPlain`, `knownTags`, `readWrittenValue` and `castTypedValue` are the current `entryForTag`, `entryForPlain`, `knownTags`, `readValue` and `castInto` from `data-type-default.ts`, with these changes: no lowering-entry filter; refusals carry no `elementIndex`; an `unreadable` refusal has no `json` field (section 10.1 retires the JSON-specific code); `castTypedValue` returns a `TypedValue` of the receiving type, and its `no-cast` refusal names the receiving type `receivingType`.
 - `admittedTags(support, T)` returns, without duplicates and in this order: the tag of the entry keyed `T` when its written form is a tag; then, for each key `S` of `support.lookup.get(T)?.casts` in key order, the tag of the entry keyed `S` when its written form is a tag.
+- `describeRefusal(refusal, forms)` is the one wording of a cast-rule refusal. `forms` is what to write instead; the caller chooses it. `unknown-tag`: `PSL_UNKNOWN_LITERAL_TAG`, `` `Unknown literal tag "${tag}". Known tags: ${known.join(', ')}.` ``. `unwritable`: `PSL_VALUE_TYPE_INCOMPATIBLE`, `` `This target has no data type for a ${syntax} value; write ${forms}` ``. `unreadable`: `PSL_INVALID_LITERAL`, the refusal's message. `no-cast`: `PSL_VALUE_TYPE_INCOMPATIBLE`, `` `${receivingType} has no cast from ${valueType}; write ${forms}` ``. Each consumer adds only its location, if any.
 - `describeAdmittedForms(support, T)` builds phrases without duplicates, for `T` and then each cast source `S` in key order. For a type `X`: a tag entry gives `` `${tag}\`...\`` ``; a plain string entry gives `a quoted string`; a plain boolean entry gives `true or false`; if `X` keys a plain number entry or is listed in any plain number entry's `types`, `a number`. It joins the phrases with ` or `, or returns `no written form`. For `sql/expression` it returns ``sql`...` ``; for `pg/bool`, `true or false`; for `pg/int4`, `a number`.
 
-`contract-psl` keeps `DefaultRefusal`, `readDataTypeDefault` and `lowerDataTypeDefault`. It deletes its own `WrittenValue`, `DataTypeSupport`, `entryForTag`, `entryForPlain`, `knownTags`, `plainText`, `readValue` and `castInto`, imports the framework versions, and adapts refusals: it adds `elementIndex` where it does today, and keeps the field name `columnType` in its own `no-cast` arm (filled from `receivingType`), so `contract-prisma7/src/defaults.ts:324` is unchanged. `contract-psl/src/exports/resolution.ts` stops exporting `entryForTag`, `WrittenValue` and `DataTypeSupport`; `contract-prisma7` imports them from `@internal/framework-components/authoring`.
+`contract-psl` keeps `DefaultRefusal`, `readDataTypeDefault` and `lowerDataTypeDefault`. It deletes its own `WrittenValue`, `DataTypeSupport`, `entryForTag`, `entryForPlain`, `knownTags`, `plainText`, `readValue` and `castInto`, and imports the framework versions. `DefaultRefusal` is the framework's `ReadRefusal | CastRefusal` with `elementIndex`, plus three arms only a default has: `not-a-list`, `no-list-cast` (a list written on a scalar column whose type has no list cast, with `receivingType` and `casts`) and `undecodable`. A refused `ReadDefaultResult` carries `receivingTypes`: the column's type, or the element types of its list cast for an element of a list read through that cast. `lowerDataTypeDefault` words every cast-rule refusal with `describeRefusal`, passing the forms of `receivingTypes` (`describeAdmittedForms` of each, without duplicates, joined with ` or `), and prefixes `Field "X.y": ` or `Field "X.y" at element n: `. It words `no-list-cast` itself, `` `${receivingType} has no cast from a list; write ${forms}` ``, and the two default-only codes as before. `contract-prisma7` reads `receivingType` and words `no-list-cast` as `holds a list, which <type> has no cast from; it casts from <types>.` `contract-psl/src/exports/resolution.ts` stops exporting `entryForTag`, `WrittenValue` and `DataTypeSupport`; `contract-prisma7` imports them from `@internal/framework-components/authoring`.
 
-`@default` does not check a tag before it reads the value. `psl-column-resolution.ts` only canonicalizes a tagged literal; an unknown tag reaches `lowerDataTypeDefault` through `readWrittenValue`, whose `unknown-tag` arm reports `PSL_UNKNOWN_LITERAL_TAG` at the written value, or at the list element it is about. That arm is the one place that words the refusal.
+`@default` does not check a tag before it reads the value. `psl-column-resolution.ts` only canonicalizes a tagged literal; an unknown tag reaches `lowerDataTypeDefault` through `readWrittenValue`, whose `unknown-tag` refusal `lowerDataTypeDefault` reports as `PSL_UNKNOWN_LITERAL_TAG` at the written value, or at the list element it is about, worded by `describeRefusal`.
 
-## 5. Reading PSL syntax into a written literal (slice 2t)
+## 5. Reading PSL syntax into a written scalar (slice 2t)
 
 New file `packages/1-framework/2-authoring/psl-parser/src/written-scalar.ts`. Export `readWrittenScalar` and `type WrittenScalarResult` from `src/exports/index.ts`:
 
 ```ts
-/** The written literal an expression is, or why it is not one. */
+/** The written scalar a PSL literal expression is, or why it is not one. */
 export type WrittenScalarResult =
   | { readonly ok: true; readonly written: WrittenScalar }
   | { readonly ok: false; readonly reason: 'nul' | 'too-large' }
   | { readonly ok: false; readonly reason: 'not-a-literal'; readonly found: 'an identifier' | 'a function call' | 'a list' | 'an object' | 'an expression' };
 
-/** Reads an expression as a written literal, for a position that takes a value of a data type. ADR 254. */
+/** Reads a PSL literal expression as a `WrittenScalar`, for a position that takes a value of a data type. ADR 254. */
 export function readWrittenScalar(expression: ExpressionAst): WrittenScalarResult;
 ```
 
@@ -216,7 +224,7 @@ export function readWrittenScalar(expression: ExpressionAst): WrittenScalarResul
 | `StringLiteralExprAst` (any quote style) | `{ ok: true, written: { kind: 'string', text: literal.value() } }` |
 | `NumberLiteralExprAst` | `{ ok: true, written: { kind: 'number', text } }` with the token text `numLiteral()` reads; a missing token is `not-a-literal`, `found: 'an expression'` |
 | `BooleanLiteralExprAst` | `{ ok: true, written: { kind: 'boolean', value } }`, read the way `bool()` reads it |
-| `TaggedLiteralExprAst`, canonicalization ok | `{ ok: true, written: { kind: 'tag', tag: literal.tagName(), text: canonicalization.body } }` |
+| `TaggedLiteralExprAst`, canonicalization ok | `{ ok: true, written: { kind: 'tag', tag: literal.tagName(), text: canonicalization.text } }` |
 | `TaggedLiteralExprAst`, canonicalization failed | `{ ok: false, reason: canonicalization.reason }` |
 | identifier | `not-a-literal`, `found: 'an identifier'` |
 | function call | `not-a-literal`, `found: 'a function call'` |
@@ -250,7 +258,7 @@ export interface DataTypeValueArgType<Ctx extends AttributeCtx = AttributeCtx>
 ```
 
 ```ts
-/** An argument typed by a data type: any literal, admitted by the ADR 254 cast rule. Used as a parameter of a `funcCall`. ADR 256. */
+/** An argument typed by a data type: any literal, admitted by the ADR 254 cast rule. Used as a parameter of a `funcCall`. ADR 231, ADR 254. */
 export function dataTypeValue(dataType: DataTypeId, support: DataTypeSupport): DataTypeValueArgType<AttributeCtx>;
 ```
 
@@ -259,7 +267,7 @@ export function dataTypeValue(dataType: DataTypeId, support: DataTypeSupport): D
 Construction never throws. The language server builds every spec only to list attribute names, including on stacks that lack the type.
 
 - `tags = admittedTags(support, dataType)`; `documentation = support.entries[dataType]?.documentation ?? ''`.
-- `label = tags.length > 0 ? \`${tags[0]}\\\`...\\\`\` : dataType` (for `sql/expression`, ``sql`...` ``).
+- `label = tags.length > 0 ? \`${tags[0]}\\\`...\\\`\` : describeAdmittedForms(support, dataType)` (for `sql/expression`, ``sql`...` ``; for `pg/int4`, `a number`; for a boolean type, `true or false`).
 
 `parse(arg, ctx)`, with `T = dataType` and `F = describeAdmittedForms(support, T)`. Every diagnostic is `leafDiagnostic(ctx, arg, message, code)`, so its span is the argument value:
 
@@ -267,12 +275,12 @@ Construction never throws. The language server builds every spec only to list at
 1. `const literal = readWrittenScalar(arg)`.
    - `not-a-literal`: code `PSL_INVALID_ATTRIBUTE_SYNTAX`, message `` `Expected ${F}, got ${found}` `` (for example ``Expected sql`...`, got an identifier``).
    - `nul` / `too-large`: codes `PSL_TAGGED_LITERAL_NUL` / `PSL_TAGGED_LITERAL_TOO_LARGE`, message `describeTaggedLiteralFailure(reason)`.
-2. `const read = readWrittenValue(support, literal.written)`.
+2. `const read = readWrittenValue(support, literal.written)`. A refusal is `describeRefusal(refusal, F)` (section 4):
    - `unknown-tag`: code `PSL_UNKNOWN_LITERAL_TAG`, message `` `Unknown literal tag "${tag}". Known tags: ${known.join(', ')}.` ``.
    - `unwritable`: code `PSL_VALUE_TYPE_INCOMPATIBLE`, message `` `This target has no data type for a ${syntax} value; write ${F}` ``.
    - `unreadable`: code `PSL_INVALID_LITERAL`, message `refusal.message`.
-3. `const cast = castTypedValue(support, T, read.value)`.
-   - `no-cast` when `literal.written.kind === 'string'` and `tags.length > 0`: code `PSL_VALUE_TYPE_INCOMPATIBLE`, message `` `${T} has no cast from ${valueType}; write it as ${printTaggedLiteral(tags[0], literal.written.text)}` ``. The message ends with the exact rewrite.
+3. `const cast = castTypedValue(support, T, read.value)`. A refusal is `describeRefusal(refusal, R)`, where `R` is `` `it as ${printTaggedLiteral(tags[0], literal.written.text)}` `` when `literal.written.kind === 'string'` and `tags.length > 0`, and `F` otherwise:
+   - `no-cast` of a string for a type with a tag: code `PSL_VALUE_TYPE_INCOMPATIBLE`, message `` `${T} has no cast from ${valueType}; write it as ${printTaggedLiteral(tags[0], literal.written.text)}` ``. The message ends with the exact rewrite.
    - other `no-cast`: code `PSL_VALUE_TYPE_INCOMPATIBLE`, message `` `${T} has no cast from ${valueType}; write ${F}` ``.
    - `unreadable`: code `PSL_INVALID_LITERAL`, message `refusal.message`.
 4. Return `ok({ type: T, value: cast.value.value, span: nodePslSpan(arg.syntax, ctx.sources) })`.
@@ -290,10 +298,11 @@ Examples on Postgres:
 - `scalarDefaultArms` (`contract-psl/src/sql-attribute-specs.ts`) becomes `scalarDefaultArms(isList: boolean, dataTypes: DataTypeSupport, registries: ControlDefaultRegistries)` and reads tags from `dataTypes.entries`; `defaultFieldSpec` calls it with `ctx.field.list, ctx.dataTypes, ctx.controlMutationDefaults`.
 - `modelSpecContext` and `fieldSpecContext` (`sql-attribute-specs.ts`) take `dataTypes: DataTypeSupport` and set it.
 - Every construction site passes the stack's data types ([research/rebase-delta.md](research/rebase-delta.md) Part B lists them with what each has in scope):
-  - contract-psl: `psl-column-resolution.ts` and `psl-field-resolution.ts` pass `dataTypes: input.dataTypeSupport`; `interpreter.ts` builds one context per model (section 8.1) with `dataTypes: input.dataTypeSupport`.
-  - Mongo: the interpret input gains `readonly dataTypes: DataTypeSupport`. `mongo contract-psl/src/provider.ts` passes `{ entries: context.authoringContributions.dataTypes, lookup: context.dataTypeLookup }` and drops `dataTypeEntries` from `controlMutationDefaults`. `specContextFor` sets `dataTypes: input.dataTypes`. Mongo tests pass `EMPTY_DATA_TYPES`, which is that value.
-  - Language server: `LspControlStack` (`lsp-control-stack.ts`) gains `readonly dataTypes?: DataTypeSupport`; `lspControlStackFromStack` (`config-resolution.ts`) sets `{ entries: stack.authoringContributions.dataTypes, lookup: stack.dataTypeLookup }`. `AttributeSpecSource` (`attribute-spec-resolution.ts`) gains `readonly dataTypes?: DataTypeSupport`; the model and field branches set `dataTypes: source.dataTypes ?? EMPTY_DATA_TYPES` and no longer read `authoringContributions.dataTypes`. `EMPTY_DATA_TYPES` (`{ entries: {}, lookup: createDataTypeLookup([]) }`) is a constant in `psl-parser/src/attribute-spec/spec-context.ts`, exported as a value from `psl-parser/src/exports/index.ts`. An absent `dataTypes` never disables a resolver. `project.ts` already spreads `data.controlStack` into both `candidates` objects, so the source receives `dataTypes` with no other edit. (Corrected in slice 2t: the design named `PipelineInputs`, `pipeline.ts` and a `server.ts` edit, which `main` no longer has.)
-  - The binder: `CreateBinderOptions` (`psl-parser/src/binder.ts`) gains a required `dataTypes: DataTypeSupport`, which it puts in the spec context of every model and field attribute it binds. `createSqlBinder` takes an optional `dataTypes` (default `EMPTY_DATA_TYPES`), and the SQL interpreter passes the stack's; `createMongoBinder` takes a required `dataTypes`. (Added in slice 2t: [research/rebase-delta.md](research/rebase-delta.md) Part B missed this site.)
+  - The stack and the source context: `ControlStack` gains `readonly dataTypes: DataTypeSupport`, built once in `createControlStack` from `authoringContributions.dataTypes` and the assembled lookup. `ContractSourceContext` replaces `dataTypeLookup` with `readonly dataTypes: DataTypeSupport`; its two production construction sites (`load-contract-source.ts` and the language server's `config-resolution.ts`) pass `stack.dataTypes`. The SQL and Prisma 7 interpreter inputs replace `dataTypeLookup` with `dataTypes`, which their providers take from `context.dataTypes`; the SQL interpreter no longer reads entries from `authoringContributions.dataTypes`. (Added in the slice 2t review fixes.)
+  - contract-psl: `psl-column-resolution.ts` and `psl-field-resolution.ts` pass `dataTypes: input.dataTypes`; `interpreter.ts` builds one context per model (section 8.1) with `dataTypes: input.dataTypes`. The field that holds the pair is named `dataTypes` everywhere.
+  - Mongo: the interpret input gains `readonly dataTypes: DataTypeSupport`. `mongo contract-psl/src/provider.ts` passes `context.dataTypes` and drops `dataTypeEntries` from `controlMutationDefaults`. `specContextFor` sets `dataTypes: input.dataTypes`. Mongo tests pass `EMPTY_DATA_TYPES`, which is that value.
+  - Language server: `LspControlStack` (`lsp-control-stack.ts`) gains `readonly dataTypes?: DataTypeSupport`; `lspControlStackFromStack` (`config-resolution.ts`) sets `stack.dataTypes`. `AttributeSpecSource` (`attribute-spec-resolution.ts`) gains `readonly dataTypes?: DataTypeSupport`; the model and field branches set `dataTypes: source.dataTypes ?? EMPTY_DATA_TYPES` and no longer read `authoringContributions.dataTypes`. `EMPTY_DATA_TYPES` (`{ entries: {}, lookup: createDataTypeLookup([]) }`) is a constant in `psl-parser/src/attribute-spec/spec-context.ts`, exported as a value from `psl-parser/src/exports/index.ts`. An absent `dataTypes` never disables a resolver. `project.ts` already spreads `data.controlStack` into both `candidates` objects, so the source receives `dataTypes` with no other edit. (Corrected in slice 2t: the design named `PipelineInputs`, `pipeline.ts` and a `server.ts` edit, which `main` no longer has.)
+  - The binder: `CreateBinderOptions` (`psl-parser/src/binder.ts`) gains a required `dataTypes: DataTypeSupport`, which it puts in the spec context of every model and field attribute it binds. `createSqlBinder` and `createMongoBinder` take a required `dataTypes`; the SQL interpreter passes the stack's, so a new caller cannot silently build a binder with no tag arms. (Corrected in the slice 2t review fixes: the design made it optional on `createSqlBinder`.) (Added in slice 2t: [research/rebase-delta.md](research/rebase-delta.md) Part B missed this site.)
   - Tests: every test that builds `controlMutationDefaults` with `dataTypeEntries` moves the entries to `dataTypes` ([research/rebase-delta.md](research/rebase-delta.md) B.3).
 - The block spec context: section 9.1.
 
@@ -309,7 +318,7 @@ In `packages/2-sql/2-authoring/contract-psl/src/sql-attribute-specs.ts`:
 
 In `packages/2-sql/2-authoring/contract-psl/src/interpreter.ts`, in `buildModelNodeFromPsl`:
 
-- Build one context per model: `const specContext = modelSpecContext({ symbols: input.symbolTable, model, controlMutationDefaults: { defaultFunctionRegistry: input.defaultFunctionRegistry }, dataTypes: input.dataTypeSupport, ...ifDefined('parsedBlocks', input.parsedBlocks) })`; `modelSpecContext` gains an optional `parsedBlocks` input it copies.
+- Build one context per model: `const specContext = modelSpecContext({ symbols: input.symbolTable, model, controlMutationDefaults: { defaultFunctionRegistry: input.defaultFunctionRegistry }, dataTypes: input.dataTypes, ...ifDefined('parsedBlocks', input.parsedBlocks) })`; `modelSpecContext` gains an optional `parsedBlocks` input it copies.
 - Pass it to `sqlAttributeSpecs.model.index(specContext)`, `sqlAttributeSpecs.model.check(specContext)` and the contributed model attribute factory (replacing the inline object at about line 1154). The other `sqlAttributeSpecs.model.*` factories take no argument.
 - `@@index` node: `...ifDefined('expression', parsed.expression === undefined ? undefined : sqlTextFromCanonical(parsed.expression.value))` and `where: parsed.where === undefined ? undefined : sqlTextFromCanonical(parsed.where.value)`.
 - `@@check` node: `expression: sqlTextFromCanonical(parsed.expression.value)`.
@@ -334,7 +343,7 @@ Serhii, the author of #30381, agreed (2026-09-25) that block specs may receive t
 
 - `BlockSpecContext` gains `readonly dataTypes: DataTypeSupport`, the same field and value as `AttributeSpecContext.dataTypes` (section 7).
 - `InterpretExtensionBlocksInput` gains a required `readonly dataTypes: DataTypeSupport`, and `interpretExtensionBlocks` passes it into every `BlockSpecContext` it builds, for block specs and block attributes.
-- The SQL interpreter passes its `dataTypeSupport`; build it before the `interpretExtensionBlocks` call. The Mongo interpreter passes the same value it puts in its attribute contexts.
+- The SQL interpreter passes its `dataTypes`, which its input carries. The Mongo interpreter passes the same value it puts in its attribute contexts.
 - The language server's block attribute and block key completion contexts (`attribute-spec-resolution.ts`, `completion-provider.ts`) set `dataTypes: source.dataTypes ?? EMPTY_DATA_TYPES`. They build specs and never parse values, so the empty value cannot reach step 0 of section 6.
 
 ### 9.2 The policy spec
@@ -358,7 +367,7 @@ In `packages/2-sql/2-authoring/contract-psl/src/psl-column-resolution.ts`:
   1. `reservedSqlDefaultText(text)` defined: report `PSL_INVALID_DEFAULT_SQL` at the literal span, `` `Write @default(${reserved}()) instead of ${SQL_EXPRESSION_TAG}\`${reserved}()\`; ${reserved}() is a Prisma default function, not raw SQL.` ``, and return no default.
   2. `checkSqlDefaultText(text)` defined: report `PSL_INVALID_DEFAULT_SQL` at the literal span with the reason.
   3. Otherwise the default is `{ kind: 'function', expression: text }`.
-- Delete the list-element special case (about lines 683-690). A `sql` literal inside a list literal reaches `readDataTypeDefault` and is refused by the cast rule, for example ``Field "Post.tags" at element 1: pg/text has no cast from sql/expression; it casts from nothing`` with `PSL_VALUE_TYPE_INCOMPATIBLE`.
+- Delete the list-element special case (about lines 683-690). A `sql` literal inside a list literal reaches `readDataTypeDefault` and is refused by the cast rule, for example ``Field "Post.tags" at element 1: pg/text has no cast from sql/expression; write a quoted string`` with `PSL_VALUE_TYPE_INCOMPATIBLE`.
 - Declare the constant `PSL_INVALID_DEFAULT_SQL: ContributedPslDiagnosticCode = 'PSL_INVALID_DEFAULT_SQL'` in `psl-column-resolution.ts`, next to the SQL expression path, its only user. `data-type-default.ts` holds no per-type code.
 
 ### 10.1 One set of codes (slice 2a)
@@ -375,7 +384,7 @@ In `data-type-default.ts`, `lowerDataTypeDefault` keeps its messages and changes
 
 `PSL_INVALID_JSON_LITERAL` is retired; `DefaultRefusal.unreadable.json` is deleted. Rename `PSL_UNKNOWN_DEFAULT_LITERAL_TAG` to `PSL_UNKNOWN_LITERAL_TAG` in the `PslDiagnosticCode` union (`psl-extension-block.ts`, doc "A tagged literal whose tag no pack in the stack registered.") and in `psl-column-resolution.ts`. Add `PSL_VALUE_TYPE_INCOMPATIBLE` ("A written value has a data type the receiving position's type neither is nor casts from, or the target has no data type for its syntax.") and `PSL_INVALID_LITERAL` ("A written value that its authoring entry's parse or a cast refused.") to the union.
 
-The `@default` messages keep naming the column's casts (`it casts from pg/int2`), because for a column the cast list tells the author which smaller types to write. `contract-prisma7` reports `PSL.PRISMA7_UNKNOWN_DEFAULT` and is unaffected.
+Slice 2t's review fixes change the messages: `lowerDataTypeDefault` words every cast-rule refusal with the framework's `describeRefusal` (section 4), so `@default` and `dataTypeValue` say the same thing. A missing cast ends with what to write, the forms the column's type admits (`Field "N.count": pg/int4 has no cast from pg/int8; write a number`), not the column's casts. `Unknown literal tag` gains the field prefix, and `This target has no data type for a <syntax> value; write <forms>` replaces the lower-case form without a rewrite. `contract-prisma7` reports `PSL.PRISMA7_UNKNOWN_DEFAULT` with its own wording, which still names the casts.
 
 The TypeScript `sql` tag in `packages/2-sql/2-authoring/contract-ts/src/sql-default-literal.ts` is unchanged in slice 2a; slice 3 replaces it.
 
@@ -444,6 +453,8 @@ In `packages/1-framework/3-tooling/language-server/src/`:
 | `CONTRACT.SQL_EXPRESSION_INVALID` (new) | `SqlExpression` constructor | Canonicalization failed |
 | `CONTRACT.DEFAULT_INVALID` | TS `.default()` | Reserved text or unsafe SQL (moved from the tag) |
 | `CONTRACT.ARGUMENT_INVALID` | `requireSqlExpression` | A TS raw-SQL field holds something other than a `SqlExpression` at run time |
+
+`@default` and `dataTypeValue` word `PSL_VALUE_TYPE_INCOMPATIBLE`, `PSL_INVALID_LITERAL` and `PSL_UNKNOWN_LITERAL_TAG` with the framework's `describeRefusal` (section 4). `@default` adds `Field "X.y": ` or `Field "X.y" at element n: ` in front; `dataTypeValue` adds nothing. A missing cast ends with `write <forms>`, or `write it as <literal>` for a quoted string refused by a type with a tag.
 
 Policy predicates report the `dataTypeValue` rows (section 9.2).
 

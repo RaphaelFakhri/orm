@@ -17,7 +17,7 @@ Slice 2t leaves both as they are. The two ways to remove the dead code:
 
 **Decision:** option A.
 
-**Outcome** (`3facad43e0`): the tag check is gone. The canonicalization that was left is folded into the one function that turns a parsed element into a written value, so the name `readTaggedLiteral` is gone too. An unknown tag is reported by the `unknown-tag` arm of `lowerDataTypeDefault`, with the same code, message and span as before. The existing unknown-tag tests pass unchanged. A new test covers an unknown tag inside a list, reported at that element; it fails when the arm reports at the whole value. Design sections 4 and 10 are corrected.
+**Outcome** (`3facad43e0`): the tag check is gone. The canonicalization that was left is folded into the one function that turns a parsed element into a written value, so the name `readTaggedLiteral` is gone too. An unknown tag is reported by the `unknown-tag` arm of `lowerDataTypeDefault`, with the same code, message and span as before. The existing unknown-tag tests pass unchanged. A new test covers an unknown tag inside a list, reported at that element; it fails when the arm reports at the whole value. Design sections 4 and 10 are corrected. One order changes: `@default` now canonicalizes a tagged literal before it checks the tag, so a literal with both an unknown tag and a NUL character or more text than the limit reports `PSL_TAGGED_LITERAL_NUL` or `PSL_TAGGED_LITERAL_TOO_LARGE`, where it used to report `PSL_UNKNOWN_LITERAL_TAG`. The order is kept, because `dataTypeValue` uses it too; the app upgrade instructions say so (added in the slice 2t review fixes).
 
 ## 2. A refusal inside a function call that is an arm of `oneOf` becomes "Expected one of"
 

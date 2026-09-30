@@ -103,6 +103,8 @@ Two notes were sent to that project's agent:
 
 - `dataTypeValue` is used as a parameter of a `funcCall`, not as a bare arm of `oneOf`. When exactly one arm of `oneOf` names the called function, `oneOf` keeps that function's diagnostics, so `@default(nanoid("8"))` can report the cast refusal at `"8"` (updated 2026-09-30).
 - `dataTypeValue` throws an internal error when the stack does not register the named data type. A family spec must choose the type id from the stack, not hard-code one target's id.
+- A default-function signature is built from the stack's data types: `ControlMutationDefaultEntry.signature` becomes `(dataTypes: DataTypeSupport) => FuncCallSig` (or the entry offers that form beside the static one), resolved in `scalarDefaultArms` with `ctx.dataTypes`. That project makes the change when it types `nanoid(8)`; see design-notes decision 14 (added 2026-09-30).
+- The label of a `dataTypeValue` without a tag is the forms it admits, such as `a number`. A refusal is worded by the framework's `describeRefusal`; a caller adds only its location prefix and chooses the forms to suggest (added 2026-09-30).
 
 ## The design is older than `main`
 
