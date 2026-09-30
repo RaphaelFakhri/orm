@@ -325,15 +325,14 @@ export function storedSqlTypeName(type: DataType, typeParams: SqlTypeParams | un
   return typeName;
 }
 
-/** {@link storedSqlTypeName} of the data type the codec `codecId` represents. */
-export function storedSqlTypeNameOfCodec(
-  codecId: string,
-  typeParams: SqlTypeParams | undefined,
-  lookups: {
-    readonly codecLookup: Pick<CodecLookup, 'descriptorFor'>;
-    readonly dataTypeLookup: Pick<DataTypeLookup, 'get'>;
-  },
-): string {
+/** The lookups that find the data type a codec represents. */
+export interface SqlTypeLookups {
+  readonly codecLookup: Pick<CodecLookup, 'descriptorFor'>;
+  readonly dataTypeLookup: Pick<DataTypeLookup, 'get'>;
+}
+
+/** The SQL data type the codec `codecId` represents. */
+export function sqlDataTypeOfCodec(codecId: string, lookups: SqlTypeLookups): SqlDataType {
   const descriptor = lookups.codecLookup.descriptorFor?.(codecId);
   if (descriptor === undefined) {
     throw contractError(
@@ -350,7 +349,29 @@ export function storedSqlTypeNameOfCodec(
       { meta: { codecId, dataType: descriptor.dataType } },
     );
   }
-  return storedSqlTypeName(type, typeParams);
+  if (!isSqlDataType(type)) {
+    throw new InternalError(`Data type ${type.id} is not a SQL data type, so it has no type name.`);
+  }
+  return type;
+}
+
+/** {@link storedSqlTypeName} of the data type the codec `codecId` represents. */
+export function storedSqlTypeNameOfCodec(
+  codecId: string,
+  typeParams: SqlTypeParams | undefined,
+  lookups: SqlTypeLookups,
+): string {
+  return storedSqlTypeName(sqlDataTypeOfCodec(codecId, lookups), typeParams);
+}
+
+/** {@link renderSqlTypeName} of the data type the codec `codecId` represents, with the parameters that type declares. */
+export function renderSqlColumnTypeName(
+  codecId: string,
+  typeParams: SqlTypeParams | undefined,
+  lookups: SqlTypeLookups,
+): string {
+  const type = sqlDataTypeOfCodec(codecId, lookups);
+  return renderSqlTypeName(type, dataTypeParams(type, typeParams));
 }
 
 /** The text a migration writes for `type` with the raw `params`. */

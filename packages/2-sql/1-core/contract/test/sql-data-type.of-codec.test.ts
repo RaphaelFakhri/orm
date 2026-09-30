@@ -1,0 +1,73 @@
+import type { CodecLookup } from '@internal/framework-components/codec';
+import { createDataTypeLookup, dataType } from '@internal/framework-components/codec';
+import { InternalError } from '@internal/utils/internal-error';
+import { describe, expect, it } from 'vitest';
+import { renderSqlColumnTypeName, sqlDataTypeOfCodec } from '../src/sql-data-type';
+import { enumType, int4, numeric, vector } from './sql-data-type-fixtures';
+
+const plain = dataType('t/plain', {});
+
+describe('sqlDataTypeOfCodec', () => {
+  const dataTypeLookup = createDataTypeLookup([int4, numeric, vector, enumType, plain]);
+  const codecLookup: Pick<CodecLookup, 'descriptorFor'> = {
+    descriptorFor: (id) =>
+      ({
+        't/int4@1': { codecId: id, dataType: int4.id },
+        't/numeric@1': { codecId: id, dataType: numeric.id },
+        't/vector@1': { codecId: id, dataType: vector.id },
+        't/enum@1': { codecId: id, dataType: enumType.id },
+        't/plain@1': { codecId: id, dataType: plain.id },
+        't/orphan@1': { codecId: id, dataType: 't/gone' },
+      })[id] as never,
+  };
+  const lookups = { codecLookup, dataTypeLookup };
+
+  it('is the data type the codec represents', () => {
+    expect(sqlDataTypeOfCodec('t/int4@1', lookups)).toBe(int4);
+  });
+
+  it('refuses a codec the stack does not register', () => {
+    expect(() => sqlDataTypeOfCodec('t/unknown@1', lookups)).toThrow(
+      expect.objectContaining({
+        code: 'CONTRACT.CODEC_DESCRIPTOR_MISSING',
+        meta: { codecId: 't/unknown@1' },
+      }),
+    );
+  });
+
+  it('refuses a codec whose data type the stack does not register', () => {
+    expect(() => sqlDataTypeOfCodec('t/orphan@1', lookups)).toThrow(
+      expect.objectContaining({ code: 'CONTRACT.DATA_TYPE_UNREGISTERED' }),
+    );
+  });
+
+  it('refuses a data type that is not a SQL data type', () => {
+    expect(() => sqlDataTypeOfCodec('t/plain@1', lookups)).toThrow(InternalError);
+  });
+
+  describe('renderSqlColumnTypeName', () => {
+    it('writes the codec’s data type with its parameters', () => {
+      expect(renderSqlColumnTypeName('t/int4@1', undefined, lookups)).toBe('int4');
+      expect(renderSqlColumnTypeName('t/numeric@1', { precision: 10 }, lookups)).toBe(
+        'numeric(10)',
+      );
+      expect(renderSqlColumnTypeName('t/vector@1', { length: 3 }, lookups)).toBe('vector(3)');
+    });
+
+    it('ignores keys the data type does not declare', () => {
+      expect(
+        renderSqlColumnTypeName(
+          't/numeric@1',
+          { precision: 10, scale: 2, expression: 'x' },
+          lookups,
+        ),
+      ).toBe('numeric(10,2)');
+    });
+
+    it('renders a type that claims a kind', () => {
+      expect(renderSqlColumnTypeName('t/enum@1', { typeName: 'app.mood' }, lookups)).toBe(
+        '"app"."mood"',
+      );
+    });
+  });
+});
