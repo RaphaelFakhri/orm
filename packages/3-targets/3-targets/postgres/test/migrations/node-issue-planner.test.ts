@@ -313,6 +313,8 @@ describe('buildPostgresPlanDiff + planNodeIssues (one-differ path)', () => {
     { typeName: 'UserRole', typeRef: undefined, formatTypeExpected: '"UserRole"' },
     { typeName: 'user_role', typeRef: 'user_role', formatTypeExpected: 'user_role' },
     { typeName: 'user_role', typeRef: undefined, formatTypeExpected: 'user_role' },
+    { typeName: 'select', typeRef: undefined, formatTypeExpected: '"select"' },
+    { typeName: 'position', typeRef: undefined, formatTypeExpected: '"position"' },
   ])(
     'checks a type change to enum $typeName (typeRef $typeRef) against $formatTypeExpected',
     ({ typeName, typeRef, formatTypeExpected }) => {

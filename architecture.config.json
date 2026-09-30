@@ -247,6 +247,12 @@
       "plane": "shared"
     },
     {
+      "glob": "packages/3-targets/3-targets/postgres/src/core/postgres-keywords.ts",
+      "domain": "extensions",
+      "layer": "targets",
+      "plane": "shared"
+    },
+    {
       "glob": "packages/3-targets/3-targets/postgres/src/core/errors.ts",
       "domain": "extensions",
       "layer": "targets",
