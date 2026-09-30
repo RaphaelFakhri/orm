@@ -260,21 +260,22 @@ export interface EnumMemberDefault {
   readonly name: string;
 }
 
-export interface FunctionDefault {
-  readonly kind: 'function';
+/** A call to a registered default function, such as `uuid()`. Not the contract's `{ kind: 'function' }` storage default. */
+export interface DefaultFunctionCall {
+  readonly kind: 'default-function';
   readonly call: TypedFuncCall;
 }
 
 type DefaultArgValue =
   | ParsedWrittenScalar
   | ParsedWrittenList
-  | FunctionDefault
+  | DefaultFunctionCall
   | EnumMemberDefault;
 
-function functionDefaultArm(
+function defaultFunctionArm(
   name: string,
   signature: FuncCallSig,
-): ArgType<FunctionDefault, AttributeCtx> {
+): ArgType<DefaultFunctionCall, AttributeCtx> {
   const call = funcCall(name, signature);
   return {
     kind: 'funcCall',
@@ -283,7 +284,7 @@ function functionDefaultArm(
     signature: call.signature,
     parse: (arg, ctx) => {
       const parsed = call.parse(arg, ctx);
-      return parsed.ok ? ok({ kind: 'function', call: parsed.value }) : parsed;
+      return parsed.ok ? ok({ kind: 'default-function', call: parsed.value }) : parsed;
     },
   };
 }
@@ -319,7 +320,7 @@ function scalarDefaultArms(
     );
   const listArm = () => writtenList(literal());
   const funcArms = [...defaultFunctionRegistry.entries()].map(([name, entry]) =>
-    functionDefaultArm(
+    defaultFunctionArm(
       name,
       blindCast<
         FuncCallSig,

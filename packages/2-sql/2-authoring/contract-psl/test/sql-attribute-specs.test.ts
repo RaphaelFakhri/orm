@@ -504,7 +504,7 @@ model Post {
     expect(
       interpretDefault('model Post {\n  id Int @id @default(autoincrement())\n}\n', 'id').value,
     ).toEqual({
-      value: { kind: 'function', call: expect.objectContaining({ fn: 'autoincrement' }) },
+      value: { kind: 'default-function', call: expect.objectContaining({ fn: 'autoincrement' }) },
     });
     const rejected = interpretDefault('model Post {\n  id Int @id @default(nope())\n}\n', 'id');
     expect(rejected.value).toBeUndefined();
