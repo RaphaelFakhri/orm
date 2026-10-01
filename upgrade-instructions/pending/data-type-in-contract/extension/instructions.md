@@ -3,19 +3,61 @@ changes:
   - id: contract-stores-data-type
     summary: |
       A SQL contract names each column's data type in `dataType` (for example `pg/int4`) instead of
-      its database type name in `nativeType`. Run the colocated script on the extension's contract space: it
-      rewrites every contract, renames the snapshot directories to the new storage hashes, and
-      rewrites the migrations, refs, `migration.ts` imports and `contract.d.ts` files that name them.
+      its database type name in `nativeType`. Run the colocated script on the extension's contract
+      space and publish a release before your users upgrade the framework: a project that loads an
+      old-format contract space refuses to load. Publish a `--data-type` line for each codec the
+      extension owns.
     detection:
       glob: "**/*.json"
       matches:
         - '"nativeType"\s*:\s*"'
     script: ./scripts/data-type-in-contract.ts
+  - id: column-descriptors-drop-native-type
+    summary: |
+      `ColumnTypeDescriptor`, `StorageTypeMetadata` and authored `storage.types` entries lose
+      `nativeType`, `column()` loses its fourth argument, and a codec descriptor's
+      `columnFromEntity` returns `{ typeParams }` only. The contract takes a column's data type from
+      its codec. A `types` constraint over what `type.*` helpers return is
+      `Record<string, AuthoredStorageType>` instead of `Record<string, StorageTypeInstance>`.
+    detection:
+      glob: "**/*.{ts,mts,cts}"
+      matches:
+        - '(?<![\w$])(?<!readonly\s+)nativeType\s*:'
+        - '(?<![\w$.])column\s*\((?:[^()]|\([^()]*\))*,(?:[^()]|\([^()]*\))*,(?:[^()]|\([^()]*\))*,\s*[\w''"](?:[^()]|\([^()]*\))*\)'
+        - '\bRecord\s*<\s*string\s*,\s*StorageTypeInstance\s*>'
+  - id: default-renderer-receives-data-type
+    summary: |
+      `DefaultRenderer`'s third argument is the object `{ dataType, typeText }` instead of the string
+      `dataType`: the id of the data type the column's codec represents and its written name
+      without parameters. `DdlColumnRenderContext.nativeType`
+      is renamed `typeText`.
+    detection:
+      glob: "**/*.{ts,mts,cts}"
+      matches:
+        - '\bDefaultRenderer\b'
+        - '\bDdlColumnRenderContext\b'
+  - id: control-family-instance-sign-spaces
+    summary: |
+      `ControlFamilyInstance` has a new required method, `signSpaces({ driver, spaces })`, which
+      writes the marker of every contract space it is given. `db sign` calls it once for all
+      spaces.
+    detection:
+      glob: "**/*.{ts,mts,cts}"
+      matches:
+        - '\bControlFamilyInstance\s*<'
+  - id: value-object-storage-type-on-target
+    summary: |
+      `authoring.valueObjectStorageType` is contributed by the target descriptor, not the adapter
+      descriptor: the contract build reads it from the target.
+    detection:
+      glob: "**/*.{ts,mts,cts}"
+      matches:
+        - '\bvalueObjectStorageType\s*:'
 ---
 
 ## `contract-stores-data-type`
 
-Commit your work first, so the script's changes can be reviewed and undone with git. Then run the script from the project root:
+Commit your work first, so the script's changes can be reviewed and undone with git. Then run the script from the extension package's root:
 
 ```sh
 pnpm exec tsx <path-to-this-guide>/scripts/data-type-in-contract.ts
@@ -28,3 +70,108 @@ Run your formatter afterwards. The script replaces text in `migration.ts` and `c
 A project already in the new format is left unchanged. It prints `<file>: stored hash did not recompute; rehashed from content` for a contract whose stored storage hash does not match its content, and rewrites it anyway. It changes no file and exits 1 when a column uses a codec it does not know (`<file>: unknown codec <id>; name its data type with --data-type <id>=<data type id>`) or when a renamed snapshot directory already exists with different content.
 
 The script knows every codec that Prisma and its own extensions ship. For each codec your extension owns, run the script with `--data-type <codec id>=<data type id>`, naming the data type that codec represents, for example `--data-type acme/shape@1=acme/shape`. Publish those lines in your release notes: your users pass the same options when they run the script on their projects. The option cannot change the data type of a codec the script already knows.
+
+Publish the release with the rewritten contract space before your users upgrade the framework. A project whose extensions include a contract space that still stores `nativeType` refuses to load, so your users must upgrade your extension in the same step as the framework.
+
+## `column-descriptors-drop-native-type`
+
+Delete `nativeType` from every column type descriptor: column type helpers, hand-written descriptors, and enum descriptors.
+
+```ts
+// before
+export function vector<N extends number>(length: N) {
+  return { codecId: VECTOR_CODEC_ID, nativeType: 'vector', typeParams: { length } } as const;
+}
+const pgText = { codecId: 'pg/text@1', nativeType: 'text' } as const;
+
+// after
+export function vector<N extends number>(length: N) {
+  return { codecId: VECTOR_CODEC_ID, typeParams: { length } } as const;
+}
+const pgText = { codecId: 'pg/text@1' } as const;
+```
+
+Delete the fourth argument of `column()`, the type name:
+
+```ts
+// before
+column(pgVectorDescriptor.factory({ length }), pgVectorDescriptor.codecId, { length }, 'vector');
+
+// after
+column(pgVectorDescriptor.factory({ length }), pgVectorDescriptor.codecId, { length });
+```
+
+Delete `nativeType` from each `types.storage[]` entry of the pack metadata (`StorageTypeMetadata`):
+
+```ts
+// before
+storage: [{ typeId: pgvectorTypeId, familyId: 'sql', targetId: 'postgres', nativeType: 'vector' }],
+
+// after
+storage: [{ typeId: pgvectorTypeId, familyId: 'sql', targetId: 'postgres' }],
+```
+
+Delete `nativeType` from each `storage.types` entry of the contract space's source (`src/contract.ts`):
+
+```ts
+// before
+[PGVECTOR_NATIVE_TYPE]: { kind: 'codec-instance', codecId: VECTOR_CODEC_ID, nativeType: PGVECTOR_NATIVE_TYPE, typeParams: {} },
+
+// after
+[PGVECTOR_NATIVE_TYPE]: { kind: 'codec-instance', codecId: VECTOR_CODEC_ID, typeParams: {} },
+```
+
+A codec descriptor's `columnFromEntity` returns `{ typeParams }` and no `nativeType`; code that read `nativeType` from its result stops reading it.
+
+A `defineContract` facade that constrains the contract's `types` to what `type.*` helpers return uses `AuthoredStorageType` from `@internal/sql-contract/types`, which has no `dataType`; the contract build adds it:
+
+```ts
+// before
+type TypesConstraint = Record<string, StorageTypeInstance>;
+
+// after
+type TypesConstraint = Record<string, AuthoredStorageType>;
+```
+
+Code that builds a stored contract's column by hand, for example a test helper, writes the data type id instead of the type name: `{ dataType: 'pg/int4', codecId: 'pg/int4@1' }` instead of `{ nativeType: 'int4', codecId: 'pg/int4@1' }`, and a contract type written by hand declares `readonly dataType: 'pg/int4'` instead of `readonly nativeType: 'int4'`.
+
+Update doc comments and examples that describe what a helper produces: `// Produces: codecId: 'pg/vector@1', typeParams: { length: 1536 }` instead of `// Produces: nativeType: 'vector', typeParams: { length: 1536 }`.
+
+## `default-renderer-receives-data-type`
+
+```ts
+// before
+const renderDefault: DefaultRenderer = (def, column, dataType) => render(def, dataType);
+const visit = (node: LiteralColumnDefault, ctx: DdlColumnRenderContext) => cast(node, ctx.nativeType);
+
+// after
+const renderDefault: DefaultRenderer = (def, column, type) => render(def, type.typeText);
+const visit = (node: LiteralColumnDefault, ctx: DdlColumnRenderContext) => cast(node, ctx.typeText);
+```
+
+`typeText` is the type's written name without parameters, for example `jsonb` or `varchar`. Compare `dataType`, for example `pg/jsonb`, when the decision depends on which type the column stores.
+
+## `control-family-instance-sign-spaces`
+
+A family that implements `ControlFamilyInstance` adds `signSpaces`:
+
+```ts
+signSpaces(options: {
+  readonly driver: ControlDriverInstance<TFamilyId, string>;
+  readonly spaces: readonly SpaceToSign[];
+}): Promise<readonly SpaceSignature[]>;
+```
+
+`SpaceToSign` is `{ space, contract }`. The method writes each space's marker with its contract's hashes and returns one `SpaceSignature` per space: `{ space, contract: { storageHash, profileHash }, marker: { created, updated, previous? } }`. It does not verify the schema; `db sign` verifies every space before it calls the method. A family whose database has transactions writes every marker in one transaction, so a failed write leaves every marker as it was.
+
+## `value-object-storage-type-on-target`
+
+Move `valueObjectStorageType` from the adapter descriptor's `authoring` to the target descriptor's `authoring`:
+
+```ts
+// before: the adapter's control descriptor
+authoring: { valueObjectStorageType: 'Jsonb' },
+
+// after: the target's descriptor metadata
+authoring: { type: postgresAuthoringTypes, valueObjectStorageType: 'Jsonb', field: postgresAuthoringFieldPresets },
+```
