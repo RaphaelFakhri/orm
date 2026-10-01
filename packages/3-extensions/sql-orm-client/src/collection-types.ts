@@ -32,10 +32,8 @@ export type Including<C extends HasRow, Added> = C & HasRow<CollectionRowOf<C> &
 /** A function from one collection to another; `collection.pipe(step)` applies it. */
 export type Step<In, Out> = (collection: In) => Out;
 
-/** The type state of a collection. Declarations print it by this name, so it never names `StateType`. */
-export type CollectionStateOf<C extends HasState> = {
-  [K in keyof C[typeof StateType]]: C[typeof StateType][K];
-};
+/** The type state of a collection. */
+export type CollectionStateOf<C extends HasState> = C[typeof StateType];
 
 /** The rows a collection produces, as one object type. Declarations print it by this name, so it never names `RowType`. */
 export type CollectionRowOf<C extends HasRow> = C[typeof RowType] extends infer Row
