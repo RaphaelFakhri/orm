@@ -184,10 +184,6 @@ export interface OpFactoryCall {
 // ============================================================================
 
 /**
- * A migration plan for display purposes.
- * Contains only the fields needed for CLI output (summary, JSON envelope).
- */
-/**
  * A planner hint the plan acted on. `coordinate` is the table the hint is on; `memberName` names
  * the column when the hint is on one; `from` is the old name of a rename.
  */
@@ -198,6 +194,10 @@ export interface ConsumedHint {
   readonly from?: string;
 }
 
+/**
+ * A migration plan for display purposes.
+ * Contains only the fields needed for CLI output (summary, JSON envelope).
+ */
 export interface MigrationPlan {
   /** The target ID this plan is for (e.g., 'postgres'). */
   readonly targetId: string;
