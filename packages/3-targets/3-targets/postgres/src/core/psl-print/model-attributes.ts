@@ -112,7 +112,8 @@ function attributeNaming(input: {
 
 /**
  * The `@@` attributes of one model: its polymorphism, its keys, checks and indexes, its control
- * policy, `@@rls`, `@@map` and `@@hint`. A table object several models share goes on the model that owns it.
+ * policy, `@@rls`, `@@map` and `@@hint`. A table object several models share goes on the model that
+ * owns it.
  */
 export function buildModelAttributes(input: {
   readonly entry: ModelWithTable;
