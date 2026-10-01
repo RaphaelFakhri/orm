@@ -1,4 +1,18 @@
-export { Collection } from '../collection';
+export { Collection, type CollectionImpl } from '../collection';
+export type {
+  CollectionRowOf,
+  CollectionStateOf,
+  Filtered,
+  HasOrderBy,
+  HasWhere,
+  IncludeReceiver,
+  Including,
+  Ordered,
+  RowSelection,
+  RowType,
+  StateType,
+  Step,
+} from '../collection-internal-types';
 export { all, and, not, or } from '../filters';
 export { GroupedCollection } from '../grouped-collection';
 export { createModelAccessor } from '../model-accessor';
@@ -13,6 +27,7 @@ export {
 } from '../prepared-row-query';
 export type {
   AggregateBuilder,
+  AggregateIncludeReducers,
   AggregateResult,
   AggregateSpec,
   CollectionContext,
@@ -24,6 +39,7 @@ export type {
   DefaultCollectionTypeState,
   DefaultModelRow,
   IncludeExpr,
+  IncludeScalar,
   ModelAccessor,
   NumericFieldNames,
   Orderable,

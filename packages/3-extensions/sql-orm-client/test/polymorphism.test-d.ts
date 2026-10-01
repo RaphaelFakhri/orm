@@ -456,14 +456,16 @@ type RowOfCollection<TCollection> = TCollection extends { all(): infer R }
 declare const projects: Collection<PolyContract, 'Project'>;
 
 test('include of a polymorphic-target relation types the value as the variant union', () => {
-  type Included = RowOfCollection<ReturnType<typeof projects.include<'tasks'>>>['tasks'];
+  const withTasks = projects.include('tasks');
+  type Included = RowOfCollection<typeof withTasks>['tasks'];
   expectTypeOf<Included>().toExtend<readonly unknown[]>();
   type Element = Included[number];
   expectTypeOf<Element['type']>().toEqualTypeOf<'bug' | 'feature'>();
 });
 
 test('include without refinement narrows each variant exclusively by discriminator', () => {
-  type Included = RowOfCollection<ReturnType<typeof projects.include<'tasks'>>>['tasks'];
+  const withTasks = projects.include('tasks');
+  type Included = RowOfCollection<typeof withTasks>['tasks'];
   const element = {} as unknown as Included[number];
   if (element.type === 'bug') {
     expectTypeOf<typeof element>().toHaveProperty('severity');

@@ -34,10 +34,6 @@ export type WithWhereState<State extends CollectionTypeState> = Omit<State, 'has
   readonly hasWhere: true;
 };
 
-export type WithOrderByState<State extends CollectionTypeState> = Omit<State, 'hasOrderBy'> & {
-  readonly hasOrderBy: true;
-};
-
 export type WithVariantState<State extends CollectionTypeState, V extends string> = Omit<
   State,
   'variantName'
@@ -111,9 +107,47 @@ export type IncludeRefinementResult<
 
 export declare const RowType: unique symbol;
 
+export declare const StateType: unique symbol;
+
+export type CollectionStateOf<C extends { readonly [StateType]: CollectionTypeState }> =
+  C[typeof StateType];
+
+export type CollectionRowOf<C extends { readonly [RowType]: unknown }> = FlatRow<C[typeof RowType]>;
+
+export type FlatRow<R> = R extends object ? { [K in keyof R]: R[K] } : R;
+
+export interface StateCarrier {
+  readonly [StateType]: CollectionTypeState;
+}
+
+export interface IncludeReceiver {
+  readonly [RowType]: unknown;
+}
+
+export interface HasWhere {
+  readonly [StateType]: { readonly hasWhere: true };
+}
+
+export interface HasOrderBy {
+  readonly [StateType]: { readonly hasOrderBy: true };
+}
+
 export interface RowSelection<T> {
   [RowType]: T;
 }
+
+/** A collection with a filter applied. */
+export type Filtered<Self> = Self & HasWhere;
+
+/** A collection with an order applied. */
+export type Ordered<Self> = Self & HasOrderBy;
+
+/** A collection whose rows also have the fields of `Added`, such as an included relation. */
+export type Including<Self extends IncludeReceiver, Added> = Self &
+  RowSelection<CollectionRowOf<Self> & Added>;
+
+/** A function from one collection to another; `collection.pipe(step)` applies it. */
+export type Step<In, Out> = (collection: In) => Out;
 
 export type StripRowType<T> = Omit<T, typeof RowType>;
 
@@ -130,7 +164,7 @@ export type IncludeRefinementValue<
       // cardinality-wrapped; Collection carries a raw row that still needs it.
       RefinedResult extends { readonly kind: 'includeScalar' | 'includeCombine' }
       ? V
-      : RefinedIncludeRelationValue<TContract, ParentModelName, RelName, V, NsId>
+      : RefinedIncludeRelationValue<TContract, ParentModelName, RelName, FlatRow<V>, NsId>
     : IncludeRelationValue<TContract, ParentModelName, RelName, DefaultIncludedRow, NsId>;
 
 /**
