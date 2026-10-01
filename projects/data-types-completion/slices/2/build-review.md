@@ -15,6 +15,7 @@ Reviewer-maintained. Contract: `projects/data-types-completion/design.md` sectio
 | a | 2 (`a99f5b13cd..dc527c4502`) | ANOTHER ROUND NEEDED: S2-a-R1-1 to S2-a-R1-6 closed; 1 new must-fix, 1 new low |
 | a | 3 (`feac9e4922`, `daed46c3c2`) | SATISFIED: S2-a-R2-1 and S2-a-R2-2 closed, no new finding |
 | b | 1 (`ffecde3bde`, `650a4f2d32`) | SATISFIED: no finding; 2 design gaps for the orchestrator |
+| b | 2 (`0c7ccebe6d`) | SATISFIED: the ruled JSON default gap is closed, no finding |
 
 ## Findings log
 
@@ -80,6 +81,10 @@ Reviewer-maintained. Contract: `projects/data-types-completion/design.md` sectio
 - S2-a-R2-2: closed (`daed46c3c2`). Columns take `dataType` from the test's own codec lookup; the `test/unknown@1` column, which the lookup does not know, names its data type explicitly.
 
 ## Round notes
+
+### Dispatch b, round 2
+
+`0c7ccebe6d` builds amended design 9.6. `diffSqliteSchema` decodes a reported literal default of a `sqlite/json@1` column through the codec and writes it back with `encodeJson` before comparing, so another key order or spacing is not drift and a different document still is. Text the codec cannot decode is left as reported. Only verify calls `diffSqliteSchema` (`verifySqliteDatabaseSchema`, `control-target.ts`); the planner builds its own diff, which the commit does not touch. Red first: with the commit's `diff-database-schema.ts` reverted and the target rebuilt, `data-type-verify.test.ts` fails 1 of 4; with it, all 4 pass. `lint:agent` passes.
 
 ### Dispatch b, round 1
 
