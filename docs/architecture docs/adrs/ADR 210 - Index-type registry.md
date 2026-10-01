@@ -1,6 +1,6 @@
 # ADR 210 — Index-type registry
 
-> **Decision (in one sentence):** Index types live in a per-contract registry assembled from the contract's extension packs; each entry pairs a `type` literal with an `arktype` validator for its `options`, and that pair is what the authoring DSL narrows against, what the lowering validates against, and what the framework-owned Postgres renderer reads from when emitting `CREATE INDEX … USING <method> WITH (…)`.
+> **Decision (in one sentence):** Index types live in a per-contract registry assembled from the contract's target and extension packs; each entry names a `type` literal, an `arktype` validator for its `options`, and whether an index of the type can back a foreign key; the type and validator are what the authoring DSL narrows against, what the lowering validates against, and what the framework-owned Postgres renderer reads from when emitting `CREATE INDEX … USING <method> WITH (…)`, and the foreign-key flag is what decides whether a foreign key needs a derived backing index.
 
 ## A grounding example
 
@@ -103,7 +103,9 @@ Calling `.add(name, …)` twice with the same `name` is a builder-time error nam
 
 ### Foreign-key backing
 
-A foreign key gets a derived backing index unless an index of its table already covers its columns in order. Whether an index can stand in for that backing index depends on its access method: a btree or hash index serves the equality lookups a foreign key needs, a search, spatial or range-summary index does not. The SQL family does not know the access methods, so each entry declares it with `backsForeignKey`, and the registry answers `backsForeignKey(type)` — `false` for a type nobody registered. An index counts as backing when it has no `where` predicate and either has no `type` (the target's default access method) or a type whose entry declares `backsForeignKey: true`. Contract construction and `contract infer` read the same rule. Postgres declares it for `btree` and `hash`, and not for `gin`, `gist`, `spgist` or `brin`.
+A foreign key gets a derived backing index unless an index of its table already covers its columns in order. Whether an index can stand in for that backing index depends on its access method: a btree or hash index serves the equality lookups a foreign key needs; a search, spatial or range-summary index does not. The SQL family does not know the access methods, so each entry declares it with `backsForeignKey`, and the registry answers `backsForeignKey(type)`, which is `false` for a type nobody registered. An index counts as backing when it has no `where` predicate and either has no `type` (the target's default access method) or a type whose entry declares `backsForeignKey: true`. Unique constraints and the primary key always count.
+
+`contract emit` and `contract infer` read the same registry: `indexTypeRegistryOf` assembles it from the target and the extension packs, the contract build calls it with the contract's packs, and the SQL family instance calls it with the stack's packs and hands its answer to the target's infer hook. An entry without `backsForeignKey` is refused when the registry is assembled, naming the type and the pack. Postgres declares it for `btree` and `hash`, and not for `gin`, `gist`, `spgist` or `brin`; ParadeDB's `bm25` does not back a foreign key.
 
 ## How packs and contracts compose
 
@@ -165,7 +167,7 @@ There is **no per-entry rendering hook**. A single universal renderer formats `o
 
 Two consequences are worth naming:
 
-- **The universal renderer is sufficient because the options it renders are scalars.** The one structured option in use, the Postgres full-text definition (`fields`, `language` on a `gin` index), is consumed by the target to render the index's expression and never reaches `WITH (…)`.
+- **The universal renderer is sufficient because validators constrain leaves to scalars.** There is no entry whose options need bespoke rendering, because no entry can declare an options shape with non-scalar leaves.
 - **SQL-injection risk is bounded to framework-owned helpers.** An extension author cannot accidentally introduce an unsafe rendering path; the only path that produces SQL string fragments from extension data is the one the framework controls and tests.
 
 ## Index identity and migration semantics

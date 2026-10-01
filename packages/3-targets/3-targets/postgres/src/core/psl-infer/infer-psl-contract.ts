@@ -16,7 +16,6 @@ import {
 import { SqlSchemaIR, SqlTableIR } from '@internal/sql-schema-ir/types';
 import { parsePostgresDefault } from '../default-normalizer';
 import { postgresError } from '../errors';
-import { postgresIndexTypeBacksForeignKey } from '../index-types';
 import { createPostgresTypeMap } from '../psl-build/postgres-type-map';
 import { SYNTHETIC_SPAN } from '../psl-build/psl-literals';
 import type { PostgresDatabaseSchemaNode } from '../schema-ir/postgres-database-schema-node';
@@ -200,7 +199,9 @@ export function inferPostgresPslContract(
     extraRelationsByTable,
     crossSpaceFieldNamesByTable,
     danglingForeignKeysByTable,
-  } = resolveForeignKeys(tables, owners);
+  } = resolveForeignKeys(tables, owners, (indexType) =>
+    context.indexTypes.backsForeignKey(indexType),
+  );
   const schemaIR = new SqlSchemaIR({ tables: resolvedTables });
 
   // Live introspection reports an enum column's nativeType schema-qualified
@@ -224,6 +225,7 @@ export function inferPostgresPslContract(
     defaultMapping: createPostgresDefaultMapping(),
     parseRawDefault: parsePostgresDefault,
     columnDefaults: inferredColumnDefaults(context),
+    backsForeignKey: (indexType) => context.indexTypes.backsForeignKey(indexType),
     ...(enumDefinitions.size > 0 ? { enumInfo } : {}),
   };
 
@@ -249,6 +251,8 @@ export interface RlsEmissionExtras {
 /** The printer options, and how a column's literal default is checked to read back. */
 export type PostgresPslInferOptions = PslPrinterOptions & {
   readonly columnDefaults: InferredColumnDefaults;
+  /** Whether an index of a type can back a foreign key, from the stack's index type registrations. */
+  readonly backsForeignKey: (indexType: string) => boolean;
 };
 
 /**
@@ -320,7 +324,7 @@ export function buildPslDocumentAst(
   const { relationsByTable } = inferRelations(
     schemaIR.tables,
     modelNameMap,
-    postgresIndexTypeBacksForeignKey,
+    options.backsForeignKey,
   );
 
   const policyEmission = buildIntrospectedPolicyBlocks(

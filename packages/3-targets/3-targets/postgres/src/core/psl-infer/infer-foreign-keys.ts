@@ -7,7 +7,6 @@ import type { SqlForeignKeyIR } from '@internal/sql-schema-ir/types';
 import { SqlTableIR } from '@internal/sql-schema-ir/types';
 import { blindCast } from '@internal/utils/casts';
 import { postgresError } from '../errors';
-import { postgresIndexTypeBacksForeignKey } from '../index-types';
 import {
   type ResolvedColumnFieldName,
   resolveColumnFieldName,
@@ -127,6 +126,7 @@ export type DanglingForeignKeyInfo = {
 export function resolveForeignKeys(
   tables: Readonly<Record<string, SqlTableIR>>,
   owners: ReadonlyMap<string, SqlDescribedContractSpace>,
+  backsForeignKey: (indexType: string) => boolean,
 ): ForeignKeyResolution {
   const resultTables: Record<string, SqlTableIR> = {};
   const extraRelationsByTable = new Map<string, RelationField[]>();
@@ -169,7 +169,7 @@ export function resolveForeignKeys(
           const relationField: RelationField = {
             ...buildChildRelationField(fieldName, target.modelName, fk, optional, undefined, {
               table,
-              backsForeignKey: postgresIndexTypeBacksForeignKey,
+              backsForeignKey,
             }),
             typeNamespaceId: target.namespaceId,
             typeContractSpaceId: target.spaceId,

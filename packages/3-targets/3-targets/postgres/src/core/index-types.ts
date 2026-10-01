@@ -52,12 +52,3 @@ export const postgresIndexTypes = defineIndexTypes()
   .add('brin', { options: type('object'), backsForeignKey: false });
 
 export type IndexTypes = typeof postgresIndexTypes.IndexTypes;
-
-const FOREIGN_KEY_BACKING_INDEX_TYPES: ReadonlySet<string> = new Set(
-  postgresIndexTypes.entries.filter((entry) => entry.backsForeignKey).map((entry) => entry.type),
-);
-
-/** Whether a Postgres index of this access method can back a foreign key, as registered above. */
-export function postgresIndexTypeBacksForeignKey(indexType: string): boolean {
-  return FOREIGN_KEY_BACKING_INDEX_TYPES.has(indexType);
-}
