@@ -16,6 +16,7 @@ Reviewer-maintained. Contract: `projects/data-types-completion/design.md` sectio
 | a | 3 (`feac9e4922`, `daed46c3c2`) | SATISFIED: S2-a-R2-1 and S2-a-R2-2 closed, no new finding |
 | b | 1 (`ffecde3bde`, `650a4f2d32`) | SATISFIED: no finding; 2 design gaps for the orchestrator |
 | b | 2 (`0c7ccebe6d`) | SATISFIED: the ruled JSON default gap is closed, no finding |
+| c | 1 (`3190ecd3bd`, `dda8c4e356`, `596626b778`, `ae59f32967`, `190e4c7c28`, `4797502384`, `187c1a572c`, `d8eb478422`) | SATISFIED: 1 low; notes for dispatch f |
 
 ## Findings log
 
@@ -80,7 +81,28 @@ Reviewer-maintained. Contract: `projects/data-types-completion/design.md` sectio
 - S2-a-R2-1: closed (`feac9e4922`). `authoring?.` in the adapter test; the SQLite pack test uses `createSqliteBuiltinCodecLookup()`.
 - S2-a-R2-2: closed (`daed46c3c2`). Columns take `dataType` from the test's own codec lookup; the `test/unknown@1` column, which the lookup does not know, names its data type explicitly.
 
+### S2-c-R1-1 (low): a failed `ROLLBACK` hides the error that caused it
+
+- Where: `withTransaction` in `packages/3-targets/6-adapters/postgres/src/core/control-adapter.ts:503-517` and `packages/3-targets/6-adapters/sqlite/src/core/control-adapter.ts:434-448`.
+- What is wrong: when `fn` throws and `ROLLBACK` then also throws (a dropped connection), the `ROLLBACK` error propagates and the marker write error that caused it is lost.
+- Change: when `ROLLBACK` throws, rethrow the original error (for example with the rollback failure as its `cause`, or by ignoring the rollback failure), with a test on each adapter.
+
 ## Round notes
+
+### Dispatch c, round 1
+
+Design 8: `executeDbSign` loads the aggregate with `buildContractSpaceAggregate`, verifies every space with `strict: false` through `verifyMigration`, and passes the spaces that verified to `familyInstance.signSpaces` in one call. On SQL, `signSpaces` runs the marker bootstrap and every space's read, insert or compare-and-swap update inside one `withTransaction`. The CLI writes refs only after `client.dbSign` returns, so after commit. The app ref goes through `advanceRefSafely`, which writes its snapshot; an extension space's snapshot is already in the store, so only its ref file is written. A failed space keeps its marker, the others are signed, the command exits 4, and each space is named with `signed`, `unchanged` or `failed`.
+
+The checks asked for:
+
+1. Atomicity: `control-instance.sign-spaces.test.ts` "rolls back every marker write when one space loses the compare-and-swap" updates the app marker, fails on the extension's, and asserts `ROLLBACK` and both old markers. Its adapter is a fake whose transaction restores the table; real rollback is covered by the SQLite adapter test on an in-memory database. Refs are written after commit, as above.
+2. `withTransaction`: `BEGIN`, `COMMIT` on success, `ROLLBACK` and rethrow on error, on both adapters. The control drivers hold one connection (`PostgresControlDriver` wraps one `pg` `Client`), and the migration runners already issue `BEGIN` on the same drivers. Nothing opens a transaction around `signSpaces`, so there is no nesting. S2-c-R1-1 is the one gap.
+3. Output: the JSON document is now `{ ok, summary, spaces[], advancedRefs[] }`, one outcome per space. The previous single-space shape (`marker`, `contract`, `target` at the top level) is gone. This changes what a script reading `db sign --json` sees, so dispatch f's app-audience upgrade text must describe it. The human output is a header, a tree with one line per space, a summary, and one line per advanced ref. It returns diagnostics through `ctx.present` with exit code 4, which is how `db verify` reports drift, and structured errors through `notOk`, as `cli-error-handling.mdc` asks. One `CONTRACT.SCHEMA_VERIFICATION_FAILED` diagnostic per failed space, with `space` in meta; the error reference says so.
+4. Choices: extension spaces get a ref file with empty invariants, and `--advance-ref <name>` names that ref in every signed space. That is fine, because design 8.1 says each signed space's `db` ref advances. Unchanged spaces advance their refs too: fine, as the ref then names the contract the database was just verified against, and the command stays idempotent. Mongo: `signSpaces` is a required member of the framework's `ControlFamilyInstance`, so Mongo must implement it. Signing space by space without a transaction is acceptable, because design 8 asks for a transaction only on Postgres and SQLite, and Mongo transactions need a replica set. The design should say so. The PGlite journey uses the test contract-space extension instead of pgvector. This is acceptable for now, because pgvector's committed contract space is in the old format and is refused until dispatch e regenerates it. Dispatch e can switch the journey to pgvector.
+5. The `migrate` refusal's fix line and next action use the same words as `migration status` (`status-findings.ts:45,58`): "to overwrite the marker if the database already matches the contract".
+6. The Mongo `signSpaces` test can fail: with the loop cut to the first space, it fails.
+
+Checks: the 16 touched test files pass alone (the two `cli-journeys` files through `test:journeys`), including the three PGlite and SQLite journeys and the Mongo `db sign` end-to-end tests. Typecheck passes for framework-components, family-sql, family-mongo, adapter-postgres, adapter-sqlite and cli. `lint:deps`, `lint:agent` and `check:error-reference` pass.
 
 ### Dispatch b, round 2
 
