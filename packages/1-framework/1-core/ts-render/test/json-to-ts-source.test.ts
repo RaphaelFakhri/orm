@@ -125,4 +125,8 @@ describe('tsArraySource', () => {
       `[\n  ${longSource},\n  ${longSource},\n]`,
     );
   });
+
+  it('renders on multiple lines when an item source holds a line break', () => {
+    expect(tsArraySource(['[\n  1,\n]'])).toBe('[\n  [\n  1,\n],\n]');
+  });
 });
