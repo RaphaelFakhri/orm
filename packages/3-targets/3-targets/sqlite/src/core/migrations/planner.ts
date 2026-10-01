@@ -10,6 +10,7 @@ import {
   extractCodecControlHooks,
   planFieldEventOperations,
   plannerFailure,
+  resolveHints,
 } from '@internal/family-sql/control';
 import type { ExecuteRequestLowerer } from '@internal/family-sql/control-adapter';
 import type { TargetBoundComponentDescriptor } from '@internal/framework-components/components';
@@ -26,7 +27,9 @@ import {
   type SqlSchemaIR,
   SqlTableIR,
 } from '@internal/sql-schema-ir/types';
-import { buildSqlitePlanDiff } from './diff-database-schema';
+import { buildSqlitePlanDiff, sqlitePlanOrigin } from './diff-database-schema';
+import { sqliteHintOrigin } from './hint-origin';
+import { type HintRenames, planHintRenames } from './hint-renames';
 import { indexNameCaseChange, pairIndexReplacements } from './index-replacements';
 import {
   coalesceSubtreeIssues,
@@ -136,6 +139,30 @@ export class SqliteMigrationPlanner
     const policyResult = this.ensureAdditivePolicy(options.policy);
     if (policyResult) return policyResult;
 
+    const origin = sqlitePlanOrigin(options.schema);
+    const hints = resolveHints({
+      contract: options.contract,
+      origin: sqliteHintOrigin(origin),
+      policy: options.policy,
+      ownership: options.ownership,
+      spaceId: options.spaceId,
+    });
+    if (hints.conflicts.length > 0) {
+      return plannerFailure(hints.conflicts);
+    }
+    const hintRenames = planHintRenames({
+      origin,
+      contract: options.contract,
+      hints,
+      frameworkComponents: options.frameworkComponents,
+    });
+    return this.planFromOrigin({ ...options, schema: hintRenames.origin }, hintRenames);
+  }
+
+  private planFromOrigin(
+    options: SqlMigrationPlannerPlanOptions,
+    hintRenames: HintRenames,
+  ): SqlitePlanResult {
     const { expected, actual, issues: diffIssues } = this.collectSchemaIssues(options);
     const replacedIndexes = pairIndexReplacements(diffIssues, indexNameCaseChange);
     const disallowedIndexCalls = replacedIndexes.calls.filter(
@@ -195,7 +222,12 @@ export class SqliteMigrationPlanner
     // Codec-emitted calls already conform to `OpFactoryCall` — render +
     // toOp + importRequirements ride directly through the same emit path
     // as structural ops, no `RawSqlCall` wrap.
-    const calls = [...replacedIndexes.calls, ...result.value.calls, ...fieldEventOps];
+    const calls = [
+      ...hintRenames.calls,
+      ...replacedIndexes.calls,
+      ...result.value.calls,
+      ...fieldEventOps,
+    ];
 
     const destination: SqliteMigrationDestinationInfo = {
       storageHash: options.contract.storage.storageHash,
@@ -216,6 +248,7 @@ export class SqliteMigrationPlanner
         options.snapshotsImportPath,
         destination,
         this.#lowerer,
+        hintRenames.consumed,
       ),
     };
   }
