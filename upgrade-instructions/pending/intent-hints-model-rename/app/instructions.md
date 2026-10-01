@@ -7,6 +7,16 @@ changes:
       glob: "**/migration.ts"
       matches:
         - '(?<![\w$])(?<![\w$]\.)this\.(?:dropIndex|dropConstraint|dropCheckConstraint|dropRlsPolicy|disableRowLevelSecurity|dropDefault|dropNativeEnumType)\('
+  - id: contract-definition-requires-hints
+    summary: |
+      `ContractDefinition`, exported from `@prisma/orm-postgres/contract-builder`, `@prisma/orm-sqlite/contract-builder` and `@prisma/orm-family-sql/contract-ts/contract-builder`, has a new required field `hints: readonly HintEntry[]`. A `ContractDefinition` built by hand needs `hints: []`.
+    detection:
+      glob: "**/*.{ts,mts,cts,tsx}"
+      matches:
+        - 'import\s+(?:type\s+)?\{[^}]*(?<![\w$])ContractDefinition(?![\w$])[^}]*\}\s*from\s*[''"]@prisma/orm-(?:postgres/contract-builder|sqlite/contract-builder|family-sql/contract-ts/contract-builder)[''"]'
+  - id: migration-plan-prints-planner-warnings
+    summary: |
+      `prisma migration plan` now prints the planner's warnings, such as `control policy suppressed: …` for a table whose control policy is `tolerated`, `observed` or `external`, in its human output and in the `warnings` of its `--json` result.
 ---
 
 ## `non-data-drops-are-widening`
@@ -23,3 +33,14 @@ What changes for you:
 3. An existing migration on disk keeps the `ops.json` and the hash it was written with, so `migrate` applies it as before. Do not re-run the `migration.ts` of an existing migration that calls `this.dropIndex`, `this.dropConstraint`, `this.dropCheckConstraint`, `this.dropRlsPolicy`, `this.disableRowLevelSecurity`, `this.dropDefault` or `this.dropNativeEnumType`: it would now write `operationClass: "widening"` for those operations, a different `ops.json` and a different migration hash, which `prisma migration check` reports as a changed migration. If you re-emitted one, restore its `ops.json` and `migration.json` from version control.
 
 The detection finds `migration.ts` files that call one of the seven methods on `this`. MongoDB migrations call `dropIndex(...)` as a plain function, which the detection does not match, and their operations did not change.
+
+## `contract-definition-requires-hints`
+
+`ContractDefinition` is the input of `buildSqlContractFromDefinition`. It now carries the model rename hints the contract records, in a required field `hints: readonly HintEntry[]`. `defineContract` and the PSL source fill it for you; only a `ContractDefinition` you build by hand needs the field. Add `hints: []` to each such object literal, or one entry per renamed model if you want the contract to record a rename hint.
+
+The detection finds TypeScript files that import `ContractDefinition` from one of the three paths. A file that only imports the type to read a definition needs no change; TypeScript reports the missing field where an object literal is built.
+
+## `migration-plan-prints-planner-warnings`
+
+`prisma migration plan` used to print only its own warnings about where the plan starts. It now also prints each warning the planner reports. On Postgres that includes `control policy suppressed: …` for every change to a table whose control policy is not `managed`, which `db update` already printed. The same lines appear in the `warnings` array of `--json` output. A CI script that fails on any JSON warning from `migration plan` now fails for a project whose tolerated, observed or external tables have drifted. Nothing in your code needs to change; adjust such a script if it should not fail on these warnings.
+
