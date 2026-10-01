@@ -7,7 +7,10 @@ import { sqlFamilyError } from '../errors';
 
 export const TABLE_RENAME_UNMATCHED_CODE = 'MIGRATION.TABLE_RENAME_UNMATCHED';
 
-/** A table a migration renames: `namespaceId` is `undefined` when the migration leaves the namespace to the contracts. */
+/**
+ * A table a migration renames: `namespaceId` is `undefined` when the migration leaves the namespace
+ * to the contracts.
+ */
 export interface TableRename {
   readonly namespaceId: string | undefined;
   readonly from: string;
