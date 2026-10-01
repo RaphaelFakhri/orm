@@ -118,7 +118,7 @@ describe('resolveHints for a table rename', () => {
           kind: 'hintRejected',
           summary:
             'MIGRATION.HINT_CONTRADICTED: the rename hint on table "User" (was "Profile") cannot apply: namespace "public" has both "Profile" and "User".',
-          why: 'A rename hint applies only while the old name exists and the new one does not. If "Profile" was already renamed, remove the hint. If "Profile" is a different table that should stay, remove the hint and give the model another table name. If "Profile" should be dropped, remove the hint and state the drop with a deleted hint on a model mapped to "Profile".',
+          why: 'A rename hint applies only while the old name exists and the new one does not. If "Profile" was already renamed, remove the hint. If "Profile" is a different table that should stay, remove the hint and give the model another table name.',
           location: { namespaceId: 'public', entityKind: 'table', entityName: 'User' },
           meta: {
             code: HINT_CONTRADICTED_CODE,

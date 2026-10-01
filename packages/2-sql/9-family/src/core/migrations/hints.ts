@@ -5,6 +5,7 @@ import type {
 } from '@internal/framework-components/control';
 import {
   assertContractHintsConsistent,
+  deletedHintsShipped,
   type SqlTableHints,
   sqlContractHints,
 } from '@internal/sql-contract/hints';
@@ -126,7 +127,7 @@ function resolveTableHint(
         from: was,
         to: table,
         problem: `cannot apply: namespace "${namespaceId}" has both "${was}" and "${table}"`,
-        why: `A rename hint applies only while the old name exists and the new one does not. If "${was}" was already renamed, remove the hint. If "${was}" is a different table that should stay, remove the hint and give the model another table name. If "${was}" should be dropped, remove the hint and state the drop with a deleted hint on a model mapped to "${was}".`,
+        why: `A rename hint applies only while the old name exists and the new one does not. If "${was}" was already renamed, remove the hint. If "${was}" is a different table that should stay, remove the hint and give the model another table name.${deletedHintsShipped ? ` If "${was}" should be dropped, remove the hint and state the drop with a deleted hint on a model mapped to "${was}".` : ''}`,
       }),
     };
   }

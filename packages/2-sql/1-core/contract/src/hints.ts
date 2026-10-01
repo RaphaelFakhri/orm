@@ -5,6 +5,8 @@ import { contractError } from './contract-errors';
 import type { SqlStorage } from './types';
 import type { sqlContractHintsSchema } from './validators';
 
+export const deletedHintsShipped: boolean = false;
+
 export type SqlContractHints = typeof sqlContractHintsSchema.infer;
 
 export type SqlNamespaceHints = SqlContractHints['namespaces'][string];

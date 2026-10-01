@@ -67,7 +67,7 @@ describe('@@hint arguments', () => {
   ${attribute}
 }`,
       PSL_HINT_INVALID,
-      '@@hint needs one of was, deleted or deprecated.',
+      '@@hint needs was.',
     );
   });
 
@@ -107,7 +107,7 @@ describe('@@hint arguments', () => {
   @@hint(deprecated: ${value})
 }`,
       PSL_HINT_INVALID,
-      '@@hint(deprecated:) is reserved and not yet supported. Remove the model from the schema and run db update, or mark it deleted once no application version reads it.',
+      '@@hint(deprecated:) is reserved and not yet supported. Remove the model from the schema and run db update.',
     );
   });
 

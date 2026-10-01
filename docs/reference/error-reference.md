@@ -1438,7 +1438,7 @@ A contract hash the user supplied (or that a ref resolved to) is not a node in t
 
 ### MIGRATION.HINT_CONTRADICTED
 
-A table rename hint (`@@hint(was: "<old>")`) cannot apply because the schema the plan starts from already has both the old table and the new one. A rename applies only while the old name exists and the new one does not. Raised by the planner before it diffs anything, as a `hintRejected` conflict that fails the plan. Remove the hint if the old table was already renamed; if the old table should stay, remove the hint and give the model another table name; if it should be dropped, remove the hint and state the drop instead. Payload: `code`, `from`, `to`.
+A table rename hint (`@@hint(was: "<old>")`) cannot apply because the schema the plan starts from already has both the old table and the new one. A rename applies only while the old name exists and the new one does not. Raised by the planner before it diffs anything, as a `hintRejected` conflict that fails the plan. Remove the hint if the old table was already renamed; if the old table should stay, remove the hint and give the model another table name. Payload: `code`, `from`, `to`.
 
 ### MIGRATION.HINT_FOREIGN_TABLE
 

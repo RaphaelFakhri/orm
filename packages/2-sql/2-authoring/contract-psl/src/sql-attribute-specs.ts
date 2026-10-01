@@ -63,6 +63,7 @@ import type {
   PslSources,
 } from '@internal/psl-parser/syntax';
 import { FunctionCallAst } from '@internal/psl-parser/syntax';
+import { deletedHintsShipped } from '@internal/sql-contract/hints';
 import { blindCast } from '@internal/utils/casts';
 import { notOk } from '@internal/utils/result';
 import { removedDbgeneratedMessage } from './default-function-registry';
@@ -643,7 +644,13 @@ const hintModelSpec = modelAttribute('hint', {
     const reject = (message: string) =>
       leafDiagnostic(ctx, attributeNode, message, PSL_HINT_INVALID);
     if (value.was === undefined && value.deprecated === undefined) {
-      return [reject('@@hint needs one of was, deleted or deprecated.')];
+      return [
+        reject(
+          deletedHintsShipped
+            ? '@@hint needs one of was, deleted or deprecated.'
+            : '@@hint needs was.',
+        ),
+      ];
     }
     const diagnostics: PslDiagnostic[] = [];
     if (value.was === '') {
@@ -652,7 +659,9 @@ const hintModelSpec = modelAttribute('hint', {
     if (value.deprecated !== undefined) {
       diagnostics.push(
         reject(
-          '@@hint(deprecated:) is reserved and not yet supported. Remove the model from the schema and run db update, or mark it deleted once no application version reads it.',
+          deletedHintsShipped
+            ? '@@hint(deprecated:) is reserved and not yet supported. Remove the model from the schema and run db update, or mark it deleted once no application version reads it.'
+            : '@@hint(deprecated:) is reserved and not yet supported. Remove the model from the schema and run db update.',
         ),
       );
     }
