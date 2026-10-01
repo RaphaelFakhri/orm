@@ -1,6 +1,6 @@
 # Project plan — Destructive changes need stated intent
 
-**Spec:** `projects/intent-hints/spec.md` · **Linear:** [Destructive changes need stated intent](https://linear.app/prisma-company/project/destructive-changes-need-stated-intent-7626c0107cd9)
+**Spec:** `projects/intent-hints/spec.md` · **Design:** `projects/intent-hints/design.md` (section 12 maps rules to slices) · **Linear:** [Destructive changes need stated intent](https://linear.app/prisma-company/project/destructive-changes-need-stated-intent-7626c0107cd9)
 
 ## Slices
 

@@ -29,7 +29,7 @@ model Legacy {
 
 ## Decisions settled in discussion (2026-10-01)
 
-The reasoning and the alternatives rejected are in [`design-notes.md`](./design-notes.md).
+The reasoning and the alternatives rejected are in [`design-notes.md`](./design-notes.md). The implementation specification, with numbered rules every slice cites, is [`design.md`](./design.md).
 
 1. **The planner refuses destructive operations by default.** `db update` already does this through its consent prompt. `migration plan` gains the same refusal so an ordinary plan never writes a drop the user has not stated. The command-level consent stays as the fallback for a change no hint can express.
 2. **Hints are the stated intent, in the contract source.** One attribute, `@@hint(...)` on models and `@hint(...)` on fields, with named arguments. The vocabulary is `was` for a rename, `deleted` for a confirmed removal, and `deprecated` for an object the application no longer requires but the database may keep. Value hints that supply an expression, such as a cast for a type change or a backfill for a new required column, are future arguments of the same attribute and not this project.
