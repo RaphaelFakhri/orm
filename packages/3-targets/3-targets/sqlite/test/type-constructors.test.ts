@@ -8,13 +8,12 @@ import { sqliteDataTypes } from '../src/core/data-types';
 import sqliteTargetPack from '../src/exports/pack';
 
 describe('the type constructors the SQLite target contributes', () => {
-  it('are the target’s own, then the base scalars, in that order', () => {
+  it('are only the target’s own; the adapter contributes the base scalars', () => {
     expect(sqliteTargetPack.authoring.type).toBe(sqliteAuthoringTypes);
-    expect(Object.keys(sqliteAuthoringTypes)).toEqual([
-      'BigIntNumber',
-      ...Object.keys(sqliteScalarAuthoringTypes),
-    ]);
+    expect(Object.keys(sqliteAuthoringTypes)).toEqual(['BigIntNumber']);
   });
+
+  const allConstructors = { ...sqliteAuthoringTypes, ...sqliteScalarAuthoringTypes };
 
   const scalarNames = [
     ['String', 'sqlite/text@1', 'text'],
@@ -46,12 +45,12 @@ describe('the type constructors the SQLite target contributes', () => {
   );
 
   it('marks no constructor inferred, because SQLite has no contract infer', () => {
-    expect(
-      Object.values(sqliteAuthoringTypes).filter((descriptor) => 'inferred' in descriptor),
-    ).toEqual([]);
+    expect(Object.values(allConstructors).filter((descriptor) => 'inferred' in descriptor)).toEqual(
+      [],
+    );
   });
 
-  it.each(Object.entries(sqliteAuthoringTypes))('documents %s', (_name, descriptor) => {
+  it.each(Object.entries(allConstructors))('documents %s', (_name, descriptor) => {
     expect(descriptor).toHaveProperty('documentation', expect.stringMatching(/\S.+/));
   });
 });

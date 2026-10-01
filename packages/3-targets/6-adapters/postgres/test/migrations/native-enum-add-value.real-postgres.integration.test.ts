@@ -28,7 +28,6 @@ import type { SqlSchemaIRNode } from '@internal/sql-schema-ir/types';
 import { createPostgresBuiltinCodecLookup } from '@internal/target-postgres/codecs';
 import { postgresScalarAuthoringTypes } from '@internal/target-postgres/control';
 import { postgresDataTypes } from '@internal/target-postgres/data-types';
-import postgresTargetPack from '@internal/target-postgres/pack';
 import {
   PostgresDatabaseSchemaNode,
   postgresCreateNamespace,
@@ -90,7 +89,7 @@ namespace public {
 // ============================================================================
 
 function buildScalarTypeDescriptors(): ReadonlyMap<string, { codecId: string }> {
-  return collectScalarTypeConstructors(postgresTargetPack.authoring.type);
+  return collectScalarTypeConstructors(postgresScalarAuthoringTypes);
 }
 
 function buildContractFromPsl(psl: string, control: ControlPolicy): Contract<SqlStorage> {

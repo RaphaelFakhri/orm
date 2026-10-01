@@ -17,19 +17,9 @@ import {
 import postgresTargetPack from '../src/exports/pack';
 
 describe('the type constructors the target contributes', () => {
-  it('are the target’s own, then the base scalars, then the native types, in that order', () => {
+  it('are only the target’s own; the adapter contributes the scalar and native ones', () => {
     expect(postgresTargetPack.authoring.type).toBe(postgresAuthoringTypes);
-    expect(Object.keys(postgresAuthoringTypes)).toEqual([
-      'BigIntNumber',
-      'UnboundedInt',
-      'pg',
-      ...Object.keys(postgresScalarAuthoringTypes),
-      ...Object.keys(postgresNativeAuthoringTypes),
-    ]);
-    expect(postgresAuthoringTypes).toMatchObject({
-      ...postgresScalarAuthoringTypes,
-      ...postgresNativeAuthoringTypes,
-    });
+    expect(Object.keys(postgresAuthoringTypes)).toEqual(['BigIntNumber', 'UnboundedInt', 'pg']);
   });
 
   it.each(Object.entries(postgresAuthoringTypes).filter(([name]) => name !== 'pg'))(
@@ -39,6 +29,12 @@ describe('the type constructors the target contributes', () => {
     },
   );
 });
+
+const everyPostgresConstructor = {
+  ...postgresAuthoringTypes,
+  ...postgresScalarAuthoringTypes,
+  ...postgresNativeAuthoringTypes,
+};
 
 /** Design 13.4: the constructor `contract infer` prints for each data type, where one exists today. */
 const INFERRED = [
@@ -81,13 +77,13 @@ function constructorAt(path: string): unknown {
         current !== null && typeof current === 'object'
           ? (current as Record<string, unknown>)[segment]
           : undefined,
-      postgresAuthoringTypes,
+      everyPostgresConstructor,
     );
 }
 
 describe('the constructors contract infer prints', () => {
   it('are marked inferred, and no other constructor is', () => {
-    const marked = constructorPaths(postgresAuthoringTypes).filter((path) => {
+    const marked = constructorPaths(everyPostgresConstructor).filter((path) => {
       const descriptor = constructorAt(path);
       return descriptor !== null && typeof descriptor === 'object' && 'inferred' in descriptor;
     });
@@ -250,9 +246,9 @@ describe('postgresNativeAuthoringTypes', () => {
   });
 
   it('offers only the precision-bearing TimestamptzJsDate for a Date-backed timestamptz', () => {
-    expect(postgresAuthoringTypes).not.toHaveProperty('DateTimeDate');
-    expect(postgresAuthoringTypes).not.toHaveProperty('TimestamptzDate');
-    expect(postgresAuthoringTypes).toHaveProperty('TimestamptzJsDate', {
+    expect(everyPostgresConstructor).not.toHaveProperty('DateTimeDate');
+    expect(everyPostgresConstructor).not.toHaveProperty('TimestamptzDate');
+    expect(postgresNativeAuthoringTypes).toHaveProperty('TimestamptzJsDate', {
       kind: 'typeConstructor',
       documentation:
         'An instant stored as PostgreSQL timestamptz and represented as a JavaScript Date.',
@@ -262,7 +258,9 @@ describe('postgresNativeAuthoringTypes', () => {
         typeParams: { precision: { kind: 'arg', index: 0 } },
       },
     });
-    expect(postgresAuthoringTypes.DateTime.output.codecId).toBe('pg/timestamptz-temporal@1');
-    expect(postgresAuthoringTypes.Timestamptz.output.codecId).toBe('pg/timestamptz-temporal@1');
+    expect(postgresScalarAuthoringTypes.DateTime.output.codecId).toBe('pg/timestamptz-temporal@1');
+    expect(postgresNativeAuthoringTypes.Timestamptz.output.codecId).toBe(
+      'pg/timestamptz-temporal@1',
+    );
   });
 });

@@ -1,7 +1,12 @@
+import {
+  postgresNativeAuthoringTypes,
+  postgresScalarAuthoringTypes,
+} from '@internal/target-postgres/control';
 import { describe, expect, it } from 'vitest';
 import {
   createPostgresDefaultFunctionRegistry,
   createPostgresMutationDefaultGeneratorDescriptors,
+  postgresAuthoringTypes,
 } from '../src/core/control-mutation-defaults';
 import postgresAdapterDescriptor from '../src/exports/control';
 import runtimeAdapterDescriptor from '../src/exports/runtime';
@@ -196,8 +201,12 @@ describe('postgres runtime mutation default generators', () => {
 });
 
 describe('the adapter authoring contribution', () => {
-  it('contributes no type constructors, which the target contributes', () => {
-    expect(postgresAdapterDescriptor.authoring).not.toHaveProperty('type');
+  it('contributes the scalar and native type constructors', () => {
+    expect(postgresAdapterDescriptor.authoring?.type).toBe(postgresAuthoringTypes);
+    expect(Object.keys(postgresAuthoringTypes)).toEqual([
+      ...Object.keys(postgresScalarAuthoringTypes),
+      ...Object.keys(postgresNativeAuthoringTypes),
+    ]);
   });
 
   it('contributes no data type entries, which the target contributes', () => {

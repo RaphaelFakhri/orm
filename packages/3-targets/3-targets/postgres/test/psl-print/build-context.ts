@@ -9,6 +9,10 @@ import { type AnyPostgresCodecDescriptor, postgresCodec } from '../../src/core/c
 import { postgresDataTypeEntries } from '../../src/core/data-type-entries';
 import { pgText, postgresDataTypes } from '../../src/core/data-types';
 import { postgresCodecDescriptorRegistry } from '../../src/core/registry';
+import {
+  postgresNativeAuthoringTypes,
+  postgresScalarAuthoringTypes,
+} from '../../src/core/type-constructors';
 
 const citextTemplate: CodecDescriptorTemplate = {
   codecId: 'ext/citext@1',
@@ -27,8 +31,8 @@ export const extensionCodec: AnyPostgresCodecDescriptor = postgresCodec(citextTe
 });
 
 /**
- * A stand-in for the stack the SQL family hands the printer: the target's type constructors, codecs
- * and data types, and what `extra` adds.
+ * A stand-in for the stack the SQL family hands the printer: the target's own type constructors,
+ * codecs and data types, the type constructors the adapter contributes, and what `extra` adds.
  */
 export function testBuildContext(
   extra: {
@@ -39,7 +43,12 @@ export function testBuildContext(
   const extraCodecs = new Map((extra.codecs ?? []).map((codec) => [codec.codecId, codec]));
   return {
     authoringContributions: {
-      type: { ...postgresAuthoringTypes, ...extra.types },
+      type: {
+        ...postgresAuthoringTypes,
+        ...postgresScalarAuthoringTypes,
+        ...postgresNativeAuthoringTypes,
+        ...extra.types,
+      },
       dataTypes: postgresDataTypeEntries(),
     },
     codecLookup: {
