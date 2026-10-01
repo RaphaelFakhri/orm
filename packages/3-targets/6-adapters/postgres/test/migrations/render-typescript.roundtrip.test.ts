@@ -233,7 +233,7 @@ describe('TypeScriptRenderablePostgresMigration round-trip', () => {
         [
           primaryKey(['id']),
           checkExpression('user_email_check', `"email" <> ''`),
-          checkExpression('user_email_escapes', '"email" !~ \'\\d\' AND "email" <> \'`${x}\''),
+          checkExpression('user_email_escapes', `"email" !~ '\\d' AND "email" <> '\`\${x}'`),
         ],
       ),
       new AddColumnCall('public', 'user', col('nickname', 'text')),
@@ -280,7 +280,7 @@ describe('TypeScriptRenderablePostgresMigration round-trip', () => {
     expect(tsSource).toContain('checkExpression("user_email_check", `"email" <> \'\'`)');
     expect(tsSource).toContain('where: `"nickname" <> \'anonymous\'`');
     expect(tsSource).toContain('using: `("id" = auth.uid() AND "email" <> \'\')`');
-    expect(tsSource).toContain('`"email" !~ \'\\\\d\' AND "email" <> \'\\`\\${x}\'`');
+    expect(tsSource).toContain(`\`"email" !~ '\\\\d' AND "email" <> '\\\`\\\${x}'\``);
     expect(tsSource).toContain('defaultSql: `DEFAULT \'{"a": 1}\'::jsonb`');
     await writeFile(join(tmpDir, 'migration.ts'), tsSource);
 
