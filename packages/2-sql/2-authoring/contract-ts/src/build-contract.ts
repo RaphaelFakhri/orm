@@ -48,6 +48,7 @@ import {
   type ForeignKeyAuthoringInput,
   materializeForeignKeysAndIndexes,
 } from '@internal/sql-contract/foreign-key-materialization';
+import type { SqlContractHints, SqlTableHints } from '@internal/sql-contract/hints';
 import { type AuthoredIndexInput, lowerAuthoredIndex } from '@internal/sql-contract/index-naming';
 import { validateIndexTypes } from '@internal/sql-contract/index-type-validation';
 import {
@@ -82,7 +83,6 @@ import { canonicalStringify } from '@internal/utils/canonical-stringify';
 import { blindCast } from '@internal/utils/casts';
 import { ifDefined } from '@internal/utils/defined';
 import { InternalError } from '@internal/utils/internal-error';
-import type { JsonObject } from '@internal/utils/json';
 import { isStructuredError, type StructuredError } from '@internal/utils/structured-error';
 import {
   type AuthoredColumnDefault,
@@ -1169,11 +1169,11 @@ function columnsProducingCheckPrefix(
 function buildContractHints(
   entries: readonly HintEntry[],
   defaultNamespaceId: string,
-): JsonObject | undefined {
+): SqlContractHints | undefined {
   if (entries.length === 0) {
     return undefined;
   }
-  const tablesByNamespace: Record<string, Record<string, JsonObject>> = {};
+  const tablesByNamespace: Record<string, Record<string, SqlTableHints>> = {};
   for (const entry of entries) {
     const namespaceId = entry.namespaceId ?? defaultNamespaceId;
     const tables = tablesByNamespace[namespaceId] ?? {};
