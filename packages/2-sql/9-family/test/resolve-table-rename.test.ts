@@ -14,7 +14,7 @@ import {
   TABLE_RENAME_UNMATCHED_CODE,
   type TableLookup,
   type TableRename,
-} from '../src/core/migrations/apply-table-rename';
+} from '../src/core/migrations/resolve-table-rename';
 
 const idColumn = { nativeType: 'int4', codecId: 'pg/int4@1', nullable: false };
 

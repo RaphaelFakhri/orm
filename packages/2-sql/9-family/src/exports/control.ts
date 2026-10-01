@@ -21,15 +21,6 @@ export type {
   SqlPslBuildContext,
 } from '../core/control-target-descriptor';
 export type {
-  ResolvedTableRename,
-  TableLookup,
-  TableRename,
-} from '../core/migrations/apply-table-rename';
-export {
-  resolveTableRenameAgainst,
-  unmatchedTableRename,
-} from '../core/migrations/apply-table-rename';
-export type {
   ContractToSchemaIROptions,
   DefaultRenderer,
   DefaultResolver,
@@ -74,6 +65,15 @@ export {
   runnerSuccess,
 } from '../core/migrations/plan-helpers';
 export { INIT_ADDITIVE_POLICY } from '../core/migrations/policies';
+export type {
+  ResolvedTableRename,
+  TableLookup,
+  TableRename,
+} from '../core/migrations/resolve-table-rename';
+export {
+  resolveTableRenameAgainst,
+  unmatchedTableRename,
+} from '../core/migrations/resolve-table-rename';
 export type {
   SqlSchemaDiffFn,
   SqlSchemaDiffInput,

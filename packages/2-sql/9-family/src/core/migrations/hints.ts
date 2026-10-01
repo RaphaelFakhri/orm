@@ -10,7 +10,7 @@ import {
 } from '@internal/sql-contract/hints';
 import type { SqlStorage } from '@internal/sql-contract/types';
 import { isStructuredError } from '@internal/utils/structured-error';
-import type { ResolvedTableRename } from './apply-table-rename';
+import type { ResolvedTableRename } from './resolve-table-rename';
 import type { SqlPlannerConflict } from './types';
 
 export const HINT_CONTRADICTED_CODE = 'MIGRATION.HINT_CONTRADICTED';
