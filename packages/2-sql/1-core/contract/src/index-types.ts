@@ -4,7 +4,17 @@ import { contractError } from './contract-errors';
 export interface IndexTypeEntry<TOptions = unknown> {
   readonly type: string;
   readonly options: Type<TOptions>;
+  /**
+   * Whether an index of this type over a foreign key's columns serves the foreign key's lookups,
+   * so no separate backing index is derived for it.
+   */
+  readonly backsForeignKey: boolean;
 }
+
+type IndexTypeDeclaration<TOpts> = {
+  readonly options: Type<TOpts>;
+  readonly backsForeignKey: boolean;
+};
 
 export type IndexTypeMap = { readonly [K in string]: { readonly options: unknown } };
 
@@ -17,7 +27,7 @@ export interface IndexTypeBuilder<TMap extends IndexTypeMap = Record<never, neve
   extends IndexTypeRegistration<TMap> {
   add<TLit extends string, TOpts>(
     typeLiteral: TLit,
-    entry: { readonly options: Type<TOpts> },
+    entry: IndexTypeDeclaration<TOpts>,
   ): IndexTypeBuilder<TMap & Record<TLit, { readonly options: TOpts }>>;
 }
 
@@ -32,7 +42,7 @@ class IndexTypeBuilderImpl<TMap extends IndexTypeMap> implements IndexTypeBuilde
 
   add<TLit extends string, TOpts>(
     typeLiteral: TLit,
-    entry: { readonly options: Type<TOpts> },
+    entry: IndexTypeDeclaration<TOpts>,
   ): IndexTypeBuilder<TMap & Record<TLit, { readonly options: TOpts }>> {
     if (this.entries.some((e) => e.type === typeLiteral)) {
       throw contractError(
@@ -43,7 +53,11 @@ class IndexTypeBuilderImpl<TMap extends IndexTypeMap> implements IndexTypeBuilde
     }
     return new IndexTypeBuilderImpl<TMap & Record<TLit, { readonly options: TOpts }>>([
       ...this.entries,
-      { type: typeLiteral, options: entry.options as Type<unknown> },
+      {
+        type: typeLiteral,
+        options: entry.options as Type<unknown>,
+        backsForeignKey: entry.backsForeignKey,
+      },
     ]);
   }
 }
@@ -56,12 +70,21 @@ export interface IndexTypeRegistry {
   register(entry: IndexTypeEntry): void;
   get(typeLiteral: string): IndexTypeEntry | undefined;
   has(typeLiteral: string): boolean;
+  /** Whether an index of this type can back a foreign key; false for a type nobody registered. */
+  backsForeignKey(typeLiteral: string): boolean;
 }
 
 class IndexTypeRegistryImpl implements IndexTypeRegistry {
   private readonly entries = new Map<string, IndexTypeEntry>();
 
   register(entry: IndexTypeEntry): void {
+    if (typeof entry.backsForeignKey !== 'boolean') {
+      throw contractError(
+        'CONTRACT.PACK_CONTRIBUTION_INVALID',
+        `Index type "${entry.type}" does not declare backsForeignKey (true or false)`,
+        { meta: { indexType: entry.type } },
+      );
+    }
     if (this.entries.has(entry.type)) {
       throw contractError(
         'CONTRACT.PACK_CONTRIBUTION_INVALID',
@@ -78,6 +101,10 @@ class IndexTypeRegistryImpl implements IndexTypeRegistry {
 
   has(typeLiteral: string): boolean {
     return this.entries.has(typeLiteral);
+  }
+
+  backsForeignKey(typeLiteral: string): boolean {
+    return this.entries.get(typeLiteral)?.backsForeignKey === true;
   }
 }
 

@@ -16,6 +16,7 @@ import {
 import { SqlSchemaIR, SqlTableIR } from '@internal/sql-schema-ir/types';
 import { parsePostgresDefault } from '../default-normalizer';
 import { postgresError } from '../errors';
+import { postgresIndexTypeBacksForeignKey } from '../index-types';
 import { createPostgresTypeMap } from '../psl-build/postgres-type-map';
 import { SYNTHETIC_SPAN } from '../psl-build/psl-literals';
 import type { PostgresDatabaseSchemaNode } from '../schema-ir/postgres-database-schema-node';
@@ -316,7 +317,11 @@ export function buildPslDocumentAst(
     ...crossSpaceFieldNamesByTable,
     ...buildFieldNamesByTable(schemaIR.tables),
   ]);
-  const { relationsByTable } = inferRelations(schemaIR.tables, modelNameMap);
+  const { relationsByTable } = inferRelations(
+    schemaIR.tables,
+    modelNameMap,
+    postgresIndexTypeBacksForeignKey,
+  );
 
   const policyEmission = buildIntrospectedPolicyBlocks(
     rlsExtras?.policiesByTable ?? new Map(),
