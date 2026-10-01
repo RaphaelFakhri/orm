@@ -213,8 +213,8 @@ export interface ResolvedHints {
   - origin has `old`, not `new`: if the policy includes `widening`, push `{ namespaceId, from: old, to: new }`; otherwise nothing (a hint that cannot apply is ignored; under `db init`'s additive-only policy the new table is created and the old one is left as it is).
   - origin has `new`, not `old`: spent, nothing.
   - origin has neither: nothing.
-  - origin has both: conflict, reason `contradicted`.
-  R4.3's ownership check runs before the four cases.
+  - origin has both: if the policy includes `widening`, conflict, reason `contradicted`; otherwise nothing (no rename could be planned, so the hint is not read).
+  R4.3's ownership check runs before the four cases and likewise only when the policy includes `widening`.
 - **R5.3 Table `deleted`.** If the origin has the table and the policy includes `destructive`: push `{ namespaceId, table, control }`. Otherwise nothing.
 - **R5.4 Column `was`.** `originTable` is the enclosing table entry's `was` when R5.2 pushed a rename for it, else the table key. If the origin lacks `originTable`, nothing. Otherwise the four cases of R5.2 apply to `hasColumn(namespaceId, originTable, old)` and `hasColumn(namespaceId, originTable, new)`, pushing `{ namespaceId, table: <table key>, originTable, from, to }`. `table` is the destination name, because the table rename is applied to the working schema before the column rename runs (R6.0, R6.1).
 - **R5.5 Column `deleted`.** With `originTable` as in R5.4: if the origin has the column and the policy includes `destructive`, push `{ namespaceId, table: <table key>, column }`.
