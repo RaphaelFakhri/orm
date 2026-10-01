@@ -4,8 +4,6 @@ import type {
   CollectionRowOf,
   CollectionStateOf,
   Filtered,
-  HasOrderBy,
-  HasWhere,
   Ordered,
   Step,
 } from '../src/collection-types';
@@ -32,7 +30,7 @@ describe('class methods keep the class', () => {
   test('after a class method', () => {
     const posts = Post.published().recent();
     expectTypeOf(posts).not.toBeAny();
-    expectTypeOf(posts).toEqualTypeOf<PostCollection & HasWhere & HasOrderBy>();
+    expectTypeOf(posts).toEqualTypeOf<Filtered<Ordered<PostCollection>>>();
   });
 
   test('after where', () => {
@@ -81,14 +79,14 @@ describe('class methods keep the class', () => {
 describe('include', () => {
   test('chained includes widen the row twice and keep the class', async () => {
     const posts = Post.include('author').published().include('comments');
-    expectTypeOf(posts).toExtend<PostCollection & HasWhere>();
+    expectTypeOf(posts).toExtend<Filtered<PostCollection>>();
     expectTypeOf(await posts.first()).toEqualTypeOf<AuthorCommentsRow | null>();
     expectTypeOf<keyof AuthorCommentsRow>().toEqualTypeOf<keyof PostRow | 'author' | 'comments'>();
   });
 
   test('after where, keeps the fact and returns the widened row from writes', async () => {
     const posts = Post.published().include('author');
-    expectTypeOf(posts).toExtend<PostCollection & HasWhere>();
+    expectTypeOf(posts).toExtend<Filtered<PostCollection>>();
     expectTypeOf(await posts.update({ title: 'x' })).toEqualTypeOf<AuthorRow | null>();
     expectTypeOf(await posts.delete()).toEqualTypeOf<AuthorRow | null>();
   });

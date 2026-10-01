@@ -1112,16 +1112,12 @@ export class CollectionBase<
    *   .all();
    * ```
    */
-  cursor<Self extends HasState>(
+  cursor<Self extends HasOrderBy>(
     this: Self,
-    cursorValues: CollectionStateOf<Self>['hasOrderBy'] extends true
-      ? Partial<Record<keyof DefaultModelRow<TContract, ModelName> & string, unknown>>
-      : never,
+    cursorValues: Partial<Record<keyof DefaultModelRow<TContract, ModelName> & string, unknown>>,
   ): Self;
   cursor(
-    cursorValues: CollectionStateOf<this>['hasOrderBy'] extends true
-      ? Partial<Record<keyof DefaultModelRow<TContract, ModelName> & string, unknown>>
-      : never,
+    cursorValues: Partial<Record<keyof DefaultModelRow<TContract, ModelName> & string, unknown>>,
   ): this {
     assertCursorCompatibleOrder(this.state.orderBy);
     const mappedCursor = mapCursorValuesToColumns(
@@ -1195,14 +1191,10 @@ export class CollectionBase<
       keyof DefaultModelRow<TContract, ModelName> & string,
       ...(keyof DefaultModelRow<TContract, ModelName> & string)[],
     ],
-    Self extends HasState,
+    Self extends HasOrderBy,
   >(
     this: Self,
-    ...fields: TContract['capabilities'] extends { postgres: { distinctOn: true } }
-      ? CollectionStateOf<Self>['hasOrderBy'] extends true
-        ? Fields
-        : never
-      : never
+    ...fields: TContract['capabilities'] extends { postgres: { distinctOn: true } } ? Fields : never
   ): Self;
   distinctOn<
     Fields extends readonly [
@@ -1210,11 +1202,7 @@ export class CollectionBase<
       ...(keyof DefaultModelRow<TContract, ModelName> & string)[],
     ],
   >(
-    ...fields: TContract['capabilities'] extends { postgres: { distinctOn: true } }
-      ? CollectionStateOf<this>['hasOrderBy'] extends true
-        ? Fields
-        : never
-      : never
+    ...fields: TContract['capabilities'] extends { postgres: { distinctOn: true } } ? Fields : never
   ): this {
     assertDistinctOnCapability(this.contract, 'distinctOn');
     assertDistinctOnCompatibleOrder(this.state.orderBy, fields.length);
@@ -1305,7 +1293,7 @@ export class CollectionBase<
    * ```
    */
   all(configure?: (meta: MetaBuilder<'read'>) => void): AsyncIterableResult<CollectionRowOf<this>>;
-  all(configure?: (meta: MetaBuilder<'read'>) => void): AsyncIterableResult<Row> {
+  all(configure?: (meta: MetaBuilder<'read'>) => void): AsyncIterableResult<unknown> {
     return this.#withAnnotationsFromMeta(configure, 'all').#dispatch();
   }
 
@@ -1394,7 +1382,7 @@ export class CollectionBase<
   async first(
     filter?: WhereInput<TContract, State['nsId'], ModelName, State['variantName']>,
     configure?: (meta: MetaBuilder<'read'>) => void,
-  ): Promise<Row | null> {
+  ): Promise<unknown> {
     return consumeFirstRow(this.#forFirst(filter, configure).#dispatch());
   }
 
@@ -1568,7 +1556,7 @@ export class CollectionBase<
       | ResolvedCreateInput<TContract, ModelName, State['variantName'], State['nsId']>
       | MutationCreateInputWithRelations<TContract, ModelName, State['nsId']>,
     configure?: (meta: MetaBuilder<'write'>) => void,
-  ): Promise<Row> {
+  ): Promise<unknown> {
     assertReturningCapability(this.contract, 'create()');
     const annotationsMap = this.#collectAnnotationsFromMeta(configure, 'write', 'create');
 
@@ -1686,7 +1674,7 @@ export class CollectionBase<
     >[],
     optionsOrConfigure?: CreateConflictOptions<TContract, ModelName> | WriteConfigure,
     configure?: WriteConfigure,
-  ): AsyncIterableResult<Row> {
+  ): AsyncIterableResult<unknown> {
     const { options, configureCallback } = splitCreateArguments(optionsOrConfigure, configure);
     const conflictSkip = this.#resolveConflictSkip(options, 'createAll()');
     return this.#createAllWithAnnotations(
@@ -2160,7 +2148,7 @@ export class CollectionBase<
       conflictOn?: UniqueConstraintCriterion<TContract, ModelName>;
     },
     configure?: (meta: MetaBuilder<'write'>) => void,
-  ): Promise<Row> {
+  ): Promise<unknown> {
     assertReturningCapability(this.contract, 'upsert()');
     this.#assertNotMtiVariant('upsert()');
     const annotationsMap = this.#collectAnnotationsFromMeta(configure, 'write', 'upsert');
@@ -2289,16 +2277,15 @@ export class CollectionBase<
    * validation applies, but the recorded annotations are discarded: neither the nested
    * statements nor the read-back query carry them.
    */
-  async update(
-    this: Filtered<this>,
+  async update<Self extends HasWhere>(
+    this: Self,
     data: MutationUpdateInput<TContract, ModelName, State['nsId']>,
     configure?: (meta: MetaBuilder<'write'>) => void,
   ): Promise<CollectionRowOf<this> | null>;
   async update(
-    this: Filtered<this>,
     data: MutationUpdateInput<TContract, ModelName, State['nsId']>,
     configure?: (meta: MetaBuilder<'write'>) => void,
-  ): Promise<Row | null> {
+  ): Promise<unknown> {
     assertReturningCapability(this.contract, 'update()');
     const annotationsMap = this.#collectAnnotationsFromMeta(configure, 'write', 'update');
 
@@ -2380,16 +2367,15 @@ export class CollectionBase<
    * Accepts an optional `configure` callback that receives a
    * `MetaBuilder<'write'>` for attaching typed annotations.
    */
-  updateAll(
-    this: Filtered<this>,
+  updateAll<Self extends HasWhere>(
+    this: Self,
     data: Partial<DefaultModelRow<TContract, ModelName, State['nsId']>>,
     configure?: (meta: MetaBuilder<'write'>) => void,
   ): AsyncIterableResult<CollectionRowOf<this>>;
   updateAll(
-    this: Filtered<this>,
     data: Partial<DefaultModelRow<TContract, ModelName, State['nsId']>>,
     configure?: (meta: MetaBuilder<'write'>) => void,
-  ): AsyncIterableResult<Row> {
+  ): AsyncIterableResult<unknown> {
     return this.#updateAllWithAnnotations(
       data,
       this.#collectAnnotationsFromMeta(configure, 'write', 'updateAll'),
@@ -2457,8 +2443,12 @@ export class CollectionBase<
    *   .updateAndCount({ published: true });
    * ```
    */
+  async updateAndCount<Self extends HasWhere>(
+    this: Self,
+    data: Partial<DefaultModelRow<TContract, ModelName, State['nsId']>>,
+    configure?: (meta: MetaBuilder<'write'>) => void,
+  ): Promise<number>;
   async updateAndCount(
-    this: Filtered<this>,
     data: Partial<DefaultModelRow<TContract, ModelName, State['nsId']>>,
     configure?: (meta: MetaBuilder<'write'>) => void,
   ): Promise<number> {
@@ -2506,14 +2496,11 @@ export class CollectionBase<
    * Accepts an optional `configure` callback that receives a
    * `MetaBuilder<'write'>` for attaching typed annotations.
    */
-  async delete(
-    this: Filtered<this>,
+  async delete<Self extends HasWhere>(
+    this: Self,
     configure?: (meta: MetaBuilder<'write'>) => void,
   ): Promise<CollectionRowOf<this> | null>;
-  async delete(
-    this: Filtered<this>,
-    configure?: (meta: MetaBuilder<'write'>) => void,
-  ): Promise<Row | null> {
+  async delete(configure?: (meta: MetaBuilder<'write'>) => void): Promise<unknown> {
     assertReturningCapability(this.contract, 'delete()');
     const annotationsMap = this.#collectAnnotationsFromMeta(configure, 'write', 'delete');
     return withMutationScope(this.ctx.runtime, async (scope) => {
@@ -2551,14 +2538,11 @@ export class CollectionBase<
    * Accepts an optional `configure` callback that receives a
    * `MetaBuilder<'write'>` for attaching typed annotations.
    */
-  deleteAll(
-    this: Filtered<this>,
+  deleteAll<Self extends HasWhere>(
+    this: Self,
     configure?: (meta: MetaBuilder<'write'>) => void,
   ): AsyncIterableResult<CollectionRowOf<this>>;
-  deleteAll(
-    this: Filtered<this>,
-    configure?: (meta: MetaBuilder<'write'>) => void,
-  ): AsyncIterableResult<Row> {
+  deleteAll(configure?: (meta: MetaBuilder<'write'>) => void): AsyncIterableResult<unknown> {
     return this.#deleteAllWithAnnotations(
       this.#collectAnnotationsFromMeta(configure, 'write', 'deleteAll'),
     );
@@ -2665,10 +2649,11 @@ export class CollectionBase<
    * const removed = await db.orm.Post.where({ archived: true }).deleteAndCount();
    * ```
    */
-  async deleteAndCount(
-    this: Filtered<this>,
+  async deleteAndCount<Self extends HasWhere>(
+    this: Self,
     configure?: (meta: MetaBuilder<'write'>) => void,
-  ): Promise<number> {
+  ): Promise<number>;
+  async deleteAndCount(configure?: (meta: MetaBuilder<'write'>) => void): Promise<number> {
     const annotationsMap = this.#collectAnnotationsFromMeta(configure, 'write', 'deleteAndCount');
 
     const compiled = mergeAnnotations(

@@ -1,7 +1,7 @@
 import { describe, expectTypeOf, test } from 'vitest';
+import type { Contract as PolyContract } from '../../../../test/integration/test/sql-orm-client/fixtures/polymorphism/generated/contract';
 import { Collection } from '../src/collection';
 import type { CollectionStateOf, Ordered } from '../src/collection-types';
-import type { PolyContract } from './fixtures/poly-contract';
 
 class TaskCollection extends Collection<PolyContract, 'Task'> {
   titled(title: string) {
@@ -31,6 +31,19 @@ describe('variant', () => {
   test('without an order, cursor stays refused', () => {
     // @ts-expect-error cursor needs an orderBy
     tasks.variant('Bug').cursor({ id: 1 });
+  });
+
+  test('narrows the row to the variant', async () => {
+    const bug = await tasks.variant('Bug').first();
+    expectTypeOf(bug).toEqualTypeOf<{
+      id: number;
+      title: string;
+      projectId: number | null;
+      reporterId: number | null;
+      severity: string;
+      assigneeId: number | null;
+      type: 'bug';
+    } | null>();
   });
 
   test('records its discriminator filter', () => {
