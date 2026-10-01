@@ -1,7 +1,9 @@
 import type { Contract } from '@internal/contract/types';
 import type { ExtractAggregateTypes, SqlStorage } from '@internal/sql-contract/types';
 import type { WhereArg } from '@internal/sql-relational-core/ast';
+import type { Simplify } from '@internal/utils/types';
 import type { Collection } from './collection';
+import type { HasRow, RowType } from './collection-types';
 import type {
   CollectionContext,
   CollectionTypeState,
@@ -105,50 +107,6 @@ export type IncludeRefinementResult<
       ? IncludeScalar<unknown> | IncludeCombine<Record<string, unknown>>
       : never);
 
-export declare const RowType: unique symbol;
-
-export declare const StateType: unique symbol;
-
-export type CollectionStateOf<C extends { readonly [StateType]: CollectionTypeState }> =
-  C[typeof StateType];
-
-export type CollectionRowOf<C extends { readonly [RowType]: unknown }> = FlatRow<C[typeof RowType]>;
-
-export type FlatRow<R> = R extends object ? { [K in keyof R]: R[K] } : R;
-
-export interface StateCarrier {
-  readonly [StateType]: CollectionTypeState;
-}
-
-export interface IncludeReceiver {
-  readonly [RowType]: unknown;
-}
-
-export interface HasWhere {
-  readonly [StateType]: { readonly hasWhere: true };
-}
-
-export interface HasOrderBy {
-  readonly [StateType]: { readonly hasOrderBy: true };
-}
-
-export interface RowSelection<T> {
-  [RowType]: T;
-}
-
-/** A collection with a filter applied. */
-export type Filtered<Self> = Self & HasWhere;
-
-/** A collection with an order applied. */
-export type Ordered<Self> = Self & HasOrderBy;
-
-/** A collection whose rows also have the fields of `Added`, such as an included relation. */
-export type Including<Self extends IncludeReceiver, Added> = Self &
-  RowSelection<CollectionRowOf<Self> & Added>;
-
-/** A function from one collection to another; `collection.pipe(step)` applies it. */
-export type Step<In, Out> = (collection: In) => Out;
-
 export type StripRowType<T> = Omit<T, typeof RowType>;
 
 export type IncludeRefinementValue<
@@ -159,12 +117,12 @@ export type IncludeRefinementValue<
   RefinedResult,
   NsId extends string = never,
 > =
-  RefinedResult extends RowSelection<infer V>
+  RefinedResult extends HasRow<infer V>
     ? // IncludeScalar / IncludeCombine carry a final value that must not be
       // cardinality-wrapped; Collection carries a raw row that still needs it.
       RefinedResult extends { readonly kind: 'includeScalar' | 'includeCombine' }
       ? V
-      : RefinedIncludeRelationValue<TContract, ParentModelName, RelName, FlatRow<V>, NsId>
+      : RefinedIncludeRelationValue<TContract, ParentModelName, RelName, Simplify<V>, NsId>
     : IncludeRelationValue<TContract, ParentModelName, RelName, DefaultIncludedRow, NsId>;
 
 /**

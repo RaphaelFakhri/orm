@@ -176,6 +176,13 @@ describe('on a custom class, every conditional form reduces to the class', () =>
     expectTypeOf(pick(Post).deleteAll()).not.toBeAny();
   });
 
+  test('annotating a filter-against-order union as the class reduces it', () => {
+    const posts: PostCollection = flag ? Post.published() : Post.recent();
+    expectTypeOf(posts).toEqualTypeOf<PostCollection>();
+    // @ts-expect-error the collection may have no filter
+    posts.deleteAll();
+  });
+
   test('a filter against an order keeps a union that still chains', () => {
     const posts = flag ? Post.published() : Post.recent();
     expectTypeOf(posts.published().recent()).toExtend<PostCollection>();

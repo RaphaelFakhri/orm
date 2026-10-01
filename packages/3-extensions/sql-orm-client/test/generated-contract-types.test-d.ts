@@ -3,7 +3,7 @@ import type { ContractWithTypeMaps, TypeMaps } from '@internal/sql-contract/type
 import type { ExecutionContext } from '@internal/sql-relational-core/query-lane-context';
 import { expectTypeOf, test } from 'vitest';
 import { Collection } from '../src/collection';
-import type { CollectionRowOf, CollectionStateOf } from '../src/collection-internal-types';
+import type { CollectionRowOf, CollectionStateOf } from '../src/collection-types';
 
 import { createMockRuntime } from './helpers';
 

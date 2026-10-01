@@ -56,24 +56,11 @@ import {
 import type {
   CollectionConstructor,
   CollectionInit,
-  CollectionRowOf,
-  CollectionStateOf,
-  Filtered,
-  HasOrderBy,
-  HasWhere,
   IncludedRelationsForRow,
-  IncludeReceiver,
   IncludeRefinementCollection,
   IncludeRefinementResult,
   IncludeRefinementValue,
-  Including,
   IsToManyRelation,
-  Ordered,
-  RowSelection,
-  RowType,
-  StateCarrier,
-  StateType,
-  Step,
   WhereInput,
   WithVariantState,
   WithWhereState,
@@ -84,6 +71,21 @@ import {
   executeMutationReturningSingleRow,
 } from './collection-mutation-dispatch';
 import { mapModelDataToStorageRow, mapPolymorphicRow } from './collection-runtime';
+import type {
+  CollectionRowOf,
+  CollectionStateOf,
+  Filtered,
+  HasOrderBy,
+  HasRow,
+  HasState,
+  HasWhere,
+  Including,
+  Ordered,
+  // biome-ignore lint/correctness/noUnusedImports: used in `declare` properties
+  RowType,
+  StateType,
+  Step,
+} from './collection-types';
 import { shorthandToWhereExpr } from './filters';
 import { GroupedCollection } from './grouped-collection';
 import {
@@ -261,12 +263,12 @@ interface MtiCreateContext {
   pkColumns: readonly string[];
 }
 
-export class CollectionImpl<
+export class CollectionBase<
   TContract extends Contract<SqlStorage>,
   ModelName extends string,
   Row = SimplifyDeep<InferRootRow<TContract, ModelName>>,
   State extends CollectionTypeState = DefaultCollectionTypeState,
-> implements RowSelection<Row>
+> implements HasRow<Row>, HasState<State>
 {
   declare readonly [StateType]: State;
   declare readonly [RowType]: Row;
@@ -313,7 +315,7 @@ export class CollectionImpl<
    * because their names are the registry's, not the class declaration's.
    *
    * A name the collection already carries is skipped, and which member holds
-   * it decides what the skip means. A `CollectionImpl` member is rejected at
+   * it decides what the skip means. A `CollectionBase` member is rejected at
    * ORM composition with `ORM.AGGREGATE_OPERATION_RESERVED`, since
    * {@link reservedCollectionMemberNames} scans this class. A member declared
    * by a custom collection class registered through `orm({ collections })`
@@ -468,7 +470,7 @@ export class CollectionImpl<
    * ```
    */
   variant<V extends VariantNames<TContract, ModelName>, S extends CollectionTypeState = State>(
-    this: { readonly [StateType]: S },
+    this: HasState<S>,
     variantName: V,
   ): Collection<
     TContract,
@@ -592,7 +594,7 @@ export class CollectionImpl<
       RelName,
       State['nsId']
     >,
-    Self extends IncludeReceiver = never,
+    Self extends HasRow = never,
   >(
     this: Self,
     relationName: RelName,
@@ -643,7 +645,7 @@ export class CollectionImpl<
       CollectionTypeState,
       IsToMany
     >,
-    Self extends IncludeReceiver = never,
+    Self extends HasRow = never,
   >(
     this: Self,
     relationName: RelName,
@@ -848,7 +850,7 @@ export class CollectionImpl<
     S extends CollectionTypeState = State,
     R = Row,
   >(
-    this: { readonly [StateType]: S; readonly [RowType]: R },
+    this: HasState<S> & HasRow<R>,
     ...fields: Fields
   ): Collection<
     TContract,
@@ -1052,8 +1054,8 @@ export class CollectionImpl<
   ): IncludeCombine<{
     [K in keyof Spec]: Spec[K] extends IncludeScalar<infer ScalarResult>
       ? ScalarResult
-      : Spec[K] extends RowSelection<infer BranchRow>
-        ? BranchRow[]
+      : Spec[K] extends HasRow
+        ? CollectionRowOf<Spec[K]>[]
         : never;
   }> {
     this.#assertIncludeRefinementMode('combine()');
@@ -1084,8 +1086,8 @@ export class CollectionImpl<
     return createIncludeCombine<{
       [K in keyof Spec]: Spec[K] extends IncludeScalar<infer ScalarResult>
         ? ScalarResult
-        : Spec[K] extends RowSelection<infer BranchRow>
-          ? BranchRow[]
+        : Spec[K] extends HasRow
+          ? CollectionRowOf<Spec[K]>[]
           : never;
     }>(branches);
   }
@@ -1110,7 +1112,7 @@ export class CollectionImpl<
    *   .all();
    * ```
    */
-  cursor<Self extends StateCarrier>(
+  cursor<Self extends HasState>(
     this: Self,
     cursorValues: CollectionStateOf<Self>['hasOrderBy'] extends true
       ? Partial<Record<keyof DefaultModelRow<TContract, ModelName> & string, unknown>>
@@ -1193,7 +1195,7 @@ export class CollectionImpl<
       keyof DefaultModelRow<TContract, ModelName> & string,
       ...(keyof DefaultModelRow<TContract, ModelName> & string)[],
     ],
-    Self extends StateCarrier,
+    Self extends HasState,
   >(
     this: Self,
     ...fields: TContract['capabilities'] extends { postgres: { distinctOn: true } }
@@ -2288,15 +2290,13 @@ export class CollectionImpl<
    * statements nor the read-back query carry them.
    */
   async update(
-    data: CollectionStateOf<this>['hasWhere'] extends true
-      ? MutationUpdateInput<TContract, ModelName, State['nsId']>
-      : never,
+    this: Filtered<this>,
+    data: MutationUpdateInput<TContract, ModelName, State['nsId']>,
     configure?: (meta: MetaBuilder<'write'>) => void,
   ): Promise<CollectionRowOf<this> | null>;
   async update(
-    data: CollectionStateOf<this>['hasWhere'] extends true
-      ? MutationUpdateInput<TContract, ModelName, State['nsId']>
-      : never,
+    this: Filtered<this>,
+    data: MutationUpdateInput<TContract, ModelName, State['nsId']>,
     configure?: (meta: MetaBuilder<'write'>) => void,
   ): Promise<Row | null> {
     assertReturningCapability(this.contract, 'update()');
@@ -2381,15 +2381,13 @@ export class CollectionImpl<
    * `MetaBuilder<'write'>` for attaching typed annotations.
    */
   updateAll(
-    data: CollectionStateOf<this>['hasWhere'] extends true
-      ? Partial<DefaultModelRow<TContract, ModelName, State['nsId']>>
-      : never,
+    this: Filtered<this>,
+    data: Partial<DefaultModelRow<TContract, ModelName, State['nsId']>>,
     configure?: (meta: MetaBuilder<'write'>) => void,
   ): AsyncIterableResult<CollectionRowOf<this>>;
   updateAll(
-    data: CollectionStateOf<this>['hasWhere'] extends true
-      ? Partial<DefaultModelRow<TContract, ModelName, State['nsId']>>
-      : never,
+    this: Filtered<this>,
+    data: Partial<DefaultModelRow<TContract, ModelName, State['nsId']>>,
     configure?: (meta: MetaBuilder<'write'>) => void,
   ): AsyncIterableResult<Row> {
     return this.#updateAllWithAnnotations(
@@ -2460,9 +2458,8 @@ export class CollectionImpl<
    * ```
    */
   async updateAndCount(
-    data: CollectionStateOf<this>['hasWhere'] extends true
-      ? Partial<DefaultModelRow<TContract, ModelName, State['nsId']>>
-      : never,
+    this: Filtered<this>,
+    data: Partial<DefaultModelRow<TContract, ModelName, State['nsId']>>,
     configure?: (meta: MetaBuilder<'write'>) => void,
   ): Promise<number> {
     const mappedData = mapModelDataToStorageRow(
@@ -2510,11 +2507,11 @@ export class CollectionImpl<
    * `MetaBuilder<'write'>` for attaching typed annotations.
    */
   async delete(
-    this: this & HasWhere,
+    this: Filtered<this>,
     configure?: (meta: MetaBuilder<'write'>) => void,
   ): Promise<CollectionRowOf<this> | null>;
   async delete(
-    this: this & HasWhere,
+    this: Filtered<this>,
     configure?: (meta: MetaBuilder<'write'>) => void,
   ): Promise<Row | null> {
     assertReturningCapability(this.contract, 'delete()');
@@ -2555,17 +2552,14 @@ export class CollectionImpl<
    * `MetaBuilder<'write'>` for attaching typed annotations.
    */
   deleteAll(
-    this: this & HasWhere,
+    this: Filtered<this>,
     configure?: (meta: MetaBuilder<'write'>) => void,
   ): AsyncIterableResult<CollectionRowOf<this>>;
   deleteAll(
-    this: this & HasWhere,
+    this: Filtered<this>,
     configure?: (meta: MetaBuilder<'write'>) => void,
   ): AsyncIterableResult<Row> {
-    return blindCast<
-      Collection<TContract, ModelName, Row, State>,
-      'deleteAll() conditional this parameter is a filtered collection at runtime'
-    >(this).#deleteAllWithAnnotations(
+    return this.#deleteAllWithAnnotations(
       this.#collectAnnotationsFromMeta(configure, 'write', 'deleteAll'),
     );
   }
@@ -2672,7 +2666,7 @@ export class CollectionImpl<
    * ```
    */
   async deleteAndCount(
-    this: this & HasWhere,
+    this: Filtered<this>,
     configure?: (meta: MetaBuilder<'write'>) => void,
   ): Promise<number> {
     const annotationsMap = this.#collectAnnotationsFromMeta(configure, 'write', 'deleteAndCount');
@@ -2865,13 +2859,13 @@ export class CollectionImpl<
     >(this.#createSelf<Row, State>({ ...this.state, ...overrides }));
   }
 
-  #withRuntime(runtime: RuntimeQueryable): CollectionImpl<TContract, ModelName, Row, State> {
+  #withRuntime(runtime: RuntimeQueryable): CollectionBase<TContract, ModelName, Row, State> {
     const Ctor = blindCast<
       CollectionConstructor<TContract>,
       'runtime collection subclasses preserve the Collection constructor contract'
     >(this.constructor);
     return blindCast<
-      CollectionImpl<TContract, ModelName, Row, State>,
+      CollectionBase<TContract, ModelName, Row, State>,
       'runtime collection construction erases model row and state generics'
     >(
       new Ctor({ ...this.ctx, runtime }, this.modelName, {
@@ -2927,7 +2921,7 @@ export class CollectionImpl<
       blindCast<
         CollectionConstructor<TContract>,
         'base Collection constructor is generic over the runtime contract'
-      >(CollectionImpl);
+      >(CollectionBase);
     return blindCast<
       Collection<TContract, ModelNameInner, RowInner, StateInner>,
       'runtime related collection construction erases model row and state generics'
@@ -3032,7 +3026,7 @@ const collectionInstanceMemberNames = [
  */
 export function reservedCollectionMemberNames(): ReadonlySet<string> {
   return new Set([
-    ...Object.getOwnPropertyNames(CollectionImpl.prototype),
+    ...Object.getOwnPropertyNames(CollectionBase.prototype),
     ...collectionInstanceMemberNames,
   ]);
 }
@@ -3050,7 +3044,7 @@ export type Collection<
   ModelName extends string,
   Row = SimplifyDeep<InferRootRow<TContract, ModelName>>,
   State extends CollectionTypeState = DefaultCollectionTypeState,
-> = CollectionImpl<TContract, ModelName, Row, State> &
+> = CollectionBase<TContract, ModelName, Row, State> &
   AggregateIncludeReducers<TContract, ModelName, State['nsId']>;
 
 /**
@@ -3075,13 +3069,4 @@ interface CollectionSurfaceConstructor {
 export const Collection = blindCast<
   CollectionSurfaceConstructor,
   'the constructor installs one reducer per aggregate operation the registry contributes'
->(CollectionImpl);
-
-/**
- * The class behind {@link Collection}, for package-internal prototype-chain
- * checks (`instanceof`) and default construction. The public constructor
- * surface carries a single construct signature returning the intersection,
- * which heritage clauses require; the raw class keeps the `Function` shape
- * those checks need.
- */
-export const CollectionBase = CollectionImpl;
+>(CollectionBase);

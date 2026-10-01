@@ -1,7 +1,7 @@
 import type { ExecutionContext } from '@internal/sql-relational-core/query-lane-context';
 import { expectTypeOf, test } from 'vitest';
 import { Collection } from '../src/collection';
-import type { CollectionRowOf } from '../src/collection-internal-types';
+import type { CollectionRowOf } from '../src/collection-types';
 import { createMockRuntime, type TestContract } from './helpers';
 
 type Equal<A, B> =

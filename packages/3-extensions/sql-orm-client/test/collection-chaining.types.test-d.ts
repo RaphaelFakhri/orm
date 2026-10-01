@@ -8,7 +8,7 @@ import type {
   HasWhere,
   Ordered,
   Step,
-} from '../src/collection-internal-types';
+} from '../src/collection-types';
 import { createChainingOrm, type PostCollection } from './collection-chaining-fixture';
 import type { TestContract } from './helpers';
 
@@ -58,6 +58,12 @@ describe('class methods keep the class', () => {
     expectTypeOf(await posts.first()).toEqualTypeOf<AuthorRow | null>();
     expectTypeOf(await posts.all()).toEqualTypeOf<AuthorRow[]>();
     expectTypeOf<keyof AuthorRow>().toEqualTypeOf<keyof PostRow | 'author'>();
+  });
+
+  test('after cursor and distinctOn', () => {
+    expectTypeOf(Post.recent().cursor({ id: 1 }).distinctOn('title').published()).toEqualTypeOf<
+      Filtered<Ordered<PostCollection>>
+    >();
   });
 
   test('inside pipe', () => {

@@ -56,6 +56,19 @@ describe('writes need a filter', () => {
   });
 });
 
+describe('the select fallback overload', () => {
+  test('on a union of differently flagged collections, refuses writes', () => {
+    const posts = search ? Post.published() : Post.recent();
+    // @ts-expect-error the fallback overload returns the root state, which has no filter
+    posts.select('id').update({ title: 'x' });
+  });
+
+  test('on a union, drops included relations from the row type', async () => {
+    const posts = search ? Post.published().include('author') : Post.recent().include('author');
+    expectTypeOf(await posts.select('id').first()).toEqualTypeOf<{ id: number } | null>();
+  });
+});
+
 describe('cursor needs an order', () => {
   test('refused until an order is set', () => {
     // @ts-expect-error cursor needs an orderBy

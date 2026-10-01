@@ -1,18 +1,18 @@
-export { Collection, type CollectionImpl } from '../collection';
+export { Collection } from '../collection';
 export type {
   CollectionRowOf,
   CollectionStateOf,
   Filtered,
   HasOrderBy,
+  HasRow,
+  HasState,
   HasWhere,
-  IncludeReceiver,
   Including,
   Ordered,
-  RowSelection,
   RowType,
   StateType,
   Step,
-} from '../collection-internal-types';
+} from '../collection-types';
 export { all, and, not, or } from '../filters';
 export { GroupedCollection } from '../grouped-collection';
 export { createModelAccessor } from '../model-accessor';
