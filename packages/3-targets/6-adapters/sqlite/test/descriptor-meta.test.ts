@@ -33,7 +33,7 @@ describe('the SQLite adapter descriptor metadata', () => {
 
   it('leaves the value-object storage type to the target, which declares Json', () => {
     expect(sqliteAdapterDescriptor.authoring?.valueObjectStorageType).toBeUndefined();
-    expect(sqliteTargetDescriptor.authoring.valueObjectStorageType).toBe('Json');
+    expect(sqliteTargetDescriptor.authoring?.valueObjectStorageType).toBe('Json');
   });
 
   it('contributes no data type entries, because the target contributes them', () => {

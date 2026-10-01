@@ -4,7 +4,7 @@ import {
   buildSqlContractFromDefinition,
   type ContractDefinition,
 } from '@internal/sql-contract-ts/contract-builder';
-import { assembleSqliteCodecRegistry } from '@internal/target-sqlite/codecs';
+import { createSqliteBuiltinCodecLookup } from '@internal/target-sqlite/codecs';
 import { sqliteCreateNamespace } from '@internal/target-sqlite/control';
 import sqlitePack from '@internal/target-sqlite/pack';
 import { describe, expect, it } from 'vitest';
@@ -52,11 +52,10 @@ function definitionWith(target: ContractDefinition['target']): ContractDefinitio
 
 describe('a value-object column on SQLite', () => {
   it('uses the codec of the SQLite value-object storage type', () => {
-    const codecLookup = assembleSqliteCodecRegistry(sqlitePack, []);
     const dataTypeLookup = assembleDataTypes([sqlitePack]).lookup;
     const contract = buildSqlContractFromDefinition(
       definitionWith(sqlitePack),
-      codecLookup,
+      createSqliteBuiltinCodecLookup(),
       dataTypeLookup,
     );
     expect(
