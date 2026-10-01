@@ -630,7 +630,7 @@ function resolveEntity(
       : qualifiedMember(written.namespace, written.name, ctx.scope);
   if (found === undefined) {
     const name = describeWrittenEntityReference(written);
-    report(`Cannot find entity "${name}"`, node, ctx, 'entity');
+    if (written.name !== '') report(`Cannot find entity "${name}"`, node, ctx, 'entity');
     return { kind: 'unresolved', name };
   }
   if ('badQualifier' in found) {
