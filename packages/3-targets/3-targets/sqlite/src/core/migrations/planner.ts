@@ -221,6 +221,7 @@ export class SqliteMigrationPlanner
       priorContract: options.fromContract,
       newContract: options.contract,
       codecHooks,
+      renamedTables: hintRenames.renamedTables,
     });
     // Codec-emitted calls already conform to `OpFactoryCall` — render +
     // toOp + importRequirements ride directly through the same emit path

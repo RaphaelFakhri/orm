@@ -47,6 +47,17 @@ export interface PlanFieldEventOperationsOptions {
    * `RawSqlCall`.
    */
   readonly codecHooks: ReadonlyMap<string, CodecControlHooks>;
+  /**
+   * The tables the plan renames, keyed by {@link renamedTableKey} of the old name, valued by the
+   * new name. A column under the old name is the same column under the new one, so a rename alone
+   * fires no event.
+   */
+  readonly renamedTables: ReadonlyMap<string, string>;
+}
+
+/** The key of a renamed table in `renamedTables`: its namespace id and its old storage name. */
+export function renamedTableKey(namespaceId: string, oldTableName: string): string {
+  return JSON.stringify([namespaceId, oldTableName]);
 }
 
 interface FieldEntry {
@@ -77,7 +88,9 @@ export function planFieldEventOperations(
   for (const namespaceId of namespaceIds) {
     const priorNs = priorContract?.storage.namespaces[namespaceId];
     const newNs = newContract.storage.namespaces[namespaceId];
-    const priorTables = priorNs?.entries.table;
+    const priorTables = underNewNames(priorNs?.entries.table, (tableName) =>
+      options.renamedTables.get(renamedTableKey(namespaceId, tableName)),
+    );
     const newTables = newNs?.entries.table;
 
     const tableNames = unionSorted(
@@ -122,6 +135,16 @@ export function planFieldEventOperations(
   appendCalls('dropped', dropped, options.codecHooks, calls, (e) => e.priorField?.codecId);
   appendCalls('altered', altered, options.codecHooks, calls, (e) => e.newField?.codecId);
   return calls;
+}
+
+function underNewNames<T>(
+  tables: Readonly<Record<string, T>> | undefined,
+  newNameOf: (tableName: string) => string | undefined,
+): Readonly<Record<string, T>> | undefined {
+  if (tables === undefined) return undefined;
+  return Object.fromEntries(
+    Object.entries(tables).map(([tableName, table]) => [newNameOf(tableName) ?? tableName, table]),
+  );
 }
 
 function appendCalls(
