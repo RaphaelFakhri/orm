@@ -161,12 +161,21 @@ describe('sqlExpressionRegistration', () => {
   it('holds the data type and its authoring entry, keyed by its id', () => {
     expect(sqlExpressionRegistration).toEqual({
       dataTypes: [sqlExpressionDataType],
-      authoring: { [SQL_EXPRESSION_DATA_TYPE_ID]: sqlExpressionAuthoringEntry },
+      authoring: { dataTypes: { [SQL_EXPRESSION_DATA_TYPE_ID]: sqlExpressionAuthoringEntry } },
     });
     expect(sqlExpressionRegistration.dataTypes[0]).toBe(sqlExpressionDataType);
-    expect(sqlExpressionRegistration.authoring[SQL_EXPRESSION_DATA_TYPE_ID]).toBe(
+    expect(sqlExpressionRegistration.authoring.dataTypes[SQL_EXPRESSION_DATA_TYPE_ID]).toBe(
       sqlExpressionAuthoringEntry,
     );
+  });
+
+  it('is frozen, so no importer can change what the family registers', () => {
+    expect([
+      Object.isFrozen(sqlExpressionRegistration),
+      Object.isFrozen(sqlExpressionRegistration.dataTypes),
+      Object.isFrozen(sqlExpressionRegistration.authoring),
+      Object.isFrozen(sqlExpressionRegistration.authoring.dataTypes),
+    ]).toEqual([true, true, true, true]);
   });
 });
 
@@ -194,6 +203,7 @@ describe('SqlExpression', () => {
       expect.objectContaining({
         code: 'CONTRACT.SQL_EXPRESSION_INVALID',
         message: 'Tagged literal exceeds 65536 bytes.',
+        meta: { reason: 'too-large', offset: 65536 },
       }),
     );
   });
@@ -257,6 +267,49 @@ describe('sql', () => {
           OR b = 2
       `.text,
     ).toBe('a = 1\n  OR b = 2');
+  });
+
+  it('joins several interpolated values in order', () => {
+    const [a, b, c] = [sql`a = 1`, sql`b = 2`, sql`c = 3`];
+    expect(sql`(${a} OR ${b}) AND ${c} -- end`.text).toBe('(a = 1 OR b = 2) AND c = 3 -- end');
+  });
+
+  it('indents every line of a multi-line value as the template line it sits on', () => {
+    const owner = sql`
+      "userId" = auth.uid()
+        OR is_admin()
+    `;
+    const composed = sql`
+      (
+        ${owner}
+      )
+      AND deleted_at IS NULL
+    `;
+    expect(composed.text).toBe(
+      canonicalSqlText(`
+      (
+        "userId" = auth.uid()
+          OR is_admin()
+      )
+      AND deleted_at IS NULL
+    `),
+    );
+    expect(composed.text).toBe(
+      '(\n  "userId" = auth.uid()\n    OR is_admin()\n)\nAND deleted_at IS NULL',
+    );
+  });
+
+  it('indents a multi-line value by the leading whitespace of its line, not by the text before it', () => {
+    const twoLines = sql`
+      a
+      b
+    `;
+    expect(
+      sql`
+      x = 1 AND ${twoLines}
+      AND y = 2
+    `.text,
+    ).toBe('x = 1 AND a\nb\nAND y = 2');
   });
 
   it('inserts interpolated text as it is, resolving escapes only in the template', () => {
