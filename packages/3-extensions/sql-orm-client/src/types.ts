@@ -371,9 +371,9 @@ type CodecOutput<
   : unknown;
 
 /**
- * The row accessor's type for any field with the codec `CodecId` and the given nullability. A function of `{ deletedAt: FieldExpression<Contract, 'pg/timestamptz-temporal@1', true> }` is a `where` callback for every model with such a field.
+ * The model accessor's type for any field with the codec `CodecId` and the given nullability. A function of `{ deletedAt: CodecField<Contract, 'pg/timestamptz-temporal@1', true> }` is a `where` callback for every model with such a field. Values are checked against the codec's output type, which is wider than a field that refines it, such as an enum or `Char<36>`.
  */
-export type FieldExpression<
+export type CodecField<
   TContract extends Contract<SqlStorage>,
   CodecId extends keyof ExtractCodecTypes<TContract> & string,
   Nullable extends boolean = false,
@@ -528,22 +528,11 @@ type OrderableFields<
 };
 
 /** The fields of a model whose codec has the `order` trait. */
-export type SortableFieldName<
+export type OrderableFieldName<
   TContract extends Contract<SqlStorage>,
   ModelName extends string,
   NsId extends string = never,
 > = keyof OrderableFields<TContract, ModelName, NsId> & string;
-
-/** The codec and nullability of a model field, as `FieldExpression` takes them. */
-export type ModelFieldCodec<
-  TContract extends Contract<SqlStorage>,
-  ModelName extends string,
-  FieldName extends string,
-  NsId extends string = never,
-> = {
-  readonly codecId: FieldCodecId<TContract, ModelName, FieldName, NsId>;
-  readonly nullable: FieldNullable<TContract, ModelName, FieldName, NsId>;
-};
 
 /**
  * A to-one relation inside `where`/`orderBy`: the relation filters plus each orderable scalar field of the related model. A related field named like a relation method is not exposed.
@@ -1990,7 +1979,7 @@ export type RelationNames<
     }[keyof RelationsOf<TContract, ModelName, NsId>]) &
   string;
 
-type IsUnion<T, Whole = T> = T extends Whole ? ([Whole] extends [T] ? false : true) : never;
+export type IsUnion<T, Whole = T> = T extends Whole ? ([Whole] extends [T] ? false : true) : never;
 
 type IsSingletonString<T> = [T] extends [string]
   ? string extends T

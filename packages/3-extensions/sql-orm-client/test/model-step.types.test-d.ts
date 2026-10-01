@@ -1,14 +1,14 @@
 import { describe, expectTypeOf, test } from 'vitest';
 import { Collection } from '../src/collection';
 import type { CollectionRowOf } from '../src/collection-types';
-import { rowFragment } from '../src/query-fragments';
+import { modelStep } from '../src/query-fragments';
 import { createChainingOrm } from './collection-chaining-fixture';
 import type { Contract as PolyContract } from './fixtures/polymorphism/generated/contract';
 import type { TestContract } from './helpers';
 
 const { db, plain } = createChainingOrm();
 
-const summary = rowFragment<TestContract, 'Post'>()((posts) =>
+const summary = modelStep<TestContract, 'Post'>()((posts) =>
   posts.select('id', 'title').include('author'),
 );
 type PostSummary = CollectionRowOf<ReturnType<typeof summary>>;
@@ -27,9 +27,9 @@ class SummaryPostCollection extends Collection<TestContract, 'Post'> {
 }
 
 declare const tasks: Collection<PolyContract, 'Task'>;
-const taskTitles = rowFragment<PolyContract, 'Task'>()((t) => t.select('id', 'title'));
+const taskTitles = modelStep<PolyContract, 'Task'>()((t) => t.select('id', 'title'));
 
-describe('rowFragment', () => {
+describe('modelStep', () => {
   test('names the row of the body', () => {
     expectTypeOf<PostSummary>().not.toBeAny();
     expectTypeOf<PostSummary>().toEqualTypeOf<CollectionRowOf<typeof inline>>();
@@ -78,6 +78,13 @@ describe('rowFragment', () => {
     db.Post.orderBy((p) => p.id.asc())
       .pipe(summary)
       .cursor({ id: 1 });
+  });
+
+  test('takes one model name of the contract', () => {
+    // @ts-expect-error Pots is not a model of the contract
+    modelStep<TestContract, 'Pots'>();
+    // @ts-expect-error a step is defined for one model, not a union of models
+    modelStep<TestContract, 'Post' | 'Article'>();
   });
 
   test('refuses a collection of another model', () => {

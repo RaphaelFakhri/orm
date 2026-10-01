@@ -3,13 +3,15 @@ import { websearchToTsquery } from '@internal/target-postgres/full-text';
 import { describe, expectTypeOf, test } from 'vitest';
 import { Collection } from '../src/collection';
 import { and } from '../src/filters';
-import type { FieldExpression, ModelAccessor } from '../src/types';
+import type { CodecField, ModelAccessor } from '../src/types';
+import { createChainingOrm } from './collection-chaining-fixture';
 import { createFragmentsOrm, type SoftDeleteContract } from './fragments-fixture';
+import type { TestContract } from './helpers';
 
 type Contract = SoftDeleteContract;
 type TimestampCodec = 'pg/timestamptz-temporal@1';
-type DeletedAt = FieldExpression<Contract, TimestampCodec, true>;
-type Title = FieldExpression<Contract, 'pg/text@1'>;
+type DeletedAt = CodecField<Contract, TimestampCodec, true>;
+type Title = CodecField<Contract, 'pg/text@1'>;
 
 const notDeleted = (row: { deletedAt: DeletedAt }) => row.deletedAt.isNull();
 const newestDeletedFirst = (row: { deletedAt: DeletedAt }) => row.deletedAt.desc();
@@ -25,21 +27,21 @@ class LivePostCollection extends Collection<Contract, 'Post'> {
   }
 }
 
-describe('FieldExpression is the field type of the row accessor', () => {
+describe('CodecField is the field type of the model accessor', () => {
   test('it resolves to a typed expression, not any', () => {
     expectTypeOf<DeletedAt>().not.toBeAny();
     expectTypeOf<DeletedAt['isNull']>().returns.toEqualTypeOf<AnyExpression>();
     expectTypeOf<Parameters<Title['eq']>[0]>().not.toBeAny();
   });
 
-  test('a nullable field and its FieldExpression are assignable both ways', () => {
+  test('a nullable field and its CodecField are assignable both ways', () => {
     expectTypeOf<PostAccessor['deletedAt']>().toExtend<DeletedAt>();
     expectTypeOf<DeletedAt>().toExtend<PostAccessor['deletedAt']>();
     expectTypeOf<CommentAccessor['deletedAt']>().toExtend<DeletedAt>();
     expectTypeOf<DeletedAt>().toExtend<CommentAccessor['deletedAt']>();
   });
 
-  test('a field with package operations and its FieldExpression are assignable both ways', () => {
+  test('a field with package operations and its CodecField are assignable both ways', () => {
     expectTypeOf<Title>().toHaveProperty('fullTextMatches');
     expectTypeOf<PostAccessor['title']>().toExtend<Title>();
     expectTypeOf<Title>().toExtend<PostAccessor['title']>();
@@ -52,13 +54,13 @@ describe('FieldExpression is the field type of the row accessor', () => {
   });
 
   test('another nullability or another codec is a different type', () => {
-    expectTypeOf<FieldExpression<Contract, TimestampCodec>>().not.toExtend<DeletedAt>();
-    expectTypeOf<DeletedAt>().not.toExtend<FieldExpression<Contract, TimestampCodec>>();
-    expectTypeOf<FieldExpression<Contract, 'pg/int4@1'>>().not.toExtend<Title>();
+    expectTypeOf<CodecField<Contract, TimestampCodec>>().not.toExtend<DeletedAt>();
+    expectTypeOf<DeletedAt>().not.toExtend<CodecField<Contract, TimestampCodec>>();
+    expectTypeOf<CodecField<Contract, 'pg/int4@1'>>().not.toExtend<Title>();
   });
 });
 
-describe('a row fragment typed with FieldExpression', () => {
+describe('a row fragment typed with CodecField', () => {
   test('filters every model that has the field', () => {
     expectTypeOf(db.Post.where(notDeleted)).not.toBeAny();
     db.Post.where(notDeleted);
@@ -96,23 +98,34 @@ describe('a row fragment typed with FieldExpression', () => {
 
   test('names a codec of the contract', () => {
     // @ts-expect-error the contract has no codec pg/timestamptz@1
-    expectTypeOf<FieldExpression<Contract, 'pg/timestamptz@1'>>().not.toBeAny();
+    expectTypeOf<CodecField<Contract, 'pg/timestamptz@1'>>().not.toBeAny();
   });
 
   test('is refused for a field of another codec', () => {
-    const titleIsSeven = (row: { title: FieldExpression<Contract, 'pg/int4@1'> }) =>
-      row.title.eq(7);
+    const titleIsSeven = (row: { title: CodecField<Contract, 'pg/int4@1'> }) => row.title.eq(7);
     // @ts-expect-error title is text, not int4
     db.Post.where(titleIsSeven);
   });
 
   test('is refused for a field of another nullability', () => {
-    const notDeletedNonNull = (row: { deletedAt: FieldExpression<Contract, TimestampCodec> }) =>
+    const notDeletedNonNull = (row: { deletedAt: CodecField<Contract, TimestampCodec> }) =>
       row.deletedAt.isNull();
     // @ts-expect-error deletedAt is nullable
     db.Post.where(notDeletedNonNull);
     const createdIsNull = (row: { createdAt: DeletedAt }) => row.createdAt.isNull();
     // @ts-expect-error createdAt is not nullable
     db.Post.where(createdIsNull);
+  });
+});
+
+describe('a CodecField fragment checks values against the codec, not the field', () => {
+  const { plain } = createChainingOrm();
+
+  test('it accepts a value of the codec that the field refines away', () => {
+    const tagIs = (row: { tagId: CodecField<TestContract, 'sql/char@1'> }) =>
+      row.tagId.eq('plain-string');
+    plain.UserTag.where(tagIs);
+    // @ts-expect-error the field's own type is Char<36>, and a plain string is not one
+    plain.UserTag.where((row) => row.tagId.eq('plain-string'));
   });
 });
