@@ -25,11 +25,11 @@ changes:
         - '(?:^|\n)[ \t]*(?:(?:public|protected|private|readonly|static|async|override)\s+)*pipe\s*[(<:=?]'
   - id: overriding-a-chaining-method
     summary: |
-      In a class that extends `Collection`, an override of `where`, `orderBy`, `limit`, `offset`, `distinct`, `distinctOn`, `cursor` or `include` must use the new signature, which takes a `this` parameter and returns `Filtered<Self>`, `Ordered<Self>`, `Self` or `Including<Self, ...>`.
+      In a class that extends `Collection`, an override of a chaining method (`where`, `orderBy`, `limit`, `offset`, `distinct`, `distinctOn`, `cursor`, `include`) or of a method that returns rows (`all`, `first`, `create`, `createAll`, `upsert`, `update`, `updateAll`, `updateAndCount`, `delete`, `deleteAll`, `deleteAndCount`) must use the new signature, which takes a `this` parameter.
     detection:
       glob: "**/*.{ts,mts,cts,tsx}"
       matches:
-        - '(?:^|\n)[ \t]*(?:(?:public|protected|override|async)\s+)*(?:where|orderBy|limit|offset|distinct|distinctOn|cursor|include)\s*[(<]'
+        - '(?:^|\n)[ \t]*(?:(?:public|protected|override|async)\s+)*(?:where|orderBy|limit|offset|distinct|distinctOn|cursor|include|all|first|create|createAll|upsert|update|updateAll|updateAndCount|delete|deleteAll|deleteAndCount)\s*[(<]'
   - id: collection-state-flags-are-boolean
     summary: |
       In `DefaultCollectionTypeState`, `hasWhere`, `hasOrderBy` and `hasUniqueFilter` are `boolean` (not known) instead of `false`. Code that expects `false` on a collection with no filter or order must expect `boolean`.
@@ -135,9 +135,9 @@ Collections have a new method, `pipe(step)`, which calls `step` with the collect
 
 An aggregate operation named `pipe` is now refused with `ORM.AGGREGATE_OPERATION_RESERVED` when the client is built; rename the operation.
 
-## Overriding a chaining method
+## Overriding a chaining method or a method that returns rows
 
-A class that extends `Collection` and overrides one of the chaining methods must declare the override with the new signature: a type parameter for the receiver, a `this` parameter of that type, and the result type the base method returns. Call the base method with `call` and explicit type arguments, so that the receiver type passes through:
+A class that extends `Collection` and overrides one of the chaining methods, or one of the methods that return rows (`all`, `first`, `create`, `createAll`, `upsert` and the writes), must declare the override with the new signature: a type parameter for the receiver, a `this` parameter of that type, and the result type the base method returns. Call the base method with `call` and explicit type arguments, so that the receiver type passes through:
 
 ```diff
   class PostCollection extends Collection<Contract, 'Post'> {
