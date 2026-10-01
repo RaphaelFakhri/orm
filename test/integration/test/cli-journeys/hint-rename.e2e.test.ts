@@ -23,7 +23,7 @@
 
 import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { contractSnapshotDir } from '@internal/migration-tools/contract-snapshot-store';
+import { contractSnapshotDir } from '@prisma/orm-postgres/migration-tools/contract-snapshot-store';
 import { describe, expect, it } from 'vitest';
 import { withTempDir } from '../utils/cli-test-helpers';
 import {
