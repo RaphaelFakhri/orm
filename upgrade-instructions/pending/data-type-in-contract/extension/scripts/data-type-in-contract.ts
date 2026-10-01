@@ -4,7 +4,10 @@
  * snapshot directories and rewrites every migration, ref, `migration.ts` and `contract.d.ts` that
  * names an old storage hash.
  *
- * Usage: pnpm exec tsx data-type-in-contract.ts [project-root]
+ * Usage: pnpm exec tsx data-type-in-contract.ts [project-root] [--data-type <codec id>=<data type id>]...
+ *
+ * `--data-type` names the data type of a codec the script's table does not know, such as an
+ * extension's own codec. It cannot change the data type of a codec the table knows.
  *
  * The project root defaults to the working directory. The script reads and writes files only. It
  * needs no database, network or configured stack, and a project already in the new format is left
@@ -399,9 +402,64 @@ function rewriteDefault(target: string, codecId: string, value: JsonRecord): Jso
   return value;
 }
 
-function rewriteContract(contract: JsonRecord): Rewrite {
+function dataTypesFor(
+  target: string,
+  extra: ReadonlyMap<string, string>,
+): Readonly<Record<string, string>> {
+  return { ...Object.fromEntries(extra), ...DATA_TYPES[target] };
+}
+
+const CODEC_ID = /^[^\s=]+$/;
+const DATA_TYPE_ID = /^[a-z0-9]+(?:-[a-z0-9]+)*\/[a-z0-9]+(?:-[a-z0-9]+)*$/;
+
+interface Options {
+  readonly root: string;
+  readonly dataTypes: ReadonlyMap<string, string>;
+  readonly errors: readonly string[];
+}
+
+function knownDataType(codecId: string): string | undefined {
+  for (const table of Object.values(DATA_TYPES)) {
+    const dataType = table[codecId];
+    if (dataType !== undefined) return dataType;
+  }
+  return undefined;
+}
+
+function parseOptions(args: readonly string[]): Options {
+  const dataTypes = new Map<string, string>();
+  const errors: string[] = [];
+  const positional: string[] = [];
+  for (let index = 0; index < args.length; index++) {
+    const arg = args[index] ?? '';
+    if (arg !== '--data-type' && !arg.startsWith('--data-type=')) {
+      if (arg.startsWith('--')) errors.push(`${arg}: unknown option`);
+      else positional.push(arg);
+      continue;
+    }
+    const value = arg === '--data-type' ? (args[++index] ?? '') : arg.slice('--data-type='.length);
+    const separator = value.indexOf('=');
+    const codecId = value.slice(0, separator);
+    const dataType = value.slice(separator + 1);
+    if (separator === -1 || !CODEC_ID.test(codecId) || !DATA_TYPE_ID.test(dataType)) {
+      errors.push(
+        `--data-type ${value}: expected <codec id>=<data type id>, for example acme/shape@1=acme/shape`,
+      );
+      continue;
+    }
+    const known = knownDataType(codecId);
+    if (known !== undefined) {
+      errors.push(`--data-type ${value}: the script already maps ${codecId} to ${known}`);
+      continue;
+    }
+    dataTypes.set(codecId, dataType);
+  }
+  return { root: resolve(positional[0] ?? process.cwd()), dataTypes, errors };
+}
+
+function rewriteContract(contract: JsonRecord, extra: ReadonlyMap<string, string>): Rewrite {
   const target = typeof contract['target'] === 'string' ? contract['target'] : '';
-  const table = DATA_TYPES[target] ?? {};
+  const table = dataTypesFor(target, extra);
   const unknownCodecs = new Set<string>();
   const defaultRewrites = new Map<string, Json>();
   let changed = false;
@@ -613,10 +671,11 @@ function memberRemoval(
 function rewriteDts(
   text: string,
   target: string,
+  extra: ReadonlyMap<string, string>,
   defaultRewrites: ReadonlyMap<string, Json>,
   hashes: ReadonlyMap<string, string>,
 ): string {
-  const table = DATA_TYPES[target] ?? {};
+  const table = dataTypesFor(target, extra);
   const blocks = scanBlocks(text);
   const edits: { start: number; end: number; text: string }[] = [];
 
@@ -697,7 +756,11 @@ function sameFiles(a: ReadonlyMap<string, string>, b: ReadonlyMap<string, string
   return a.size === b.size && [...a].every(([name, content]) => b.get(name) === content);
 }
 
-function main(root: string): number {
+function main({ root, dataTypes, errors }: Options): number {
+  if (errors.length > 0) {
+    process.stderr.write(`${errors.join('\n')}\n`);
+    return 1;
+  }
   const display = (path: string): string => relative(root, path).split(sep).join('/');
   const files = listFiles(root);
   const plans: ContractPlan[] = [];
@@ -719,9 +782,11 @@ function main(root: string): number {
     const stored = storage['storageHash'];
     const oldHash = snapshot ? basename(dirname(path)) : typeof stored === 'string' ? stored : '';
     const recomputes = computeStorageHash(contract) === oldHash;
-    const rewrite = rewriteContract(contract);
+    const rewrite = rewriteContract(contract, dataTypes);
     for (const codecId of rewrite.unknownCodecs)
-      stops.push(`${display(path)}: unknown codec ${codecId}`);
+      stops.push(
+        `${display(path)}: unknown codec ${codecId}; name its data type with --data-type ${codecId}=<data type id>`,
+      );
     if (!rewrite.changed && recomputes) continue;
     if (!recomputes)
       notices.push(`${display(path)}: stored hash did not recompute; rehashed from content`);
@@ -752,7 +817,13 @@ function main(root: string): number {
       ? join(dirname(plan.path), 'contract.d.ts')
       : `${plan.path.slice(0, -'.json'.length)}.d.ts`;
     const dts = existsSync(dtsPath)
-      ? rewriteDts(readFileSync(dtsPath, 'utf8'), plan.target, plan.defaultRewrites, hashes)
+      ? rewriteDts(
+          readFileSync(dtsPath, 'utf8'),
+          plan.target,
+          dataTypes,
+          plan.defaultRewrites,
+          hashes,
+        )
       : undefined;
     if (!plan.snapshot) {
       writes.set(plan.path, plan.content);
@@ -832,4 +903,4 @@ function main(root: string): number {
   return 0;
 }
 
-process.exitCode = main(resolve(process.argv[2] ?? process.cwd()));
+process.exitCode = main(parseOptions(process.argv.slice(2)));

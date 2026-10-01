@@ -699,13 +699,19 @@ const unknownCodecSpec: ContractSpec = {
         dataType: 'pg/uuid',
         nullable: false,
       },
-      { name: 'shape', codecId: 'acme/shape@1', nativeType: 'shape', dataType: '', nullable: true },
+      {
+        name: 'shape',
+        codecId: 'acme/shape@1',
+        nativeType: 'shape',
+        dataType: 'acme/shape',
+        nullable: true,
+      },
     ],
   },
 };
 
-function unknownCodec(): Record<string, string> {
-  const thing = contractFiles(unknownCodecSpec, 'old');
+function unknownCodec(format: Format): Record<string, string> {
+  const thing = contractFiles(unknownCodecSpec, format);
   return {
     'prisma/contract.json': emittedJson(thing.contract),
     'prisma/contract.d.ts': thing.dts,
@@ -803,5 +809,5 @@ writeCase('extension-package', extensionPackage);
 writeCase('sqlite-defaults', sqliteDefaults);
 writeCase('snapshot-already-present', snapshotAlreadyPresent);
 writeCase('stale-hash', staleHash);
-writeUnchangedCase('unknown-codec', unknownCodec());
+writeCase('unknown-codec', unknownCodec);
 writeUnchangedCase('snapshot-collision', snapshotCollision());
