@@ -103,3 +103,34 @@ Setup: `drop-db`, base schema (with `@@index([label])` on `Tag`), `db update`, s
 - **Odd advice in `db migrate`.** When an edge is missing it says a rename `may additionally need a hint in the planned migration`. Hints now live in the schema, not the migration.
 - **Cryptic type error.** `hint: { was: 'x', deleted: true }` fails with `Type 'true' is not assignable to type 'undefined'`, which does not say `deleted` is unsupported.
 - **Run environment.** Another agent edited and rebuilt tracked sources in this worktree during the run. I ran everything from an isolated checkout at `wip/qa/tree`, which is a registered git worktree. Remove it with `git worktree remove --force wip/qa/tree` when done. No step was slow: the slowest was the supabase test run at about 46 seconds.
+
+## Run 2
+
+- **Commit:** `b6dd7f1fdc` (branch HEAD when the run started; one commit past `d8670c4ab8`: `Keep the migrate advice family-blind: say a rename, not a table rename`).
+- **Build:** fresh detached worktree at `wip/qa/tree`, then `pnpm install --frozen-lockfile`, `pnpm build` (exit 0), and `pnpm install --frozen-lockfile --offline`. CLI: `wip/qa/tree/node_modules/.bin/prisma` (`8.0.0-rc.14`). The worktree was removed with `git worktree remove --force` at the end.
+- **Apps:** the same copies as run 1 (`wip/qa/prisma-8-demo`, `wip/qa/prisma-8-demo-b`), linked to the new checkout, with a new `@prisma/dev` database.
+- **Steps:** only C2, D1, D3, A7 (with the empty `@@hint()`), E2, F1, and the `db migrate` missing-path advice. The script at this commit already carries the corrected E2 and F1 expectations.
+
+| Step | Result | Evidence | Notes |
+| --- | --- | --- | --- |
+| C2 | PASS | `hint: { was: 'member' }`; `prisma contract emit --config prisma.config.contract-ts.ts --format human` → exit 2: `✘ [CONTRACT.HINT_INVALID] @@hint(was: "member") names the table's current name; the hint is spent, remove it.` JSON: `"code":"CONTRACT.HINT_INVALID"`, `"meta":{"model":"Member","was":"member"}`, `"nextActions":[]`. | The config-author next action is gone. |
+| D1 | PASS | `contract print` of the A1 PSL schema: `@@index([label], name: "label_label_idx")` / `@@map("label")` / `@@hint(was: "tag")`. Of the C1 TypeScript contract: `@@map("member")` / `@@hint(was: "user")`. Re-emitting the printed PSL: same `hints`, same `storageHash`. | |
+| D3 | PASS | `@@hint(deprecated: true)` → exit 2, `PSL_HINT_INVALID: @@hint(deprecated:) is reserved and not yet supported. Remove the model from the schema and run db update.` | The message now ends after `run db update.`. `@@hint(deleted: true)` still gives `Attribute "hint" received unknown argument "deleted"`. |
+| A7 | PASS | `label` applied by `db update`, then `CREATE TABLE "tag" (id int)`, then `db update --format human` → exit 2: `✘ [MIGRATION.PLANNING_FAILED]` / `why: MIGRATION.HINT_CONTRADICTED: the rename hint on table "label" (was "tag") cannot apply: namespace "public" has both "tag" and "label".` / `→ A rename hint applies only while the old name exists and the new one does not. If "tag" was already renamed, remove the hint. If "tag" is a different table that should stay, remove the hint and give the model another table name.` `grep -ci deleted` on the human and JSON output → 0. Database dump before and after identical; hand-made table dropped. `@@hint()` → `PSL_HINT_INVALID: @@hint needs was.` | My first attempt created `tag` while the real `tag` still existed, so `CREATE TABLE` failed and the rename went through. That was a setup error on my part, not a product fault. The reported run is the corrected one. |
+| E2 | PASS | `Task.description` removed; `db update --json` (no `--confirm`) → exit 2, `"code": "CLI.CONSENT_REQUIRED"`, summary `"Apply 1 destructive operation(s) to template1? Data they remove cannot be recovered:\n  - Drop column \"description\" from \"task\"\" requires explicit consent, … Grant it by passing --confirm template1."`, `meta: {'consentToken': 'template1'}`. Under a TTY (`script -F`): prompt `Apply 1 destructive operation(s) to template1? … - Drop column "description" from "task" Type template1 to confirm.` Column still present afterwards. | |
+| F1 | PASS | CLI README line 1119 (§ `migration plan`, `Hints applied`): `Hints in an extension's own contract.json have no effect: the planner never runs for an extension's contract space, whose migrations are built in advance.` Line 1099: `A destination named by --to is a snapshot and carries no hints; …`. Migration System doc line 137 unchanged and still states both. | Matches B6/B7 from run 1. |
+| Extra: `db migrate` missing path | PASS | In `prisma-8-demo-b` (marker `8b3761…`), emitted a schema with `Task.description` removed, then ran `prisma db migrate --format human` → exit 2, `✘ [MIGRATION.PATH_UNREACHABLE] Current contract has no planned migration path`. The new advice line: `→ A rename is stated with @@hint(was: "<old name>") on the model in the schema and planned with migration plan; re-adding a required field without a safe default, or a type change that needs data, may leave a placeholder in the planned migration.ts to fill in`. | The first advice line, `Plan the missing edge: prisma migration plan --from 8b3761… --to 07c08c… --name <slug>`, names the emitted contract by hash. A probe showed `migration plan --to <hash of the emitted contract>` fails with `MIGRATION.REF_NOT_FOUND` (`No contract matching "4410…" exists in the migration graph or refs index.`) when that contract has no snapshot yet. Even if it resolved, the README says a `--to` destination carries no hints. So a user who follows the advice for a hinted rename cannot plan it. Probably older than this slice; reported because it sits next to the new rename advice. |
+
+### Run 2 summary
+
+**Counts:** 7 PASS, 0 FAIL, 0 BLOCKED.
+
+- All four run 1 failures (C2, D1, E2, F1) now pass. The `deleted` hint advice is gone from all three places (A7, D3, `@@hint()`).
+- **Noticed but not asked:** `db migrate`'s `Plan the missing edge` advice names the emitted contract with `--to <hash>`. That command fails with `MIGRATION.REF_NOT_FOUND` while the contract has no snapshot. It would also drop the hints, so it conflicts with the new rename advice right below it. Planning without `--to` (the default destination) is the path that works.
+- **Still open from run 1, not re-checked:**
+  - `db update` prints no `Hints applied` line.
+  - Fresh demo copies have no `db` ref.
+  - Progress lines are doubled.
+  - A no-op `db update` reports "signature updated".
+  - Error envelopes have no `exitCode`.
+  - The `deleted: true` type error is cryptic.
