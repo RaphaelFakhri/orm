@@ -21,6 +21,7 @@ Reviewer-maintained. Contract: `projects/data-types-completion/design.md` sectio
 | d | 1 (`dee5832fd2`, `86ce42fb16`) | ANOTHER ROUND NEEDED: 2 should-fix; 1 design gap |
 | d | 2 (`02642c08c1`, `54b62a3e30`, `809938fa82`) | SATISFIED: S2-d-R1-1 and S2-d-R1-2 closed, the ruled option built, no new finding |
 | e | 1 and 2 (`813a092bc5`..`da192ec6ab`, implementer commits only) | ANOTHER ROUND NEEDED: 1 must-fix |
+| e | 3 (`40bde80ebb`, `5ffb0d42f6`) | SATISFIED: S2-e-R1-1 closed, no new finding |
 
 ## Findings log
 
@@ -117,6 +118,10 @@ Reviewer-maintained. Contract: `projects/data-types-completion/design.md` sectio
 - Where: `test/integration/test/psl-print/every-postgres-contract-roundtrip.integration.test.ts` (`trackedPostgresContracts()`).
 - What is wrong: the test takes every tracked Postgres contract, and 14 of its 560 cases fail (7 files, each listed twice). `test/integration/test/fixtures/contract-format/supabase-before-dbgenerated-removal.contract.json` and the three `before` contracts of the upgrade script's fixtures are refused by `deserializeContract` for storing `nativeType`, which is intended. The three `after` contracts (`extension-package`, `postgres-extension-space`, `unknown-codec`) are synthetic and are refused by the printer (`CONTRACT.PRINT_UNSUPPORTED`). Commit `97e7f918e2` excluded `upgrade-instructions/` from the golden planner test but not from this test. CI runs it.
 - Change: exclude `upgrade-instructions/` from `trackedPostgresContracts()` as the golden test does, and exclude the refusal fixture or record that its deserialization is refused, with the reason in the test.
+
+### Dispatch e round 3 status of the round 1 finding
+
+- S2-e-R1-1: closed (`40bde80ebb`, `5ffb0d42f6`). `test/integration/test/utils/tracked-contract-files.ts` lists tracked `*.json` files with two git exclusions only, `upgrade-instructions/` and the old-format refusal fixture, and both the round-trip and golden tests use it. The round-trip test passes 546 (560 less the 14 failing cases); the golden test passes 684 (686 less the refusal fixture's two cases), and the manifest lost only that entry.
 
 ## Round notes
 
