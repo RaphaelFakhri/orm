@@ -217,13 +217,19 @@ describe('resolveHints ordering and purity', () => {
     {
       zeta: { b: sqlTable('id'), a: sqlTable('id') },
       alpha: { y: sqlTable('id'), x: sqlTable('id') },
-      mid: { n: sqlTable('id') },
+      mid: { n: sqlTable('id'), account: sqlTable('id'), User: sqlTable('id') },
     },
     {
       namespaces: {
         zeta: { tables: { b: { was: 'old_b' }, a: { was: 'old_a' } } },
         alpha: { tables: { y: { was: 'old_y' }, x: { was: 'old_x' } } },
-        mid: { tables: { n: { was: 'old_n' } } },
+        mid: {
+          tables: {
+            n: { was: 'old_n' },
+            account: { was: 'old_account' },
+            User: { was: 'old_User' },
+          },
+        },
       },
     },
   );
@@ -233,12 +239,16 @@ describe('resolveHints ordering and purity', () => {
     'alpha.old_y',
     'alpha.old_x',
     'mid.old_n',
+    'mid.old_account',
+    'mid.old_User',
   );
 
   it('visits namespaces, then tables, in code-point order', () => {
     expect(resolve({ contract, origin: everyOldTable }).tableRenames).toEqual([
       { namespaceId: 'alpha', from: 'old_x', to: 'x' },
       { namespaceId: 'alpha', from: 'old_y', to: 'y' },
+      { namespaceId: 'mid', from: 'old_User', to: 'User' },
+      { namespaceId: 'mid', from: 'old_account', to: 'account' },
       { namespaceId: 'mid', from: 'old_n', to: 'n' },
       { namespaceId: 'zeta', from: 'old_a', to: 'a' },
       { namespaceId: 'zeta', from: 'old_b', to: 'b' },
