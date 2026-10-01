@@ -43,7 +43,7 @@ export function unmatchedTableRename(rename: TableRename, reason: string): Struc
     TABLE_RENAME_UNMATCHED_CODE,
     `renameTable "${tableLabel(rename.namespaceId, rename.from)}" to "${rename.to}" does not match the migration's contracts: ${reason}.`,
     {
-      why: "renameTable must name a table as the migration's earlier operations leave it, and a new name that the end contract has and that no earlier operation has already produced. Order the renameTable calls in the sequence the renames happen, make the rename its own schema change, and check the spelling, the table and the namespace.",
+      why: "renameTable must name a table as the migration's earlier rename operations leave it, and a new name that the end contract has and that no earlier rename operation has already produced. Order the renameTable calls in the sequence the renames happen, make the rename its own schema change, and check the spelling, the table and the namespace.",
       meta: { from: rename.from, to: rename.to },
     },
   );

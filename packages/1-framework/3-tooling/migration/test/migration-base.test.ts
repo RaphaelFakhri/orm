@@ -237,7 +237,7 @@ describe('buildMigrationArtifacts', () => {
     expect(JSON.parse(metadataJson)).toEqual(metadata);
   });
 
-  it('resets the authoring state after reading operations, so a second build reads them afresh', async () => {
+  it('resets the authoring state before reading operations, so each build reads them from the start', async () => {
     const events: string[] = [];
     class M extends Migration {
       readonly targetId = 'test';
@@ -257,7 +257,7 @@ describe('buildMigrationArtifacts', () => {
     await buildMigrationArtifacts(migration, null);
     await buildMigrationArtifacts(migration, null);
 
-    expect(events).toEqual(['read operations', 'reset', 'read operations', 'reset']);
+    expect(events).toEqual(['reset', 'read operations', 'reset', 'read operations']);
   });
 
   it('preserves createdAt from existing metadata', async () => {

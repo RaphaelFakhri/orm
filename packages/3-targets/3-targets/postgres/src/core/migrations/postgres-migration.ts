@@ -335,13 +335,16 @@ export abstract class PostgresMigration<
     readonly from: string;
     readonly to: string;
   }): Promise<SqlMigrationPlanOperation<PostgresPlanTargetDetails>> {
-    return new RenameConstraintCall(
+    const call = new RenameConstraintCall(
       options.schema ?? UNBOUND_NAMESPACE_ID,
       options.table,
       options.kind,
       options.from,
       options.to,
-    ).toOp(this.controlAdapterFor('renameConstraint'));
+    );
+    const adapter = this.controlAdapterFor('renameConstraint');
+    this.advanceWorkingSchema(call);
+    return call.toOp(adapter);
   }
 
   protected dropCheckConstraint(options: {
@@ -371,8 +374,10 @@ export abstract class PostgresMigration<
   /**
    * Emit the operations that rename a table: the table rename, then a rename of each primary key,
    * unique constraint, foreign key, index and check whose name was derived from the old table name.
-   * The old name is resolved against the schema as this migration's earlier `renameTable` calls
-   * leave it, and the new name against the end contract. Spread the result into `operations`:
+   * The old name is resolved against the schema as this migration's earlier rename calls
+   * (`renameTable`, `renameIndex`, `renameConstraint`, `renameRlsPolicy`) leave it, and the new name
+   * against the end contract, so the companions start from names an earlier rename gave. Spread the
+   * result into `operations`:
    * `...this.renameTable({ table: 'userProfile', to: 'UserProfile' })`. `schema` names the table's
    * namespace when more than one declares the table. Throws `MIGRATION.TABLE_RENAME_UNMATCHED` when
    * the table does not exist at that point of the migration or the end contract lacks the new name.
@@ -418,6 +423,18 @@ export abstract class PostgresMigration<
       postgresContractToSchema(startContract, this.frameworkComponents()),
     );
     return this.#workingSchema;
+  }
+
+  /**
+   * Applies a rename to the working schema, so a later `renameTable` sees it. A migration with no
+   * start contract has no working schema to advance.
+   */
+  private advanceWorkingSchema(
+    call: RenameConstraintCall | RenameIndexCall | RenamePostgresRlsPolicyCall,
+  ): void {
+    const startContract = this.startContract;
+    if (startContract === null) return;
+    this.workingSchemaFrom(startContract).apply(call);
   }
 
   protected override resetAuthoringState(): void {
@@ -530,9 +547,10 @@ export abstract class PostgresMigration<
     readonly from: string;
     readonly to: string;
   }): Promise<SqlMigrationPlanOperation<PostgresPlanTargetDetails>> {
-    return new RenameIndexCall(options.schema, options.table, options.from, options.to).toOp(
-      this.controlAdapterFor('renameIndex'),
-    );
+    const call = new RenameIndexCall(options.schema, options.table, options.from, options.to);
+    const adapter = this.controlAdapterFor('renameIndex');
+    this.advanceWorkingSchema(call);
+    return call.toOp(adapter);
   }
 
   protected dropIndex(options: {
@@ -604,12 +622,15 @@ export abstract class PostgresMigration<
     readonly from: string;
     readonly to: string;
   }): Promise<SqlMigrationPlanOperation<PostgresPlanTargetDetails>> {
-    return new RenamePostgresRlsPolicyCall(
+    const call = new RenamePostgresRlsPolicyCall(
       options.schema,
       options.table,
       options.from,
       options.to,
-    ).toOp(this.controlAdapterFor('renameRlsPolicy'));
+    );
+    const adapter = this.controlAdapterFor('renameRlsPolicy');
+    this.advanceWorkingSchema(call);
+    return call.toOp(adapter);
   }
 }
 

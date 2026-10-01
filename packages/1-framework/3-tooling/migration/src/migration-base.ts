@@ -134,8 +134,9 @@ export abstract class Migration<
 
   /**
    * Discards state a migration builds while its `operations` are read, such as the schema its
-   * earlier operations leave behind, so the next read starts from the start contract again.
-   * `buildMigrationArtifacts` calls it after reading `operations`. The default keeps no state.
+   * earlier rename operations leave behind, so the next read starts from the start contract again.
+   * Every reader of `operations` in the bases, such as `buildMigrationArtifacts`, calls it before
+   * reading. The default keeps no state.
    */
   protected resetAuthoringState(): void {}
 
@@ -277,8 +278,8 @@ export async function buildMigrationArtifacts(
   instance: Migration,
   existing: Partial<MigrationMetadata> | null,
 ): Promise<MigrationArtifacts> {
-  const rawOps = instance.operations;
   Migration.resetAuthoringStateOf(instance);
+  const rawOps = instance.operations;
   if (!Array.isArray(rawOps)) {
     throw errorOperationsNotArray();
   }
