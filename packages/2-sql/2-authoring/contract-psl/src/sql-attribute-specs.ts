@@ -63,11 +63,11 @@ import type {
   PslSources,
 } from '@internal/psl-parser/syntax';
 import { FunctionCallAst } from '@internal/psl-parser/syntax';
-import { deletedHintsShipped } from '@internal/sql-contract/hints';
 import { blindCast } from '@internal/utils/casts';
 import { notOk } from '@internal/utils/result';
 import { removedDbgeneratedMessage } from './default-function-registry';
 import { getAttribute } from './psl-attribute-parsing';
+import { deletedHintsShipped } from './release-switches';
 
 function buildModelAttributeCtx(input: {
   readonly symbols: SymbolTable;

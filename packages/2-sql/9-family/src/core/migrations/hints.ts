@@ -5,12 +5,12 @@ import type {
 } from '@internal/framework-components/control';
 import {
   assertContractHintsConsistent,
-  deletedHintsShipped,
   type SqlTableHints,
   sqlContractHints,
 } from '@internal/sql-contract/hints';
 import type { SqlStorage } from '@internal/sql-contract/types';
 import { isStructuredError } from '@internal/utils/structured-error';
+import { deletedHintsShipped } from '../release-switches';
 import type { ResolvedTableRename } from './resolve-table-rename';
 import type { SchemaTables } from './schema-tables';
 import type { SqlPlannerConflict } from './types';
