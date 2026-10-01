@@ -13,6 +13,7 @@ Reviewer-maintained. Contract: `projects/data-types-completion/design.md` sectio
 | --- | --- | --- |
 | a | 1 (`fa4cbba1ee`, `c8e638387f`, `8e7eb4f82f`, `e8bd655435`, merge `75b971783e`) | ANOTHER ROUND NEEDED: 1 must-fix, 1 should-fix, 4 low |
 | a | 2 (`a99f5b13cd..dc527c4502`) | ANOTHER ROUND NEEDED: S2-a-R1-1 to S2-a-R1-6 closed; 1 new must-fix, 1 new low |
+| a | 3 (`feac9e4922`, `daed46c3c2`) | SATISFIED: S2-a-R2-1 and S2-a-R2-2 closed, no new finding |
 
 ## Findings log
 
@@ -72,7 +73,16 @@ Reviewer-maintained. Contract: `projects/data-types-completion/design.md` sectio
 - What is wrong: the file's codec lookup (lines 96-103) says `sql/char@1` represents `test/character`, `pg/text@1` represents `test/text`, and so on. The new map says `pg/char`, `pg/text`, `pgvector/vector`. So every test column pairs a codec with a data type that the test's own stack says it does not represent. No assertion depends on it, because `contractToSchemaIR` takes the data type from the codec.
 - Change: delete the map and take `dataType` from `dataTypeOfCodec[codecId].id`.
 
+### Dispatch a round 3 status of the round 2 findings
+
+- S2-a-R2-1: closed (`feac9e4922`). `authoring?.` in the adapter test; the SQLite pack test uses `createSqliteBuiltinCodecLookup()`.
+- S2-a-R2-2: closed (`daed46c3c2`). Columns take `dataType` from the test's own codec lookup; the `test/unknown@1` column, which the lookup does not know, names its data type explicitly.
+
 ## Round notes
+
+### Dispatch a, round 3
+
+`typecheck` for `@internal/adapter-sqlite`, `@internal/sqlite` and `@internal/family-sql`: all exit 0. The three changed test files pass alone (1, 8 and 43 tests). Both commits carry the two sign-offs and no AI attribution.
 
 ### Dispatch a, round 2
 
