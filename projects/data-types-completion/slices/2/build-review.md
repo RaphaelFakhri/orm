@@ -17,6 +17,8 @@ Reviewer-maintained. Contract: `projects/data-types-completion/design.md` sectio
 | b | 1 (`ffecde3bde`, `650a4f2d32`) | SATISFIED: no finding; 2 design gaps for the orchestrator |
 | b | 2 (`0c7ccebe6d`) | SATISFIED: the ruled JSON default gap is closed, no finding |
 | c | 1 (`3190ecd3bd`, `dda8c4e356`, `596626b778`, `ae59f32967`, `190e4c7c28`, `4797502384`, `187c1a572c`, `d8eb478422`) | SATISFIED: 1 low; notes for dispatch f |
+| c | 2 (`91e087fc09`) | SATISFIED: S2-c-R1-1 closed, no new finding |
+| d | 1 (`dee5832fd2`, `86ce42fb16`) | ANOTHER ROUND NEEDED: 2 should-fix; 1 design gap |
 
 ## Findings log
 
@@ -87,7 +89,49 @@ Reviewer-maintained. Contract: `projects/data-types-completion/design.md` sectio
 - What is wrong: when `fn` throws and `ROLLBACK` then also throws (a dropped connection), the `ROLLBACK` error propagates and the marker write error that caused it is lost.
 - Change: when `ROLLBACK` throws, rethrow the original error (for example with the rollback failure as its `cause`, or by ignoring the rollback failure), with a test on each adapter.
 
+### Dispatch c round 2 status of the round 1 finding
+
+- S2-c-R1-1: closed (`91e087fc09`). When `ROLLBACK` throws, the original error is rethrown with the rollback failure as its `cause` (if it had none). Two tests per adapter; both adapter test files pass (4 and 4).
+
+### S2-d-R1-1 (should-fix): nothing keeps the script's copied hash rules equal to the real ones
+
+- Where: `upgrade-instructions/pending/data-type-in-contract/test/generate-fixtures.ts` and `test/data-type-in-contract.test.ts`.
+- What is wrong: the generator computes every `after` hash with the real `recomputePublishedStorageHash` and `computeMigrationHash`, and the test compares the script's output with those trees. That proves the copy equal to the real rules on these fixtures on the day they were generated. No test runs the generator again or recomputes the committed hashes with the real functions. If the real hashing changes, for example during dispatch e or a later fix, the fixtures and the script stay equal to each other and the tests stay green while the script writes hashes the framework no longer computes. The fixtures are small, so they also cover few of the canonicalization rules the copy reproduces (empty-value omission paths, sorted index and check arrays, namespace `kind` removal).
+- Change: add a test in a package that can import the internal functions (for example under `test/integration`) that reads every `after` fixture and asserts that the real `recomputePublishedStorageHash` with `sqlContractCanonicalizationHooks` gives each contract's stored hash (its snapshot directory name or `storage.storageHash`), and that `computeMigrationHash` gives each `migration.json`'s `migrationHash`. Dispatch e's proof on the repository's own projects then covers the wider shapes.
+
+### S2-d-R1-2 (should-fix): both instruction files leave out two things the user must know
+
+- Where: `upgrade-instructions/pending/data-type-in-contract/{app,extension}/instructions.md`.
+- What is wrong: neither file tells the user to run their formatter afterwards, although the script replaces text in `migration.ts` and `contract.d.ts`, so line wrapping can differ from a fresh emit. Neither file says that the script rewrites every `*.json` under the root that parses as a SQL contract (skipping `node_modules`, `.git`, `dist` and `build`), so a test fixture of an old contract kept on purpose is rewritten too.
+- Change: add both to each file: commit first; run the formatter after the script; restore any old-format fixture that must stay old with git (or keep such fixtures outside the project root). The design text of 10.2 (`db sign`, extension release order, the `$1::int4` change) is dispatch f's.
+
 ## Round notes
+
+### Dispatch d, round 1
+
+Steps 1 to 9 of design 10.1 against the script:
+
+1. Every `*.json` under the root (skipping `node_modules`, `.git`, `dist`, `build`) whose `targetFamily` is `sql` is a contract, including the copies under `migrations/<extension>/`; a Mongo contract is left alone (tested).
+2. The old hash is the snapshot directory name or `storage.storageHash`, recomputed from content; a mismatch prints the design's line and the file is still rewritten (`stale-hash` fixture).
+3. The table is keyed by target. I checked every entry against the built registries: each Postgres and SQLite codec maps to its descriptor's `dataType`; `pg/vector@1`, `pg/geometry@1` and `arktype/json@1` match their extensions' sources; the five retired ids are present. An unknown codec stops (tested).
+4. `nativeType` becomes `dataType`; `extensions.*.types.storage[].nativeType` is removed; the SQLite default rules match `slices/2/briefs/s2b-default-rewrites.md` (JSON to canonical text with `null` kept, integer numbers to digit text, digit text unchanged).
+5. and 6. Hashes are recomputed with the copied rules (S2-d-R1-1); snapshot directories are renamed, a collision with different content stops, an identical one is merged (both tested); `from`, `to` and `migrationHash` in each `migration.json` and the hashes in ref files go through the map.
+7. `snapshots/<hash>/` specifiers in `migration.ts` go through the map.
+8. In `contract.d.ts`, each `readonly nativeType` line becomes the `dataType` line for its column's codec, a `nativeType` line inside an extension `types.storage` entry is deleted, hash literals go through the map, and a rewritten default's `DefaultLiteralValue` argument is replaced.
+9. An emitted contract keeps its own final newline (amended design); a snapshot is one canonical line plus a newline. On a stop, nothing is written, one line per case goes to stderr, and the exit code is 1.
+
+The choices:
+
+1. The copied hash rules: acceptable, because the script must run in a project that cannot import internal packages. The proof is weak, see S2-d-R1-1.
+2. Deleting the extension `nativeType` lines in `contract.d.ts`: right. The emitter writes `extensions` with `serializeValue` of the contract's own `extensions` object (`generate-contract-dts.ts:225`), and that object no longer carries `nativeType`.
+3. Any SQL contract JSON is rewritten: this can rewrite a fixture kept old on purpose. In this repository, dispatch e runs the script on `examples/`, `apps/` and `packages/3-extensions/` only, and no JSON file there other than `contract.json` holds `nativeType`, so `test/integration/test/fixtures/contract-format/supabase-before-dbgenerated-removal.contract.json` is out of reach. For users, the instruction text must say it (S2-d-R1-2). An exclusion option is not needed if the text says to keep such files outside the root or restore them with git.
+4. The formatter is not mentioned in either `instructions.md` (S2-d-R1-2).
+5. Idempotency: each `after` tree run again is unchanged with exit 0, and a second run over an upgraded copy is unchanged. The stop cases assert the whole tree equals `before`, with exit 1 and the exact stderr. Each would fail if the script wrote before stopping or printed otherwise.
+6. Unknown codec: design gap for the orchestrator. Design 10.1 step 3 only stops. A project that uses any codec outside the table (a third-party extension, or one of the user's own) cannot upgrade at all, and the stop message gives no way forward. I recommend the inventory's repeatable `--data-type <codec>=<id>` option, with the stop message naming it.
+
+SQL data transforms are stored as lowered SQL in `ops.json`, so no SQL `ops.json` holds a storage hash; the one `ops.json` in the repository with a hash is Mongo (`examples/retail-store`), which the script skips.
+
+Checks: `node --test` on the script's test file: 18 pass. `lint:deps`, `lint:agent` and `check:upgrade-coverage --mode pr --prev bot/data-types-completion` pass. The working tree held uncommitted dispatch e changes while I ran `lint:agent`; I did not touch them.
 
 ### Dispatch c, round 1
 
