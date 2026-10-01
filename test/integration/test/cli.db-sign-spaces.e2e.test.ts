@@ -1,6 +1,7 @@
 import { copyFileSync, readFileSync, writeFileSync } from 'node:fs';
 import { mkdir } from 'node:fs/promises';
 import { DatabaseSync } from 'node:sqlite';
+import pgvector from '@internal/extension-pgvector/control';
 import type { SqlControlExtensionDescriptor } from '@internal/family-sql/control';
 import { computeMigrationHash } from '@internal/migration-tools/hash';
 import { materialiseMigrationPackage } from '@internal/migration-tools/io';
@@ -22,6 +23,8 @@ import { engineDiagnosticCodes, planMigrationAndSelfEmit } from './utils/journey
 const OLD_APP_HASH = `0ld0a99${'1'.repeat(57)}`;
 const OLD_EXT_HASH = `0ld0e77${'2'.repeat(57)}`;
 const JOURNEY_TIMEOUT = timeouts.spinUpPpgDev + timeouts.typeScriptCompilation;
+const PGVECTOR_SPACE_ID = 'pgvector';
+const PGVECTOR_INVARIANT_ID = 'pgvector:install-vector-v1';
 
 interface Project {
   readonly testDir: string;
@@ -113,15 +116,27 @@ async function postgresMarkers(connectionString: string): Promise<Record<string,
 }
 
 /** Makes the database look signed before the upgrade: markers hold hashes the project no longer has. */
-async function ageMarkersOnPostgres(connectionString: string): Promise<void> {
+async function ageMarkersOnPostgres(
+  connectionString: string,
+  extensionSpace: { readonly id: string; readonly invariant: string },
+): Promise<void> {
   await withClient(connectionString, async (client) => {
     await client.query(`UPDATE prisma_contract.marker SET core_hash = $1 WHERE space = 'app'`, [
       OLD_APP_HASH,
     ]);
     await client.query(
       'UPDATE prisma_contract.marker SET core_hash = $1, invariants = $2::text[] WHERE space = $3',
-      [OLD_EXT_HASH, [TEST_BASELINE_INVARIANT_ID], TEST_SPACE_ID],
+      [OLD_EXT_HASH, [extensionSpace.invariant], extensionSpace.id],
     );
+  });
+}
+
+async function createPgvectorSchema(connectionString: string): Promise<void> {
+  await withClient(connectionString, async (client) => {
+    await client.query(
+      'CREATE TABLE "user" (id integer NOT NULL, email text NOT NULL, PRIMARY KEY (id))',
+    );
+    await client.query('CREATE EXTENSION vector');
   });
 }
 
@@ -137,20 +152,23 @@ async function createPostgresTables(connectionString: string): Promise<void> {
 withTempDir(({ createTempDir }) => {
   describe('db sign over every contract space', () => {
     it(
-      're-signs the app and an extension space on PGlite, after which the project works',
+      're-signs the app and the pgvector space on PGlite, after which the project works',
       async () => {
         await withDevDatabase(async ({ connectionString }) => {
           const project = setupTestDirectoryFromFixtures(
             createTempDir,
             'db-sign-spaces',
-            'prisma.config.with-db.ts',
+            'prisma.config.pgvector.with-db.ts',
             { '{{DB_URL}}': connectionString },
           );
-          const { appHash, extHash } = await prepareProject(project, testContractSpaceExtension);
-          await createPostgresTables(connectionString);
+          const { appHash, extHash } = await prepareProject(project, pgvector);
+          await createPgvectorSchema(connectionString);
           const first = await runOnEngine(project, ['db', 'sign', '--json']);
           expect(first.exitCode, `first sign: ${first.stderr}`).toBe(0);
-          await ageMarkersOnPostgres(connectionString);
+          await ageMarkersOnPostgres(connectionString, {
+            id: PGVECTOR_SPACE_ID,
+            invariant: PGVECTOR_INVARIANT_ID,
+          });
 
           const sign = await runOnEngine(project, ['db', 'sign', '--json']);
 
@@ -158,7 +176,7 @@ withTempDir(({ createTempDir }) => {
           expect(signedSpaces(sign)).toEqual([
             { space: 'app', status: 'signed', storageHash: appHash, previous: OLD_APP_HASH },
             {
-              space: TEST_SPACE_ID,
+              space: PGVECTOR_SPACE_ID,
               status: 'signed',
               storageHash: extHash,
               previous: OLD_EXT_HASH,
@@ -166,11 +184,11 @@ withTempDir(({ createTempDir }) => {
           ]);
           expect(await postgresMarkers(connectionString)).toEqual({
             app: appHash,
-            [TEST_SPACE_ID]: extHash,
+            [PGVECTOR_SPACE_ID]: extHash,
           });
           const refsDir = (space: string) => join(project.testDir, 'migrations', space, 'refs');
           expect((await readRef(refsDir('app'), 'db')).hash).toBe(appHash);
-          expect((await readRef(refsDir(TEST_SPACE_ID), 'db')).hash).toBe(extHash);
+          expect((await readRef(refsDir(PGVECTOR_SPACE_ID), 'db')).hash).toBe(extHash);
           await expectProjectWorksAgainstDatabase(project);
         });
       },
@@ -191,7 +209,10 @@ withTempDir(({ createTempDir }) => {
           await createPostgresTables(connectionString);
           const first = await runOnEngine(project, ['db', 'sign', '--json']);
           expect(first.exitCode, `first sign: ${first.stderr}`).toBe(0);
-          await ageMarkersOnPostgres(connectionString);
+          await ageMarkersOnPostgres(connectionString, {
+            id: TEST_SPACE_ID,
+            invariant: TEST_BASELINE_INVARIANT_ID,
+          });
           await withClient(connectionString, (client) => client.query('DROP TABLE test_box'));
 
           const sign = await runOnEngine(project, ['db', 'sign', '--json']);
