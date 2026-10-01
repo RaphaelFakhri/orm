@@ -1,7 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import { createPostgresTypeMap } from '../../src/core/psl-build/postgres-type-map';
-import { CODEC_ID_BY_INFERRED_TYPE } from '../../src/core/psl-infer/infer-default-codec';
 import { postgresCodecDescriptorRegistry } from '../../src/core/registry';
+import {
+  postgresNativeAuthoringTypes,
+  postgresScalarAuthoringTypes,
+} from '../../src/core/type-constructors';
+
+const typeConstructors: Readonly<
+  Record<string, { readonly output: { readonly codecId: string } }>
+> = { ...postgresScalarAuthoringTypes, ...postgresNativeAuthoringTypes };
 
 describe('createPostgresTypeMap', () => {
   const typeMap = createPostgresTypeMap();
@@ -187,7 +194,7 @@ describe('contract infer writes the text-backed date and time types', () => {
         const resolution = map.resolve(nativeType);
         const codecId =
           'pslType' in resolution
-            ? CODEC_ID_BY_INFERRED_TYPE.get(resolution.pslType.name)
+            ? typeConstructors[resolution.pslType.name]?.output.codecId
             : undefined;
         const descriptor =
           codecId === undefined
