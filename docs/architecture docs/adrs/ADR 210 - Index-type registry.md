@@ -90,7 +90,7 @@ type IndexTypeEntry<TOptions> = {
 };
 ```
 
-The contract build checks `columnTraits` through the contract's codec lookup, beside the options, and refuses an index over a column whose codec lacks one with `CONTRACT.INDEX_INVALID`. Postgres's `fullText` type requires `textual`, so a full-text index written through the general index API cannot cover a number column.
+The contract build checks `columnTraits` through the contract's codec lookup, beside the options, and refuses an index over a column whose codec lacks one with `CONTRACT.INDEX_INVALID`. The check runs when the contract is built, not when a `contract.json` is loaded. A codec the lookup does not know is skipped, and a build without a codec lookup checks nothing. Postgres's `fullText` type requires `textual`, so a full-text index written through the general index API cannot cover a number column.
 
 Entries are produced by a small fluent builder. The builder is the only way an entry comes into existence; there is no other constructor:
 
