@@ -517,6 +517,24 @@ type OrderableFields<
     : never]: Orderable;
 };
 
+/** The fields of a model whose codec has the `order` trait. */
+export type SortableFieldName<
+  TContract extends Contract<SqlStorage>,
+  ModelName extends string,
+  NsId extends string = never,
+> = keyof OrderableFields<TContract, ModelName, NsId> & string;
+
+/** The codec and nullability of a model field, as `FieldExpression` takes them. */
+export type ModelFieldCodec<
+  TContract extends Contract<SqlStorage>,
+  ModelName extends string,
+  FieldName extends string,
+  NsId extends string = never,
+> = {
+  readonly codecId: FieldCodecId<TContract, ModelName, FieldName, NsId>;
+  readonly nullable: FieldNullable<TContract, ModelName, FieldName, NsId>;
+};
+
 /**
  * A to-one relation inside `where`/`orderBy`: the relation filters plus each orderable scalar field of the related model. A related field named like a relation method is not exposed.
  */
