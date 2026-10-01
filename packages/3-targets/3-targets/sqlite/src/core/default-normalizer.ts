@@ -69,15 +69,15 @@ export function parseSqliteDefault(
     return { kind: 'literal', value: null };
   }
 
-  // SQLite integers are 64-bit, so values outside the JS safe-integer range can't
-  // be faithfully represented as `number`. Mirror `parsePostgresDefault`'s bigint
-  // handling: parse as JS `number` when safe, fall back to the raw text otherwise.
+  // An `integer` column's default is read in `sqlite/integer`'s stored form, digit text, which
+  // keeps every 64-bit value exact.
+  if (nativeType?.toLowerCase() === 'integer' && INTEGER_PATTERN.test(trimmed)) {
+    return { kind: 'literal', value: BigInt(trimmed).toString() };
+  }
+
   if (isNumericLiteral(trimmed)) {
     const num = Number(trimmed);
     if (!Number.isFinite(num)) return undefined;
-    if (nativeType?.toLowerCase() === 'integer' && !Number.isSafeInteger(num)) {
-      return { kind: 'literal', value: trimmed };
-    }
     return { kind: 'literal', value: num };
   }
 

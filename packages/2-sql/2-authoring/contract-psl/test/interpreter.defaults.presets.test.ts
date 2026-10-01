@@ -107,7 +107,7 @@ describe('interpretPslDocumentToSqlContract field-preset default lowering', () =
     const storage = sqlStorageFromSuccessfulSqlInterpretation(result.value);
     expect(unboundTables(storage)['Timestamped']?.columns['updatedAt']).toMatchObject({
       codecId: 'sqlite/datetime@1',
-      dataType: 'sqlite/datetime',
+      dataType: 'sqlite/text',
       nullable: false,
     });
     expect(result.value.execution?.mutations.defaults).toEqual([

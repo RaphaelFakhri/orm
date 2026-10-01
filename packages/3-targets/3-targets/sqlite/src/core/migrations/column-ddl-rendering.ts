@@ -1,4 +1,4 @@
-import type { SqlTypeLookups } from '@internal/sql-contract/data-type';
+import { type SqlTypeLookups, sqlDataTypeOfCodec } from '@internal/sql-contract/data-type';
 import type { StorageColumn } from '@internal/sql-contract/types';
 import {
   DdlColumn,
@@ -111,7 +111,10 @@ export function columnSpecFromNode(
 ): SqliteColumnSpec {
   const like = columnLike(column);
   const typeSql = buildColumnTypeSql(like, types);
-  const defaultSql = buildColumnDefaultSql(like.default);
+  const defaultSql = buildColumnDefaultSql(
+    like.default,
+    sqlDataTypeOfCodec(like.codecId, types).id,
+  );
   return {
     name: column.name,
     typeSql,

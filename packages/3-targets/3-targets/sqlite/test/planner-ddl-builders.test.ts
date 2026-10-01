@@ -75,6 +75,20 @@ describe('buildColumnDefaultSql', () => {
     expect(buildColumnDefaultSql({ kind: 'literal', value: 42 })).toBe('DEFAULT 42');
   });
 
+  it.each([
+    ['digit text', '7', 'DEFAULT 7'],
+    ['negative digit text', '-42', 'DEFAULT -42'],
+    ['digit text past the safe range', '9007199254740993', 'DEFAULT 9007199254740993'],
+  ])('renders an integer column’s %s as an integer', (_name, value, sql) => {
+    expect(buildColumnDefaultSql({ kind: 'literal', value }, 'sqlite/integer')).toBe(sql);
+  });
+
+  it('renders digit text on a text column as text', () => {
+    expect(buildColumnDefaultSql({ kind: 'literal', value: '7' }, 'sqlite/text')).toBe(
+      "DEFAULT '7'",
+    );
+  });
+
   it('renders literal boolean as 0/1', () => {
     expect(buildColumnDefaultSql({ kind: 'literal', value: true })).toBe('DEFAULT 1');
     expect(buildColumnDefaultSql({ kind: 'literal', value: false })).toBe('DEFAULT 0');

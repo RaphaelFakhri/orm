@@ -157,7 +157,7 @@ stamped ${field}
     if (!result.ok) return;
     const storage = sqlStorageFromSuccessfulSqlInterpretation(result.value);
     expect(unboundTables(storage)['T']?.columns['stamped']).toEqual({
-      dataType: 'sqlite/datetime',
+      dataType: 'sqlite/text',
       codecId: 'sqlite/datetime@1',
       nullable: false,
     });

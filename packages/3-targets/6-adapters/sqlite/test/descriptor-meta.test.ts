@@ -56,4 +56,18 @@ describe('the SQLite control stack codec lookup', () => {
   ])('finds %s, which names %s', (codecId, dataType) => {
     expect(stack.codecLookup.descriptorFor?.(codecId)?.dataType).toBe(dataType);
   });
+
+  it('marks no type constructor or field preset inferred, because SQLite has no contract infer', () => {
+    const inferredPaths = (namespace: unknown, path: string): readonly string[] => {
+      if (typeof namespace !== 'object' || namespace === null) return [];
+      if ('kind' in namespace) return 'inferred' in namespace ? [path] : [];
+      return Object.entries(namespace).flatMap(([key, value]) =>
+        inferredPaths(value, path === '' ? key : `${path}.${key}`),
+      );
+    };
+    expect([
+      ...inferredPaths(stack.authoringContributions.type, ''),
+      ...inferredPaths(stack.authoringContributions.field, ''),
+    ]).toEqual([]);
+  });
 });

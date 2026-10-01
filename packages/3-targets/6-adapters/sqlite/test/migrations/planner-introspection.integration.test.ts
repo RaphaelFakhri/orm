@@ -116,7 +116,7 @@ describe('SQLite planner + introspection round-trip', () => {
               dataType: 'sqlite/integer',
               codecId: 'sqlite/integer@1',
               nullable: false,
-              default: { kind: 'literal', value: 1 },
+              default: { kind: 'literal', value: '1' },
             }),
           },
           primaryKey: { columns: ['id'] },

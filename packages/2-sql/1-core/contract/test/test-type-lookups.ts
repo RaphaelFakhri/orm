@@ -35,10 +35,6 @@ const CODEC_TYPE_NAMES: Readonly<Record<string, string>> = {
   'sql/varchar@1': 'character varying',
   'sql/int@1': 'int4',
   'sql/float@1': 'float8',
-  'sqlite/bigintnumber@1': 'integer',
-  'sqlite/bigint@1': 'integer',
-  'sqlite/datetime@1': 'text',
-  'sqlite/json@1': 'text',
 };
 
 const CODEC_DATA_TYPES: Readonly<Record<string, string>> = {
@@ -63,7 +59,10 @@ const CODEC_DATA_TYPES: Readonly<Record<string, string>> = {
   'sql/int@1': 'pg/int4',
   'sql/float@1': 'pg/float8',
   'sql/text@1': 'pg/text',
-  'sqlite/bigintnumber@1': 'sqlite/bigint',
+  'sqlite/bigint@1': 'sqlite/integer',
+  'sqlite/bigintnumber@1': 'sqlite/integer',
+  'sqlite/datetime@1': 'sqlite/text',
+  'sqlite/json@1': 'sqlite/text',
 };
 
 const DATA_TYPE_NAMES: Readonly<Record<string, string>> = {

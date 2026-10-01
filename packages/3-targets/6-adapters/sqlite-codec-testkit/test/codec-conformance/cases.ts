@@ -36,6 +36,26 @@ export const sqliteConformanceCases: readonly SqliteCodecConformanceCase[] = [
   { codecId: 'sql/float@1', label: 'finite float', value: 1.5, storageType: 'REAL' },
   { codecId: 'sqlite/text@1', label: 'text', value: 'hello', storageType: 'TEXT' },
   { codecId: 'sqlite/integer@1', label: 'integer', value: 42, storageType: 'INTEGER' },
+  // `sqlite/integer` stores digit text, and the safe-range boundaries are where a
+  // projection that reached JSON as a number would first lose a digit.
+  {
+    codecId: 'sqlite/integer@1',
+    label: 'largest safe integer',
+    value: 9007199254740991,
+    storageType: 'INTEGER',
+  },
+  {
+    codecId: 'sqlite/integer@1',
+    label: 'smallest safe integer',
+    value: -9007199254740991,
+    storageType: 'INTEGER',
+  },
+  {
+    codecId: 'sql/int@1',
+    label: 'largest safe integer',
+    value: 9007199254740991,
+    storageType: 'INTEGER',
+  },
   { codecId: 'sqlite/real@1', label: 'finite float', value: 1.5, storageType: 'REAL' },
   // hex() never wraps, so a blob's boundary is not length but case: a value whose
   // hex is all digits cannot tell uppercase from lowercase.
@@ -70,8 +90,8 @@ export const sqliteConformanceCases: readonly SqliteCodecConformanceCase[] = [
     storageType: 'TEXT',
   },
   { codecId: 'sqlite/json@1', label: 'document', value: { a: 1, b: ['x'] }, storageType: 'TEXT' },
-  // A document is not always an object: the retag has to carry every JSON shape,
-  // including the scalars whose text form is indistinguishable from a stored string.
+  // A document is not always an object: the stored text has to carry every JSON
+  // shape, including the scalars whose text form looks like a stored string.
   {
     codecId: 'sqlite/json@1',
     label: 'array at the top level',
@@ -86,6 +106,17 @@ export const sqliteConformanceCases: readonly SqliteCodecConformanceCase[] = [
   },
   { codecId: 'sqlite/json@1', label: 'number at the top level', value: 42, storageType: 'TEXT' },
   { codecId: 'sqlite/json@1', label: 'null at the top level', value: null, storageType: 'TEXT' },
+  {
+    codecId: 'sqlite/json@1',
+    label: 'document whose keys are not in sorted order',
+    value: { b: 1, a: 2 },
+    storageType: 'TEXT',
+    notYetCanonical: {
+      kind: 'mismatch',
+      reason:
+        'The canonical form is the document’s JSON text with its keys sorted, but encode writes the keys in the order the application gave them, and the projection returns the stored text.',
+    },
+  },
   {
     codecId: 'sqlite/json@1',
     label: 'document whose strings need escaping',

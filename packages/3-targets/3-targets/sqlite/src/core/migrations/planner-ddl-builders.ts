@@ -20,6 +20,7 @@ import type {
   StorageTable,
   StorageTypeInstance,
 } from '@internal/sql-contract/types';
+import { sqliteInteger } from '../data-types';
 import { sqliteError } from '../errors';
 import { escapeLiteral, quoteIdentifier } from '../sql-utils';
 
@@ -56,12 +57,15 @@ export function buildColumnTypeSql(
  * SQLite encodes that as `INTEGER PRIMARY KEY AUTOINCREMENT` inline on the
  * column definition, not as a separate DEFAULT.
  */
-export function buildColumnDefaultSql(columnDefault: SqliteColumnDefault | undefined): string {
+export function buildColumnDefaultSql(
+  columnDefault: SqliteColumnDefault | undefined,
+  dataType?: string,
+): string {
   if (!columnDefault) return '';
 
   switch (columnDefault.kind) {
     case 'literal':
-      return `DEFAULT ${renderDefaultLiteral(columnDefault.value)}`;
+      return `DEFAULT ${renderDefaultLiteral(columnDefault.value, dataType)}`;
     case 'function': {
       if (columnDefault.expression === 'autoincrement()') return '';
       if (columnDefault.expression === 'now()') return "DEFAULT (datetime('now'))";
@@ -71,7 +75,16 @@ export function buildColumnDefaultSql(columnDefault: SqliteColumnDefault | undef
   }
 }
 
-export function renderDefaultLiteral(value: unknown): string {
+const DIGIT_TEXT = /^-?\d+$/;
+
+/**
+ * A literal default in SQL. An `integer` column stores digit text in the contract, which is written
+ * as the integer it names.
+ */
+export function renderDefaultLiteral(value: unknown, dataType?: string): string {
+  if (dataType === sqliteInteger.id && typeof value === 'string' && DIGIT_TEXT.test(value)) {
+    return value;
+  }
   if (value instanceof Date) {
     return `'${escapeLiteral(value.toISOString())}'`;
   }

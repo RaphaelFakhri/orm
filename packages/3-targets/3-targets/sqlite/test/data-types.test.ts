@@ -1,13 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import {
-  sqliteBigint,
   sqliteBlob,
   sqliteCharacter,
   sqliteCharacterVarying,
   sqliteDataTypes,
-  sqliteDatetime,
   sqliteInteger,
-  sqliteJson,
   sqliteReal,
   sqliteText,
 } from '../src/core/data-types';
@@ -16,15 +13,12 @@ const sourcesOf = (type: { readonly casts: Readonly<Record<string, unknown>> }) 
   Object.keys(type.casts).sort();
 
 describe('the data types this target registers', () => {
-  it('registers the types it distinguishes, not one per storage class', () => {
+  it('registers the types the database stores', () => {
     expect(sqliteDataTypes.map((type) => type.id).sort()).toEqual([
-      'sqlite/bigint',
       'sqlite/blob',
       'sqlite/character',
       'sqlite/character-varying',
-      'sqlite/datetime',
       'sqlite/integer',
-      'sqlite/json',
       'sqlite/real',
       'sqlite/text',
     ]);
@@ -32,12 +26,9 @@ describe('the data types this target registers', () => {
 
   it.each([
     ['sqlite/text', sqliteText, []],
-    ['sqlite/json', sqliteJson, []],
     ['sqlite/integer', sqliteInteger, []],
-    ['sqlite/datetime', sqliteDatetime, ['sqlite/text']],
+    ['sqlite/real', sqliteReal, ['sqlite/integer']],
     ['sqlite/blob', sqliteBlob, ['sqlite/text']],
-    ['sqlite/bigint', sqliteBigint, ['sqlite/integer']],
-    ['sqlite/real', sqliteReal, ['sqlite/bigint', 'sqlite/integer']],
     ['sqlite/character', sqliteCharacter, ['sqlite/text']],
     ['sqlite/character-varying', sqliteCharacterVarying, ['sqlite/text']],
   ])('%s casts from exactly the types the design names', (_id, type, sources) => {
@@ -48,20 +39,18 @@ describe('the data types this target registers', () => {
 describe('what each cast converts', () => {
   it.each([
     [
-      'sqlite/integer to sqlite/bigint, a number to digit text',
-      sqliteBigint,
+      'sqlite/integer to sqlite/real, digit text to a number',
+      sqliteReal,
       sqliteInteger.id,
-      42,
       '42',
+      42,
     ],
-    ['sqlite/integer to sqlite/real, a number either way', sqliteReal, sqliteInteger.id, 42, 42],
-    ['sqlite/bigint to sqlite/real, digit text to a number', sqliteReal, sqliteBigint.id, '42', 42],
     [
-      'sqlite/text to sqlite/datetime, the text unchanged',
-      sqliteDatetime,
-      sqliteText.id,
-      '2020-01-01',
-      '2020-01-01',
+      'sqlite/integer to sqlite/real, a negative 64-bit bound to the nearest double',
+      sqliteReal,
+      sqliteInteger.id,
+      '-9223372036854775808',
+      Number('-9223372036854775808'),
     ],
     ['sqlite/text to sqlite/blob, the text unchanged', sqliteBlob, sqliteText.id, 'AA==', 'AA=='],
     [
@@ -80,5 +69,11 @@ describe('what each cast converts', () => {
     ],
   ])('%s', (_name, type, source, value, converted) => {
     expect(type.casts[source]?.(value)).toEqual(converted);
+  });
+
+  it('refuses an integer value that is not digit text', () => {
+    expect(() => sqliteReal.casts[sqliteInteger.id]?.(42)).toThrow(
+      expect.objectContaining({ code: 'CONTRACT.CAST_REFUSED' }),
+    );
   });
 });

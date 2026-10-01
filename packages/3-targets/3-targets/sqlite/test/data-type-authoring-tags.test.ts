@@ -1,6 +1,7 @@
 import {
   isDataTypeLoweringEntry,
   loweringEntryKey,
+  tagEntryKey,
 } from '@internal/framework-components/authoring';
 import { describe, expect, it } from 'vitest';
 import { createSqliteDataTypeEntries } from '../src/core/data-type-authoring';
@@ -35,7 +36,13 @@ describe('createSqliteDataTypeEntries', () => {
     ).toEqual(['json', 'sql', 'sqlite.sql']);
   });
 
-  it('registers json under its own data type, with no prefixed alias', () => {
+  it('registers json under its tag key, read as text, with no prefixed alias', () => {
+    const json = entries[tagEntryKey('json')];
+    expect(json !== undefined && !isDataTypeLoweringEntry(json) && json.written).toMatchObject({
+      kind: 'tag',
+      tag: 'json',
+      type: 'sqlite/text',
+    });
     expect(entries['sqlite.json']).toBeUndefined();
     expect(loweringTag('sql').written.tag).toBe('sql');
   });

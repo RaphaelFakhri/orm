@@ -1,0 +1,158 @@
+import { mkdtempSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import sqliteAdapter from '@internal/adapter-sqlite/control';
+import type { Contract } from '@internal/contract/types';
+import sql from '@internal/family-sql/control';
+import { createControlStack } from '@internal/framework-components/control';
+import type { SqlStorage } from '@internal/sql-contract/types';
+import { prismaContract } from '@internal/sql-contract-psl/provider';
+import sqlite, { sqliteCreateNamespace } from '@internal/target-sqlite/control';
+import sqlitePackRef from '@internal/target-sqlite/pack';
+import { join } from 'pathe';
+import { describe, expect, it } from 'vitest';
+import { findStorageColumn } from '../scalar-lists/psl-list-authoring';
+
+/** The backtick fencing a tagged literal, as an escape so no quoted string in this file holds one. */
+const BACKTICK = '`';
+const json = (body: string): string => `json${BACKTICK}${body}${BACKTICK}`;
+
+const stack = createControlStack({ family: sql, target: sqlite, adapter: sqliteAdapter });
+
+async function author(fields: string) {
+  const schemaPath = join(mkdtempSync(join(tmpdir(), 'psl-sqlite-written-')), 'schema.prisma');
+  writeFileSync(
+    schemaPath,
+    `// use prisma-8\n\nmodel Row {\n  id Int @id\n${fields}\n}\n`,
+    'utf-8',
+  );
+  return prismaContract(schemaPath, {
+    target: sqlitePackRef,
+    createNamespace: sqliteCreateNamespace,
+  }).source.load({
+    composedExtensions: [],
+    composedExtensionContracts: new Map(),
+    authoringContributions: stack.authoringContributions,
+    codecLookup: stack.codecLookup,
+    dataTypeLookup: stack.dataTypeLookup,
+    controlMutationDefaults: stack.controlMutationDefaults,
+    resolvedInputs: [schemaPath],
+    capabilities: stack.capabilities,
+  });
+}
+
+async function storedColumn(field: string) {
+  const result = await author(`  value ${field}`);
+  if (!result.ok) throw new Error(JSON.stringify(result.failure.diagnostics));
+  const column = findStorageColumn(result.value as Contract<SqlStorage>, 'value');
+  return {
+    dataType: column?.['dataType'],
+    codecId: column?.['codecId'],
+    default: column?.['default'],
+  };
+}
+
+async function storedDefault(field: string) {
+  const { codecId, default: columnDefault } = await storedColumn(field);
+  return { codecId, default: columnDefault };
+}
+
+async function diagnostics(field: string) {
+  const result = await author(`  value ${field}`);
+  expect(result.ok).toBe(false);
+  return result.ok ? [] : result.failure.diagnostics;
+}
+
+describe('written values on SQLite', () => {
+  it.each([
+    [
+      'a json literal on a Json column, as its JSON text with keys sorted',
+      `Json @default(${json('{ "b": 1, "a": [true, null] }')})`,
+      'sqlite/json@1',
+      '{"a":[true,null],"b":1}',
+    ],
+    [
+      'a json literal on a String column, whose value is text',
+      `String @default(${json('{"a":1}')})`,
+      'sqlite/text@1',
+      '{"a":1}',
+    ],
+    [
+      'a whole number on an Int column, as digit text',
+      'Int @default(-42)',
+      'sqlite/integer@1',
+      '-42',
+    ],
+    [
+      'a 64-bit number on a BigInt column, as digit text',
+      'BigInt @default(9223372036854775807)',
+      'sqlite/bigint@1',
+      '9223372036854775807',
+    ],
+    ['a number with a fraction on a Float column', 'Float @default(1.5)', 'sqlite/real@1', 1.5],
+    [
+      'a whole number on a Float column, through the cast from integer',
+      'Float @default(2)',
+      'sqlite/real@1',
+      2,
+    ],
+    [
+      'an instant on a DateTime column, as its text',
+      'DateTime @default("2020-01-02T03:04:05.000Z")',
+      'sqlite/datetime@1',
+      '2020-01-02T03:04:05.000Z',
+    ],
+  ])('stores %s', async (_name, field, codecId, value) => {
+    expect(await storedDefault(field)).toEqual({ codecId, default: { kind: 'literal', value } });
+  });
+
+  it.each([
+    ['Json', 'sqlite/text'],
+    ['String', 'sqlite/text'],
+    ['DateTime', 'sqlite/text'],
+    ['Int', 'sqlite/integer'],
+    ['BigInt', 'sqlite/integer'],
+    ['Float', 'sqlite/real'],
+    ['Bytes', 'sqlite/blob'],
+  ])('stores a %s column as %s', async (scalar, dataType) => {
+    expect((await storedColumn(`${scalar}?`)).dataType).toBe(dataType);
+  });
+
+  it('refuses a plain string on a Json column, because the codec cannot read it as JSON', async () => {
+    expect(await diagnostics('Json @default("hello")')).toEqual([
+      expect.objectContaining({
+        code: 'PSL_INVALID_DEFAULT_LITERAL',
+        message: expect.stringContaining('sqlite/json@1 contract value must be the JSON text'),
+      }),
+    ]);
+  });
+
+  it('refuses a number with a fraction on an Int column, which casts from no real', async () => {
+    expect(await diagnostics('Int @default(1.5)')).toEqual([
+      expect.objectContaining({
+        code: 'PSL_DEFAULT_TYPE_INCOMPATIBLE',
+        message:
+          'Field "Row.value": sqlite/integer has no cast from sqlite/real; it casts from nothing',
+      }),
+    ]);
+  });
+
+  it('refuses a whole number past 64 bits, which no SQLite type holds', async () => {
+    expect(await diagnostics('BigInt @default(9223372036854775808)')).toEqual([
+      expect.objectContaining({
+        code: 'PSL_INVALID_DEFAULT_LITERAL',
+        message: expect.stringContaining('no data type of this target holds the number'),
+      }),
+    ]);
+  });
+
+  it('refuses a whole number past the safe range on an Int column, which reads a number', async () => {
+    expect(await diagnostics('Int @default(9007199254740993)')).toEqual([
+      expect.objectContaining({
+        code: 'PSL_INVALID_DEFAULT_LITERAL',
+        message: expect.stringContaining(
+          'sqlite/integer@1 value must be an integer within the safe integer range',
+        ),
+      }),
+    ]);
+  });
+});

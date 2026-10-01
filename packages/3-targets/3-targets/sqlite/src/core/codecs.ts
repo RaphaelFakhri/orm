@@ -19,6 +19,7 @@ import {
   type ColumnHelperForStrict,
   column,
 } from '@internal/framework-components/codec';
+import { canonicalizeJson } from '@internal/framework-components/utils';
 import {
   CaseExpr,
   CastExpr,
@@ -26,9 +27,10 @@ import {
   LiteralExpr,
   NullCheckExpr,
   type ProjectionExpr,
+  SqlIntCodec,
+  SqlIntDescriptor,
   sqlCharDescriptor,
   sqlFloatDescriptor,
-  sqlIntDescriptor,
   sqlVarcharDescriptor,
 } from '@internal/sql-relational-core/ast';
 import { defineSqliteCodecs, SqliteCodecDescriptor, sqliteCodec } from './codec-descriptor';
@@ -43,13 +45,10 @@ import {
   SQLITE_TEXT_CODEC_ID,
 } from './codec-ids';
 import {
-  sqliteBigint,
   sqliteBlob,
   sqliteCharacter,
   sqliteCharacterVarying,
-  sqliteDatetime,
   sqliteInteger,
-  sqliteJson,
   sqliteReal,
   sqliteText,
 } from './data-types';
@@ -197,43 +196,62 @@ const bigintEncodeJson = (codecId: string, value: bigint | number): string => {
 /**
  * Requires an integer within ±(2^53 − 1), the range a JS `number` holds
  * exactly. The guard throws rather than rounding: past the boundary a `number`
- * silently loses digits, which is the failure mode this codec exists to refuse.
+ * silently loses digits, which is the failure mode these codecs exist to refuse.
  */
 const safeIntegerNumber = (
+  codecId: string,
   value: number,
   code: 'RUNTIME.ENCODE_FAILED' | 'RUNTIME.DECODE_FAILED',
 ) => {
   if (!Number.isSafeInteger(value)) {
     throw sqliteError(
       code,
-      `sqlite/bigintnumber@1 value must be an integer within the safe integer range, got ${String(value)}`,
-      { meta: { codecId: SQLITE_BIGINT_NUMBER_CODEC_ID, received: String(value) } },
+      `${codecId} value must be an integer within the safe integer range, got ${String(value)}`,
+      { meta: { codecId, received: String(value) } },
     );
   }
   if (Object.is(value, -0)) return 0;
   return value;
 };
 
-/** The application value the number-flavoured integer codec writes: the JS type it reads, within the range that type holds exactly. */
-const encodableSafeInteger = (value: number): number => {
-  requireJsType(SQLITE_BIGINT_NUMBER_CODEC_ID, 'number', value);
-  return safeIntegerNumber(value, 'RUNTIME.ENCODE_FAILED');
+/** The application value a number-flavoured integer codec writes: the JS type it reads, within the range that type holds exactly. */
+const encodableSafeInteger = (codecId: string, value: number): number => {
+  requireJsType(codecId, 'number', value);
+  return safeIntegerNumber(codecId, value, 'RUNTIME.ENCODE_FAILED');
 };
 
 /**
  * Converts an exact `bigint` into a safe-range `number`, comparing before any
  * conversion so an out-of-range value throws rather than rounds.
  */
-const safeIntegerFromBigint = (value: bigint): number => {
+const safeIntegerFromBigint = (codecId: string, value: bigint): number => {
   if (value < MIN_SAFE_INTEGER_BIGINT || value > MAX_SAFE_INTEGER_BIGINT) {
     throw sqliteError(
       'RUNTIME.DECODE_FAILED',
-      `sqlite/bigintnumber@1 value must be an integer within the safe integer range, got ${value}`,
-      { meta: { codecId: SQLITE_BIGINT_NUMBER_CODEC_ID, received: value.toString() } },
+      `${codecId} value must be an integer within the safe integer range, got ${value}`,
+      { meta: { codecId, received: value.toString() } },
     );
   }
   return Number(value);
 };
+
+/** `sqlite/integer`'s canonical form, read into a `number`: digit text within the safe integer range. */
+const safeIntegerFromDigitText = (codecId: string, json: JsonValue): number => {
+  if (typeof json !== 'string' || !DECIMAL_INTEGER.test(json)) {
+    throw sqliteError(
+      'RUNTIME.DECODE_FAILED',
+      `${codecId} database JSON value must be decimal text`,
+      {
+        meta: { codecId, received: typeof json },
+      },
+    );
+  }
+  return safeIntegerFromBigint(codecId, BigInt(json));
+};
+
+/** A `number` written as `sqlite/integer`'s canonical form. */
+const digitTextOfSafeInteger = (codecId: string, value: number): string =>
+  String(encodableSafeInteger(codecId, value));
 
 /**
  * SQLite does not enforce a character length, and its codec type map declares no `Char` or
@@ -251,9 +269,25 @@ export const sqliteSqlVarcharDescriptor = sqliteCodec(sqlVarcharDescriptor, {
   renderTypes: false,
 });
 
-export const sqliteSqlIntDescriptor = sqliteCodec(sqlIntDescriptor, {
+/** `sql/int@1` as SQLite stores it: its canonical form is `sqlite/integer`'s digit text. */
+export class SqliteSqlIntCodec extends SqlIntCodec {
+  override encodeJson(value: number): JsonValue {
+    return digitTextOfSafeInteger(this.id, value);
+  }
+  override decodeJson(json: JsonValue): number {
+    return safeIntegerFromDigitText(this.id, json);
+  }
+}
+
+class SqliteSqlIntTemplate extends SqlIntDescriptor {
+  override factory(): (ctx: CodecInstanceContext) => SqliteSqlIntCodec {
+    return () => new SqliteSqlIntCodec(this);
+  }
+}
+
+export const sqliteSqlIntDescriptor = sqliteCodec(new SqliteSqlIntTemplate(), {
   dataType: sqliteInteger,
-  jsonProjection: identityJsonProjection,
+  jsonProjection: decimalTextJsonProjection,
 });
 
 export const sqliteSqlFloatDescriptor = sqliteCodec(sqlFloatDescriptor, {
@@ -315,30 +349,16 @@ export class SqliteIntegerCodec extends CodecImpl<
     return wire;
   }
   encodeJson(value: number): JsonValue {
-    return value;
+    return digitTextOfSafeInteger(SQLITE_INTEGER_CODEC_ID, value);
   }
   decodeJson(json: JsonValue): number {
-    if (typeof json !== 'number') {
-      throw sqliteError(
-        'RUNTIME.DECODE_FAILED',
-        'sqlite/integer@1 database JSON value must be a number',
-        { meta: { codecId: SQLITE_INTEGER_CODEC_ID, received: typeof json } },
-      );
-    }
-    if (!Number.isSafeInteger(json)) {
-      throw sqliteError(
-        'RUNTIME.DECODE_FAILED',
-        `sqlite/integer@1 value must be an integer within the safe integer range, got ${String(json)}`,
-        { meta: { codecId: SQLITE_INTEGER_CODEC_ID, received: String(json) } },
-      );
-    }
-    return json;
+    return safeIntegerFromDigitText(SQLITE_INTEGER_CODEC_ID, json);
   }
 }
 
 export class SqliteIntegerDescriptor extends SqliteCodecDescriptor<void> {
   protected override jsonProjection(expression: ProjectionExpr): ProjectionExpr {
-    return expression;
+    return decimalTextJsonProjection(expression);
   }
   override readonly dataType = sqliteInteger.id;
   override readonly codecId = SQLITE_INTEGER_CODEC_ID;
@@ -498,7 +518,7 @@ export class SqliteDatetimeDescriptor extends SqliteCodecDescriptor<void> {
   protected override jsonProjection(expression: ProjectionExpr): ProjectionExpr {
     return expression;
   }
-  override readonly dataType = sqliteDatetime.id;
+  override readonly dataType = sqliteText.id;
   override readonly codecId = SQLITE_DATETIME_CODEC_ID;
   override readonly traits = ['equality', 'order'] as const;
   override readonly paramsSchema = undefined;
@@ -528,18 +548,38 @@ export class SqliteJsonCodec extends CodecImpl<
     return typeof wire === 'string' ? (JSON.parse(wire) as JsonValue) : wire;
   }
   encodeJson(value: JsonValue): JsonValue {
-    return value;
+    return canonicalizeJson(value);
   }
   decodeJson(json: JsonValue): JsonValue {
-    return json;
+    const document = typeof json === 'string' ? parseJsonText(json) : undefined;
+    if (document === undefined) {
+      throw sqliteError(
+        'RUNTIME.DECODE_FAILED',
+        'sqlite/json@1 contract value must be the JSON text of a document',
+        { meta: { codecId: SQLITE_JSON_CODEC_ID, received: typeof json } },
+      );
+    }
+    return document.value;
   }
 }
 
+function parseJsonText(text: string): { readonly value: JsonValue } | undefined {
+  try {
+    return { value: JSON.parse(text) };
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * The column stores the document's JSON text and the canonical form is that text, so the stored
+ * value is projected as it is: a string the enclosing JSON constructor embeds as a string.
+ */
 export class SqliteJsonDescriptor extends SqliteCodecDescriptor<void> {
   protected override jsonProjection(expression: ProjectionExpr): ProjectionExpr {
-    return jsonDocumentRetag(expression);
+    return expression;
   }
-  override readonly dataType = sqliteJson.id;
+  override readonly dataType = sqliteText.id;
   override readonly codecId = SQLITE_JSON_CODEC_ID;
   override readonly traits = ['equality'] as const;
   override readonly paramsSchema = undefined;
@@ -610,7 +650,7 @@ export class SqliteBigintDescriptor extends SqliteCodecDescriptor<void> {
   protected override jsonProjection(expression: ProjectionExpr): ProjectionExpr {
     return decimalTextJsonProjection(expression);
   }
-  override readonly dataType = sqliteBigint.id;
+  override readonly dataType = sqliteInteger.id;
   override readonly codecId = SQLITE_BIGINT_CODEC_ID;
   override readonly traits = ['equality', 'order', 'numeric'] as const;
   override readonly paramsSchema = undefined;
@@ -632,9 +672,7 @@ sqliteBigintColumn satisfies ColumnHelperForStrict<SqliteBigintDescriptor>;
  * within the safe integer range ±(2^53 − 1). Both directions guard rather than
  * round: decode (wire and JSON) and encode throw a structured error on
  * out-of-range or non-integral input. The canonical JSON is the decimal text
- * `sqlite/bigint` carries, which every codec of that data type shares. The
- * descriptor claims no target type, so `integer` in type position keeps its
- * current codecs.
+ * `sqlite/integer` carries, which every codec of that data type shares.
  */
 export class SqliteBigintNumberCodec extends CodecImpl<
   typeof SQLITE_BIGINT_NUMBER_CODEC_ID,
@@ -643,7 +681,7 @@ export class SqliteBigintNumberCodec extends CodecImpl<
   number
 > {
   async encode(value: number, _ctx: CodecCallContext): Promise<number> {
-    return encodableSafeInteger(value);
+    return encodableSafeInteger(SQLITE_BIGINT_NUMBER_CODEC_ID, value);
   }
   /**
    * The driver hands an INTEGER over as a `number` or, in safe-integer mode, a
@@ -651,7 +689,9 @@ export class SqliteBigintNumberCodec extends CodecImpl<
    * conversion to `number`, so an out-of-range value throws rather than rounds.
    */
   async decode(wire: number | bigint | string, _ctx: CodecCallContext): Promise<number> {
-    if (typeof wire === 'number') return safeIntegerNumber(wire, 'RUNTIME.DECODE_FAILED');
+    if (typeof wire === 'number') {
+      return safeIntegerNumber(SQLITE_BIGINT_NUMBER_CODEC_ID, wire, 'RUNTIME.DECODE_FAILED');
+    }
     if (typeof wire === 'string' && !DECIMAL_INTEGER.test(wire)) {
       throw sqliteError(
         'RUNTIME.DECODE_FAILED',
@@ -659,20 +699,13 @@ export class SqliteBigintNumberCodec extends CodecImpl<
         { meta: { codecId: SQLITE_BIGINT_NUMBER_CODEC_ID, received: wire } },
       );
     }
-    return safeIntegerFromBigint(BigInt(wire));
+    return safeIntegerFromBigint(SQLITE_BIGINT_NUMBER_CODEC_ID, BigInt(wire));
   }
   encodeJson(value: number): JsonValue {
-    return String(encodableSafeInteger(value));
+    return digitTextOfSafeInteger(SQLITE_BIGINT_NUMBER_CODEC_ID, value);
   }
   decodeJson(json: JsonValue): number {
-    if (typeof json !== 'string' || !DECIMAL_INTEGER.test(json)) {
-      throw sqliteError(
-        'RUNTIME.DECODE_FAILED',
-        'sqlite/bigintnumber@1 database JSON value must be decimal text',
-        { meta: { codecId: SQLITE_BIGINT_NUMBER_CODEC_ID, received: typeof json } },
-      );
-    }
-    return safeIntegerFromBigint(BigInt(json));
+    return safeIntegerFromDigitText(SQLITE_BIGINT_NUMBER_CODEC_ID, json);
   }
 }
 
@@ -680,7 +713,7 @@ export class SqliteBigintNumberDescriptor extends SqliteCodecDescriptor<void> {
   protected override jsonProjection(expression: ProjectionExpr): ProjectionExpr {
     return decimalTextJsonProjection(expression);
   }
-  override readonly dataType = sqliteBigint.id;
+  override readonly dataType = sqliteInteger.id;
   override readonly codecId = SQLITE_BIGINT_NUMBER_CODEC_ID;
   override readonly traits = ['equality', 'order', 'numeric'] as const;
   override readonly paramsSchema = undefined;

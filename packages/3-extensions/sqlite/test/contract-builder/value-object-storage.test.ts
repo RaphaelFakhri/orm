@@ -62,6 +62,6 @@ describe('a value-object column on SQLite', () => {
       contract.storage.namespaces[UNBOUND_NAMESPACE_ID]?.entries.table?.['user']?.columns[
         'address'
       ],
-    ).toEqual({ codecId: 'sqlite/json@1', dataType: 'sqlite/json', nullable: false });
+    ).toEqual({ codecId: 'sqlite/json@1', dataType: 'sqlite/text', nullable: false });
   });
 });

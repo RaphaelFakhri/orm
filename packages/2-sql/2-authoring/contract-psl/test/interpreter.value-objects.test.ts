@@ -439,7 +439,7 @@ model User {
             columns: {
               homeAddress: {
                 codecId: 'sqlite/json@1',
-                dataType: 'sqlite/json',
+                dataType: 'sqlite/text',
                 nullable: true,
               },
             },
