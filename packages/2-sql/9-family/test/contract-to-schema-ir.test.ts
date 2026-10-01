@@ -42,22 +42,6 @@ import {
   detectDestructiveChanges,
 } from '../src/core/migrations/contract-to-schema-ir';
 
-const DATA_TYPE_OF_CODEC: Readonly<Record<string, string>> = {
-  'pg/enum@1': 'pg/enum',
-  'pg/text@1': 'pg/text',
-  'pg/timestamptz@1': 'pg/timestamptz',
-  'pg/vector@1': 'pgvector/vector',
-  'pgvector/vector@1': 'pgvector/vector',
-  'sql/char@1': 'pg/char',
-  'test/unknown@1': 'test/unknown',
-};
-
-function dataTypeOf(codecId: string): string {
-  const dataType = DATA_TYPE_OF_CODEC[codecId];
-  if (dataType === undefined) throw new Error(`no data type listed for codec ${codecId}`);
-  return dataType;
-}
-
 const testRenderer: DefaultRenderer = (def: ColumnDefault, _column, { typeText }) => {
   if (def.kind === 'function') return def.expression;
   const { value } = def;
@@ -112,6 +96,12 @@ const testCodecLookup: CodecLookup = {
   },
 };
 
+function dataTypeOf(codecId: string): string {
+  const dataType = testCodecLookup.descriptorFor?.(codecId)?.dataType;
+  if (dataType === undefined) throw new Error(`the test codec lookup has no codec ${codecId}`);
+  return dataType;
+}
+
 const testDataTypes = createDataTypeLookup([
   textType,
   characterType,
@@ -139,7 +129,7 @@ function col(overrides: Partial<StorageColumn>): StorageColumn {
   const codecId = overrides.codecId ?? 'pg/text@1';
   return {
     codecId,
-    dataType: dataTypeOf(codecId),
+    dataType: overrides.dataType ?? dataTypeOf(codecId),
     nullable: false,
     ...overrides,
   };
@@ -346,7 +336,7 @@ describe('contractToSchemaIR', () => {
 
   it('refuses a column whose codec the stack does not register', () => {
     const storage = unboundStorage('test' as StorageHashBase<string>, {
-      T: table({ columns: { id: col({ codecId: 'test/unknown@1' }) } }),
+      T: table({ columns: { id: col({ codecId: 'test/unknown@1', dataType: 'test/unknown' }) } }),
     });
 
     expect(() => contractToSchemaIR(wrap(storage))).toThrow(
