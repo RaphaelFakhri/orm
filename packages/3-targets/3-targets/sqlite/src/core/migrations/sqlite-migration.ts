@@ -30,8 +30,8 @@ import type { SqliteColumnSpec, SqliteIndexSpec, SqliteTableSpec } from './opera
 import type { RecreatePostcheck } from './operations/tables';
 import type { SqlitePlanTargetDetails } from './planner-target-details';
 import { sqliteSchemaTables } from './schema-tables';
-import { WorkingSchema } from './schema-working-state';
 import { sqliteTableRenameCall } from './table-rename-calls';
+import { createWorkingSchema, type WorkingSchema } from './working-schema';
 
 type Op = SqlMigrationPlanOperation<SqlitePlanTargetDetails>;
 
@@ -186,7 +186,7 @@ export abstract class SqliteMigration<
   }
 
   private workingSchemaFrom(startContract: Contract<SqlStorage>): WorkingSchema {
-    this.#workingSchema ??= new WorkingSchema(sqliteContractToSchema(startContract));
+    this.#workingSchema ??= createWorkingSchema(sqliteContractToSchema(startContract));
     return this.#workingSchema;
   }
 

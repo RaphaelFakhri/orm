@@ -440,7 +440,17 @@ function applied(
  * plans from, a hand-written migration from its start contract; each rename call is computed
  * against `current` and then applied, so a later call sees the effect of an earlier one.
  */
-export class WorkingSchema {
+export interface WorkingSchema {
+  readonly current: PostgresDatabaseSchemaNode;
+  apply(call: WorkingSchemaCall): void;
+}
+
+/** The working schema of a plan or a migration, starting from `initial`. */
+export function createWorkingSchema(initial: PostgresDatabaseSchemaNode): WorkingSchema {
+  return new WorkingSchemaImpl(initial);
+}
+
+class WorkingSchemaImpl implements WorkingSchema {
   #current: PostgresDatabaseSchemaNode;
 
   constructor(initial: PostgresDatabaseSchemaNode) {

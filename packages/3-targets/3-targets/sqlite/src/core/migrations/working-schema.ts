@@ -192,7 +192,17 @@ function replaceIndex(schema: SqlSchemaIR, replacement: IndexReplacement): SqlSc
  * against `current` and then applied, so a later call sees the effect of an earlier one. An index
  * the rename replaces is applied as a rename of the index node, so it keeps its definition.
  */
-export class WorkingSchema {
+export interface WorkingSchema {
+  readonly current: SqlSchemaIR;
+  apply(call: RenameTableCall): void;
+}
+
+/** The working schema of a plan or a migration, starting from `initial`. */
+export function createWorkingSchema(initial: SqlSchemaIR): WorkingSchema {
+  return new WorkingSchemaImpl(initial);
+}
+
+class WorkingSchemaImpl implements WorkingSchema {
   #current: SqlSchemaIR;
 
   constructor(initial: SqlSchemaIR) {

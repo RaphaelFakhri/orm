@@ -5,8 +5,8 @@ import type { ConsumedHint } from '@internal/framework-components/control';
 import type { SqlStorage } from '@internal/sql-contract/types';
 import type { SqlSchemaIR } from '@internal/sql-schema-ir/types';
 import type { RenameTableCall } from './op-factory-call';
-import { WorkingSchema } from './schema-working-state';
 import { sqliteTableRenameCall } from './table-rename-calls';
+import { createWorkingSchema } from './working-schema';
 
 export interface HintRenames {
   readonly calls: readonly RenameTableCall[];
@@ -34,7 +34,7 @@ export function planHintRenames(input: {
   readonly hints: Pick<ResolvedHints, 'tableRenames'>;
   readonly frameworkComponents: ReadonlyArray<TargetBoundComponentDescriptor<'sql', string>>;
 }): HintRenames {
-  const working = new WorkingSchema(input.origin);
+  const working = createWorkingSchema(input.origin);
   const calls: RenameTableCall[] = [];
   const consumed: ConsumedHint[] = [];
   const renamedTables = new Map<string, string>();

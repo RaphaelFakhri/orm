@@ -10,8 +10,8 @@ import { buildPostgresPlanDiff } from './diff-database-schema';
 import { pairCheckRenames, pairIndexRenames } from './index-and-check-renames';
 import { RenameTableCall } from './op-factory-call';
 import { resolveDdlSchemaForNamespaceStorage } from './resolve-ddl-schema';
-import { renameTableInPostgresSchema } from './schema-working-state';
 import { constraintRenamesForTableRename } from './table-rename-constraint-renames';
+import { renameTableInPostgresSchema } from './working-schema';
 
 const RENAME_POLICY: MigrationOperationPolicy = { allowedOperationClasses: ['widening'] };
 

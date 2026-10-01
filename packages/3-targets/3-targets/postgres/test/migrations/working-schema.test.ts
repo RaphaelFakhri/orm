@@ -11,9 +11,9 @@ import {
 } from '../../src/core/migrations/op-factory-call';
 import { postgresContractToSchema } from '../../src/core/migrations/postgres-contract-to-schema';
 import {
+  createWorkingSchema,
   renameTableInPostgresSchema,
-  WorkingSchema,
-} from '../../src/core/migrations/schema-working-state';
+} from '../../src/core/migrations/working-schema';
 import { PostgresDatabaseSchemaNode } from '../../src/core/schema-ir/postgres-database-schema-node';
 import { PostgresNamespaceSchemaNode } from '../../src/core/schema-ir/postgres-namespace-schema-node';
 import { PostgresPolicySchemaNode } from '../../src/core/schema-ir/postgres-policy-schema-node';
@@ -172,7 +172,7 @@ describe('renameTableInPostgresSchema', () => {
 
 describe('WorkingSchema.apply', () => {
   it('renames the table and then applies each companion', () => {
-    const working = new WorkingSchema(startSchema());
+    const working = createWorkingSchema(startSchema());
     working.apply(
       new RenameTableCall(UNBOUND_NAMESPACE_ID, 'userProfile', 'UserProfile', [
         new RenameConstraintCall(
@@ -190,7 +190,7 @@ describe('WorkingSchema.apply', () => {
   });
 
   it('renames a unique constraint and a check constraint', () => {
-    const working = new WorkingSchema(startSchema());
+    const working = createWorkingSchema(startSchema());
     working.apply(
       new RenameConstraintCall(
         UNBOUND_NAMESPACE_ID,
@@ -243,7 +243,7 @@ describe('WorkingSchema.apply', () => {
       pgVersion: '16',
     });
 
-    const working = new WorkingSchema(schema);
+    const working = createWorkingSchema(schema);
     working.apply(new RenameIndexCall(UNBOUND_NAMESPACE_ID, 'userProfile', oldIndex, newIndex));
     const table = tableIn(working.current, 'userProfile');
     expect(table.indexes.map((index) => [index.name, index.prefix])).toEqual([
@@ -293,7 +293,7 @@ describe('WorkingSchema.apply', () => {
       pgVersion: '16',
     });
 
-    const working = new WorkingSchema(schema);
+    const working = createWorkingSchema(schema);
     working.apply(
       new RenamePostgresRlsPolicyCall('public', 'userProfile', 'tenant_read', 'tenant_select'),
     );
@@ -305,7 +305,7 @@ describe('WorkingSchema.apply', () => {
   });
 
   it('replaces current with a new tree and never changes the one it replaced', () => {
-    const working = new WorkingSchema(startSchema());
+    const working = createWorkingSchema(startSchema());
     const before = working.current;
     working.apply(new RenameTableCall(UNBOUND_NAMESPACE_ID, 'userProfile', 'UserProfile', []));
     expect(working.current).not.toBe(before);

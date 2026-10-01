@@ -12,9 +12,9 @@ import {
   RenameTableCall,
 } from '../../src/core/migrations/op-factory-call';
 import {
+  createWorkingSchema,
   renameTableInSqliteSchema,
-  WorkingSchema,
-} from '../../src/core/migrations/schema-working-state';
+} from '../../src/core/migrations/working-schema';
 import {
   contractOf,
   HANDLE_INDEX_HASH,
@@ -100,7 +100,7 @@ describe('renameTableInSqliteSchema', () => {
 
 describe('WorkingSchema.apply', () => {
   it('renames the table and then renames each index the companions replace, keeping its definition', () => {
-    const working = new WorkingSchema(startSchema());
+    const working = createWorkingSchema(startSchema());
     working.apply(
       new RenameTableCall('userProfile', 'UserProfile', [
         {
@@ -119,7 +119,7 @@ describe('WorkingSchema.apply', () => {
 
   it('replaces current with a new tree and never changes the one it replaced', () => {
     const initial = startSchema();
-    const working = new WorkingSchema(initial);
+    const working = createWorkingSchema(initial);
     working.apply(new RenameTableCall('userProfile', 'UserProfile', []));
 
     expect(working.current).not.toBe(initial);

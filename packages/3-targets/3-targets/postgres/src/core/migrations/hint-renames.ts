@@ -11,8 +11,8 @@ import type { SqlStorage } from '@internal/sql-contract/types';
 import type { PostgresDatabaseSchemaNode } from '../schema-ir/postgres-database-schema-node';
 import { resolvePostgresCallControlPolicySubject } from './control-policy';
 import { RenameTableCall } from './op-factory-call';
-import { WorkingSchema } from './schema-working-state';
 import { emissionSchemaForNamespace, postgresTableRenameCall } from './table-rename-calls';
+import { createWorkingSchema } from './working-schema';
 
 export interface HintRenames {
   readonly calls: readonly RenameTableCall[];
@@ -43,7 +43,7 @@ export function planHintRenames(input: {
   readonly frameworkComponents: ReadonlyArray<TargetBoundComponentDescriptor<'sql', string>>;
 }): HintRenames {
   const { contract } = input;
-  const working = new WorkingSchema(input.origin);
+  const working = createWorkingSchema(input.origin);
   const calls: RenameTableCall[] = [];
   const consumed: ConsumedHint[] = [];
   const renamedTables = new Map<string, string>();

@@ -7,7 +7,7 @@ import { buildSqlitePlanDiff } from './diff-database-schema';
 import { pairIndexReplacements, renamedTableIndex } from './index-replacements';
 import { coalesceSubtreeIssues } from './issue-planner';
 import { RenameTableCall } from './op-factory-call';
-import { renameTableInSqliteSchema } from './schema-working-state';
+import { renameTableInSqliteSchema } from './working-schema';
 
 /**
  * The call that renames a table, carrying as companions a drop and a create under the new name of

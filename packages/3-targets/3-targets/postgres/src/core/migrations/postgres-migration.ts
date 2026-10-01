@@ -57,8 +57,8 @@ import type { ForeignKeySpec } from './operations/shared';
 import type { PostgresPlanTargetDetails } from './planner-target-details';
 import { postgresContractToSchema } from './postgres-contract-to-schema';
 import { postgresSchemaTables } from './schema-tables';
-import { WorkingSchema } from './schema-working-state';
 import { postgresTableRenameCall } from './table-rename-calls';
+import { createWorkingSchema, type WorkingSchema } from './working-schema';
 
 /**
  * Target-owned base class for Postgres migrations.
@@ -421,7 +421,7 @@ export abstract class PostgresMigration<
 
   private workingSchemaFrom(startContract: Contract<SqlStorage>): WorkingSchema {
     if (this.#workingSchema === undefined) {
-      const working = new WorkingSchema(
+      const working = createWorkingSchema(
         postgresContractToSchema(startContract, this.frameworkComponents()),
       );
       for (const call of this.#earlierRenames) working.apply(call);
