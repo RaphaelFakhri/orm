@@ -138,7 +138,7 @@ function resolveTableRename(
       }),
     };
   }
-  if (hasOld && input.policy.allowedOperationClasses.includes('widening')) {
+  if (hasOld) {
     return { rename: { namespaceId, from: was, to: table } };
   }
   return {};
@@ -152,6 +152,9 @@ export function resolveHints(input: ResolveHintsInput): ResolvedHints {
   const invalid = inconsistentHints(input);
   if (invalid !== undefined) {
     return resolved({ tableRenames: [], conflicts: [invalid] });
+  }
+  if (!input.policy.allowedOperationClasses.includes('widening')) {
+    return resolved({ tableRenames: [], conflicts: [] });
   }
   const tableRenames: ResolvedTableRename[] = [];
   const conflicts: SqlPlannerConflict[] = [];

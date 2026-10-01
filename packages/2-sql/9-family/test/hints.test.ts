@@ -103,11 +103,14 @@ describe('resolveHints for a table rename', () => {
     expect(resolve({ origin: origin() })).toEqual(nothing);
   });
 
-  it.each([
-    ['widening', widening],
-    ['additive-only', additiveOnly],
-  ])('rejects the hint when the origin has both tables, under the %s policy', (_label, policy) => {
-    expect(resolve({ origin: origin('public.Profile', 'public.User'), policy })).toEqual({
+  it('produces nothing when the origin has both tables and the policy does not allow widening', () => {
+    expect(
+      resolve({ origin: origin('public.Profile', 'public.User'), policy: additiveOnly }),
+    ).toEqual(nothing);
+  });
+
+  it('rejects the hint when the origin has both tables', () => {
+    expect(resolve({ origin: origin('public.Profile', 'public.User') })).toEqual({
       ...nothing,
       conflicts: [
         {
@@ -148,6 +151,16 @@ describe('resolveHints and contract space ownership', () => {
         },
       ],
     });
+  });
+
+  it('produces nothing for a table another space owns when the policy does not allow widening', () => {
+    expect(
+      resolve({
+        origin: origin('public.Profile'),
+        policy: additiveOnly,
+        ownership: ownedBy({ 'public.table.Profile': 'audit' }),
+      }),
+    ).toEqual(nothing);
   });
 
   it('renames a table the planned space itself owns', () => {
