@@ -21,6 +21,14 @@ export type {
   SqlPslBuildContext,
 } from '../core/control-target-descriptor';
 export type {
+  AppliedTableRename,
+  ApplyTableRenameInput,
+  RenameTableReferences,
+  ResolvedTableRename,
+  TableRename,
+} from '../core/migrations/apply-table-rename';
+export { applyTableRename } from '../core/migrations/apply-table-rename';
+export type {
   ContractToSchemaIROptions,
   DefaultRenderer,
   DefaultResolver,
@@ -39,6 +47,8 @@ export {
   partitionCallsByControlPolicy,
   partitionIssuesByControlPolicy,
 } from '../core/migrations/control-policy';
+export type { DataTypeResolver } from '../core/migrations/data-type-resolver';
+export { buildDataTypeResolver } from '../core/migrations/data-type-resolver';
 export type { PlanFieldEventOperationsOptions } from '../core/migrations/field-event-planner';
 export { planFieldEventOperations } from '../core/migrations/field-event-planner';
 export { buildNativeTypeExpander } from '../core/migrations/native-type-expander';
@@ -55,7 +65,11 @@ export type {
   SqlSchemaDiffInput,
   SqlSchemaDiffResult,
 } from '../core/migrations/schema-differ';
-export type { TableNameCaseGuardTable } from '../core/migrations/table-name-case-guard';
+export type {
+  TableNameCaseGuardTable,
+  TableRenameByHand,
+  TableRenameInMigration,
+} from '../core/migrations/table-name-case-guard';
 export {
   detectTableNameCaseChanges,
   TABLE_NAME_CASE_CHANGED_CODE,
@@ -92,10 +106,6 @@ export type {
   SqlPlanTargetDetails,
   StorageTypePlanResult,
 } from '../core/migrations/types';
-export {
-  PSL_INVALID_DEFAULT_SQL,
-  sqlDefaultLiteralTagEntry,
-} from '../core/sql-default-literal-tag';
 export {
   temporalCodecPresetWithPrecision,
   temporalStringAuthoringPresets,

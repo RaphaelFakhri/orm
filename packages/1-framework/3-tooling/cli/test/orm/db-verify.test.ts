@@ -9,6 +9,7 @@ import { notOk, ok } from '@internal/utils/result';
 import type { MountedTree, PresentedResult } from '@prisma/cli-engine';
 import type { Diagnostic } from '@prisma/cli-engine/protocol';
 import { join } from 'pathe';
+import stripAnsi from 'strip-ansi';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ControlClient } from '../../src/control-api/types';
 import { BIN_COMMANDS, BIN_GROUPS } from '../../src/orm/cli';
@@ -16,6 +17,12 @@ import { createDbVerifyCommand } from '../../src/orm/db/verify';
 import { CliStructuredError } from '../../src/utils/cli-errors';
 import { createOrmTestCli } from '../helpers/orm-test-cli';
 import { createTestProjectDir } from '../utils/test-project-dir';
+import {
+  refusedConnection,
+  refusedWithDiagnostics,
+  reportedDiagnostics,
+  reportedRefusedConnection,
+} from './unreachable-database';
 
 const HASH_A = `4cb4256${'0'.repeat(57)}`;
 const HASH_B = `9d0f118${'2'.repeat(57)}`;
@@ -480,7 +487,7 @@ describe('db verify', () => {
         {
           kind: 'run-command',
           label: 'Change the database to match the contract, then verify again',
-          command: '{bin} db update',
+          command: 'prisma-test db update',
         },
         {
           kind: 'user-choice',
@@ -488,6 +495,58 @@ describe('db verify', () => {
             'Or change the contract source to describe the database as it is, re-run contract emit, then verify again',
         },
       ]);
+    });
+
+    describe('a contract default its data type refuses', () => {
+      const REFUSAL =
+        'The contract holds this default in a form its data type does not store: pg/timestamptz needs a UTC offset, but "2024-01-01 00:00:00" has none. Re-emit the contract, then try again.';
+      const REFUSED = schemaResult({
+        ok: false,
+        code: 'CONTRACT.SCHEMA_VERIFICATION_FAILED',
+        summary: 'Database schema does not satisfy contract',
+        schema: {
+          issues: [
+            blindCast<
+              SchemaDiffIssue,
+              'The renderer reads the path, the sides and the explanation'
+            >({
+              path: ['public', 'event', 'at', 'default'],
+              expected: { id: 'default', nodeKind: 'sql-column-default' },
+              explanation: REFUSAL,
+            }),
+          ],
+        },
+      });
+
+      it('offers only re-emitting the contract', async () => {
+        const dir = await projectDir();
+        mocks.dbVerify.mockResolvedValue(aggregateOk({ perSpace: [['app', REFUSED]] }));
+
+        const run = await harness(ormConfig()).run(['db', 'verify', '--json'], { cwd: dir });
+
+        expect(diagnosticsOf(run)[0]?.nextActions).toEqual([
+          {
+            kind: 'run-command',
+            label: 'Re-emit the contract, which stores the refused default as its type holds it',
+            command: 'prisma-test contract emit',
+          },
+        ]);
+      });
+
+      it('prints the refusal on the missing default', async () => {
+        const dir = await projectDir();
+        mocks.dbVerify.mockResolvedValue(aggregateOk({ perSpace: [['app', REFUSED]] }));
+
+        const run = await harness(ormConfig()).run(['db', 'verify'], {
+          cwd: dir,
+          isTty: { stdout: true, stderr: true },
+        });
+        const shown = stripAnsi(`${run.stderr}\n${run.stdout}`);
+
+        expect(shown).toContain(`missing: public/event/at/default. ${REFUSAL}`);
+        expect(shown).toContain('contract emit');
+        expect(shown).not.toContain('db update');
+      });
     });
 
     it('draws the drift as a tree the engine paints', async () => {
@@ -730,6 +789,30 @@ describe('db verify', () => {
 
       expect(settled).not.toContain('secret');
       expect(settled).toContain(MASKED_CONNECTION);
+    });
+
+    it('reports a refused connection as every command does, with its driver code', async () => {
+      const dir = await projectDir();
+      mocks.verify.mockRejectedValue(refusedConnection());
+
+      const run = await harness(ormConfig()).run(['db', 'verify', '--json'], { cwd: dir });
+
+      expect(run.exitCode).toBe(2);
+      expect(envelopeOf(run)?.error).toEqual(reportedRefusedConnection('db verify'));
+    });
+
+    it('keeps the diagnostics of a structured driver error, without the connection string', async () => {
+      const dir = await projectDir();
+      mocks.verify.mockRejectedValue(refusedWithDiagnostics());
+
+      const run = await harness(ormConfig()).run(['db', 'verify', '--json'], { cwd: dir });
+
+      expect(envelopeOf(run)).toMatchObject({
+        ok: false,
+        error: { code: 'DRIVER.CONNECTION_FAILED' },
+        diagnostics: reportedDiagnostics,
+      });
+      expect(JSON.stringify(run.json.at(-1))).not.toContain('secret');
     });
 
     it('keeps the connection string out of a structured driver error too', async () => {

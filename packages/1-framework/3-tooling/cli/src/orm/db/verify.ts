@@ -6,7 +6,6 @@ import {
   VERIFY_CODE_TARGET_MISMATCH,
 } from '@internal/framework-components/control';
 import { ifDefined } from '@internal/utils/defined';
-import { isInternalError } from '@internal/utils/internal-error';
 import type { Block, Presentations } from '@prisma/cli-engine';
 import { flag } from '@prisma/cli-engine';
 import type { Diagnostic, Result } from '@prisma/cli-engine/protocol';
@@ -329,7 +328,11 @@ function driftDiagnostics(inputs: {
       schemaVerdictDiagnostic({
         result,
         space,
-        nextActions: schemaDriftNextActions({ verb: 'verify', contractRef: undefined }),
+        nextActions: schemaDriftNextActions({
+          verb: 'verify',
+          contractRef: undefined,
+          issues: result.schema.issues,
+        }),
       }),
     );
   if (perSpace.length > 0) {
@@ -634,9 +637,6 @@ export function createDbVerifyCommand(
           ctx.present({ data: document, exitCode: 0 }, verifyPresentations({ document, header })),
         );
       } catch (error) {
-        if (isInternalError(error)) {
-          throw error;
-        }
         return notOk(
           verificationThrow({ error, invocation: commandInvocation, connection: dbConnection }),
         );

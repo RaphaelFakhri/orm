@@ -9,9 +9,21 @@
  */
 
 import type { JsonValue } from '@internal/contract/types';
-import { type Cast, type DataType, dataType } from '@internal/framework-components/codec';
-import { isNonFiniteText, numeralText } from '@internal/sql-relational-core/ast';
+import {
+  type Cast,
+  type DataType,
+  dataType,
+  isNonFiniteText,
+  type ToCanonicalForm,
+} from '@internal/framework-components/codec';
+import {
+  type CanonicalDateTimeOptions,
+  canonicalDateTime,
+  integerTextCanonicalForm,
+  numeralText,
+} from '@internal/sql-relational-core/ast';
 import { structuredError } from '@internal/utils/structured-error';
+import { canonicalUuid, fitsFloat4, pgIntervalCanonical } from './codec-helpers';
 
 /** A cast between two types that store the same shape: the value is already the form this type stores. */
 const unchanged: Cast = (value) => value;
@@ -64,6 +76,7 @@ export const pgTsquery: DataType = dataType('pg/tsquery', {});
 export const pgInt4: DataType = dataType('pg/int4', { casts: { [pgInt2.id]: unchanged } });
 
 export const pgInt8: DataType = dataType('pg/int8', {
+  toCanonicalForm: integerTextCanonicalForm,
   casts: { [pgInt2.id]: asNumeralText, [pgInt4.id]: asNumeralText },
 });
 
@@ -75,15 +88,15 @@ export const pgNumeric: DataType = dataType('pg/numeric', {
   },
 });
 
-/** `float4` stores a single-precision float, so a magnitude past about 3.4e38 does not fit. */
+/** `float4` stores a single-precision float, so a magnitude past about 3.4e38, or one it would round to 0, does not fit. */
 const asFloat4: Cast = (value) => {
   const converted = asFloat(value);
-  if (typeof converted !== 'number' || Number.isFinite(Math.fround(converted))) return converted;
+  if (typeof converted !== 'number' || fitsFloat4(converted)) return converted;
   throw structuredError(
     'CONTRACT.CAST_REFUSED',
-    `${converted} is out of range: no float4 holds a number that large.`,
+    `${converted} is out of range: float4 holds a nonzero magnitude from about 1.4e-45 to 3.4e38.`,
     {
-      why: 'float4 stores a single-precision float, which holds magnitudes up to about 3.4e38.',
+      why: 'float4 stores a single-precision float, which overflows past about 3.4e38 and rounds a magnitude below about 1.4e-45 to 0.',
       fix: 'Use a number float4 holds, or a float8 or numeric column.',
     },
   );
@@ -105,17 +118,115 @@ const fromText: Readonly<Record<string, Cast>> = { [pgText.id]: unchanged };
 
 export const pgChar: DataType = dataType('pg/char', { casts: fromText });
 export const pgVarchar: DataType = dataType('pg/varchar', { casts: fromText });
-export const pgUuid: DataType = dataType('pg/uuid', { casts: fromText });
+/** Text in any form PostgreSQL reads as a UUID, written the way PostgreSQL writes it, so the contract holds the value the database reports. */
+const asUuid: Cast = (value) => {
+  if (typeof value !== 'string') return wrongShape(value, 'text');
+  const uuid = canonicalUuid(value);
+  if (uuid !== undefined) return uuid;
+  throw structuredError(
+    'CONTRACT.CAST_REFUSED',
+    `${JSON.stringify(value)} is not a UUID: PostgreSQL reads 32 hexadecimal digits, with a hyphen after any group of four and optionally in braces.`,
+    {
+      why: 'A uuid column takes only text PostgreSQL reads as a UUID.',
+      fix: 'Write a UUID such as a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11.',
+    },
+  );
+};
+
+export const pgUuid: DataType = dataType('pg/uuid', { casts: { [pgText.id]: asUuid } });
 export const pgInet: DataType = dataType('pg/inet', { casts: fromText });
 export const pgBit: DataType = dataType('pg/bit', { casts: fromText });
 export const pgVarbit: DataType = dataType('pg/varbit', { casts: fromText });
-export const pgTimetz: DataType = dataType('pg/timetz', { casts: fromText });
-export const pgInterval: DataType = dataType('pg/interval', { casts: fromText });
 export const pgBytea: DataType = dataType('pg/bytea', { casts: fromText });
-export const pgDate: DataType = dataType('pg/date', { casts: fromText });
-export const pgTime: DataType = dataType('pg/time', { casts: fromText });
-export const pgTimestamp: DataType = dataType('pg/timestamp', { casts: fromText });
-export const pgTimestamptz: DataType = dataType('pg/timestamptz', { casts: fromText });
+
+const POSTGRES_YEAR = /^(\d{4,6})(-.*?)( BC)?$/;
+
+/**
+ * Text PostgreSQL prints, in ISO 8601. A year with a ` BC` suffix becomes the ISO year, one higher
+ * than its negative, so 1 BC is 0000 and 44 BC is -000043. A year of five or six digits becomes a
+ * signed six-digit year. 0 BC does not exist, so it stays as written and the reader refuses it.
+ */
+function isoFromPostgresText(text: string): string {
+  const match = POSTGRES_YEAR.exec(text);
+  if (match === null) return text;
+  const [, digits = '', rest = '', bc] = match;
+  const year = Number(digits);
+  if (bc !== undefined) {
+    if (year === 0) return text;
+    const astronomical = 1 - year;
+    return astronomical === 0 ? `0000${rest}` : `-${String(-astronomical).padStart(6, '0')}${rest}`;
+  }
+  return digits.length > 4 ? `+${String(year).padStart(6, '0')}${rest}` : text;
+}
+
+const INFINITIES: ReadonlySet<string> = new Set(['infinity', '-infinity']);
+
+/**
+ * The canonical form of a date or time type (ADR 254), from ISO 8601 or the text PostgreSQL prints.
+ * `infinity` and `-infinity` are values of the types that hold them.
+ */
+function postgresDateTime(
+  options: CanonicalDateTimeOptions,
+  holdsInfinity: boolean,
+): (text: string) => string {
+  return (text) =>
+    holdsInfinity && INFINITIES.has(text)
+      ? text
+      : canonicalDateTime(isoFromPostgresText(text), options, text);
+}
+
+/**
+ * Each range is what PostgreSQL and every codec of the type hold: PostgreSQL starts at 4714-11-24
+ * BC, and the `Temporal` and `Date` codecs end at +275760-09-13.
+ */
+export const pgDateCanonical = postgresDateTime(
+  {
+    shape: 'date',
+    dataTypeId: 'pg/date',
+    range: { earliest: '-004713-11-24', latest: '+275760-09-13' },
+  },
+  true,
+);
+export const pgTimeCanonical = postgresDateTime({ shape: 'time', dataTypeId: 'pg/time' }, false);
+export const pgTimetzCanonical = postgresDateTime(
+  { shape: 'timeWithOffset', dataTypeId: 'pg/timetz', maxOffsetHours: 15 },
+  false,
+);
+export const pgTimestampCanonical = postgresDateTime(
+  {
+    shape: 'dateTime',
+    dataTypeId: 'pg/timestamp',
+    range: { earliest: '-004713-11-24T00:00:00', latest: '+275760-09-13T23:59:59.999999' },
+  },
+  true,
+);
+export const pgTimestamptzCanonical = postgresDateTime(
+  {
+    shape: 'instant',
+    dataTypeId: 'pg/timestamptz',
+    range: { earliest: '-004713-11-24T00:00:00Z', latest: '+275760-09-13T00:00:00Z' },
+  },
+  true,
+);
+
+/** The canonical-form function of a type whose values are written as text. */
+const canonicalFromText =
+  (canonical: (text: string) => string): ToCanonicalForm =>
+  (value) =>
+    typeof value === 'string' ? canonical(value) : wrongShape(value, 'text');
+
+/** A date or time type: its canonical form, and a cast from text that gives it. */
+function dateTimeType(id: string, canonical: (text: string) => string): DataType {
+  const toCanonicalForm = canonicalFromText(canonical);
+  return dataType(id, { toCanonicalForm, casts: { [pgText.id]: toCanonicalForm } });
+}
+
+export const pgTimetz: DataType = dateTimeType('pg/timetz', pgTimetzCanonical);
+export const pgInterval: DataType = dateTimeType('pg/interval', pgIntervalCanonical);
+export const pgDate: DataType = dateTimeType('pg/date', pgDateCanonical);
+export const pgTime: DataType = dateTimeType('pg/time', pgTimeCanonical);
+export const pgTimestamp: DataType = dateTimeType('pg/timestamp', pgTimestampCanonical);
+export const pgTimestamptz: DataType = dateTimeType('pg/timestamptz', pgTimestamptzCanonical);
 
 /** Every data type this target registers. */
 export const postgresDataTypes: readonly DataType[] = [

@@ -8,7 +8,6 @@ import {
   column,
 } from '@internal/framework-components/codec';
 import { CastExpr, type ProjectionExpr } from '@internal/sql-relational-core/ast';
-import { blindCast } from '@internal/utils/casts';
 import type { StandardSchemaV1 } from '@standard-schema/spec';
 import { PostgresCodecDescriptor } from './codec-descriptor';
 import { type PrecisionParams, precisionParamsSchema, renderPrecision } from './codec-helpers';
@@ -18,7 +17,23 @@ import {
   PG_TIMESTAMP_STRING_CODEC_ID,
   PG_TIMESTAMPTZ_STRING_CODEC_ID,
 } from './codec-ids';
-import { pgDate, pgTime, pgTimestamp, pgTimestamptz } from './data-types';
+import {
+  pgDate,
+  pgDateCanonical,
+  pgTime,
+  pgTimeCanonical,
+  pgTimestamp,
+  pgTimestampCanonical,
+  pgTimestamptz,
+  pgTimestamptzCanonical,
+} from './data-types';
+import {
+  decodeJsonDateTimeText,
+  pgDateStoredText,
+  pgTimeStoredText,
+  pgTimestampStoredText,
+  pgTimestamptzStoredText,
+} from './date-time-stored-text';
 import {
   PG_DATE_NATIVE_TYPE,
   PG_TIME_NATIVE_TYPE,
@@ -39,12 +54,10 @@ export class PgDateStringCodec extends CodecImpl<
     return wire;
   }
   encodeJson(value: string): JsonValue {
-    return value;
+    return pgDateCanonical(value);
   }
   decodeJson(json: JsonValue): string {
-    return blindCast<string, 'date-string columns serialize to JSON as their wire string form'>(
-      json,
-    );
+    return decodeJsonDateTimeText(PG_DATE_STRING_CODEC_ID, json, pgDateStoredText);
   }
 }
 
@@ -86,13 +99,10 @@ export class PgTimestampStringCodec extends CodecImpl<
     return wire;
   }
   encodeJson(value: string): JsonValue {
-    return value;
+    return pgTimestampCanonical(value);
   }
   decodeJson(json: JsonValue): string {
-    return blindCast<
-      string,
-      'timestamp-string columns serialize to JSON as their wire string form'
-    >(json);
+    return decodeJsonDateTimeText(PG_TIMESTAMP_STRING_CODEC_ID, json, pgTimestampStoredText);
   }
 }
 
@@ -145,13 +155,10 @@ export class PgTimestamptzStringCodec extends CodecImpl<
     return wire;
   }
   encodeJson(value: string): JsonValue {
-    return value;
+    return pgTimestamptzCanonical(value);
   }
   decodeJson(json: JsonValue): string {
-    return blindCast<
-      string,
-      'timestamptz-string columns serialize to JSON as their wire string form'
-    >(json);
+    return decodeJsonDateTimeText(PG_TIMESTAMPTZ_STRING_CODEC_ID, json, pgTimestamptzStoredText);
   }
 }
 
@@ -204,12 +211,10 @@ export class PgTimeStringCodec extends CodecImpl<
     return wire;
   }
   encodeJson(value: string): JsonValue {
-    return value;
+    return pgTimeCanonical(value);
   }
   decodeJson(json: JsonValue): string {
-    return blindCast<string, 'time-string columns serialize to JSON as their wire string form'>(
-      json,
-    );
+    return decodeJsonDateTimeText(PG_TIME_STRING_CODEC_ID, json, pgTimeStoredText);
   }
 }
 

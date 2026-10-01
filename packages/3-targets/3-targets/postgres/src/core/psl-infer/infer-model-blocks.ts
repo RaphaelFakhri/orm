@@ -24,7 +24,11 @@ import {
   computeCheckContentHash,
   formatWireName,
 } from '@internal/sql-schema-ir/naming';
-import type { SqlColumnIR, SqlTableIR } from '@internal/sql-schema-ir/types';
+import {
+  defaultInCanonicalForm,
+  type SqlColumnIR,
+  type SqlTableIR,
+} from '@internal/sql-schema-ir/types';
 import { ifDefined } from '@internal/utils/defined';
 import { postgresRenderCheckExpressions } from '../check-expressions';
 import {
@@ -42,7 +46,7 @@ import {
   SYNTHETIC_SPAN,
 } from '../psl-build/psl-literals';
 import { createUniqueFieldName } from '../psl-build/unique-name';
-import { dataTypeForInferredType, inferredDefaultReadsBack } from './infer-default-codec';
+import type { InferredColumnDefaults } from './infer-default-codec';
 import { buildDanglingForeignKeyWarning, type DanglingForeignKeyInfo } from './infer-foreign-keys';
 import { resolveColumnFieldName, type TableColumnFieldNameMap } from './infer-names';
 
@@ -53,6 +57,7 @@ export function buildModel(
   fieldNamesByTable: ReadonlyMap<string, TableColumnFieldNameMap>,
   defaultMapping: DefaultMappingOptions | undefined,
   rawDefaultParser: PslPrinterOptions['parseRawDefault'],
+  columnDefaults: InferredColumnDefaults,
   relationFields: readonly RelationField[],
   danglingForeignKeys: readonly DanglingForeignKeyInfo[],
   rlsEnabled = false,
@@ -89,6 +94,7 @@ export function buildModel(
         fieldNameMap,
         defaultMapping,
         rawDefaultParser,
+        columnDefaults,
         pkColumns,
         isSinglePk,
         singlePkConstraintName,
@@ -220,6 +226,7 @@ function buildScalarField(
   fieldNameMap: TableColumnFieldNameMap | undefined,
   defaultMapping: DefaultMappingOptions | undefined,
   rawDefaultParser: PslPrinterOptions['parseRawDefault'],
+  columnDefaults: InferredColumnDefaults,
   pkColumns: ReadonlySet<string>,
   isSinglePk: boolean,
   singlePkConstraintName: string | undefined,
@@ -284,14 +291,11 @@ function buildScalarField(
     rawDefaultParser,
     {
       ...defaultMapping,
-      ...ifDefined(
-        'columnDataType',
-        dataTypeForInferredType(resolution.pslType.name, isEnumColumn),
-      ),
+      ...ifDefined('columnDataType', columnDefaults.dataTypeOf(resolution.pslType, isEnumColumn)),
       list: column.many === true,
     },
     (value) =>
-      inferredDefaultReadsBack(value, resolution.pslType.name, isEnumColumn, column.many === true),
+      columnDefaults.readsBack(value, resolution.pslType, isEnumColumn, column.many === true),
   );
   if (defaultAttribute !== undefined) {
     attributes.push(parseDefaultAttributeString(defaultAttribute));
@@ -393,10 +397,23 @@ function literalOrRawAttribute(
   defaultMapping: DefaultMappingOptions,
   readsBack: (value: ColumnDefaultLiteralInputValue) => boolean,
 ): string | undefined {
+  const printed: ColumnDefault =
+    columnDefault.kind === 'literal'
+      ? {
+          kind: 'literal',
+          value: defaultInCanonicalForm(
+            columnDefault.value,
+            defaultMapping.columnDataType === undefined
+              ? undefined
+              : defaultMapping.dataTypes?.get(defaultMapping.columnDataType)?.toCanonicalForm,
+            defaultMapping.list === true,
+          ).value,
+        }
+      : columnDefault;
   const result =
-    columnDefault.kind === 'literal' && !readsBack(columnDefault.value)
+    printed.kind === 'literal' && !readsBack(printed.value)
       ? undefined
-      : mapDefault(columnDefault, defaultMapping);
+      : mapDefault(printed, defaultMapping);
   if (result !== undefined) return result.attribute;
   return typeof column.default === 'string'
     ? mappedAttribute({ kind: 'function', expression: column.default }, defaultMapping)
