@@ -6,11 +6,13 @@ import {
   crossRef,
   type StorageHashBase,
 } from '@internal/contract/types';
+import { enumType, member } from '@internal/contract-authoring';
 import type { CodecLookup } from '@internal/framework-components/codec';
 import { UNBOUND_NAMESPACE_ID } from '@internal/framework-components/ir';
 import {
   buildMongoNamespace,
   MongoCollection,
+  MongoIndex,
   MongoStorage,
   MongoValidator,
 } from '@internal/mongo-contract';
@@ -148,6 +150,63 @@ function getIndexes(
 }
 
 describe('interpretPslDocumentToMongoContract', () => {
+  it('lowers a bound enum block with its codec and value set', () => {
+    const ir = interpretOk(
+      `enum Role {
+  USER
+}
+model Item {
+  id ObjectId @id @map("_id")
+  roles Role[]
+}`,
+      {
+        authoringContributions: {
+          entityTypes: {
+            enum: {
+              kind: 'entity',
+              discriminator: 'enum',
+              output: {
+                factory: () =>
+                  enumType(
+                    'Role',
+                    { codecId: 'mongo/string@1', nativeType: 'string' },
+                    member('USER'),
+                  ),
+              },
+            },
+          },
+          pslBlockDescriptors: {
+            enum: {
+              kind: 'pslBlock',
+              keyword: 'enum',
+              discriminator: 'enum',
+              name: { required: true },
+              spec: () =>
+                mapBlock({
+                  value: { type: jsonValue(), documentation: 'Member value' },
+                  allowBare: true,
+                }),
+            },
+          },
+        },
+      },
+    );
+    expect(model(ir, 'Item').fields).toEqual({
+      _id: { type: { kind: 'scalar', codecId: 'mongo/objectId@1' }, nullable: false },
+      roles: {
+        type: { kind: 'scalar', codecId: 'mongo/string@1' },
+        nullable: false,
+        many: true,
+        valueSet: {
+          plane: 'domain',
+          entityKind: 'enum',
+          namespaceId: UNBOUND_NAMESPACE_ID,
+          entityName: 'Role',
+        },
+      },
+    });
+  });
+
   it('resolves missing enum factory diagnostics from the enum block node', () => {
     const input = buildSymbolTableInput(
       `enum Role {
@@ -233,19 +292,20 @@ describe('interpretPslDocumentToMongoContract', () => {
 
       expect(result.ok).toBe(false);
       if (result.ok) return;
-      expect(result.failure.diagnostics).toHaveLength(2);
-      expect(result.failure.diagnostics).toEqual(
-        expect.arrayContaining([
-          expect.objectContaining({
-            code: 'PSL_UNSUPPORTED_FIELD_TYPE',
-            message: expect.stringContaining('BigInt'),
-          }),
-          expect.objectContaining({
-            code: 'PSL_UNSUPPORTED_FIELD_TYPE',
-            message: expect.stringContaining('Bytes'),
-          }),
-        ]),
-      );
+      expect(result.failure.diagnostics).toEqual([
+        expect.objectContaining({
+          code: 'PSL_UNRESOLVED_REFERENCE',
+          message:
+            'Field "Item.big" has type "BigInt", which is not a scalar type, an enum, a composite type or a model. The Mongo scalar types are String, Int32, Bool, Date, ObjectId and Double.',
+          sourceId: 'test.prisma',
+        }),
+        expect.objectContaining({
+          code: 'PSL_UNRESOLVED_REFERENCE',
+          message:
+            'Field "Item.data" has type "Bytes", which is not a scalar type, an enum, a composite type or a model. The Mongo scalar types are String, Int32, Bool, Date, ObjectId and Double.',
+          sourceId: 'test.prisma',
+        }),
+      ]);
     });
 
     it('uses custom scalar type descriptors when provided', () => {
@@ -301,14 +361,14 @@ describe('interpretPslDocumentToMongoContract', () => {
 
       expect(result.ok).toBe(false);
       if (result.ok) return;
-      expect(result.failure.diagnostics).toEqual(
-        expect.arrayContaining([
-          expect.objectContaining({
-            code: 'PSL_UNSUPPORTED_FIELD_TYPE',
-            message: expect.stringContaining('Unsupported'),
-          }),
-        ]),
-      );
+      expect(result.failure.diagnostics).toEqual([
+        expect.objectContaining({
+          code: 'PSL_UNRESOLVED_REFERENCE',
+          message:
+            'Field "Item.data" has type "Unsupported", which is not a scalar type, an enum, a composite type or a model. The Mongo scalar types are String, Int32, Bool, Date, ObjectId and Double.',
+          sourceId: 'test.prisma',
+        }),
+      ]);
     });
   });
 
@@ -526,43 +586,58 @@ describe('interpretPslDocumentToMongoContract', () => {
     it('emits one syntax diagnostic for a malformed target field @map', () => {
       const result = interpret(`
         model Parent {
-          id       ObjectId @id @map(42)
+          id       ObjectId @id @map("_id")
+          key      ObjectId @map(42)
           children Child[]
         }
 
         model Child {
           id       ObjectId @id @map("_id")
           parentId ObjectId
-          parent   Parent @relation(fields: [parentId], references: [id])
+          parent   Parent @relation(fields: [parentId], references: [key])
         }
       `);
 
-      expectInvalidAttributeSyntax(result, /Expected a string literal/);
+      const diagnostic = expectInvalidAttributeSyntax(result, /Expected a string literal/);
+      if (result.ok) throw new Error('Expected interpretation to fail');
+      expect(result.failure.diagnostics).toEqual([diagnostic]);
     });
 
-    it('uses mapped field names in relation on-clauses', () => {
+    it('uses mapped names in forward relations, unique constraints, and indexes', () => {
       const ir = interpretOk(`
-        model Parent {
-          id       ObjectId @id @map("_id")
-          children Child[]
-        }
-
         model Child {
           id       ObjectId @id @map("_id")
           parentId ObjectId @map("parent_id")
           parent   Parent @relation(fields: [parentId], references: [id])
+          @@index([parentId])
+        }
+
+        model Parent {
+          id       ObjectId @id @map("_id")
+          code     String @unique @map("code_value")
+          children Child[]
+          @@map("parents")
         }
       `);
 
-      expect(model(ir, 'Child').relations).toMatchObject({
+      expect(model(ir, 'Child').relations).toEqual({
         parent: {
           to: crossRef('Parent'),
+          cardinality: 'N:1',
+          nullable: false,
           on: {
             localFields: ['parent_id'],
             targetFields: ['_id'],
           },
         },
       });
+      expect(model(ir, 'Parent').storage).toEqual({ collection: 'parents' });
+      expect(getIndexes(ir, 'Child')).toEqual([
+        new MongoIndex({ keys: [{ field: 'parent_id', direction: 1 }] }),
+      ]);
+      expect(getIndexes(ir, 'parents')).toEqual([
+        new MongoIndex({ keys: [{ field: 'code_value', direction: 1 }], unique: true }),
+      ]);
     });
 
     it('excludes FK-side relation fields from the fields record', () => {
@@ -2256,13 +2331,18 @@ describe('interpretPslDocumentToMongoContract', () => {
   });
 
   describe('namespace block rejection', () => {
-    it('rejects explicit namespace blocks with a Mongo-flavoured diagnostic', () => {
+    it('rejects explicit namespaces even when a top-level relation targets a namespaced model', () => {
       const result = interpretPslDocumentToMongoContract({
         ...buildSymbolTableInput(
           `namespace auth {
   model User {
-    id String @id
+    id ObjectId @id @map("_id")
   }
+}
+model Post {
+  id ObjectId @id @map("_id")
+  userId ObjectId
+  user auth.User @relation(fields: [userId], references: [id])
 }
 `,
           'schema.prisma',
@@ -2274,18 +2354,14 @@ describe('interpretPslDocumentToMongoContract', () => {
 
       expect(result.ok).toBe(false);
       if (result.ok) return;
-      expect(result.failure.diagnostics).toEqual(
-        expect.arrayContaining([
-          expect.objectContaining({
-            code: 'PSL_UNSUPPORTED_NAMESPACE_BLOCK',
-            message: expect.stringMatching(/[Mm]ongo/),
-          }),
-        ]),
-      );
-      const offending = result.failure.diagnostics.find(
-        (d) => d.code === 'PSL_UNSUPPORTED_NAMESPACE_BLOCK',
-      );
-      expect(offending?.message).toContain('auth');
+      expect(result.failure.diagnostics).toEqual([
+        expect.objectContaining({
+          code: 'PSL_UNSUPPORTED_NAMESPACE_BLOCK',
+          message:
+            'Mongo does not support `namespace auth { … }` blocks (the database is bound by the connection string; declare models at the document top level instead).',
+          sourceId: 'schema.prisma',
+        }),
+      ]);
     });
 
     it('rejects `namespace unbound { … }` (Mongo has no late-binding namespace)', () => {
