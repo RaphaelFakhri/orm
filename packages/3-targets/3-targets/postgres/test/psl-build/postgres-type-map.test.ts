@@ -212,11 +212,12 @@ describe('contract infer writes the text-backed date and time types', () => {
 });
 
 async function withoutTemporal<T>(body: () => Promise<T>): Promise<T> {
-  const original = Reflect.get(globalThis, 'Temporal');
+  const original = Object.getOwnPropertyDescriptor(globalThis, 'Temporal');
   Reflect.deleteProperty(globalThis, 'Temporal');
   try {
     return await body();
   } finally {
-    Reflect.set(globalThis, 'Temporal', original);
+    if (original === undefined) Reflect.deleteProperty(globalThis, 'Temporal');
+    else Object.defineProperty(globalThis, 'Temporal', original);
   }
 }
