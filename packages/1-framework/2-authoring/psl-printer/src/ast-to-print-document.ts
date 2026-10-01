@@ -191,13 +191,22 @@ function unescapePslString(value: string): string {
   return result;
 }
 
+/**
+ * Model attributes print in their order, except that `@@map` follows them and `@@hint` follows
+ * `@@map`: the hint describes how the model's table got its name, so it reads last.
+ */
 function modelToPrinterModel(model: PslModel | PslCompositeType): PrinterModel {
   let mapName: string | undefined;
   const modelAttrStrings: string[] = [];
+  const hintAttrStrings: string[] = [];
 
   for (const a of model.attributes) {
     if (a.name === 'map' && a.target === 'model') {
       mapName = getPositionalStringArg(a, 0) ?? mapName;
+      continue;
+    }
+    if (a.name === 'hint' && a.target === 'model') {
+      hintAttrStrings.push(renderPslAttribute(a));
       continue;
     }
     modelAttrStrings.push(renderPslAttribute(a));
@@ -206,6 +215,7 @@ function modelToPrinterModel(model: PslModel | PslCompositeType): PrinterModel {
   if (mapName !== undefined) {
     modelAttrStrings.push(`@@map("${escapePslString(mapName)}")`);
   }
+  modelAttrStrings.push(...hintAttrStrings);
 
   const printerFields = model.fields.map((f) => fieldToPrinterField(f));
 

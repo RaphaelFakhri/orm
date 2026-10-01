@@ -71,6 +71,39 @@ describe('printPslFromAst', () => {
     expect(printPslFromAst(ast)).toContain('@@map("foo")');
   });
 
+  it('prints @@hint after every other model attribute, @@map included', () => {
+    const models: PslModel[] = [
+      {
+        kind: 'model',
+        name: 'Member',
+        fields: [
+          {
+            kind: 'field',
+            name: 'id',
+            typeName: 'Int',
+            optional: false,
+            list: false,
+            attributes: [attr('field', 'id', [], 0)],
+            span: span(0),
+          },
+        ],
+        attributes: [
+          attr('model', 'hint', [{ kind: 'named', name: 'was', value: '"tag"', span: span(1) }], 2),
+          attr('model', 'map', [{ kind: 'positional', value: '"label"', span: span(3) }], 4),
+          attr('model', 'rls', [], 5),
+        ],
+        span: span(0),
+      },
+    ];
+    const ast: PslDocumentAst = {
+      kind: 'document',
+      sourceId: 't',
+      namespaces: [makeNs(UNSPECIFIED_PSL_NAMESPACE_ID, models, [], 0)],
+      span: span(0),
+    };
+    expect(printPslFromAst(ast)).toContain('  @@rls\n  @@map("label")\n  @@hint(was: "tag")\n}');
+  });
+
   it('prints a value-object type block inside its namespace, before the models', () => {
     const address: PslCompositeType = {
       kind: 'compositeType',
