@@ -1292,10 +1292,10 @@ export class CollectionBase<
    * await db.orm.User.all((meta) => meta.annotate(cacheAnnotation({ key: 'users' })));
    * ```
    */
-  all<Self>(
+  all<Self extends this>(
     this: Self,
     configure?: (meta: MetaBuilder<'read'>) => void,
-  ): AsyncIterableResult<CollectionRowOf<this & Self>>;
+  ): AsyncIterableResult<CollectionRowOf<Self>>;
   all(configure?: (meta: MetaBuilder<'read'>) => void): AsyncIterableResult<CollectionRowOf<this>>;
   all(configure?: (meta: MetaBuilder<'read'>) => void): AsyncIterableResult<unknown> {
     return this.#withAnnotationsFromMeta(configure, 'all').#dispatch();
@@ -1374,17 +1374,17 @@ export class CollectionBase<
    * );
    * ```
    */
-  async first<Self>(this: Self): Promise<CollectionRowOf<this & Self> | null>;
-  async first<Self>(
+  async first<Self extends this>(this: Self): Promise<CollectionRowOf<Self> | null>;
+  async first<Self extends this>(
     this: Self,
     filter: undefined,
     configure: (meta: MetaBuilder<'read'>) => void,
-  ): Promise<CollectionRowOf<this & Self> | null>;
-  async first<Self>(
+  ): Promise<CollectionRowOf<Self> | null>;
+  async first<Self extends this>(
     this: Self,
     filter: WhereInput<TContract, State['nsId'], ModelName, State['variantName']>,
     configure?: (meta: MetaBuilder<'read'>) => void,
-  ): Promise<CollectionRowOf<this & Self> | null>;
+  ): Promise<CollectionRowOf<Self> | null>;
   async first(
     filter?: WhereInput<TContract, State['nsId'], ModelName, State['variantName']>,
     configure?: (meta: MetaBuilder<'read'>) => void,
@@ -1553,20 +1553,18 @@ export class CollectionBase<
    * validation applies, but the recorded annotations are discarded: neither the nested
    * statements nor the read-back query carry them.
    */
-  async create<Self>(
+  async create<Self extends this>(
     this: Self,
     data: ResolvedCreateInput<TContract, ModelName, State['variantName'], State['nsId']>,
     configure?: (meta: MetaBuilder<'write'>) => void,
-  ): Promise<CollectionRowOf<this & Self>>;
-  async create<Self>(
+  ): Promise<CollectionRowOf<Self>>;
+  async create<Self extends this>(
     this: Self,
     data: MutationCreateInputWithRelations<TContract, ModelName, State['nsId']>,
     configure?: (meta: MetaBuilder<'write'>) => void,
-  ): Promise<CollectionRowOf<this & Self>>;
+  ): Promise<CollectionRowOf<Self>>;
   async create(
-    data:
-      | ResolvedCreateInput<TContract, ModelName, State['variantName'], State['nsId']>
-      | MutationCreateInputWithRelations<TContract, ModelName, State['nsId']>,
+    data: MutationCreateInputWithRelations<TContract, ModelName, State['nsId']>,
     configure?: (meta: MetaBuilder<'write'>) => void,
   ): Promise<CollectionRowOf<this>>;
   async create(
@@ -1673,7 +1671,7 @@ export class CollectionBase<
    * compiled insert plan. It may be passed in second position when
    * there are no options.
    */
-  createAll<Self>(
+  createAll<Self extends this>(
     this: Self,
     data: readonly ResolvedScalarCreateInput<
       TContract,
@@ -1683,7 +1681,7 @@ export class CollectionBase<
     >[],
     optionsOrConfigure?: CreateConflictOptions<TContract, ModelName> | WriteConfigure,
     configure?: WriteConfigure,
-  ): AsyncIterableResult<CollectionRowOf<this & Self>>;
+  ): AsyncIterableResult<CollectionRowOf<Self>>;
   createAll(
     data: readonly ResolvedScalarCreateInput<
       TContract,
@@ -2162,7 +2160,7 @@ export class CollectionBase<
    *
    * Not supported on MTI variants.
    */
-  async upsert<Self>(
+  async upsert<Self extends this>(
     this: Self,
     input: {
       create: ResolvedScalarCreateInput<TContract, ModelName, State['variantName'], State['nsId']>;
@@ -2170,7 +2168,7 @@ export class CollectionBase<
       conflictOn?: UniqueConstraintCriterion<TContract, ModelName>;
     },
     configure?: (meta: MetaBuilder<'write'>) => void,
-  ): Promise<CollectionRowOf<this & Self>>;
+  ): Promise<CollectionRowOf<Self>>;
   async upsert(
     input: {
       create: ResolvedScalarCreateInput<TContract, ModelName, State['variantName'], State['nsId']>;
