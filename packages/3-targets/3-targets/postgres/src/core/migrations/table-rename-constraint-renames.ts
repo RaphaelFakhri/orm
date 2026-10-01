@@ -25,11 +25,11 @@ export interface TableRenameConstraintInput {
  * foreign key of the renamed table is paired with the destination constraint of the same kind on
  * the same columns, and for a foreign key the same referenced columns. A foreign key pairs whatever
  * table it references, because a later rename in the same plan may change that table and a foreign
- * key's derived name never depends on it. A paired
- * constraint is renamed to the destination's explicit name, or else to the name the planner derives
- * from the new table name, when that differs from its name in the database. An unpaired constraint
- * is being dropped or changed and keeps its name. Indexes and checks are not handled here: their
- * wire names pair by content hash in the index and check rename passes.
+ * key's derived name never depends on it. A paired constraint is renamed to the destination's
+ * explicit name, or else to the name the planner derives from the new table name, when that differs
+ * from its name in the database. Each destination constraint pairs with at most one constraint, in
+ * order. An unpaired constraint is being dropped or changed and keeps its name. Indexes and checks
+ * are not handled here: their wire names pair by content hash in the index and check rename passes.
  */
 export function constraintRenamesForTableRename(
   input: TableRenameConstraintInput,
@@ -63,10 +63,13 @@ export function constraintRenamesForTableRename(
             : undefined,
         );
 
+  const pairedUniques = new Set<PostgresTableSchemaNode['uniques'][number]>();
   const uniques = previous.uniques.flatMap((unique) => {
-    const paired = next.uniques.find((candidate) =>
-      isArrayEqual(candidate.columns, unique.columns),
+    const paired = next.uniques.find(
+      (candidate) =>
+        !pairedUniques.has(candidate) && isArrayEqual(candidate.columns, unique.columns),
     );
+    if (paired !== undefined) pairedUniques.add(paired);
     return rename(
       'unique',
       unique.name,
@@ -74,12 +77,15 @@ export function constraintRenamesForTableRename(
     );
   });
 
+  const pairedForeignKeys = new Set<PostgresTableSchemaNode['foreignKeys'][number]>();
   const foreignKeys = previous.foreignKeys.flatMap((fk) => {
     const paired = next.foreignKeys.find(
       (candidate) =>
+        !pairedForeignKeys.has(candidate) &&
         isArrayEqual(candidate.columns, fk.columns) &&
         isArrayEqual(candidate.referencedColumns, fk.referencedColumns),
     );
+    if (paired !== undefined) pairedForeignKeys.add(paired);
     return rename(
       'foreignKey',
       fk.name,
