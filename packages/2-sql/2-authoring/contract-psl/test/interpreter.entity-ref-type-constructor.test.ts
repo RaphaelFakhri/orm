@@ -248,7 +248,7 @@ namespace docs {
 
     expect(result.ok).toBe(true);
     if (!result.ok) return;
-    // `nativeType` / `typeParams.typeName` stay bare here: schema-qualification
+    // `typeParams.typeName` stays bare here: schema-qualification
     // (e.g. `auth.aal_level`) is a Postgres-target concern applied when the
     // target builds the namespace (`postgresCreateNamespace`), not something
     // the generic interpreter or its `TestSqlNamespace` double perform. Real
