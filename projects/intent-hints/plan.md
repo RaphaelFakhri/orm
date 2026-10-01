@@ -31,6 +31,7 @@
 - **Outcome:** `@@hint(deleted: true)` on a model and `@hint(deleted: true)` on a field make the block a tombstone: excluded from domain, storage and generated types, present only in the hints section; the planners drop the named table or column when the origin has it and do nothing when it does not, with no consent prompt; both targets.
 - **Builds on:** slice 3.
 - **Hands to:** the tombstone lowering, which the `deprecated` follow-on extends.
+- **Note from slice 1 review:** `resolveHints` returns early when the policy lacks `widening`; slice 4 must move that check into the rename branches, because the `deleted` rules act under `destructive` alone.
 - **Linear:** TML-3432.
 
 ## Sequencing
