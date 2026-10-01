@@ -95,6 +95,7 @@ try {
       updated,
       readAfterUpdate,
       temporalPolyfill: [...loaded].filter((url) => url.includes('temporal-polyfill')),
+      timezoneOffset: new Date().getTimezoneOffset(),
     }),
   );
 } finally {
@@ -133,6 +134,7 @@ interface AppResult {
   readonly updated: EventRow;
   readonly readAfterUpdate: EventRow;
   readonly temporalPolyfill: readonly string[];
+  readonly timezoneOffset: number;
 }
 
 function output(run: EngineCommandResult): string {
@@ -150,6 +152,13 @@ function expectNow(timestampText: string, before: number, after: number): void {
 }
 
 async function runApp(ctx: JourneyContext, connectionString: string, writes: unknown) {
+  const sessionUtcOffset = await withClient(connectionString, async (client) => {
+    const { rows } = await client.query<{ seconds: number }>(
+      'SELECT EXTRACT(TIMEZONE FROM CURRENT_TIMESTAMP)::int AS seconds',
+    );
+    return rows[0]?.seconds;
+  });
+  expect(sessionUtcOffset, 'createdAt is CURRENT_TIMESTAMP in the session time zone').toBe(0);
   const script = join(ctx.testDir, 'app.mjs');
   writeFileSync(script, APP_SCRIPT, 'utf-8');
   const before = Date.now();
@@ -165,6 +174,7 @@ async function runApp(ctx: JourneyContext, connectionString: string, writes: unk
   expect(run, childOutput(run)).toMatchObject({ exitCode: 0, ...NO_GLOBAL_TEMPORAL });
   const result: AppResult = JSON.parse(run.stdout);
   expect(result.temporalPolyfill).toEqual([]);
+  expect(result.timezoneOffset, 'the child runs at UTC+3').toBe(-180);
   return { result, before, after };
 }
 
