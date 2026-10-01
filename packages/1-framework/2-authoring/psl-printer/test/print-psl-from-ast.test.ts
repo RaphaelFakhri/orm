@@ -71,7 +71,7 @@ describe('printPslFromAst', () => {
     expect(printPslFromAst(ast)).toContain('@@map("foo")');
   });
 
-  it('prints @@hint after every other model attribute, @@map included', () => {
+  function modelWithAttributes(attributes: PslModel['attributes']): PslDocumentAst {
     const models: PslModel[] = [
       {
         kind: 'model',
@@ -87,21 +87,33 @@ describe('printPslFromAst', () => {
             span: span(0),
           },
         ],
-        attributes: [
-          attr('model', 'hint', [{ kind: 'named', name: 'was', value: '"tag"', span: span(1) }], 2),
-          attr('model', 'map', [{ kind: 'positional', value: '"label"', span: span(3) }], 4),
-          attr('model', 'rls', [], 5),
-        ],
+        attributes,
         span: span(0),
       },
     ];
-    const ast: PslDocumentAst = {
+    return {
       kind: 'document',
       sourceId: 't',
       namespaces: [makeNs(UNSPECIFIED_PSL_NAMESPACE_ID, models, [], 0)],
       span: span(0),
     };
+  }
+
+  it('prints @@map after the attributes before it and keeps the ones after it there', () => {
+    const ast = modelWithAttributes([
+      attr('model', 'rls', [], 1),
+      attr('model', 'map', [{ kind: 'positional', value: '"label"', span: span(2) }], 3),
+      attr('model', 'hint', [{ kind: 'named', name: 'was', value: '"tag"', span: span(4) }], 5),
+    ]);
     expect(printPslFromAst(ast)).toContain('  @@rls\n  @@map("label")\n  @@hint(was: "tag")\n}');
+  });
+
+  it('keeps any attribute placed after @@map after it', () => {
+    const ast = modelWithAttributes([
+      attr('model', 'map', [{ kind: 'positional', value: '"label"', span: span(1) }], 2),
+      attr('model', 'rls', [], 3),
+    ]);
+    expect(printPslFromAst(ast)).toContain('  @@map("label")\n  @@rls\n}');
   });
 
   it('prints a value-object type block inside its namespace, before the models', () => {

@@ -192,30 +192,28 @@ function unescapePslString(value: string): string {
 }
 
 /**
- * Model attributes print in their order, except that `@@map` follows them and `@@hint` follows
- * `@@map`: the hint describes how the model's table got its name, so it reads last.
+ * Model attributes print in their AST order, with `@@map` written once, where the AST's last
+ * `@@map` stands: after the attributes before it, before the ones after it.
  */
 function modelToPrinterModel(model: PslModel | PslCompositeType): PrinterModel {
   let mapName: string | undefined;
-  const modelAttrStrings: string[] = [];
-  const hintAttrStrings: string[] = [];
+  const beforeMap: string[] = [];
+  let afterMap: string[] = [];
 
   for (const a of model.attributes) {
     if (a.name === 'map' && a.target === 'model') {
       mapName = getPositionalStringArg(a, 0) ?? mapName;
+      beforeMap.push(...afterMap);
+      afterMap = [];
       continue;
     }
-    if (a.name === 'hint' && a.target === 'model') {
-      hintAttrStrings.push(renderPslAttribute(a));
-      continue;
-    }
-    modelAttrStrings.push(renderPslAttribute(a));
+    (mapName === undefined ? beforeMap : afterMap).push(renderPslAttribute(a));
   }
 
-  if (mapName !== undefined) {
-    modelAttrStrings.push(`@@map("${escapePslString(mapName)}")`);
-  }
-  modelAttrStrings.push(...hintAttrStrings);
+  const modelAttrStrings =
+    mapName === undefined
+      ? beforeMap
+      : [...beforeMap, `@@map("${escapePslString(mapName)}")`, ...afterMap];
 
   const printerFields = model.fields.map((f) => fieldToPrinterField(f));
 
