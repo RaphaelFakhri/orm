@@ -111,15 +111,20 @@ The contract records the index as data, not as a SQL string:
 
 ```json
 {
-  "name": "post_search_0a1b2c3d",
+  "columns": ["title", "subtitle", "body"],
+  "name": "post_search_033e8055",
+  "options": { "fields": [["title", "subtitle"], ["body"]], "language": "english" },
   "prefix": "post_search",
-  "type": "gin",
-  "unique": false,
-  "options": { "fields": [["title", "subtitle"], ["body"]], "language": "english" }
+  "type": "fullText",
+  "unique": false
 }
 ```
 
-`prefix` is the name the author gave. `name` is the name in the database. One renderer produces the index's expression from `options` for the database, and the same renderer produces the query's expression. That is what keeps them the same.
+- **`fullText` is an index type the Postgres package registers**, as an extension package registers its own kinds of index. In the database it is a `gin` index over the rendered search document.
+- **`prefix` is the name the author gave; `name` is the name in the database.** The suffix is a hash of the index's content.
+- **`columns` lists the covered columns in order**, and must equal the groups in `options.fields` read flat.
+
+One renderer in the Postgres package produces the search document from `options`, for the index in the database and for the query. That is what keeps them the same. In a document of more than one column, every column is wrapped in `coalesce`, so whether a column is nullable does not change the document.
 
 ### 2. The application applies the scope
 
@@ -160,7 +165,7 @@ A scope returns a filter and a default order. The ORM client applies both to the
 
 ```sql
 SELECT ... FROM "public"."post"
-WHERE (setweight(to_tsvector('english', "title"), 'A') || setweight(to_tsvector('english', coalesce("body", '')), 'B'))
+WHERE (setweight(to_tsvector('english', coalesce("title", '')), 'A') || setweight(to_tsvector('english', coalesce("body", '')), 'B'))
       @@ websearch_to_tsquery('english', $1)
 ORDER BY ts_rank(setweight(...) || setweight(...), websearch_to_tsquery('english', $1)) DESC
 LIMIT 10
@@ -180,12 +185,12 @@ The Postgres package writes the full-text scope helper with the ORM client's bui
 import { defineIndexScopes, type IndexData, type IndexScopeContext } from '@prisma/orm-postgres/orm-client';
 
 type FullTextIndex = IndexData & {
-  readonly type: 'gin';
+  readonly type: 'fullText';
   readonly options: { readonly fields: readonly (readonly string[])[]; readonly language: string };
 };
 
 function isFullTextIndex(index: IndexData): index is FullTextIndex {
-  return index.type === 'gin' && Array.isArray(index.options?.['fields']);
+  return index.type === 'fullText';
 }
 
 function fulltext({ index, tableName }: IndexScopeContext<FullTextIndex>, query: TsqueryArgument) {
