@@ -14,6 +14,7 @@ Reviewer-maintained. Contract: `projects/data-types-completion/design.md` sectio
 | a | 1 (`fa4cbba1ee`, `c8e638387f`, `8e7eb4f82f`, `e8bd655435`, merge `75b971783e`) | ANOTHER ROUND NEEDED: 1 must-fix, 1 should-fix, 4 low |
 | a | 2 (`a99f5b13cd..dc527c4502`) | ANOTHER ROUND NEEDED: S2-a-R1-1 to S2-a-R1-6 closed; 1 new must-fix, 1 new low |
 | a | 3 (`feac9e4922`, `daed46c3c2`) | SATISFIED: S2-a-R2-1 and S2-a-R2-2 closed, no new finding |
+| b | 1 (`ffecde3bde`, `650a4f2d32`) | SATISFIED: no finding; 2 design gaps for the orchestrator |
 
 ## Findings log
 
@@ -79,6 +80,23 @@ Reviewer-maintained. Contract: `projects/data-types-completion/design.md` sectio
 - S2-a-R2-2: closed (`daed46c3c2`). Columns take `dataType` from the test's own codec lookup; the `test/unknown@1` column, which the lookup does not know, names its data type explicitly.
 
 ## Round notes
+
+### Dispatch b, round 1
+
+Design 9 items: the target declares exactly the six data types, each with one written and catalog text; `sqlite/json`, `sqlite/datetime` and `sqlite/bigint` are gone from `packages/2-sql` and `packages/3-targets`. The codec-to-data-type table of 9.2 is built. `sqlite/integer@1`, `sql/int@1`, `sqlite/bigint@1` and `sqlite/bigintnumber@1` read and write digit text; `sqlite/json@1` writes `canonicalizeJson` of the document and reads JSON text; `sqlite/real` casts from `sqlite/integer`; blob and both character types cast from text. No SQLite constructor carries `inferred`. `data-type-verify.test.ts` plans, introspects and verifies one column of each of the six types, and a second test verifies integer and JSON defaults written in their earlier stored form.
+
+The four choices:
+
+1. `tagEntryKey('json')` and `CONTRACT.DATA_TYPE_ENTRY_KEY_INVALID`: fine. Authoring entries are a record keyed by data type id. Postgres never needs a second key, because no Postgres type has both a tag and a plain form (the `json` tag yields `pg/jsonb`, which has no plain entry). On SQLite the `json` tag and the plain string both yield `sqlite/text`, so one of them needs another key. A `tag:` prefix cannot collide with an `owner/name` id. A misfiled entry is a pack author's error found at assembly, like `CONTRACT.DATA_TYPE_ENTRY_DUPLICATE`, so a code of its own fits the existing checks. It is documented, and `check:error-reference` lists 361 codes. The design is silent; record it in design 9.4.
+2. JSON key order: not a must-fix. The only comparison between a database default and the contract is verify (`literalValuesEqual`), and the database default was written by the planner from the contract's own canonical text, so the two are equal. Runtime `encode` writes rows, never defaults, and the projection is read back through `decodeJson`, which parses the text. Earlier stored defaults were sorted too, because contract canonicalization sorts every object key. Design gap: verify now compares a SQLite JSON default as two strings, where before it compared documents. A default written outside the planner (hand-written SQL with other key order or spacing) now shows drift. Slice 3's comparison should take the codec into account.
+3. `DEFAULT 42` instead of `DEFAULT '42'`: no committed SQLite migration exists, and the three SQLite goldens contain only `DEFAULT 'unnamed'` and `DEFAULT (datetime('now'))`, so nothing committed changes. It does fall outside spec requirement 2. "Contract impact" allows the stored form to change, not the DDL, and the only DDL exception is the `typeRef` fix. Under `INTEGER` affinity both forms store 42, and an existing database still verifies. This is a design gap: `sqlite/integer@1` defaults were already written `DEFAULT 42`, and `sqlite/bigint@1` ones `DEFAULT '42'`, so one of them must change once both store digit text. I recommend accepting `DEFAULT 42` and adding the exception to spec requirement 2.
+4. Blob hex: fine. Today's `encodeJson` writes uppercase hex (`codecs.ts:443` at `4031ad07ed`), so "as today" holds and the design's "base64" is the error.
+
+Default rewrites (`wip/s2b-default-rewrites.md`) match the built codecs: JSON to `canonicalizeJson` with `null` kept; integer numbers to digit text; digit text unchanged; other codecs unchanged. The claim that no committed SQLite contract has a JSON, datetime or integer literal default is true: the only two are `sqlite/text@1` `"unnamed"`.
+
+Tests written after the code can fail. I removed the `DATA_TYPE_ENTRY_KEY_INVALID` check and 3 assembly tests failed. The `default-mapping` test fails against the code before this dispatch, which threw on `dataTypeId('tag:json')`. The adapter verify and DDL tests have red logs (`wip/s2b/adapter-verify-red.log`, `ddl-red.log`).
+
+Checks: the 25 changed test files pass alone (369 tests), the SQLite codec testkit passes (66), typecheck passes for framework-components, adapter-sqlite, family-sql, sql-contract-psl and sqlite-codec-testkit. target-sqlite fails only on the committed `contract.d.ts` files of round 1. `lint:deps` passes. `check:error-reference` passes. Framework vocabulary is 254 at 254.
 
 ### Dispatch a, round 3
 
