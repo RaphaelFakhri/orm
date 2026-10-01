@@ -3,8 +3,10 @@ import type {
   AggregateSelector,
   Collection,
   CollectionRowOf,
+  FieldExpression,
   Filtered,
   Ordered,
+  RowFragment,
 } from '@prisma/orm-postgres/orm-client';
 import { expectTypeOf } from 'vitest';
 import type { Contract } from '../../src/prisma/contract.d';
@@ -12,11 +14,13 @@ import {
   filteredChain,
   filterPosts,
   type GenericLibrary,
+  notExpired,
   type PostLibrary,
   type PrivateLibrary,
   plainChain,
   type SubLibrary,
   type TaskLibrary,
+  titleSummary,
 } from './declaration-library';
 
 type PostKey =
@@ -34,6 +38,7 @@ type PostKey =
 type UserKey = 'address' | 'createdAt' | 'displayName' | 'email' | 'id' | 'kind';
 
 type PostRow = CollectionRowOf<Collection<Contract, 'Post'>>;
+type UserRow = CollectionRowOf<Collection<Contract, 'User'>>;
 
 declare const posts: PostLibrary;
 declare const tasks: TaskLibrary;
@@ -123,4 +128,22 @@ export function exportedValues() {
   expectTypeOf(plainChain).not.toBeAny();
   expectTypeOf<keyof CollectionRowOf<typeof plainChain>>().toEqualTypeOf<PostKey>();
   expectTypeOf(filterPosts).returns.toEqualTypeOf<Filtered<Collection<Contract, 'Post'>>>();
+}
+
+export function queryFragments(now: Temporal.Instant) {
+  expectTypeOf(posts.live(now)).toEqualTypeOf<Filtered<PostLibrary>>();
+  expectTypeOf(posts.sortedBy('title')).toEqualTypeOf<Ordered<PostLibrary>>();
+  expectTypeOf(notExpired(now)).toEqualTypeOf<
+    (row: {
+      expiresAt: FieldExpression<Contract, 'pg/timestamptz-temporal@1'>;
+    }) => ReturnType<ReturnType<typeof notExpired>>
+  >();
+  type Summary = ReturnType<typeof titleSummary>;
+  expectTypeOf(titleSummary).toEqualTypeOf<RowFragment<Contract, 'Post', Summary>>();
+  expectTypeOf(posts.summaries()).toEqualTypeOf<Summary>();
+  expectTypeOf<CollectionRowOf<Summary>>().toEqualTypeOf<{
+    id: string;
+    title: string;
+    user: UserRow;
+  }>();
 }

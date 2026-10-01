@@ -19,6 +19,8 @@ import { ormClientGetDashboardUsers } from '../src/orm-client/get-dashboard-user
 import { ormClientGetFeatureRoadmap } from '../src/orm-client/get-feature-roadmap';
 import { ormClientGetLatestUserPerKind } from '../src/orm-client/get-latest-user-per-kind';
 import { ormClientGetPostFeed } from '../src/orm-client/get-post-feed';
+import { ormClientGetRecentPosts } from '../src/orm-client/get-recent-posts';
+import { ormClientGetRecentUsers } from '../src/orm-client/get-recent-users';
 import { ormClientGetUserBugTriage } from '../src/orm-client/get-user-bug-triage';
 import { ormClientGetUserInsights } from '../src/orm-client/get-user-insights';
 import { ormClientGetUserKindBreakdown } from '../src/orm-client/get-user-kind-breakdown';
@@ -552,6 +554,122 @@ describe('ORM client integration examples', () => {
             seededUserIds.adminTwo,
             seededUserIds.adminTwo,
             seededUserIds.admin,
+          ]);
+        } finally {
+          await runtime.close();
+        }
+      });
+    },
+    timeouts.spinUpPpgDev,
+  );
+
+  it(
+    'ormClientGetRecentPosts filters with a shared row fragment, sorts by a request field and shapes summaries',
+    async () => {
+      await withDevDatabase(async ({ connectionString }) => {
+        await initTestDatabase({ connection: connectionString, contract });
+        const runtime = await getRuntime(connectionString);
+
+        try {
+          await seedOrmClientData(runtime);
+          const since = Temporal.Instant.from('2024-01-03T00:00:00.000Z');
+          const posts = await ormClientGetRecentPosts(since, 'title', 'asc', 10, runtime);
+
+          expect(posts.map((post) => ({ ...post, createdAt: post.createdAt.toString() }))).toEqual([
+            {
+              id: seededPostIds.adminDeepDive,
+              title: 'Admin deep dive post',
+              createdAt: '2024-01-04T10:00:00Z',
+              tags: [],
+            },
+            {
+              id: seededPostIds.memberNote,
+              title: 'Other user note',
+              createdAt: '2024-01-03T10:00:00Z',
+              tags: [],
+            },
+            {
+              id: seededPostIds.adminZebra,
+              title: 'Zebra post note',
+              createdAt: '2024-01-05T10:00:00Z',
+              tags: [],
+            },
+          ]);
+
+          const newestFirst = await ormClientGetRecentPosts(
+            since,
+            'createdAt',
+            'desc',
+            10,
+            runtime,
+          );
+          expect(newestFirst.map((post) => post.id)).toEqual([
+            seededPostIds.adminZebra,
+            seededPostIds.adminDeepDive,
+            seededPostIds.memberNote,
+          ]);
+
+          await expect(
+            ormClientGetRecentPosts(since, 'embedding', 'asc', 10, runtime),
+          ).rejects.toMatchObject({
+            code: 'ORM.ARGUMENT_INVALID',
+            message: 'Cannot sort Post by "embedding"',
+          });
+        } finally {
+          await runtime.close();
+        }
+      });
+    },
+    timeouts.spinUpPpgDev,
+  );
+
+  it(
+    'ormClientGetRecentUsers applies the same row fragment to users and their included posts',
+    async () => {
+      await withDevDatabase(async ({ connectionString }) => {
+        await initTestDatabase({ connection: connectionString, contract });
+        const runtime = await getRuntime(connectionString);
+
+        try {
+          await seedOrmClientData(runtime);
+          const since = Temporal.Instant.from('2024-01-02T00:00:00.000Z');
+          const users = await ormClientGetRecentUsers(since, 10, runtime);
+
+          expect(
+            users.map((user) => ({
+              id: user.id,
+              posts: user.posts.map((post) => ({ ...post, createdAt: post.createdAt.toString() })),
+            })),
+          ).toEqual([
+            {
+              id: seededUserIds.member,
+              posts: [
+                {
+                  id: seededPostIds.memberNote,
+                  title: 'Other user note',
+                  createdAt: '2024-01-03T10:00:00Z',
+                  tags: [],
+                },
+              ],
+            },
+            {
+              id: seededUserIds.adminTwo,
+              posts: [
+                {
+                  id: seededPostIds.adminDeepDive,
+                  title: 'Admin deep dive post',
+                  createdAt: '2024-01-04T10:00:00Z',
+                  tags: [],
+                },
+                {
+                  id: seededPostIds.adminZebra,
+                  title: 'Zebra post note',
+                  createdAt: '2024-01-05T10:00:00Z',
+                  tags: [],
+                },
+              ],
+            },
+            { id: seededUserIds.reader, posts: [] },
           ]);
         } finally {
           await runtime.close();

@@ -1,9 +1,37 @@
 import type { Runtime } from '@prisma/orm-postgres/family-runtime';
-import { Collection, type Filtered, orm } from '@prisma/orm-postgres/orm-client';
+import {
+  Collection,
+  type FieldExpression,
+  type Filtered,
+  orm,
+  rowFragment,
+  sortField,
+} from '@prisma/orm-postgres/orm-client';
 import type { ExecutionContext } from '@prisma/orm-postgres/relational-core/query-lane-context';
 import type { Contract } from '../../src/prisma/contract.d';
 
+type ExpiresAt = FieldExpression<Contract, 'pg/timestamptz-temporal@1'>;
+
+export const notExpired = (now: Temporal.Instant) => (row: { expiresAt: ExpiresAt }) =>
+  row.expiresAt.gt(now);
+
+export const titleSummary = rowFragment<Contract, 'Post'>()((posts) =>
+  posts.select('id', 'title').include('user'),
+);
+
 export class PostLibrary extends Collection<Contract, 'Post'> {
+  live(now: Temporal.Instant) {
+    return this.where(notExpired(now));
+  }
+
+  summaries() {
+    return this.pipe(titleSummary);
+  }
+
+  sortedBy(name: string) {
+    return this.orderBy(sortField(this, name, 'desc', ['title', 'createdAt']));
+  }
+
   filtered() {
     return this.where({ title: 'x' });
   }
