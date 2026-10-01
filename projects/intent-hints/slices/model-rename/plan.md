@@ -65,7 +65,7 @@ Every dispatch: tests first, red before the change; `pnpm --filter <pkg> typeche
 ### 08 — SQLite: working schema, facade, planner
 
 - **Outcome:** the SQLite mirror of 06 and 07: `WorkingSchema`, `renameTableInSqliteSchema`, `sqliteTableRenameCall` with index replacement companions, facade on the working schema, planner integration, warning, guard remedy.
-- **Rules:** R6.0 to R6.10 as they apply to SQLite.
+- **Rules:** R6.0 to R6.10 as they apply to SQLite; also delete `applyTableRename`, its contract rewriting and the `withEntries` use that dispatch 06 left in place because SQLite still called them.
 - **Builds on:** 07 (pattern), 05.
 - **Hands to:** a SQLite plan from a hint.
 - **Gate:** `@internal/sqlite` target and adapter package gates.
