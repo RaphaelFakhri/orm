@@ -54,7 +54,10 @@ export interface Contract<TStorage extends StorageBase = StorageBase> {
   readonly profileHash: ProfileHashBase<string>;
   readonly meta: Record<string, unknown>;
   readonly defaultControlPolicy?: ControlPolicy;
-  /** Planner hints from the authoring layer. Family-defined shape; never hashed; stripped from snapshots. */
+  /**
+   * Planner hints from the authoring layer. Family-defined shape; never hashed; stripped from
+   * snapshots.
+   */
   readonly hints?: JsonObject;
 }
 

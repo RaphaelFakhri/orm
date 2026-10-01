@@ -369,7 +369,13 @@ export abstract class PostgresMigration<
   }
 
   /**
-   * Emit the operations that rename a table: the table rename, then a rename of each primary key, unique constraint, foreign key, index and check whose name was derived from the old table name. The old name is resolved against the schema as this migration's earlier `renameTable` calls leave it, and the new name against the end contract. Spread the result into `operations`: `...this.renameTable({ table: 'userProfile', to: 'UserProfile' })`. `schema` names the table's namespace when more than one declares the table. Throws `MIGRATION.TABLE_RENAME_UNMATCHED` when the table does not exist at that point of the migration or the end contract lacks the new name.
+   * Emit the operations that rename a table: the table rename, then a rename of each primary key,
+   * unique constraint, foreign key, index and check whose name was derived from the old table name.
+   * The old name is resolved against the schema as this migration's earlier `renameTable` calls
+   * leave it, and the new name against the end contract. Spread the result into `operations`:
+   * `...this.renameTable({ table: 'userProfile', to: 'UserProfile' })`. `schema` names the table's
+   * namespace when more than one declares the table. Throws `MIGRATION.TABLE_RENAME_UNMATCHED` when
+   * the table does not exist at that point of the migration or the end contract lacks the new name.
    */
   protected renameTable(options: {
     readonly schema?: string;
@@ -627,7 +633,9 @@ function refuseEarlierSetDefaultOptions(options: {
   });
 }
 
-/** The tables a migration's working schema holds, addressed by the start contract's namespace ids. */
+/**
+ * The tables a migration's working schema holds, addressed by the start contract's namespace ids.
+ */
 function workingTableLookup(
   working: WorkingSchema,
   startContract: Contract<SqlStorage>,

@@ -28,7 +28,10 @@ import {
   RenameTableCall,
 } from './op-factory-call';
 
-/** A table rename inside one live schema: `schemaName` is the DDL schema name, never the unbound sentinel. */
+/**
+ * A table rename inside one live schema: `schemaName` is the DDL schema name, never the unbound
+ * sentinel.
+ */
 export interface SchemaTableRename {
   readonly schemaName: string;
   readonly from: string;
@@ -54,7 +57,10 @@ function rewriteRefs(
   return refs?.map(rewrite);
 }
 
-/** Rewrites the step of `kind` and `id` in a ref that runs through the given table, and the table step itself when `kind` is the table kind. */
+/**
+ * Rewrites the step of `kind` and `id` in a ref that runs through the given table, and the table
+ * step itself when `kind` is the table kind.
+ */
 function stepRewrite(
   schemaName: string,
   tableName: string,
@@ -173,7 +179,10 @@ function withPolicy(
   });
 }
 
-/** How one table is rebuilt: each hook returns the replacement node, given the node and the rewrite of its dependencies. */
+/**
+ * How one table is rebuilt: each hook returns the replacement node, given the node and the rewrite
+ * of its dependencies.
+ */
 interface TableEdit {
   readonly name: string;
   readonly primaryKeyName: (primaryKey: PrimaryKey) => string | undefined;
@@ -232,7 +241,10 @@ function rebuildTable(
   });
 }
 
-/** Rebuilds every table of the schema: `editFor` returns the edit for a table, or `undefined` to only rewrite its dependencies. */
+/**
+ * Rebuilds every table of the schema: `editFor` returns the edit for a table, or `undefined` to
+ * only rewrite its dependencies.
+ */
 function mapTables(
   schema: PostgresDatabaseSchemaNode,
   rewrite: RefRewrite,
@@ -262,7 +274,11 @@ function mapTables(
 }
 
 /**
- * The schema with one table under its new name. Foreign keys anywhere that reference the table follow it, its policies and every dependency that names it move with it, and row-level security is carried. Constraint, index, check and policy names do not change: a primary key, unique constraint or foreign key whose name was derived from the old table name gets that name spelled out, since it no longer derives from the table it is on.
+ * The schema with one table under its new name. Foreign keys anywhere that reference the table
+ * follow it, its policies and every dependency that names it move with it, and row-level security
+ * is carried. Constraint, index, check and policy names do not change: a primary key, unique
+ * constraint or foreign key whose name was derived from the old table name gets that name spelled
+ * out, since it no longer derives from the table it is on.
  */
 export function renameTableInPostgresSchema(
   schema: PostgresDatabaseSchemaNode,
@@ -420,7 +436,9 @@ function applied(
 }
 
 /**
- * The schema a migration's renames have produced so far. The planner starts it from the schema it plans from, a hand-written migration from its start contract; each rename call is computed against `current` and then applied, so a later call sees the effect of an earlier one.
+ * The schema a migration's renames have produced so far. The planner starts it from the schema it
+ * plans from, a hand-written migration from its start contract; each rename call is computed
+ * against `current` and then applied, so a later call sees the effect of an earlier one.
  */
 export class WorkingSchema {
   #current: PostgresDatabaseSchemaNode;

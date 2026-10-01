@@ -60,7 +60,10 @@ function declares(contract: Contract<SqlStorage>, namespaceId: string, tableName
   return Object.hasOwn(contract.storage.namespaces[namespaceId]?.entries.table ?? {}, tableName);
 }
 
-/** Refuses a `renameTable` call that does not match the migration's contracts, with `MIGRATION.TABLE_RENAME_UNMATCHED`. */
+/**
+ * Refuses a `renameTable` call that does not match the migration's contracts, with
+ * `MIGRATION.TABLE_RENAME_UNMATCHED`.
+ */
 export function unmatchedTableRename(rename: TableRename, reason: string): StructuredError {
   return sqlFamilyError(
     TABLE_RENAME_UNMATCHED_CODE,
@@ -72,7 +75,10 @@ export function unmatchedTableRename(rename: TableRename, reason: string): Struc
   );
 }
 
-/** The tables a rename is resolved against. `where` names that state in a refusal, for example `at this point of the migration`. */
+/**
+ * The tables a rename is resolved against. `where` names that state in a refusal, for example
+ * `at this point of the migration`.
+ */
 export interface TableLookup {
   readonly where: string;
   declares(namespaceId: string, tableName: string): boolean;
@@ -88,7 +94,9 @@ function startContractLookup(contract: Contract<SqlStorage>): TableLookup {
 }
 
 /**
- * Resolves a table a migration renames: the table must exist in `lookup` (in exactly one namespace when the namespace is not given), and the new name must exist in the end contract and not in `lookup`; otherwise the rename is refused with `MIGRATION.TABLE_RENAME_UNMATCHED`.
+ * Resolves a table a migration renames: the table must exist in `lookup` (in exactly one namespace
+ * when the namespace is not given), and the new name must exist in the end contract and not in
+ * `lookup`; otherwise the rename is refused with `MIGRATION.TABLE_RENAME_UNMATCHED`.
  */
 export function resolveTableRenameAgainst(
   lookup: TableLookup,
@@ -248,7 +256,8 @@ function renameTableInContract(
 /**
  * Resolves the table a migration renames against its start and end contracts and returns the start contract with that table under its new name, so a diff against the end contract sees the table under one name. The table must exist in the start contract (in exactly one namespace when the namespace is not given), and the new name must exist in the end contract and not in the start contract; otherwise the rename is refused with `MIGRATION.TABLE_RENAME_UNMATCHED`.
  *
- * Foreign keys that name the renamed table on either side are retargeted. Index, unique, check and primary-key names are carried unchanged.
+ * Foreign keys that name the renamed table on either side are retargeted. Index, unique, check and
+ * primary-key names are carried unchanged.
  */
 export function applyTableRename(
   input: ApplyTableRenameInput,

@@ -379,7 +379,10 @@ export class RenameTableCall extends PostgresOpFactoryCallNode {
   /** The new name: the table's contract-side identity after the rename. */
   readonly tableName: string;
   readonly label: string;
-  /** The renames of objects whose names derive from the table name. They run after the table rename and are never rendered on their own. */
+  /**
+   * The renames of objects whose names derive from the table name. They run after the table rename
+   * and are never rendered on their own.
+   */
   readonly companions: readonly RenameTableCompanionCall[];
 
   constructor(

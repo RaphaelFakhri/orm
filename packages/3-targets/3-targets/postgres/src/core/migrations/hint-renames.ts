@@ -22,7 +22,10 @@ export interface HintRenames {
 }
 
 /**
- * Turns the resolved table renames into rename calls, in order, each computed against the origin as the earlier renames leave it. A rename onto a table whose effective control policy is not `managed` cannot be planned: it is skipped with a suppression warning, and the old table is left to the rest of the plan.
+ * Turns the resolved table renames into rename calls, in order, each computed against the origin as
+ * the earlier renames leave it. A rename onto a table whose effective control policy is not
+ * `managed` cannot be planned: it is skipped with a suppression warning, and the old table is left
+ * to the rest of the plan.
  */
 export function planHintRenames(input: {
   readonly origin: PostgresDatabaseSchemaNode;
