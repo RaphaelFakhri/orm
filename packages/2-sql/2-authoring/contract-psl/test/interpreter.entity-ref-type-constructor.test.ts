@@ -40,14 +40,9 @@ import { parse } from '@internal/psl-parser/syntax';
 import type { SqlValueSetDerivingEntityTypeOutput } from '@internal/sql-contract/value-set-derivation-hook';
 import { describe, expect, it } from 'vitest';
 import { createTestSqlNamespace } from '../../../1-core/contract/test/test-support';
-import { interpretPslDocumentToSqlContract } from '../src/interpreter';
 import { resolveFieldTypeDescriptor } from '../src/psl-column-resolution';
 import { fixtureDataTypeSupport } from './fixture-data-types';
-import {
-  postgresScalarTypeDescriptors,
-  postgresTarget,
-  symbolTableInputFromParseArgs,
-} from './fixtures';
+import { interpretSqlContract, postgresScalarTypeDescriptors, postgresTarget } from './fixtures';
 
 const NATIVE_ENUM_DISCRIMINATOR = 'test-native-enum';
 const PLAIN_REF_DISCRIMINATOR = 'test-plain-ref';
@@ -222,13 +217,8 @@ const baseInput = {
 } as const;
 
 function interpretWith(schema: string) {
-  const document = symbolTableInputFromParseArgs({
-    schema,
-    sourceId: 'schema.prisma',
-  });
-  return interpretPslDocumentToSqlContract({
+  return interpretSqlContract(schema, {
     ...baseInput,
-    ...document,
     authoringContributions,
   });
 }
@@ -501,13 +491,11 @@ model AuthSession {
     const diagnostics = createPslDiagnosticCollector(sources);
     const result = resolveFieldTypeDescriptor({
       field,
+      typeReferenceResolved: true,
       enumTypeDescriptors: new Map(),
       namedTypeDescriptors: new Map(),
       scalarColumnDescriptors: postgresScalarTypeDescriptors,
       authoringContributions,
-      composedExtensions: new Set(),
-      familyId: 'sql',
-      targetId: 'postgres',
       diagnostics,
       sources,
       entityLabel: 'Field "AuthSession.aal"',

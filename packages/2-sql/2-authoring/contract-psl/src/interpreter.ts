@@ -118,14 +118,9 @@ import {
   storageName,
 } from './psl-attribute-parsing';
 import type { ColumnDescriptor } from './psl-column-resolution';
-import {
-  getAuthoringEntity,
-  replacesUnresolvedTypeVoice,
-  resolveFieldTypeDescriptor,
-} from './psl-column-resolution';
+import { getAuthoringEntity, resolveFieldTypeDescriptor } from './psl-column-resolution';
 import {
   collectResolvedFields,
-  describeUnsupportedSqlAttribute,
   type ModelNamespaceEntry,
   modelCoordinateKey,
   type ResolvedField,
@@ -142,7 +137,6 @@ import {
   validateBackrelationFieldAttributes,
 } from './psl-relation-resolution';
 import {
-  createSqlBinder,
   interpretFieldAttribute,
   interpretModelAttribute,
   modelAttributeSpecsFrom,
@@ -155,6 +149,7 @@ export interface InterpretPslDocumentToSqlContractInput {
   readonly documents: readonly DocumentAst[];
   readonly symbolTable: SymbolTable;
   readonly sources: PslSources;
+  readonly binder: Binder;
   readonly target: TargetPackRef<'sql', string>;
   readonly scalarColumnDescriptors: ReadonlyMap<string, ColumnDescriptor>;
   readonly composedExtensions?: readonly string[];
@@ -756,11 +751,7 @@ function buildModelNodeFromPsl(input: BuildModelNodeInput): BuildModelNodeResult
       field,
       sources: input.sources,
       binder: input.binder,
-      composedExtensions: input.composedExtensions,
-      authoringContributions: input.authoringContributions,
       diagnostics,
-      familyId: input.familyId,
-      targetId: input.targetId,
     });
     let relationName: string | undefined;
     if (relationAttribute) {
@@ -1561,13 +1552,14 @@ function buildValueObjectNodes(input: BuildValueObjectNodesInput): ValueObjectNo
       }
       const resolved = resolveFieldTypeDescriptor({
         field,
+        typeReferenceResolved:
+          fieldTypeResolution === undefined
+            ? fieldTypeReference === undefined
+            : fieldTypeResolution.kind !== 'unresolved',
         enumTypeDescriptors: input.enumTypeDescriptors,
         namedTypeDescriptors: input.namedTypeDescriptors,
         scalarColumnDescriptors: input.scalarColumnDescriptors,
         authoringContributions: input.authoringContributions,
-        composedExtensions: input.composedExtensions,
-        familyId: input.familyId,
-        targetId: input.targetId,
         diagnostics,
         sources,
         entityLabel: `Field "${compositeType.name}.${field.name}"`,
@@ -2031,23 +2023,6 @@ function relationTargetKindLabel(resolution: Resolution): string | undefined {
   }
 }
 
-function replacedBySqlTypeVoice(
-  diagnostic: PslDiagnostic,
-  composedExtensions: ReadonlySet<string>,
-  context: {
-    readonly familyId?: string;
-    readonly targetId?: string;
-    readonly authoringContributions?: AuthoringContributions | undefined;
-  },
-): boolean {
-  const data = diagnostic.data;
-  if (data?.['reference'] !== 'type') return false;
-  if (data['constructorCall'] !== true) return false;
-  const name = data['name'];
-  if (typeof name !== 'string') return false;
-  return replacesUnresolvedTypeVoice(name, composedExtensions, context);
-}
-
 export function interpretPslDocumentToSqlContract(
   input: InterpretPslDocumentToSqlContractInput,
 ): Result<Contract, ContractSourceDiagnostics> {
@@ -2063,39 +2038,10 @@ export function interpretPslDocumentToSqlContract(
   assertDefined(anchorDocument, 'interpretPslDocumentToSqlContract requires at least one document');
   const source = diagnosticSource(input.sources, anchorDocument.syntax);
   const diagnostics = createPslDiagnosticCollector(input.sources);
-  const composedExtensionNames = new Set(input.composedExtensions ?? []);
   const modelAttributesByName = buildModelAttributesByName(input.authoringContributions);
   const contributedModelSpecs = modelAttributeSpecsFrom(modelAttributesByName);
   const composedPslBlockDescriptors = input.authoringContributions?.pslBlockDescriptors ?? {};
-  const { binder, diagnostics: binderDiagnostics } = createSqlBinder({
-    symbolTable: input.symbolTable,
-    sources: input.sources,
-    pslBlockDescriptors: composedPslBlockDescriptors,
-    authoringContributions: input.authoringContributions,
-    controlMutationDefaults: {
-      defaultFunctionRegistry: input.controlMutationDefaults?.defaultFunctionRegistry ?? new Map(),
-      dataTypeEntries: input.authoringContributions?.dataTypes ?? {},
-    },
-    scalarColumnDescriptors: input.scalarColumnDescriptors,
-    contributedModelAttributeSpecs: contributedModelSpecs,
-    describeUnsupportedAttribute: describeUnsupportedSqlAttribute({
-      composedExtensions: composedExtensionNames,
-      authoringContributions: input.authoringContributions,
-      sources: input.sources,
-      familyId: input.target.familyId,
-      targetId: input.target.targetId,
-    }),
-  });
-  diagnostics.push(
-    ...binderDiagnostics.filter(
-      (diagnostic) =>
-        !replacedBySqlTypeVoice(diagnostic, composedExtensionNames, {
-          familyId: 'sql',
-          targetId: input.target.targetId,
-          authoringContributions: input.authoringContributions,
-        }),
-    ),
-  );
+  const { binder } = input;
 
   const { topLevel } = input.symbolTable;
   const namespaceSymbols = Object.values(topLevel.namespaces);
@@ -2432,9 +2378,6 @@ export function interpretPslDocumentToSqlContract(
     source,
     enumTypeDescriptors: allEnumTypeDescriptors,
     scalarColumnDescriptors: input.scalarColumnDescriptors,
-    composedExtensions,
-    familyId: input.target.familyId,
-    targetId: input.target.targetId,
     authoringContributions: input.authoringContributions,
     diagnostics,
   });

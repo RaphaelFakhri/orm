@@ -6,12 +6,28 @@ import type {
 } from '@internal/config/config-types';
 import type { AuthoringEntityContext } from '@internal/framework-components/authoring';
 import { createDataTypeLookup, emptyCodecLookup } from '@internal/framework-components/codec';
-import { buildSymbolTable, jsonValue, mapBlock } from '@internal/psl-parser';
-import { hasPslInterpreter, type PslInterpretInput } from '@internal/psl-parser/interpret';
+import {
+  buildSymbolTable,
+  createProjectBinder,
+  jsonValue,
+  mapBlock,
+  mapPslDiagnostics,
+} from '@internal/psl-parser';
+import {
+  hasPslInterpreter,
+  type PslInterpretCapable,
+  type PslInterpretInput,
+  withSeedDiagnostics,
+} from '@internal/psl-parser/interpret';
 import { PslSources, parse } from '@internal/psl-parser/syntax';
 import { join } from 'pathe';
 import { afterEach, describe, expect, it } from 'vitest';
+import { describeUnresolvedMongoType } from '../src/describe-unresolved-type';
 import { mongoContract } from '../src/exports/provider';
+import {
+  describeUnsupportedMongoAttribute,
+  mongoAttributeSpecs,
+} from '../src/mongo-attribute-specs';
 
 const SOURCE_ID = './schema.prisma';
 
@@ -34,7 +50,11 @@ function createMongoTestContext(overrides?: Partial<ContractSourceContext>): Con
       entityTypes: {},
       pslBlockDescriptors: {},
       modelAttributes: {},
-      attributeSpecs: { model: {}, field: {} },
+      attributeSpecs: mongoAttributeSpecs,
+    },
+    pslDiagnostics: {
+      describeUnsupportedAttribute: describeUnsupportedMongoAttribute,
+      describeUnresolvedType: describeUnresolvedMongoType,
     },
     dataTypeLookup: createDataTypeLookup([]),
     codecLookup: { ...emptyCodecLookup, descriptorFor: () => undefined },
@@ -48,10 +68,35 @@ function createMongoTestContext(overrides?: Partial<ContractSourceContext>): Con
   };
 }
 
-function buildInterpretInput(schema: string, filename = SOURCE_ID): PslInterpretInput {
+function buildInterpretInput(
+  schema: string,
+  context: ContractSourceContext,
+  filename = SOURCE_ID,
+): PslInterpretInput & { readonly binderDiagnostics: ReturnType<typeof mapPslDiagnostics> } {
   const { document, sources } = parse(schema, filename);
   const { symbolTable } = buildSymbolTable({ documents: [document], sources });
-  return { documents: [document], sources, symbolTable };
+  const { binder, diagnostics } = createProjectBinder({ symbolTable, sources, context });
+  return {
+    documents: [document],
+    sources,
+    symbolTable,
+    binder,
+    binderDiagnostics: mapPslDiagnostics(diagnostics, sources),
+  };
+}
+
+/**
+ * `source.interpret` never reports binder diagnostics itself (that's
+ * `load`'s job, seeding them the same way it seeds parse/symbol-table
+ * diagnostics); call sites that exercise `interpret` directly — bypassing
+ * `load` — must fold them in themselves to see what a real caller would.
+ */
+function interpretViaSource(
+  source: PslInterpretCapable,
+  input: ReturnType<typeof buildInterpretInput>,
+  context: ContractSourceContext,
+) {
+  return withSeedDiagnostics(source.interpret(input, context), input.binderDiagnostics);
 }
 
 function interpretCapableSource(schemaPath: string) {
@@ -101,7 +146,11 @@ model User {
     if (loadResult.ok) return;
 
     const context = createMongoTestContext();
-    const interpretResult = source.interpret(buildInterpretInput(schema, schemaPath), context);
+    const interpretResult = interpretViaSource(
+      source,
+      buildInterpretInput(schema, context, schemaPath),
+      context,
+    );
 
     expect(interpretResult.ok).toBe(false);
     if (interpretResult.ok) return;
@@ -138,7 +187,11 @@ model User {
     if (!loadResult.ok) return;
 
     const context = createMongoTestContext();
-    const interpretResult = source.interpret(buildInterpretInput(schema, schemaPath), context);
+    const interpretResult = interpretViaSource(
+      source,
+      buildInterpretInput(schema, context, schemaPath),
+      context,
+    );
 
     expect(interpretResult.ok).toBe(true);
     if (!interpretResult.ok) return;
@@ -160,11 +213,11 @@ model Other {
 `;
     const source = interpretCapableSource(SOURCE_ID);
     const context = createMongoTestContext();
-    const input = buildInterpretInput(schema);
+    const input = buildInterpretInput(schema, context);
 
-    let result: ReturnType<typeof source.interpret> | undefined;
+    let result: ReturnType<typeof interpretViaSource> | undefined;
     expect(() => {
-      result = source.interpret(input, context);
+      result = interpretViaSource(source, input, context);
     }).not.toThrow();
 
     expect(result).toBeDefined();
@@ -187,7 +240,7 @@ model Other {
 `;
     const source = interpretCapableSource(SOURCE_ID);
     const context = createMongoTestContext();
-    const input = buildInterpretInput(schema);
+    const input = buildInterpretInput(schema, context);
 
     let result: ReturnType<typeof source.interpret> | undefined;
     expect(() => {
@@ -236,8 +289,9 @@ model Post {
     ];
 
     for (const testCase of cases) {
-      const result = source.interpret(
-        buildInterpretInput(testCase.schema, 'memory-schema.prisma'),
+      const result = interpretViaSource(
+        source,
+        buildInterpretInput(testCase.schema, context, 'memory-schema.prisma'),
         context,
       );
 
@@ -289,7 +343,11 @@ model Other {
     if (loadResult.ok) return;
 
     const context = createMongoTestContext();
-    const interpretResult = source.interpret(buildInterpretInput(schema, schemaPath), context);
+    const interpretResult = interpretViaSource(
+      source,
+      buildInterpretInput(schema, context, schemaPath),
+      context,
+    );
     expect(interpretResult.ok).toBe(false);
     if (interpretResult.ok) return;
 
@@ -317,8 +375,9 @@ it('attributes multi-document semantic failures to the owning file, not the entr
     documents: [entry.document, owned.document],
     sources,
   });
+  const { binder } = createProjectBinder({ symbolTable, sources, context });
   const result = interpretCapableSource('provider.prisma').interpret(
-    { documents: [entry.document], sources, symbolTable },
+    { documents: [entry.document], sources, symbolTable, binder },
     context,
   );
   expect(result.ok).toBe(false);
@@ -383,6 +442,7 @@ it('preserves unlocated and foreign-file contribution diagnostics at the public 
   };
   const input = buildInterpretInput(
     'enum Role { User }\nmodel User { id ObjectId @id @map("_id") }',
+    customContext,
     'owned.prisma',
   );
   const entry = parse('', 'entry.prisma');

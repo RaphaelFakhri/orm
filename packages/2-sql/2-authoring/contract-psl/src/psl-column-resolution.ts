@@ -10,10 +10,8 @@ import type {
   AuthoringTypeConstructorDescriptor,
 } from '@internal/framework-components/authoring';
 import {
-  checkUncomposedNamespace,
   getAuthoringFieldPreset,
   getAuthoringTypeConstructor,
-  hasRegisteredFieldNamespace,
   instantiateAuthoringTypeConstructor,
   isAuthoringEntityTypeDescriptor,
   validateAuthoringHelperArguments,
@@ -48,8 +46,7 @@ import {
 import {
   instantiatePslFieldPreset,
   mapPslHelperArgs,
-  reportUncomposedNamespace,
-  reportUnknownFieldPreset,
+  reportPresetNotCalled,
 } from '@internal/psl-parser/interpret';
 import {
   ArrayLiteralAst,
@@ -139,25 +136,6 @@ export function getAuthoringEntity(
   return current !== undefined && isAuthoringEntityTypeDescriptor(current) ? current : undefined;
 }
 
-export function replacesUnresolvedTypeVoice(
-  typeName: string,
-  composedExtensions: ReadonlySet<string>,
-  context: {
-    readonly familyId?: string;
-    readonly targetId?: string;
-    readonly authoringContributions?: AuthoringContributions | undefined;
-  },
-): boolean {
-  if (checkUncomposedNamespace(typeName, composedExtensions, context) !== undefined) {
-    return true;
-  }
-  const dotIndex = typeName.indexOf('.');
-  if (dotIndex <= 0 || dotIndex === typeName.length - 1) {
-    return false;
-  }
-  return hasRegisteredFieldNamespace(context.authoringContributions, typeName.slice(0, dotIndex));
-}
-
 export function instantiatePslTypeConstructor(input: {
   readonly call: ResolvedTypeConstructorCall;
   readonly descriptor: AuthoringTypeConstructorDescriptor;
@@ -218,9 +196,6 @@ function pushUnsupportedTypeConstructorDiagnostic(input: {
 export function resolvePslTypeConstructorDescriptor(input: {
   readonly call: ResolvedTypeConstructorCall;
   readonly authoringContributions: AuthoringContributions | undefined;
-  readonly composedExtensions: ReadonlySet<string>;
-  readonly familyId: string;
-  readonly targetId: string;
   readonly diagnostics: PslDiagnosticCollector;
   readonly source: DiagnosticSource;
   readonly unsupportedCode: 'PSL_UNSUPPORTED_FIELD_TYPE' | 'PSL_UNSUPPORTED_NAMED_TYPE_CONSTRUCTOR';
@@ -229,26 +204,6 @@ export function resolvePslTypeConstructorDescriptor(input: {
   const descriptor = getAuthoringTypeConstructor(input.authoringContributions, input.call.path);
   if (descriptor) {
     return descriptor;
-  }
-
-  const uncomposedNamespace = checkUncomposedNamespace(
-    input.call.path.join('.'),
-    input.composedExtensions,
-    {
-      familyId: input.familyId,
-      targetId: input.targetId,
-      authoringContributions: input.authoringContributions,
-    },
-  );
-  if (uncomposedNamespace) {
-    reportUncomposedNamespace({
-      subjectLabel: `Type constructor "${input.call.path.join('.')}"`,
-      namespace: uncomposedNamespace,
-      source: input.source,
-      span: input.call.span,
-      diagnostics: input.diagnostics,
-    });
-    return undefined;
   }
 
   return pushUnsupportedTypeConstructorDiagnostic({
@@ -414,13 +369,11 @@ export type ResolveFieldTypeResult =
 
 export function resolveFieldTypeDescriptor(input: {
   readonly field: FieldSymbol;
+  readonly typeReferenceResolved: boolean;
   readonly enumTypeDescriptors: ReadonlyMap<string, ColumnDescriptor>;
   readonly namedTypeDescriptors: ReadonlyMap<string, ColumnDescriptor>;
   readonly scalarColumnDescriptors: ReadonlyMap<string, ColumnDescriptor>;
   readonly authoringContributions: AuthoringContributions | undefined;
-  readonly composedExtensions: ReadonlySet<string>;
-  readonly familyId: string;
-  readonly targetId: string;
   readonly diagnostics: PslDiagnosticCollector;
   readonly sources: PslSources;
   readonly entityLabel: string;
@@ -452,6 +405,20 @@ export function resolveFieldTypeDescriptor(input: {
   if (input.field.malformedType) {
     return { ok: false, alreadyReported: true };
   }
+  const { typeReferenceResolved } = input;
+  if (input.field.typeConstructor === undefined && input.field.typeNamespaceId !== undefined) {
+    const presetPath = [input.field.typeNamespaceId, input.field.typeName];
+    if (getAuthoringFieldPreset(input.authoringContributions, presetPath) !== undefined) {
+      reportPresetNotCalled({
+        entityLabel: input.entityLabel,
+        presetPath: presetPath.join('.'),
+        source,
+        span: input.field.span,
+        diagnostics: input.diagnostics,
+      });
+      return { ok: false, alreadyReported: true };
+    }
+  }
   if (input.field.typeConstructor) {
     // Field presets carry richer semantics than type constructors, so a field preset match is the complete answer. Shared composition rejects exact cross-registry collisions before PSL resolution can observe them.
     const presetDescriptor = getAuthoringFieldPreset(
@@ -482,8 +449,6 @@ export function resolveFieldTypeDescriptor(input: {
     }
 
     const helperPath = input.field.typeConstructor.path.join('.');
-    const namespacePrefix =
-      input.field.typeConstructor.path.length > 1 ? input.field.typeConstructor.path[0] : undefined;
     const typeDescriptor = getAuthoringTypeConstructor(
       input.authoringContributions,
       input.field.typeConstructor.path,
@@ -502,20 +467,7 @@ export function resolveFieldTypeDescriptor(input: {
       });
     }
 
-    if (
-      !typeDescriptor &&
-      namespacePrefix &&
-      hasRegisteredFieldNamespace(input.authoringContributions, namespacePrefix)
-    ) {
-      reportUnknownFieldPreset({
-        entityLabel: input.entityLabel,
-        namespace: namespacePrefix,
-        helperPath,
-        authoringContributions: input.authoringContributions,
-        source,
-        span: input.field.typeConstructor.span,
-        diagnostics: input.diagnostics,
-      });
+    if (!typeDescriptor && !typeReferenceResolved) {
       return { ok: false, alreadyReported: true };
     }
 
@@ -524,9 +476,6 @@ export function resolveFieldTypeDescriptor(input: {
       resolvePslTypeConstructorDescriptor({
         call: input.field.typeConstructor,
         authoringContributions: input.authoringContributions,
-        composedExtensions: input.composedExtensions,
-        familyId: input.familyId,
-        targetId: input.targetId,
         diagnostics: input.diagnostics,
         source,
         unsupportedCode: 'PSL_UNSUPPORTED_FIELD_TYPE',
@@ -556,7 +505,7 @@ export function resolveFieldTypeDescriptor(input: {
     input.scalarColumnDescriptors,
   );
   if (!descriptor) {
-    return { ok: false, alreadyReported: false };
+    return { ok: false, alreadyReported: !typeReferenceResolved };
   }
   return { ok: true, descriptor };
 }

@@ -1,6 +1,7 @@
 import type {
   ContractSourceContext,
   ContractSourceDiagnostic,
+  ContractSourceDiagnostics,
 } from '@internal/config/config-types';
 import type { Contract, JsonValue } from '@internal/contract/types';
 import {
@@ -12,6 +13,7 @@ import {
   type AuthoringEntityContext,
   type AuthoringEntityTypeNamespace,
   type AuthoringFieldPresetDescriptor,
+  type AuthoringTypeConstructorDescriptor,
   type AuthoringTypeNamespace,
   collectScalarTypeConstructors,
   type ParsedPslExtensionBlock,
@@ -35,11 +37,18 @@ import {
   optional,
   str,
 } from '@internal/psl-parser';
+import { withSeedDiagnostics } from '@internal/psl-parser/interpret';
 import type { DocumentAst, PslSources, SourceFile } from '@internal/psl-parser/syntax';
 import { parse } from '@internal/psl-parser/syntax';
 import type { SqlNamespaceBase, SqlNamespaceInput } from '@internal/sql-contract/types';
 import { type EnumTypeHandle, enumType } from '@internal/sql-contract-ts/contract-builder';
+import type { Result } from '@internal/utils/result';
 import { createTestSqlNamespace } from '../../../1-core/contract/test/test-support';
+import type { InterpretPslDocumentToSqlContractInput } from '../src/interpreter';
+import { interpretPslDocumentToSqlContract } from '../src/interpreter';
+import { describeUnsupportedSqlAttribute } from '../src/psl-field-resolution';
+import { sqlAttributeSpecs } from '../src/sql-attribute-specs';
+import { bindPslSchema } from '../src/test';
 import { postgresCodecLookup } from './fixture-codec-descriptors';
 import { fixtureDataTypeSupport } from './fixture-data-types';
 
@@ -353,7 +362,7 @@ export const pgvectorAuthoringContributions = {
   field: {},
   pslBlockDescriptors: {},
   modelAttributes: {},
-  attributeSpecs: { model: {}, field: {} },
+  attributeSpecs: sqlAttributeSpecs,
   type: {
     ...postgresScalarAuthoringTypes,
     pgvector: {
@@ -424,6 +433,101 @@ export function symbolTableInputFromParseArgs(args: {
   });
 }
 
+/**
+ * Parses `schema`, builds its symbol table, and interprets it to a SQL
+ * contract in one call. `options` is `InterpretPslDocumentToSqlContractInput`
+ * minus the parts this helper derives from `schema` itself.
+ */
+/**
+ * Builds the `ContractSourceContext` `createProjectBinder` needs, from the
+ * same options `interpretSqlContract` callers already pass. Falls back to
+ * the family's own built-ins (`sqlAttributeSpecs`,
+ * `describeUnsupportedSqlAttribute`) for whatever a test doesn't override,
+ * mirroring what the family binder used to do internally before it moved here.
+ */
+function contextForInterpretOptions(
+  options: Pick<
+    InterpretPslDocumentToSqlContractInput,
+    | 'authoringContributions'
+    | 'controlMutationDefaults'
+    | 'codecLookup'
+    | 'dataTypeLookup'
+    | 'composedExtensions'
+    | 'composedExtensionContracts'
+    | 'capabilities'
+    | 'scalarColumnDescriptors'
+  >,
+): ContractSourceContext {
+  const authoring = options.authoringContributions;
+  // The family binder used to fold the caller's `scalarColumnDescriptors`
+  // into the binder's type constructors alongside `authoringContributions.type`
+  // (production always derives the former from the latter, so they never
+  // diverged there; several test fixtures here pass a richer
+  // `scalarColumnDescriptors` without mirroring it into `authoringContributions.type`).
+  const scalarsFromColumnDescriptors: Record<string, AuthoringTypeConstructorDescriptor> = {};
+  for (const [name, descriptor] of options.scalarColumnDescriptors ?? []) {
+    scalarsFromColumnDescriptors[name] = {
+      kind: 'typeConstructor',
+      output: { codecId: descriptor.codecId, nativeType: descriptor.nativeType },
+    };
+  }
+  return {
+    composedExtensions: options.composedExtensions ?? [],
+    composedExtensionContracts: options.composedExtensionContracts,
+    authoringContributions: {
+      type: { ...scalarsFromColumnDescriptors, ...authoring?.type },
+      field: authoring?.field ?? {},
+      entityTypes: authoring?.entityTypes ?? {},
+      pslBlockDescriptors: authoring?.pslBlockDescriptors ?? {},
+      modelAttributes: authoring?.modelAttributes ?? {},
+      attributeSpecs: authoring?.attributeSpecs ?? sqlAttributeSpecs,
+      dataTypes: authoring?.dataTypes ?? {},
+      ...(authoring?.valueObjectStorageType === undefined
+        ? {}
+        : { valueObjectStorageType: authoring.valueObjectStorageType }),
+    },
+    pslDiagnostics: { describeUnsupportedAttribute: describeUnsupportedSqlAttribute },
+    codecLookup: options.codecLookup ?? postgresCodecLookup,
+    dataTypeLookup: options.dataTypeLookup,
+    controlMutationDefaults: options.controlMutationDefaults ?? {
+      defaultFunctionRegistry: new Map(),
+      generatorDescriptors: [],
+    },
+    resolvedInputs: [],
+    capabilities: options.capabilities,
+  };
+}
+
+export function interpretSqlContract(
+  schema: string,
+  options: Omit<
+    InterpretPslDocumentToSqlContractInput,
+    'documents' | 'sources' | 'symbolTable' | 'binder'
+  >,
+  sourceId?: string,
+): Result<Contract, ContractSourceDiagnostics> {
+  const bound = bindPslSchema(schema, {
+    sourceId: sourceId ?? 'schema.prisma',
+    context: contextForInterpretOptions(options),
+  });
+  return withSeedDiagnostics(
+    interpretPslDocumentToSqlContract({
+      documents: bound.documents,
+      sources: bound.sources,
+      symbolTable: bound.symbolTable,
+      binder: bound.binder,
+      ...bound.contextInput,
+      target: options.target,
+      createNamespace: options.createNamespace,
+      ...(options.composedExtensionPackRefs?.length
+        ? { composedExtensionPackRefs: options.composedExtensionPackRefs }
+        : {}),
+      enumInferenceCodecs: options.enumInferenceCodecs ?? postgresEnumInferenceCodecs,
+    }),
+    bound.seedDiagnostics,
+  );
+}
+
 export const sqliteScalarAuthoringTypes: AuthoringTypeNamespace = {
   String: { kind: 'typeConstructor', output: { codecId: 'sqlite/text@1', nativeType: 'text' } },
   Boolean: {
@@ -464,9 +568,10 @@ export function createPostgresTestContext(
       entityTypes: {},
       pslBlockDescriptors: {},
       modelAttributes: {},
-      attributeSpecs: { model: {}, field: {} },
+      attributeSpecs: sqlAttributeSpecs,
       valueObjectStorageType: 'Jsonb',
     },
+    pslDiagnostics: { describeUnsupportedAttribute: describeUnsupportedSqlAttribute },
     codecLookup: postgresCodecLookup,
     controlMutationDefaults: createBuiltinLikeControlMutationDefaults(),
     dataTypeLookup: fixtureDataTypeSupport.lookup,

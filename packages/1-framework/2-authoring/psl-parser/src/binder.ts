@@ -99,6 +99,18 @@ export type DescribeUnsupportedAttribute = (
   unsupported: UnsupportedAttribute,
 ) => ParseDiagnostic | undefined;
 
+export interface UnresolvedTypeReference {
+  readonly field: FieldSymbol;
+  readonly owner: ModelSymbol | CompositeTypeSymbol;
+  /** The name as written, including any qualifier (e.g. `temporal.createdAtt`). */
+  readonly written: string;
+}
+
+/**
+ * Produces the message for a type reference the binder could not resolve at all. Returning `undefined` means "use the binder's default message" (`Cannot find type "…"`).
+ */
+export type DescribeUnresolvedType = (unresolved: UnresolvedTypeReference) => string | undefined;
+
 export interface CreateBinderOptions {
   readonly sources: PslSources;
   readonly symbolTable: SymbolTable;
@@ -107,6 +119,7 @@ export interface CreateBinderOptions {
   readonly controlMutationDefaults: ControlDefaultRegistries;
   readonly pslBlockDescriptors?: AuthoringPslBlockDescriptorNamespace | undefined;
   readonly describeUnsupportedAttribute?: DescribeUnsupportedAttribute | undefined;
+  readonly describeUnresolvedType?: DescribeUnresolvedType | undefined;
 }
 
 export interface BinderResult {
@@ -196,6 +209,7 @@ export function createBinder(options: CreateBinderOptions): BinderResult {
     attributeSpecs,
     controlMutationDefaults,
     describeUnsupportedAttribute,
+    describeUnresolvedType,
   } = options;
   const pslBlockDescriptors = options.pslBlockDescriptors ?? {};
   const document = documentScope(
@@ -240,7 +254,11 @@ export function createBinder(options: CreateBinderOptions): BinderResult {
       declarations.set(field.node.syntax, field);
       const node = typeReferenceNode(field);
       if (node === undefined) continue;
-      const outcome = resolveTypeReference(field.node.typeAnnotation()?.name(), stack.current());
+      const outcome = resolveTypeReference(
+        field.node.typeAnnotation()?.name(),
+        stack.current(),
+        (written) => describeUnresolvedType?.({ field, owner: entity, written }),
+      );
       if (outcome === undefined) continue;
       references.set(node, outcome.resolution);
       if (outcome.message !== undefined) {
@@ -646,6 +664,7 @@ interface TypeReferenceOutcome {
 function resolveTypeReference(
   reference: QualifiedNameAst | undefined,
   scope: Scope,
+  describeUnresolved?: (written: string) => string | undefined,
 ): TypeReferenceOutcome | undefined {
   if (reference === undefined || reference.isOverQualified()) return undefined;
   if (reference.space() !== undefined) return { resolution: { kind: 'crossSpace' } };
@@ -656,9 +675,10 @@ function resolveTypeReference(
     namespaceId === undefined ? scope.lookup(name) : qualifiedMember(namespaceId, name, scope);
   if (found === undefined) {
     const written = namespaceId === undefined ? name : `${namespaceId}.${name}`;
+    const message = describeUnresolved?.(written) ?? `Cannot find type "${written}"`;
     return {
       resolution: { kind: 'unresolved', name: written },
-      message: `Cannot find type "${written}"`,
+      message,
       name: written,
     };
   }

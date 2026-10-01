@@ -815,6 +815,10 @@ A warning, not an error: a Mongo schema types a field with a deprecated scalar n
 
 A warning, not an error: a Mongo schema uses a field preset that fills nothing, such as `temporal.timestamp()` with neither phase: `Field "<Model>.<field>" uses temporal.timestamp() without onCreate or onUpdate, so nothing fills it and it is stored exactly like Date. Write Date, or pass onCreate: now or onUpdate: now.` Reported at the preset call through the contract source's `reportWarning`; the contract is written as for `Date`.
 
+### PSL_PRESET_NOT_CALLED
+
+A field is typed with a field preset's name but does not call it, for example `createdAt temporal.createdAt` instead of `createdAt temporal.createdAt()`: `Field "<Model>.<field>" uses field preset "<preset>" without calling it. Write <preset>().` A field preset is a function, so the field's type is the result of calling it. Reported at the field, in SQL and Mongo schemas. Add the parentheses.
+
 ### PSL_VALUE_TYPE_INCOMPATIBLE
 
 A written value has a data type the receiving type neither is nor casts from. For a `@default` the receiving type is the column's: `Field "<Model>.<field>": <column type> has no cast from <value type>; it casts from <types>`, or `; it casts from nothing` when the column's type declares no cast at all. A written value has a data type of its own — a number's comes from its own size and precision, so on Postgres `42` is `pg/int2` and `100000000000000099` is `pg/int8` — and a data type declares which other types' values it takes. Inside a written list the message names the element: `Field "<Model>.<field>" at element 2: ...`. A list written on a column that holds one value, and a `sql` literal inside a list literal, are reported the same way.

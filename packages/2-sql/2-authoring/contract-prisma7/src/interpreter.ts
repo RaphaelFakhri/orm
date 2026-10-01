@@ -1081,13 +1081,11 @@ function readField(args: ReadFieldArgs): void {
   const typeDiagnostics = createPslDiagnosticCollector(model.sources);
   const resolved = resolveFieldTypeDescriptor({
     field: { ...field, typeConstructor: call },
+    typeReferenceResolved: true,
     enumTypeDescriptors: EMPTY_DESCRIPTORS,
     namedTypeDescriptors: EMPTY_DESCRIPTORS,
     scalarColumnDescriptors: args.scalarColumnDescriptors,
     authoringContributions: input.authoringContributions,
-    composedExtensions: args.composedExtensions,
-    familyId: binding.target.familyId,
-    targetId: binding.target.targetId,
     diagnostics: typeDiagnostics,
     sources: model.sources,
     entityLabel: label,
