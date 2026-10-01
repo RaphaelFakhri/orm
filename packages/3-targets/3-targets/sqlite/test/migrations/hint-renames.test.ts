@@ -20,6 +20,7 @@ import {
   handleIndex,
   type ProfileSpec,
   plainTable,
+  reference,
   stubLowerer,
 } from './rename-table-fixtures';
 
@@ -33,6 +34,9 @@ const NEW_INDEX = `UserProfile_handle_idx_${HANDLE_INDEX_HASH}`;
 
 const derivedIndex: ProfileSpec = {
   uniques: [{ columns: ['email'] }],
+  foreignKeys: (tableName) => [
+    { source: reference(tableName, ['accountId']), target: reference('account', ['id']) },
+  ],
   indexes: (tableName) => [handleIndex(tableName)],
 };
 
