@@ -759,7 +759,8 @@ export const postgresAuthoringModelAttributes = {
         });
       }
       if (unindexable.length > 0) return undefined;
-      if (parsed.map !== undefined) {
+      // With a where predicate the shared index lowering raises this warning itself.
+      if (parsed.map !== undefined && parsed.where === undefined) {
         ctx.warnings?.push(exactNameBodyWarning('index', parsed.map));
       }
       const fields = fieldGroups.map((group) =>
