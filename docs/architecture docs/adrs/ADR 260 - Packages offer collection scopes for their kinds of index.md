@@ -71,7 +71,7 @@ An application could write that query itself, naming the fields and their weight
 db.sql.public.post
   .select('id', 'title')
   .where((f, fns) => fns.fullTextMatches([[f.title], [f.body]], q))
-  .orderBy((f, fns) => fns.fullTextRank([[f.title], [f.body]], q).desc());
+  .orderBy((f, fns) => fns.fullTextRank([[f.title], [f.body]], q), { direction: 'desc' });
 ```
 
 Written this way, the search has two problems:
