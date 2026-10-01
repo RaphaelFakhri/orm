@@ -26,6 +26,7 @@ import type { SqlStorage } from '@internal/sql-contract/types';
 import { interpretPslDocumentToSqlContract } from '@internal/sql-contract-psl';
 import type { SqlSchemaIRNode } from '@internal/sql-schema-ir/types';
 import { createPostgresBuiltinCodecLookup } from '@internal/target-postgres/codecs';
+import { postgresScalarAuthoringTypes } from '@internal/target-postgres/control';
 import { postgresDataTypes } from '@internal/target-postgres/data-types';
 import postgresTargetPack from '@internal/target-postgres/pack';
 import {

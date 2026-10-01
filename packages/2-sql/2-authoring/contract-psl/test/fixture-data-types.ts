@@ -1,29 +1,34 @@
 /**
  * The data types and PSL support a Postgres-like fixture stack registers.
  *
- * Mirrors what the Postgres target and adapter declare, exactly as `fixture-codec-descriptors.ts`
- * mirrors their codecs, so interpreter tests stay isolated from the target packages. ADR 254.
+ * Mirrors what the SQL family, the Postgres target and the adapter declare, in the order a stack
+ * assembles them, exactly as `fixture-codec-descriptors.ts` mirrors their codecs, so interpreter
+ * tests stay isolated from the target packages. ADR 254.
  */
 
 import type { JsonValue } from '@internal/contract/types';
-import type { AuthoringDataTypeEntry } from '@internal/framework-components/authoring';
-import { loweringEntryKey } from '@internal/framework-components/authoring';
+import type { DataTypeAuthoringEntry } from '@internal/framework-components/authoring';
 import {
   type Cast,
   createDataTypeLookup,
   type DataType,
+  isNonFiniteText,
 } from '@internal/framework-components/codec';
 import { sqlDataType } from '@internal/sql-contract/data-type';
+import {
+  SQL_EXPRESSION_DATA_TYPE_ID,
+  sqlExpressionAuthoringEntry,
+  sqlExpressionDataType,
+} from '@internal/sql-contract/sql-expression';
 import { structuredError } from '@internal/utils/structured-error';
 import { type } from 'arktype';
 import type { DataTypeSupport } from '../src/data-type-default';
-import { sqlLiteralTagLowering } from './fixture-sql-tag';
 
 const unchanged: Cast = (value) => value;
 const asText: Cast = (value) => String(value);
 const asNumber: Cast = (value) => {
   if (typeof value === 'number') return value;
-  if (typeof value === 'string' && NON_FINITE.has(value)) return value;
+  if (typeof value === 'string' && isNonFiniteText(value)) return value;
   const converted = Number(value);
   if (Number.isFinite(converted)) return converted;
   throw structuredError('CONTRACT.CAST_REFUSED', `${String(value)} is out of range.`, {
@@ -32,7 +37,6 @@ const asNumber: Cast = (value) => {
   });
 };
 
-const NON_FINITE: ReadonlySet<string> = new Set(['NaN', 'Infinity', '-Infinity']);
 const INTEGER_TEXT = /^-?\d+$/;
 const DECIMAL_TEXT = /^-?\d+\.\d+$/;
 const DECIMAL_NUMERAL = /^(-?)0*(\d+)(\.\d+)?$/;
@@ -67,7 +71,7 @@ export const pgInt8: DataType = sqlDataType('pg/int8', {
 export const pgNumeric: DataType = sqlDataType('pg/numeric', {
   params: type({
     'precision?': 'number.integer >= 1 & number.integer <= 1000',
-    'scale?': 'number.integer >= 0 & number.integer <= 1000',
+    'scale?': 'number.integer >= -1000 & number.integer <= 1000',
   }),
   texts: [
     { text: 'numeric', written: true },
@@ -155,6 +159,7 @@ export const pgvectorVector: DataType = sqlDataType('pgvector/vector', {
 });
 
 export const fixtureDataTypes: readonly DataType[] = [
+  sqlExpressionDataType,
   pgText,
   pgBool,
   pgJson,
@@ -180,7 +185,7 @@ export const fixtureDataTypes: readonly DataType[] = [
 function classifyNumber(
   text: string,
 ): { readonly type: DataType['id']; readonly value: JsonValue } | undefined {
-  if (NON_FINITE.has(text)) return { type: pgNumeric.id, value: text };
+  if (isNonFiniteText(text)) return { type: pgNumeric.id, value: text };
   if (DECIMAL_TEXT.test(text)) return { type: pgNumeric.id, value: canonicalNumeral(text) };
   if (!INTEGER_TEXT.test(text)) return undefined;
   const digits = BigInt(text);
@@ -214,7 +219,8 @@ function parseJson(text: string): JsonValue {
   }
 }
 
-export const fixtureDataTypeEntries: Readonly<Record<string, AuthoringDataTypeEntry>> = {
+export const fixtureDataTypeEntries: Readonly<Record<string, DataTypeAuthoringEntry>> = {
+  [SQL_EXPRESSION_DATA_TYPE_ID]: sqlExpressionAuthoringEntry,
   [pgText.id]: {
     written: { kind: 'plain', syntax: 'string', parse: (text) => text },
     print: (value) => String(value),
@@ -238,10 +244,8 @@ export const fixtureDataTypeEntries: Readonly<Record<string, AuthoringDataTypeEn
   [pgJson.id]: {
     written: { kind: 'tag', tag: 'json', parse: parseJson },
     print: (value) => JSON.stringify(value),
-    documentation: 'Reads the body as a JSON document and stores it as the default value.',
+    documentation: 'Reads the text as a JSON document and stores it as the default value.',
   },
-  [loweringEntryKey('sql')]: sqlLiteralTagLowering('sql'),
-  [loweringEntryKey('pg.sql')]: sqlLiteralTagLowering('pg.sql'),
 };
 
 export const fixtureDataTypeSupport: DataTypeSupport = {

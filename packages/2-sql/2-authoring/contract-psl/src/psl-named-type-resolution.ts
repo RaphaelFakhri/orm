@@ -1,6 +1,9 @@
 import type { AuthoringContributions } from '@internal/framework-components/authoring';
 import { checkUncomposedNamespace } from '@internal/framework-components/authoring';
-import type { CodecLookup, DataTypeLookup } from '@internal/framework-components/codec';
+import type {
+  CodecLookupWithDescriptors,
+  DataTypeLookup,
+} from '@internal/framework-components/codec';
 import type {
   DiagnosticSource,
   NamedTypeSymbol,
@@ -27,7 +30,7 @@ export interface ResolveNamedTypeDeclarationsInput {
   readonly familyId: string;
   readonly targetId: string;
   readonly authoringContributions: AuthoringContributions | undefined;
-  readonly codecLookup: CodecLookup;
+  readonly codecLookup: CodecLookupWithDescriptors;
   readonly dataTypeLookup: DataTypeLookup;
   readonly diagnostics: PslDiagnosticCollector;
 }

@@ -9,8 +9,9 @@
  *
  * A projection conforms when both of these hold:
  *
- * 1. the parsed value deep-equals `codec.encodeJson(value)` — the codec's
- *    current `encodeJson` is the yardstick and the projection is its SQL
+ * 1. the parsed value, in the canonical form of the codec's data type when the
+ *    type declares one (ADR 254), deep-equals `codec.encodeJson(value)` — the
+ *    codec's current `encodeJson` is the yardstick and the projection is its SQL
  *    realization; and
  * 2. `codec.decodeJson` turns the parsed value back into the application value
  *    the case started from.
@@ -340,6 +341,23 @@ function expectedJson(
   );
 }
 
+/**
+ * The projected value in the canonical form of the codec's data type, element by element for an
+ * array case, so that PostgreSQL's text and `encodeJson` compare as values, not as spellings.
+ */
+function projectedInCanonicalForm(
+  projected: JsonValue,
+  dataTypeId: string,
+  conformanceCase: PostgresCodecConformanceCase,
+): JsonValue {
+  const toCanonicalForm = (postgresDataTypeLookup.get(dataTypeId) ?? conformanceCase.dataType)
+    ?.toCanonicalForm;
+  if (toCanonicalForm === undefined) return projected;
+  if (conformanceCase.many !== true) return toCanonicalForm(projected);
+  if (!Array.isArray(projected)) return projected;
+  return projected.map((element) => (element === null ? null : toCanonicalForm(element)));
+}
+
 function roundTripValue(
   codec: ElementCodec,
   conformanceCase: PostgresCodecConformanceCase,
@@ -447,9 +465,19 @@ export async function runPostgresCodecProjection(
 
   const base = { sql, rawJson, projected, expected } as const;
 
-  // A case judged on round-trip equality skips this gate by design: its two spellings are both
-  // correct and differ, so comparing them would only ever report a disagreement that is not a defect.
-  if (conformanceCase.valueEquality === undefined && !isDeepStrictEqual(projected, expected)) {
+  let canonical: JsonValue;
+  try {
+    canonical = projectedInCanonicalForm(projected, descriptor.dataType, conformanceCase);
+  } catch (error) {
+    return {
+      ...base,
+      failure: {
+        kind: 'mismatch',
+        detail: `the data type ${descriptor.dataType} refuses the projected ${JSON.stringify(projected)}: ${describeError(error)}`,
+      },
+    };
+  }
+  if (!isDeepStrictEqual(canonical, expected)) {
     return {
       ...base,
       failure: {

@@ -22,6 +22,8 @@ import {
  *
  * The type position is the only storage decider: a mutation-default generator
  * (`@default(uuid())`) never re-picks a column's storage.
+ *
+ * Defined here, next to the codecs they name, but the adapter contributes them: the TypeScript contract builder builds its `type.*` helpers from the target, so a target contribution would add `type.String()` and the like there.
  */
 export const sqliteScalarAuthoringTypes = {
   String: {
@@ -75,7 +77,6 @@ export const sqliteAuthoringTypes = {
       codecId: 'sqlite/bigintnumber@1',
     },
   },
-  ...sqliteScalarAuthoringTypes,
 } as const satisfies AuthoringTypeNamespace;
 
 export const sqliteAuthoringFieldPresets = {

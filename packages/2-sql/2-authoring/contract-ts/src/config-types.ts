@@ -51,7 +51,7 @@ export function emptyContract(options: {
             createNamespace: options.createNamespace,
             models: [],
           },
-          emptyCodecLookup,
+          { ...emptyCodecLookup, descriptorFor: () => undefined },
           createDataTypeLookup([]),
         );
         return ok(

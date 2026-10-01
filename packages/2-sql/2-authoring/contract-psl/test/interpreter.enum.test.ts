@@ -1,5 +1,5 @@
 import type { Contract } from '@internal/contract/types';
-import type { Codec, CodecLookup } from '@internal/framework-components/codec';
+import type { Codec, CodecLookupWithDescriptors } from '@internal/framework-components/codec';
 import type { SqlStorage } from '@internal/sql-contract/types';
 import {
   defineContract,
@@ -33,51 +33,31 @@ import {
   testRenderCheckExpressions,
 } from './fixtures';
 
-// ---------------------------------------------------------------------------
-// Minimal test codecs for enum validation
-// ---------------------------------------------------------------------------
+// The PostgreSQL codecs come from the fixture descriptors; SQLite's are minimal stubs.
 
-const textCodec: Codec = {
-  id: 'pg/text@1',
-  encode: async (v: unknown) => v,
-  decode: async (w: unknown) => w,
-  encodeJson: (value) => value as never,
-  decodeJson(json) {
-    if (typeof json !== 'string') throw new Error(`expected string, got ${typeof json}`);
-    return json;
-  },
+function stubCodec(id: string, jsonType: 'string' | 'number'): Codec {
+  return {
+    id,
+    encode: async (v: unknown) => v,
+    decode: async (w: unknown) => w,
+    encodeJson: (value) => value as never,
+    decodeJson(json) {
+      if (typeof json !== jsonType) throw new Error(`expected ${jsonType}, got ${typeof json}`);
+      return json;
+    },
+  };
+}
+
+const sqliteCodecsById: Record<string, Codec> = {
+  'sqlite/text@1': stubCodec('sqlite/text@1', 'string'),
+  'sqlite/integer@1': stubCodec('sqlite/integer@1', 'number'),
 };
 
-const int4Codec: Codec = {
-  id: 'pg/int4@1',
-  encode: async (v: unknown) => v,
-  decode: async (w: unknown) => w,
-  encodeJson: (value) => value as never,
-  decodeJson(json) {
-    if (typeof json !== 'number') throw new Error(`expected number, got ${typeof json}`);
-    return json;
-  },
-};
-
-const pgIntCodec: Codec = { ...int4Codec, id: 'pg/int@1' };
-const sqliteTextCodec: Codec = { ...textCodec, id: 'sqlite/text@1' };
-const sqliteIntegerCodec: Codec = { ...int4Codec, id: 'sqlite/integer@1' };
-
-const codecsById: Record<string, Codec> = {
-  'pg/text@1': textCodec,
-  'pg/int4@1': int4Codec,
-  'pg/int@1': pgIntCodec,
-  'sqlite/text@1': sqliteTextCodec,
-  'sqlite/integer@1': sqliteIntegerCodec,
-};
-
-const testCodecLookup: CodecLookup = testSqlTypeLookups(
+const testCodecLookup: CodecLookupWithDescriptors = testSqlTypeLookups(
   {},
   {
-    get(id: string): Codec | undefined {
-      return codecsById[id];
-    },
-    descriptorFor: (id: string) => postgresCodecLookup.descriptorFor?.(id),
+    get: (id) => postgresCodecLookup.get(id) ?? sqliteCodecsById[id],
+    descriptorFor: (id) => postgresCodecLookup.descriptorFor(id),
     renderOutputTypeFor: () => undefined,
   },
 ).codecLookup;

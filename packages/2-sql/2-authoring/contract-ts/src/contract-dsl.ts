@@ -13,7 +13,7 @@ import type {
 import type { AuthoringFieldPresetDescriptor } from '@internal/framework-components/authoring';
 import { instantiateAuthoringFieldPreset } from '@internal/framework-components/authoring';
 import type {
-  CodecLookup,
+  CodecLookupWithDescriptors,
   ColumnTypeDescriptor,
   DataTypeLookup,
 } from '@internal/framework-components/codec';
@@ -1980,7 +1980,7 @@ export type ContractInput<
   readonly types?: Types;
   readonly models?: Models;
   /** The codecs of the packs the contract is authored with; a column's database type is its codec's data type's. */
-  readonly codecLookup: CodecLookup;
+  readonly codecLookup: CodecLookupWithDescriptors;
   /** The data types of the packs the contract is authored with. */
   readonly dataTypeLookup: DataTypeLookup;
   /**

@@ -7,8 +7,7 @@
  *
  * After TML-2357 this is the canonical source of Postgres codec metadata and runtime behaviour — the legacy `mkCodec` / `defineCodec` carriers (and the parallel `byScalar`/`codecDescriptorDefinitions`/ `codecDescriptorList` collection exports) retired with the deletion sweep.
  *
- * Audit (parameterized codecs): every parameterized codec in this file is **parameter-stateless** — the params (`length`, `precision`, `precision`+`scale`, `values`) only inform the emit-path `renderOutputType` renderer or stay as JSON metadata. None of the runtime encode/decode/encodeJson/decodeJson conversions thread params into their behavior, so each `factory(_params)` returns a fresh codec constructed solely from
- * `this` (the descriptor).
+ * A parameterized codec whose parameters limit what its column stores (`pg/bit@1`, `pg/varbit@1`, `pg/char@1`, `pg/varchar@1`, `pg/numeric@1`, and `sql/char@1` and `sql/varchar@1` as adapted here) is built with them, and its `decodeJson` refuses a value the column would not store unchanged.
  */
 
 import type { JsonValue } from '@internal/contract/types';
@@ -19,6 +18,16 @@ import {
   type ColumnHelperFor,
   type ColumnHelperForStrict,
   column,
+  decodeJsonBoolean,
+  decodeJsonFloat,
+  decodeJsonInteger,
+  decodeJsonIntegerText,
+  decodeJsonMatching,
+  decodeJsonString,
+  encodeJsonFloat,
+  INT32_RANGE,
+  INT64_RANGE,
+  refuseJsonValue,
   renderTsLiteral,
 } from '@internal/framework-components/codec';
 import { UNBOUND_NAMESPACE_ID } from '@internal/framework-components/ir';
@@ -42,11 +51,17 @@ import {
   sqlVarcharDescriptor,
 } from '@internal/sql-relational-core/ast';
 import { blindCast } from '@internal/utils/casts';
+import { counted, withoutTrailing } from '@internal/utils/text';
 import type { StandardSchemaV1 } from '@standard-schema/spec';
 import { definePostgresCodecs, PostgresCodecDescriptor, postgresCodec } from './codec-descriptor';
 import {
+  CANONICAL_UUID,
+  canonicalUuid,
   decimalTextBigintLiteral,
   decimalTextNumberLiteral,
+  FLOAT4_MAX,
+  fitsCharacterLength,
+  fitsFloat4,
   type PgInterval,
   type PrecisionParams,
   pgBigintEncode,
@@ -54,9 +69,7 @@ import {
   pgByteaDecodeJson,
   pgByteaDecodeWire,
   pgByteaEncodeJson,
-  pgFloatDecodeJson,
   pgFloatEncode,
-  pgFloatEncodeJson,
   pgInt8Decode,
   pgInt8NumberDecode,
   pgInt8NumberDecodeJson,
@@ -128,12 +141,14 @@ import {
   pgText,
   pgTextArray,
   pgTimetz,
+  pgTimetzCanonical,
   pgTsquery,
   pgUuid,
   pgVarbit,
   pgVarchar,
 } from './data-types';
 import { pgTimestamptzDateDescriptor } from './date-codecs';
+import { decodeJsonDateTimeText, pgTimetzStoredText } from './date-time-stored-text';
 import { postgresError } from './errors';
 import { DEFAULT_NAMESPACE_ID } from './namespace-ids';
 import { PostgresNativeEnum } from './postgres-native-enum';
@@ -181,7 +196,34 @@ const CANONICAL_NUMERIC_TEXT = /^(?:-?\d+(?:\.\d+)?|NaN|-?Infinity)$/;
 
 const isCanonicalNumericText = (value: string): boolean => CANONICAL_NUMERIC_TEXT.test(value);
 
+/**
+ * Whether canonical numeric text is a value `numeric(precision, scale)` stores without rounding: a whole number of units of 10^-scale, and at most `precision` digits once counted in those units. A negative scale rounds to tens, hundreds and so on, and a scale above the precision allows only values below 1. NaN fits; an infinity does not.
+ */
+function fitsNumeric(text: string, precision: number, scale: number): boolean {
+  if (text === 'NaN') return true;
+  if (text.endsWith('Infinity')) return false;
+  const [whole = '', fraction = ''] = text.replace(/^-/, '').split('.');
+  const significantFraction = withoutTrailing(fraction, '0');
+  const digits = `${whole}${significantFraction}`.replace(/^0+/, '');
+  if (digits === '') return true;
+  // The value is `digits` × 10^exponent; in units of 10^-scale it is `digits` × 10^shift.
+  const shift = scale - significantFraction.length;
+  if (shift >= 0) return digits.length + shift <= precision;
+  const units = withoutTrailing(digits, '0');
+  const droppedZeros = digits.length - units.length;
+  if (droppedZeros < -shift) return false;
+  return digits.length + shift <= precision;
+}
+
 const identityJsonProjection = (expression: ProjectionExpr): ProjectionExpr => expression;
+
+/**
+ * Projects a `character` value as text, which drops the trailing spaces that pad it to its length and nothing else, so an include reads the value a flat read's `decode` returns.
+ */
+const unpaddedCharJsonProjection = (expression: ProjectionExpr): ProjectionExpr =>
+  CastExpr.as(expression, 'text');
+
+const BIT_STRING = /^[01]*$/;
 
 const decodePostgresNumberWire = (wire: string | number): number =>
   typeof wire === 'string' ? Number(wire) : wire;
@@ -300,22 +342,26 @@ const isoDurationJsonProjection = (expression: ProjectionExpr): ProjectionExpr =
 
 export const postgresSqlCharDescriptor = postgresCodec(sqlCharDescriptor, {
   dataType: pgChar,
-  jsonProjection: identityJsonProjection,
+  jsonProjection: unpaddedCharJsonProjection,
+  factory: (descriptor, params) => () => new PgCharCodec(descriptor, params.length),
 });
 
 export const postgresSqlVarcharDescriptor = postgresCodec(sqlVarcharDescriptor, {
   dataType: pgVarchar,
   jsonProjection: identityJsonProjection,
+  factory: (descriptor, params) => () => new PgVarcharCodec(descriptor, params.length),
 });
 
 export const postgresSqlIntDescriptor = postgresCodec(sqlIntDescriptor, {
   dataType: pgInt4,
   jsonProjection: identityJsonProjection,
+  factory: (descriptor) => () => new PgIntCodec(descriptor),
 });
 
 export const postgresSqlFloatDescriptor = postgresCodec(sqlFloatDescriptor, {
   dataType: pgFloat8,
   jsonProjection: identityJsonProjection,
+  factory: (descriptor) => () => new PgFloatCodec(descriptor),
 });
 
 export const postgresSqlTextDescriptor = postgresCodec(sqlTextDescriptor, {
@@ -339,9 +385,7 @@ export class PgTextCodec extends CodecImpl<
     return value;
   }
   decodeJson(json: JsonValue): string {
-    return blindCast<string, 'identity string codecs serialize JSON in their wire string form'>(
-      json,
-    );
+    return decodeJsonString(PG_TEXT_CODEC_ID, json);
   }
 }
 
@@ -404,10 +448,7 @@ export class PgEnumCodec extends CodecImpl<
     return value;
   }
   decodeJson(json: JsonValue): string {
-    return blindCast<
-      string,
-      'text codec: a native-enum member value is stored as its wire string form'
-    >(json);
+    return decodeJsonString(PG_ENUM_CODEC_ID, json);
   }
 }
 
@@ -518,20 +559,36 @@ export function postgresQualifyColumnType(
 export class PgTextArrayCodec extends CodecImpl<
   typeof PG_TEXT_ARRAY_CODEC_ID,
   readonly ['equality'],
-  readonly string[],
-  readonly string[]
+  readonly (string | null)[],
+  readonly (string | null)[]
 > {
-  async encode(value: readonly string[], _ctx: CodecCallContext): Promise<readonly string[]> {
+  async encode(
+    value: readonly (string | null)[],
+    _ctx: CodecCallContext,
+  ): Promise<readonly (string | null)[]> {
     return value;
   }
-  async decode(wire: readonly string[], _ctx: CodecCallContext): Promise<readonly string[]> {
+  async decode(
+    wire: readonly (string | null)[],
+    _ctx: CodecCallContext,
+  ): Promise<readonly (string | null)[]> {
     return wire;
   }
-  encodeJson(value: readonly string[]): JsonValue {
+  encodeJson(value: readonly (string | null)[]): JsonValue {
     return [...value];
   }
-  decodeJson(json: JsonValue): readonly string[] {
-    return Array.isArray(json) ? json.map((entry) => String(entry)) : [];
+  /** A `text[]` may hold NULL elements, which PostgreSQL writes as JSON `null`. */
+  decodeJson(json: JsonValue): readonly (string | null)[] {
+    const expected = 'an array of strings and nulls';
+    if (!Array.isArray(json)) return refuseJsonValue(PG_TEXT_ARRAY_CODEC_ID, expected, json);
+    const elements: (string | null)[] = [];
+    for (const entry of json) {
+      if (entry !== null && typeof entry !== 'string') {
+        return refuseJsonValue(PG_TEXT_ARRAY_CODEC_ID, expected, entry);
+      }
+      elements.push(entry);
+    }
+    return elements;
   }
 }
 
@@ -566,9 +623,7 @@ export class PgInt4Codec extends CodecImpl<
     return value;
   }
   decodeJson(json: JsonValue): number {
-    return blindCast<number, 'identity numeric codecs serialize JSON in their wire number form'>(
-      json,
-    );
+    return decodeJsonInteger(PG_INT4_CODEC_ID, json, INT32_RANGE);
   }
 }
 
@@ -612,9 +667,7 @@ export class PgInt2Codec extends CodecImpl<
     return value;
   }
   decodeJson(json: JsonValue): number {
-    return blindCast<number, 'identity numeric codecs serialize JSON in their wire number form'>(
-      json,
-    );
+    return decodeJsonInteger(PG_INT2_CODEC_ID, json, { min: -32768, max: 32767 });
   }
 }
 
@@ -664,14 +717,7 @@ export class PgInt8Codec extends CodecImpl<
     return pgBigintEncodeJson(PG_INT8_CODEC_ID, value);
   }
   decodeJson(json: JsonValue): bigint {
-    if (typeof json !== 'string') {
-      throw postgresError(
-        'RUNTIME.DECODE_FAILED',
-        'pg/int8@1 database JSON value must be a decimal string',
-        { meta: { codecId: PG_INT8_CODEC_ID, received: typeof json } },
-      );
-    }
-    return pgInt8Decode(json);
+    return decodeJsonIntegerText(PG_INT8_CODEC_ID, json, INT64_RANGE);
   }
 }
 
@@ -764,10 +810,18 @@ export class PgFloat4Codec extends CodecImpl<
     return decodePostgresNumberWire(wire);
   }
   encodeJson(value: number): JsonValue {
-    return pgFloatEncodeJson(value);
+    return encodeJsonFloat(value);
   }
   decodeJson(json: JsonValue): number {
-    return pgFloatDecodeJson(PG_FLOAT4_CODEC_ID, json);
+    const value = decodeJsonFloat(PG_FLOAT4_CODEC_ID, json);
+    if (Number.isFinite(value) && !fitsFloat4(value)) {
+      return refuseJsonValue(
+        PG_FLOAT4_CODEC_ID,
+        `a number float4 holds, at most ${FLOAT4_MAX} in magnitude and not so small that it becomes 0, or the text NaN, Infinity or -Infinity`,
+        json,
+      );
+    }
+    return value;
   }
 }
 
@@ -808,10 +862,10 @@ export class PgFloat8Codec extends CodecImpl<
     return decodePostgresNumberWire(wire);
   }
   encodeJson(value: number): JsonValue {
-    return pgFloatEncodeJson(value);
+    return encodeJsonFloat(value);
   }
   decodeJson(json: JsonValue): number {
-    return pgFloatDecodeJson(PG_FLOAT8_CODEC_ID, json);
+    return decodeJsonFloat(PG_FLOAT8_CODEC_ID, json);
   }
 }
 
@@ -855,7 +909,7 @@ export class PgBoolCodec extends CodecImpl<
     return value;
   }
   decodeJson(json: JsonValue): boolean {
-    return blindCast<boolean, 'boolean columns serialize JSON in their wire boolean form'>(json);
+    return decodeJsonBoolean(PG_BOOL_CODEC_ID, json);
   }
 }
 
@@ -905,15 +959,30 @@ export class PgNumericCodec extends CodecImpl<
     }
     return value;
   }
+  constructor(
+    descriptor: PgNumericDescriptor,
+    private readonly params: NumericParams,
+  ) {
+    super(descriptor);
+  }
   decodeJson(json: JsonValue): string {
-    if (typeof json !== 'string') {
-      throw postgresError(
-        'RUNTIME.DECODE_FAILED',
-        'pg/numeric@1 database JSON value must be a decimal string',
-        { meta: { codecId: PG_NUMERIC_CODEC_ID, received: typeof json } },
+    const text = decodeJsonMatching(
+      PG_NUMERIC_CODEC_ID,
+      json,
+      CANONICAL_NUMERIC_TEXT,
+      'a decimal string',
+    );
+    const { precision } = this.params;
+    if (precision === undefined) return text;
+    const scale = this.params.scale ?? 0;
+    if (!fitsNumeric(text, precision, scale)) {
+      return refuseJsonValue(
+        PG_NUMERIC_CODEC_ID,
+        `a decimal string that numeric(${precision}, ${scale}) stores without rounding`,
+        json,
       );
     }
-    return json;
+    return text;
   }
 }
 
@@ -928,8 +997,8 @@ export class PgNumericDescriptor extends PostgresCodecDescriptor<NumericParams> 
   override renderOutputType(params: NumericParams): string | undefined {
     return pgNumericRenderOutputType(params);
   }
-  override factory(_params: NumericParams): (ctx: CodecInstanceContext) => PgNumericCodec {
-    return () => new PgNumericCodec(this);
+  override factory(params: NumericParams): (ctx: CodecInstanceContext) => PgNumericCodec {
+    return () => new PgNumericCodec(this, params ?? {});
   }
 }
 
@@ -963,14 +1032,7 @@ export class PgUnboundedIntCodec extends CodecImpl<
     return pgBigintEncodeJson(PG_UNBOUNDED_INT_CODEC_ID, value);
   }
   decodeJson(json: JsonValue): bigint {
-    if (typeof json !== 'string') {
-      throw postgresError(
-        'RUNTIME.DECODE_FAILED',
-        'pg/unboundedint@1 database JSON value must be a decimal string',
-        { meta: { codecId: PG_UNBOUNDED_INT_CODEC_ID, received: typeof json } },
-      );
-    }
-    return pgUnboundedIntDecode(json);
+    return decodeJsonIntegerText(PG_UNBOUNDED_INT_CODEC_ID, json);
   }
 }
 
@@ -1016,12 +1078,10 @@ export class PgTimetzCodec extends CodecImpl<
     return wire;
   }
   encodeJson(value: string): JsonValue {
-    return value;
+    return pgTimetzCanonical(value);
   }
   decodeJson(json: JsonValue): string {
-    return blindCast<string, 'identity string codecs serialize JSON in their wire string form'>(
-      json,
-    );
+    return decodeJsonDateTimeText(PG_TIMETZ_CODEC_ID, json, pgTimetzStoredText);
   }
 }
 
@@ -1064,10 +1124,27 @@ export class PgBitCodec extends CodecImpl<
   encodeJson(value: string): JsonValue {
     return value;
   }
+  constructor(
+    descriptor: PgBitDescriptor,
+    private readonly length: number,
+  ) {
+    super(descriptor);
+  }
   decodeJson(json: JsonValue): string {
-    return blindCast<string, 'identity string codecs serialize JSON in their wire string form'>(
+    const bits = decodeJsonMatching(
+      PG_BIT_CODEC_ID,
       json,
+      BIT_STRING,
+      'a string of 0 and 1 digits',
     );
+    if (bits.length !== this.length) {
+      return refuseJsonValue(
+        PG_BIT_CODEC_ID,
+        `a string of exactly ${counted(this.length, 'bit')}`,
+        json,
+      );
+    }
+    return bits;
   }
 }
 
@@ -1082,8 +1159,8 @@ export class PgBitDescriptor extends PostgresCodecDescriptor<LengthParams> {
   override renderOutputType(params: LengthParams): string | undefined {
     return renderLength('Bit', params);
   }
-  override factory(_params: LengthParams): (ctx: CodecInstanceContext) => PgBitCodec {
-    return () => new PgBitCodec(this);
+  override factory(params: LengthParams): (ctx: CodecInstanceContext) => PgBitCodec {
+    return () => new PgBitCodec(this, params?.length ?? 1);
   }
 }
 
@@ -1110,10 +1187,27 @@ export class PgVarbitCodec extends CodecImpl<
   encodeJson(value: string): JsonValue {
     return value;
   }
+  constructor(
+    descriptor: PgVarbitDescriptor,
+    private readonly length: number | undefined,
+  ) {
+    super(descriptor);
+  }
   decodeJson(json: JsonValue): string {
-    return blindCast<string, 'identity string codecs serialize JSON in their wire string form'>(
+    const bits = decodeJsonMatching(
+      PG_VARBIT_CODEC_ID,
       json,
+      BIT_STRING,
+      'a string of 0 and 1 digits',
     );
+    if (this.length !== undefined && bits.length > this.length) {
+      return refuseJsonValue(
+        PG_VARBIT_CODEC_ID,
+        `a string of at most ${counted(this.length, 'bit')}`,
+        json,
+      );
+    }
+    return bits;
   }
 }
 
@@ -1128,8 +1222,8 @@ export class PgVarbitDescriptor extends PostgresCodecDescriptor<LengthParams> {
   override renderOutputType(params: LengthParams): string | undefined {
     return renderLength('VarBit', params);
   }
-  override factory(_params: LengthParams): (ctx: CodecInstanceContext) => PgVarbitCodec {
-    return () => new PgVarbitCodec(this);
+  override factory(params: LengthParams): (ctx: CodecInstanceContext) => PgVarbitCodec {
+    return () => new PgVarbitCodec(this, params?.length);
   }
 }
 
@@ -1195,10 +1289,15 @@ export class PgUuidCodec extends CodecImpl<
     return wire;
   }
   encodeJson(value: string): JsonValue {
-    return value;
+    return canonicalUuid(value) ?? value;
   }
   decodeJson(json: JsonValue): string {
-    return blindCast<string, 'uuid columns serialize to JSON as their wire string form'>(json);
+    return decodeJsonMatching(
+      PG_UUID_CODEC_ID,
+      json,
+      CANONICAL_UUID,
+      'a UUID as PostgreSQL writes it, in lower case and hyphenated 8-4-4-4-12',
+    );
   }
 }
 
@@ -1239,7 +1338,7 @@ export class PgInetCodec extends CodecImpl<
     return value;
   }
   decodeJson(json: JsonValue): string {
-    return blindCast<string, 'inet columns serialize to JSON as their wire string form'>(json);
+    return decodeJsonString(PG_INET_CODEC_ID, json);
   }
 }
 
@@ -1288,8 +1387,8 @@ export class PgTsqueryCodec extends CodecImpl<
     return value;
   }
   decodeJson(json: JsonValue): TsqueryValue {
-    return blindCast<TsqueryValue, 'tsquery values serialize to JSON as their wire string form'>(
-      json,
+    return blindCast<TsqueryValue, 'a tsquery value is the text PostgreSQL writes for it'>(
+      decodeJsonString(PG_TSQUERY_CODEC_ID, json),
     );
   }
 }
@@ -1465,14 +1564,62 @@ pgJsonbColumn satisfies ColumnHelperForStrict<PgJsonbDescriptor>;
 
 // --- pg aliases for the SQL base codecs ------------------------------------
 // These descriptors give a SQL-base codec a PostgreSQL identity: its own codec
-// id and native type. The factories instantiate the SQL-base codec class
-// (`SqlCharCodec` etc.) passing `this` (the pg-alias descriptor), so `codec.id`
-// resolves to the pg-alias codec id via `CodecImpl`'s `descriptor.codecId`
-// proxy.
+// id and native type. The factories instantiate a subclass of the SQL-base codec
+// class (`PgCharCodec` etc.) passing `this` (the pg-alias descriptor), so
+// `codec.id` resolves to the pg-alias codec id via `CodecImpl`'s
+// `descriptor.codecId` proxy.
 
 export class PgIntCodec extends SqlIntCodec {
   override async decode(wire: string | number, _ctx: CodecCallContext): Promise<number> {
     return decodePostgresNumberWire(wire);
+  }
+  override decodeJson(json: JsonValue): number {
+    return decodeJsonInteger(this.id, json, INT32_RANGE);
+  }
+}
+
+/**
+ * `sql/char@1` as PostgreSQL stores it: a `character` column holds its length in characters, and one with no length is `character(1)`.
+ */
+export class PgCharCodec extends SqlCharCodec {
+  private readonly length: number;
+  constructor(
+    descriptor: ConstructorParameters<typeof SqlCharCodec>[0],
+    length: number | undefined,
+  ) {
+    super(descriptor);
+    this.length = length ?? 1;
+  }
+  override decodeJson(json: JsonValue): string {
+    if (!fitsCharacterLength(decodeJsonString(this.id, json), this.length, true)) {
+      return refuseJsonValue(
+        this.id,
+        `a string of at most ${counted(this.length, 'character')} before any trailing spaces`,
+        json,
+      );
+    }
+    return super.decodeJson(json);
+  }
+}
+
+/** `sql/varchar@1` as PostgreSQL stores it: a `character varying` column with a length holds at most that many characters. */
+export class PgVarcharCodec extends SqlVarcharCodec {
+  constructor(
+    descriptor: ConstructorParameters<typeof SqlVarcharCodec>[0],
+    private readonly length: number | undefined,
+  ) {
+    super(descriptor);
+  }
+  override decodeJson(json: JsonValue): string {
+    const text = super.decodeJson(json);
+    if (this.length !== undefined && !fitsCharacterLength(text, this.length, false)) {
+      return refuseJsonValue(
+        this.id,
+        `a string of at most ${counted(this.length, 'character')}`,
+        json,
+      );
+    }
+    return text;
   }
 }
 
@@ -1484,7 +1631,7 @@ export class PgFloatCodec extends SqlFloatCodec {
 
 export class PgCharDescriptor extends PostgresCodecDescriptor<LengthParams> {
   protected override jsonProjection(expression: ProjectionExpr): ProjectionExpr {
-    return expression;
+    return unpaddedCharJsonProjection(expression);
   }
   override readonly dataType = pgChar.id;
   override readonly codecId = PG_CHAR_CODEC_ID;
@@ -1496,8 +1643,8 @@ export class PgCharDescriptor extends PostgresCodecDescriptor<LengthParams> {
   override renderValueLiteral(value: JsonValue): string | undefined {
     return renderTsLiteral(value);
   }
-  override factory(_params: LengthParams): (ctx: CodecInstanceContext) => SqlCharCodec {
-    return () => new SqlCharCodec(this);
+  override factory(params: LengthParams): (ctx: CodecInstanceContext) => PgCharCodec {
+    return () => new PgCharCodec(this, params?.length);
   }
 }
 
@@ -1522,8 +1669,8 @@ export class PgVarcharDescriptor extends PostgresCodecDescriptor<LengthParams> {
   override renderValueLiteral(value: JsonValue): string | undefined {
     return renderTsLiteral(value);
   }
-  override factory(_params: LengthParams): (ctx: CodecInstanceContext) => SqlVarcharCodec {
-    return () => new SqlVarcharCodec(this);
+  override factory(params: LengthParams): (ctx: CodecInstanceContext) => PgVarcharCodec {
+    return () => new PgVarcharCodec(this, params?.length);
   }
 }
 

@@ -1,8 +1,17 @@
 import type { JsonValue } from '@internal/contract/types';
-import type { AuthoringDataTypeEntry } from '@internal/framework-components/authoring';
+import type { DataTypeAuthoringEntry } from '@internal/framework-components/authoring';
 import type { Cast, DataType } from '@internal/framework-components/codec';
-import { createDataTypeLookup, dataType } from '@internal/framework-components/codec';
-import { isNonFiniteText, numeralText } from '@internal/sql-contract/data-type';
+import {
+  createDataTypeLookup,
+  dataType,
+  isNonFiniteText,
+} from '@internal/framework-components/codec';
+import { numeralText } from '@internal/sql-contract/data-type';
+import {
+  SQL_EXPRESSION_DATA_TYPE_ID,
+  sqlExpressionAuthoringEntry,
+  sqlExpressionDataType,
+} from '@internal/sql-contract/sql-expression';
 import {
   createNumberClassifier,
   parseJsonBody,
@@ -49,6 +58,12 @@ const vector = dataType('pg/vector', {
   },
 });
 const blob = dataType('pg/bytea', {});
+const canonicalDate: Cast = (value) =>
+  typeof value === 'string' ? value.replace(/^(\d{4})(\d{2})(\d{2})$/, '$1-$2-$3') : value;
+const date = dataType('pg/date', {
+  toCanonicalForm: canonicalDate,
+  casts: { [text.id]: canonicalDate },
+});
 
 const types: readonly DataType[] = [
   text,
@@ -62,6 +77,8 @@ const types: readonly DataType[] = [
   jsonb,
   vector,
   blob,
+  date,
+  sqlExpressionDataType,
 ];
 
 const classify = createNumberClassifier({
@@ -79,7 +96,7 @@ function printNumber(value: JsonValue): string {
   return typeof value === 'number' ? numeralText(value) : String(value);
 }
 
-const entries: Readonly<Record<string, AuthoringDataTypeEntry>> = {
+const entries: Readonly<Record<string, DataTypeAuthoringEntry>> = {
   [text.id]: {
     written: { kind: 'plain', syntax: 'string', parse: (body) => body },
     print: (value) => String(value),
@@ -105,6 +122,7 @@ const entries: Readonly<Record<string, AuthoringDataTypeEntry>> = {
     print: printJsonBody,
     documentation: 'A JSON document.',
   },
+  [SQL_EXPRESSION_DATA_TYPE_ID]: sqlExpressionAuthoringEntry,
 };
 
 function forColumn(
@@ -158,6 +176,14 @@ describe('mapDefault function defaults', () => {
     });
   });
 
+  it('prints a multi-line expression on its own lines', () => {
+    expect(
+      mapDefault({ kind: 'function', expression: "(now()\n  + '00:03:00'::interval)" }),
+    ).toEqual({
+      attribute: `@default(sql${BACKTICK}\n(now()\n  + '00:03:00'::interval)\n${BACKTICK})`,
+    });
+  });
+
   it('never describes a default in a comment', () => {
     expectTypeOf<DefaultMappingResult>().toEqualTypeOf<{ readonly attribute: string }>();
   });
@@ -200,6 +226,18 @@ describe('mapDefault prints a stored value as the literal its column takes', () 
     ['a JSON document on its own type', { a: 1 }, json, '@default(json`{"a":1}`)'],
   ] as [string, JsonValue, DataType, string][])('prints %s', (_name, value, column, attribute) => {
     expect(mapDefault({ kind: 'literal', value }, forColumn(column))).toEqual({ attribute });
+  });
+
+  it('prints a JSON text holding a backtick in the double-quote form', () => {
+    expect(mapDefault({ kind: 'literal', value: { a: BACKTICK } }, forColumn(jsonb))).toEqual({
+      attribute: `@default(json"{\\"a\\":\\"${BACKTICK}\\"}")`,
+    });
+  });
+
+  it('prints a text default on a text column as a string', () => {
+    expect(mapDefault({ kind: 'literal', value: 'now()' }, forColumn(text))).toEqual({
+      attribute: '@default("now()")',
+    });
   });
 
   it('prints a written list on a scalar column through the type list cast', () => {
@@ -247,5 +285,20 @@ describe('mapDefault prints a stored value as the literal its column takes', () 
 
   it('writes nothing for a literal when no data types are given at all', () => {
     expect(mapDefault({ kind: 'literal', value: 'hello' })).toBeUndefined();
+  });
+});
+
+describe('mapDefault on a type with a canonical form', () => {
+  it('prints a stored value in its canonical form, element by element for a list', () => {
+    expect({
+      scalar: mapDefault({ kind: 'literal', value: '20240101' }, forColumn(date))?.attribute,
+      list: mapDefault(
+        { kind: 'literal', value: ['20240101', '2024-06-30'] },
+        forColumn(date, { list: true }),
+      )?.attribute,
+    }).toEqual({
+      scalar: '@default("2024-01-01")',
+      list: '@default(["2024-01-01", "2024-06-30"])',
+    });
   });
 });

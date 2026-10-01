@@ -6,7 +6,7 @@
  * anything this attribute does not cover.
  */
 
-import type { CodecLookup } from '@internal/framework-components/codec';
+import type { CodecLookupWithDescriptors } from '@internal/framework-components/codec';
 import { createDataTypeLookup } from '@internal/framework-components/codec';
 import { assembleAuthoringContributions } from '@internal/framework-components/control';
 import { buildSymbolTable } from '@internal/psl-parser';
@@ -57,7 +57,7 @@ const scalarTypeDescriptors = new Map<string, { codecId: string }>([
 ]);
 
 // `pg.enum(Ref)` resolves its column through the enum codec's descriptor.
-const codecLookup: CodecLookup = createPostgresBuiltinCodecLookup();
+const codecLookup: CodecLookupWithDescriptors = createPostgresBuiltinCodecLookup();
 
 function interpret(source: string) {
   const { document, sources } = parse(source, 'psl-full-text-index.test.psl');

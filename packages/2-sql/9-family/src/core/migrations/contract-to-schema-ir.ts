@@ -124,11 +124,12 @@ function convertColumn(
     // reading a derivation-precomputed render payload.
     codecRef: buildColumnCodecRef(resolved, column.many),
     codecBaseNativeType: resolved.nativeType,
+    dataType,
   };
 }
 
 /**
- * The column's type as the database reports it: the written name with its parameters, or for a
+ * The column's type as the database reports it: the written name with its normal-form parameters (`character(1)` for a bare `character`), or for a
  * type that claims a kind (an enum), its type name as stored.
  */
 function schemaTypeText(
@@ -137,7 +138,7 @@ function schemaTypeText(
 ): string {
   const params = dataTypeParams(type, typeParams);
   return type.sql.claimsKind === undefined
-    ? renderSqlTypeName(type, params)
+    ? renderSqlTypeName(type, type.sql.normalize(params))
     : unquotedSqlBaseName(type, params);
 }
 

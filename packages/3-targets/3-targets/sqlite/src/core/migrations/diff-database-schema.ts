@@ -30,14 +30,14 @@ interface SqliteDiffDatabaseSchemaInput {
 }
 
 /** Renders a column default for the SQLite dialect. */
-export function sqliteRenderDefault(def: ColumnDefault, _column: StorageColumn): string {
+export function sqliteRenderDefault(def: ColumnDefault, column: StorageColumn): string {
   if (def.kind === 'function') {
     if (def.expression === 'now()') {
       return "datetime('now')";
     }
     return def.expression;
   }
-  return renderDefaultLiteral(def.value);
+  return renderDefaultLiteral(def.value, column.codecId);
 }
 
 /**

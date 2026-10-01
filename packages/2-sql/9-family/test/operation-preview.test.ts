@@ -95,7 +95,7 @@ describe('sqlOperationsToPreview', () => {
 describe('SqlControlFamilyInstance OperationPreviewCapable', () => {
   function instantiate() {
     const stack = {
-      family: { id: 'sql', familyId: 'sql', kind: 'family' },
+      family: sqlFamilyDescriptor,
       target: {
         targetId: 'postgres',
         familyId: 'sql',
@@ -114,6 +114,7 @@ describe('SqlControlFamilyInstance OperationPreviewCapable', () => {
       codecTypeImports: [],
       extensionIds: [],
       dataTypeLookup: createDataTypeLookup([]),
+      declaredDataTypes: [],
       // biome-ignore lint/suspicious/noExplicitAny: minimal stub
     } as any;
     return sqlFamilyDescriptor.create(stack);

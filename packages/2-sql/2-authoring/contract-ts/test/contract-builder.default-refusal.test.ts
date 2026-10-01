@@ -1,10 +1,11 @@
-import type { Codec, CodecLookup } from '@internal/framework-components/codec';
+import type { Codec, CodecLookupWithDescriptors } from '@internal/framework-components/codec';
 import type { TargetPackRef } from '@internal/framework-components/components';
 import { InternalError } from '@internal/utils/internal-error';
 import { describe, expect, it } from 'vitest';
 import { createTestSqlNamespace } from '../../../1-core/contract/test/test-support';
 import { withTestTypes } from '../../../1-core/contract/test/test-type-lookups';
 import { buildSqlContractFromDefinition } from '../src/contract-builder';
+import { withDescriptors } from './with-descriptors';
 
 const postgresTargetPack: TargetPackRef<'sql', 'postgres'> = {
   kind: 'target',
@@ -15,7 +16,7 @@ const postgresTargetPack: TargetPackRef<'sql', 'postgres'> = {
   defaultNamespaceId: 'public',
 };
 
-const refusingJsonb: CodecLookup = {
+const refusingJsonb: CodecLookupWithDescriptors = withDescriptors({
   get: (id) =>
     id === 'pg/jsonb@1'
       ? {
@@ -29,10 +30,10 @@ const refusingJsonb: CodecLookup = {
         }
       : undefined,
   renderOutputTypeFor: () => undefined,
-};
+});
 
-function lookupOf(codecs: Record<string, Pick<Codec, 'encodeJson'>>): CodecLookup {
-  return {
+function lookupOf(codecs: Record<string, Pick<Codec, 'encodeJson'>>): CodecLookupWithDescriptors {
+  return withDescriptors({
     get: (id) => {
       const codec = codecs[id];
       return codec === undefined
@@ -46,12 +47,12 @@ function lookupOf(codecs: Record<string, Pick<Codec, 'encodeJson'>>): CodecLooku
           };
     },
     renderOutputTypeFor: () => undefined,
-  };
+  });
 }
 
 function buildWithDefault(
   field: { readonly codecId: string; readonly value: unknown; readonly many?: boolean },
-  codecLookup?: CodecLookup,
+  codecLookup?: CodecLookupWithDescriptors,
 ) {
   return buildSqlContractFromDefinition(
     {
@@ -180,6 +181,7 @@ describe('a literal default the codec refuses', () => {
                   fieldName: 'total',
                   columnName: 'total',
                   valueObjectName: 'Money',
+                  descriptor: { codecId: 'pg/jsonb@1', nativeType: 'jsonb' },
                   nullable: false,
                   default: { kind: 'literal', value: 'twelve' },
                 },
@@ -193,8 +195,7 @@ describe('a literal default the codec refuses', () => {
               fields: [
                 {
                   fieldName: 'amount',
-                  columnName: 'amount',
-                  descriptor: { codecId: 'pg/int8@1', nativeType: 'int8' },
+                  descriptor: { codecId: 'pg/int8@1' },
                   nullable: false,
                 },
               ],

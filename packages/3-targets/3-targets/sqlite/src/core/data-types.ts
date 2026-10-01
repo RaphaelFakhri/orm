@@ -12,8 +12,9 @@
  */
 
 import type { JsonValue } from '@internal/contract/types';
-import type { Cast, DataType } from '@internal/framework-components/codec';
+import type { Cast, DataType, ToCanonicalForm } from '@internal/framework-components/codec';
 import { numeralText, sqlDataType } from '@internal/sql-contract/data-type';
+import { canonicalDateTime, integerTextCanonicalForm } from '@internal/sql-relational-core/ast';
 import { structuredError } from '@internal/utils/structured-error';
 import { type as arktype } from 'arktype';
 
@@ -60,14 +61,33 @@ export const sqliteText = writtenAs('sqlite/text', 'text');
 export const sqliteJson = writtenAs('sqlite/json', 'text');
 export const sqliteInteger = writtenAs('sqlite/integer', 'integer');
 
-export const sqliteDatetime = writtenAs('sqlite/datetime', 'text', {
-  [sqliteText.id]: unchanged,
+/**
+ * The canonical form of `sqlite/datetime` (ADR 254), from ISO 8601 text with a UTC offset. The range
+ * and the millisecond precision are those of a JavaScript `Date`, the codec's value.
+ */
+export const sqliteDatetimeCanonical = (text: string): string =>
+  canonicalDateTime(text, {
+    shape: 'instant',
+    dataTypeId: 'sqlite/datetime',
+    maxFractionDigits: 3,
+    range: { earliest: '-271821-04-20T00:00:00Z', latest: '+275760-09-13T00:00:00Z' },
+  });
+
+const datetimeCanonicalForm: ToCanonicalForm = (value) =>
+  typeof value === 'string' ? sqliteDatetimeCanonical(value) : wrongShape(value, 'text');
+
+export const sqliteDatetime = sqlDataType('sqlite/datetime', {
+  texts: [{ text: 'text', written: true }],
+  toCanonicalForm: datetimeCanonicalForm,
+  casts: { [sqliteText.id]: datetimeCanonicalForm },
 });
 
 export const sqliteBlob = writtenAs('sqlite/blob', 'blob', { [sqliteText.id]: unchanged });
 
-export const sqliteBigint = writtenAs('sqlite/bigint', 'integer', {
-  [sqliteInteger.id]: asNumeralText,
+export const sqliteBigint = sqlDataType('sqlite/bigint', {
+  texts: [{ text: 'integer', written: true }],
+  toCanonicalForm: integerTextCanonicalForm,
+  casts: { [sqliteInteger.id]: asNumeralText },
 });
 
 export const sqliteReal = writtenAs('sqlite/real', 'real', {

@@ -7,14 +7,13 @@ import {
 import { createDataTypeLookup } from '@internal/framework-components/codec';
 import { unquotedSqlBaseNameOfCodec } from '@internal/sql-contract/data-type';
 import { describe, expect, it } from 'vitest';
-import {
-  postgresAuthoringTypes,
-  postgresNativeAuthoringTypes,
-  postgresScalarAuthoringTypes,
-} from '../src/core/authoring';
+import { postgresAuthoringTypes } from '../src/core/authoring';
 import { createPostgresBuiltinCodecLookup } from '../src/core/codec-registry';
 import { postgresDataTypes } from '../src/core/data-types';
-import { CODEC_ID_BY_INFERRED_TYPE } from '../src/core/psl-infer/infer-default-codec';
+import {
+  postgresNativeAuthoringTypes,
+  postgresScalarAuthoringTypes,
+} from '../src/core/type-constructors';
 import postgresTargetPack from '../src/exports/pack';
 
 describe('the type constructors the target contributes', () => {
@@ -265,35 +264,5 @@ describe('postgresNativeAuthoringTypes', () => {
     });
     expect(postgresAuthoringTypes.DateTime.output.codecId).toBe('pg/timestamptz-temporal@1');
     expect(postgresAuthoringTypes.Timestamptz.output.codecId).toBe('pg/timestamptz-temporal@1');
-  });
-});
-
-/**
- * `contract infer` writes a default in the form the codec `contract emit` binds to the type name it
- * writes reads back. It restates that binding for the type names it writes; this fails if the two
- * disagree.
- */
-describe('the codec bound to each inferred PSL type name', () => {
-  const emitCodecIdByTypeName: ReadonlyMap<string, string> = new Map(
-    [
-      ...Object.entries(postgresScalarAuthoringTypes),
-      ...Object.entries(postgresNativeAuthoringTypes),
-    ].map(([typeName, typeConstructor]) => [typeName, typeConstructor.output.codecId]),
-  );
-
-  it('has a binding to compare against', () => {
-    expect(emitCodecIdByTypeName.size).toBeGreaterThan(0);
-    expect(CODEC_ID_BY_INFERRED_TYPE.size).toBeGreaterThan(0);
-  });
-
-  it('agrees with the type constructor contract emit resolves', () => {
-    expect(
-      [...CODEC_ID_BY_INFERRED_TYPE].map(([typeName, codecId]) => ({ typeName, codecId })),
-    ).toEqual(
-      [...CODEC_ID_BY_INFERRED_TYPE.keys()].map((typeName) => ({
-        typeName,
-        codecId: emitCodecIdByTypeName.get(typeName),
-      })),
-    );
   });
 });

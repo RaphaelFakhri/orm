@@ -4,6 +4,7 @@ import {
   canonicalNumeralText,
   createNumberClassifier,
   escapePslString,
+  integerTextCanonicalForm,
   isNumeralText,
   parseJsonBody,
   printJsonBody,
@@ -35,6 +36,29 @@ describe('canonicalNumeralText', () => {
     ['leaves a plain numeral alone', '-42', '-42'],
   ])('%s', (_name, text, canonical) => {
     expect(canonicalNumeralText(text)).toBe(canonical);
+  });
+});
+
+describe('integerTextCanonicalForm', () => {
+  it.each([
+    ['digit text past the safe integer range', '9007199254740993', '9007199254740993'],
+    ['digit text with leading zeros', '-007', '-7'],
+    ['a safe integer', 42, '42'],
+  ])('reads %s as its digit text', (_name, value, canonical) => {
+    expect(integerTextCanonicalForm(value)).toBe(canonical);
+  });
+
+  it.each([
+    ['a number past the safe integer range', Number.MAX_SAFE_INTEGER + 2],
+    ['a fraction', 1.5],
+    ['text that is not an integer', '1.5'],
+  ])('refuses %s', (_name, value) => {
+    expect(() => integerTextCanonicalForm(value)).toThrow(
+      expect.objectContaining({
+        code: 'CONTRACT.CAST_REFUSED',
+        message: `Expected digit text or a safe integer, got ${JSON.stringify(value)}.`,
+      }),
+    );
   });
 });
 

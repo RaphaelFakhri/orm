@@ -192,6 +192,7 @@ export function sqlDataType<Params extends SqlTypeParams = SqlTypeParams>(
     ...ifDefined('params', spec.params),
     casts: declared.casts,
     ...ifDefined('listCast', declared.listCast),
+    ...ifDefined('toCanonicalForm', declared.toCanonicalForm),
     sql: {
       texts,
       claimsKind: spec.claimsKind,

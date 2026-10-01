@@ -329,7 +329,7 @@ describe('createComposedAuthoringHelpers', () => {
       codecLookup: {
         ...testTypeLookups.codecLookup,
         descriptorFor: (codecId: string) => ({
-          ...testTypeLookups.codecLookup.descriptorFor?.(codecId),
+          ...testTypeLookups.codecLookup.descriptorFor(codecId),
           codecId,
           dataType: varchar.id,
           traits: [],

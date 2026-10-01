@@ -18,6 +18,11 @@ import {
   type ColumnHelperFor,
   type ColumnHelperForStrict,
   column,
+  decodeJsonFloat,
+  decodeJsonInteger,
+  decodeJsonString,
+  encodeJsonFloat,
+  SAFE_INTEGER_RANGE,
 } from '@internal/framework-components/codec';
 import {
   SQL_CHAR_CODEC_ID,
@@ -29,9 +34,7 @@ import {
   sqlCharEncode,
   sqlCharRenderOutputType,
   sqlFloatDecode,
-  sqlFloatDecodeJson,
   sqlFloatEncode,
-  sqlFloatEncodeJson,
   sqlIntDecode,
   sqlIntEncode,
   sqlTextDecode,
@@ -59,7 +62,7 @@ export class SqlTextCodec extends CodecImpl<
     return value;
   }
   decodeJson(json: JsonValue): string {
-    return json as string;
+    return decodeJsonString(this.id, json);
   }
 }
 
@@ -96,7 +99,7 @@ export class SqlIntCodec extends CodecImpl<
     return value;
   }
   decodeJson(json: JsonValue): number {
-    return json as number;
+    return decodeJsonInteger(this.id, json, SAFE_INTEGER_RANGE);
   }
 }
 
@@ -130,10 +133,10 @@ export class SqlFloatCodec extends CodecImpl<
     return sqlFloatDecode(wire);
   }
   encodeJson(value: number): JsonValue {
-    return sqlFloatEncodeJson(value);
+    return encodeJsonFloat(value);
   }
   decodeJson(json: JsonValue): number {
-    return sqlFloatDecodeJson(json);
+    return decodeJsonFloat(this.id, json);
   }
 }
 
@@ -170,7 +173,7 @@ export class SqlCharCodec extends CodecImpl<
     return value;
   }
   decodeJson(json: JsonValue): string {
-    return json as string;
+    return decodeJsonString(this.id, json);
   }
 }
 
@@ -210,7 +213,7 @@ export class SqlVarcharCodec extends CodecImpl<
     return value;
   }
   decodeJson(json: JsonValue): string {
-    return json as string;
+    return decodeJsonString(this.id, json);
   }
 }
 

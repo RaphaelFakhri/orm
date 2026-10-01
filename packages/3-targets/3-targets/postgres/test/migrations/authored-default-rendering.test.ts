@@ -5,8 +5,8 @@ import { applicationDomainOf } from '@repo/test-utils';
 import { describe, expect, it } from 'vitest';
 import { postgresResolveDefault } from '../../src/core/default-normalizer';
 import {
+  buildSetDefaultColumn,
   renderColumnDdl,
-  renderColumnDefaultSql,
 } from '../../src/core/migrations/column-ddl-rendering';
 import { buildPostgresPlanDiff } from '../../src/core/migrations/diff-database-schema';
 import { renderDefaultLiteral } from '../../src/core/migrations/planner-ddl-builders';
@@ -84,14 +84,13 @@ describe('a sql`...` default on Postgres renders as authored', () => {
       const column = expectedColumn(nativeType, codecId, expression);
 
       const ddl = renderColumnDdl('value', column, postgresTypeLookups);
+      const setDefault = buildSetDefaultColumn('value', defaultNodeOf(column), postgresTypeLookups);
 
       expect({ type: ddl.type, default: ddl.default }).toEqual({
         type: nativeType,
         default: { kind: 'function', expression },
       });
-      expect(renderColumnDefaultSql(defaultNodeOf(column), postgresTypeLookups)).toBe(
-        `DEFAULT (${expression})`,
-      );
+      expect(setDefault?.default).toEqual(ddl.default);
     },
   );
 
@@ -116,7 +115,7 @@ describe("a literal-shaped sql`'{}'::jsonb` body on Postgres", () => {
     expect(resolved).toEqual({ kind: 'literal', value: {} });
     if (resolved.kind !== 'literal') throw new Error('literal expected');
     expect(
-      renderDefaultLiteral(resolved.value, { nativeType: 'jsonb', dataType: 'pg/jsonb' }),
+      renderDefaultLiteral(resolved.value, { nativeType: 'jsonb', dataTypeId: 'pg/jsonb' }),
     ).toBe("'{}'::jsonb");
   });
 });
