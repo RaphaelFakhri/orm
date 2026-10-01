@@ -702,34 +702,45 @@ export type SqliteOpFactoryCall =
   | DataTransformCall
   | RawSqlCall;
 
-type TsObjectEntry = readonly [key: string, source: string];
+type RenderedSources<T> = { readonly [K in keyof T]-?: string | undefined };
 
-function definedEntry(key: string, value: unknown): readonly TsObjectEntry[] {
-  return value === undefined ? [] : [[key, jsonToTsSource(value)]];
+function definedSourceEntries(
+  sources: Readonly<Record<string, string | undefined>>,
+): readonly (readonly [key: string, source: string])[] {
+  return Object.entries(sources).flatMap(([key, source]) =>
+    source === undefined ? [] : [[key, source] as const],
+  );
+}
+
+function renderIfDefined(value: unknown): string | undefined {
+  return value === undefined ? undefined : jsonToTsSource(value);
 }
 
 function renderColumnSpec(column: SqliteColumnSpec): string {
-  return tsObjectSource([
-    ['name', jsonToTsSource(column.name)],
-    ['typeSql', jsonToTsSource(column.typeSql)],
-    ['defaultSql', tsQuotedTextSource(column.defaultSql)],
-    ['nullable', jsonToTsSource(column.nullable)],
-    ...definedEntry('inlineAutoincrementPrimaryKey', column.inlineAutoincrementPrimaryKey),
-  ]);
+  const sources: RenderedSources<SqliteColumnSpec> = {
+    name: jsonToTsSource(column.name),
+    typeSql: jsonToTsSource(column.typeSql),
+    defaultSql: tsQuotedTextSource(column.defaultSql),
+    nullable: jsonToTsSource(column.nullable),
+    inlineAutoincrementPrimaryKey: renderIfDefined(column.inlineAutoincrementPrimaryKey),
+  };
+  return tsObjectSource(definedSourceEntries(sources));
 }
 
 function renderTableSpec(table: SqliteTableSpec): string {
-  return tsObjectSource([
-    ['columns', tsArraySource(table.columns.map(renderColumnSpec))],
-    ...definedEntry('primaryKey', table.primaryKey),
-    ...definedEntry('uniques', table.uniques),
-    ...definedEntry('foreignKeys', table.foreignKeys),
-  ]);
+  const sources: RenderedSources<SqliteTableSpec> = {
+    columns: tsArraySource(table.columns.map(renderColumnSpec)),
+    primaryKey: renderIfDefined(table.primaryKey),
+    uniques: renderIfDefined(table.uniques),
+    foreignKeys: renderIfDefined(table.foreignKeys),
+  };
+  return tsObjectSource(definedSourceEntries(sources));
 }
 
 function renderPostcheck(postcheck: RecreateTableCall['postchecks'][number]): string {
-  return tsObjectSource([
-    ['description', jsonToTsSource(postcheck.description)],
-    ['sql', tsQuotedTextSource(postcheck.sql)],
-  ]);
+  const sources: RenderedSources<RecreateTableCall['postchecks'][number]> = {
+    description: jsonToTsSource(postcheck.description),
+    sql: tsQuotedTextSource(postcheck.sql),
+  };
+  return tsObjectSource(definedSourceEntries(sources));
 }
