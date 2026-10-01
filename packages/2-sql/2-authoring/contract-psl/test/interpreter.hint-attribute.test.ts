@@ -339,3 +339,19 @@ model Post {
     expect(rest).toEqual(JSON.parse(JSON.stringify(withoutHint)));
   });
 });
+
+describe('@@hint with an inheritance cycle', () => {
+  it('returns and reports the cycle when two models name each other in @@base', () => {
+    const codes = diagnosticsOf(`model Task {
+  id Int @id
+  @@base(Bug, "task")
+  @@hint(was: "Job")
+}
+
+model Bug {
+  id Int @id
+  @@base(Task, "bug")
+}`).map(({ code }) => code);
+    expect(codes).toContain('PSL_ORPHANED_BASE');
+  });
+});
