@@ -185,6 +185,16 @@ async function seedOrmClientData(runtime: Runtime): Promise<void> {
   }
 }
 
+const seededTag = { id: '30000000-0000-0000-0000-000000000001', label: 'orm' };
+
+async function tagAdminDeepDive(runtime: Runtime): Promise<void> {
+  const db = sql({ context, rawCodecInferer: { inferCodec: () => 'pg/text' } }).public;
+  await runtime.execute(db.tag.insert([seededTag]).build());
+  await runtime.execute(
+    db.post_tag.insert([{ postId: seededPostIds.adminDeepDive, tagId: seededTag.id }]).build(),
+  );
+}
+
 async function seedEmbeddingPosts(runtime: Runtime): Promise<void> {
   const db = sql({ context, rawCodecInferer: { inferCodec: () => 'pg/text' } }).public;
   const posts = [
@@ -564,7 +574,7 @@ describe('ORM client integration examples', () => {
   );
 
   it(
-    'ormClientGetRecentPosts filters with a shared row fragment, sorts by a request field and shapes summaries',
+    'ormClientGetRecentPosts filters with a shared row fragment, orders by a request field and shapes summaries',
     async () => {
       await withDevDatabase(async ({ connectionString }) => {
         await initTestDatabase({ connection: connectionString, contract });
@@ -572,6 +582,7 @@ describe('ORM client integration examples', () => {
 
         try {
           await seedOrmClientData(runtime);
+          await tagAdminDeepDive(runtime);
           const since = Temporal.Instant.from('2024-01-03T00:00:00.000Z');
           const posts = await ormClientGetRecentPosts(since, 'title', 'asc', 10, runtime);
 
@@ -580,7 +591,7 @@ describe('ORM client integration examples', () => {
               id: seededPostIds.adminDeepDive,
               title: 'Admin deep dive post',
               createdAt: '2024-01-04T10:00:00Z',
-              tags: [],
+              tags: [seededTag],
             },
             {
               id: seededPostIds.memberNote,
@@ -613,7 +624,7 @@ describe('ORM client integration examples', () => {
             ormClientGetRecentPosts(since, 'embedding', 'asc', 10, runtime),
           ).rejects.toMatchObject({
             code: 'ORM.ARGUMENT_INVALID',
-            message: 'Cannot sort Post by "embedding"',
+            message: 'Cannot order Post by "embedding"',
           });
         } finally {
           await runtime.close();
@@ -632,6 +643,7 @@ describe('ORM client integration examples', () => {
 
         try {
           await seedOrmClientData(runtime);
+          await tagAdminDeepDive(runtime);
           const since = Temporal.Instant.from('2024-01-02T00:00:00.000Z');
           const users = await ormClientGetRecentUsers(since, 10, runtime);
 
@@ -659,7 +671,7 @@ describe('ORM client integration examples', () => {
                   id: seededPostIds.adminDeepDive,
                   title: 'Admin deep dive post',
                   createdAt: '2024-01-04T10:00:00Z',
-                  tags: [],
+                  tags: [seededTag],
                 },
                 {
                   id: seededPostIds.adminZebra,

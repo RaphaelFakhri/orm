@@ -27,10 +27,10 @@
  *                              Compound filters + select/include via ORM client
  * - repo-post-feed <postTitleTerm> [limit]
  *                              Posts with to-one include via ORM client
- * - repo-recent-posts <since> [sort] [asc|desc] [limit]
- *                              Posts created since an ISO instant, sorted by a
+ * - repo-recent-posts <since> [orderBy] [asc|desc] [limit]
+ *                              Posts created since an ISO instant, ordered by a
  *                              field named on the command line (title or createdAt),
- *                              shaped by a shared rowFragment summary
+ *                              shaped by a shared modelStep summary
  * - repo-task-board [limit]    Users with their polymorphic `tasks` included —
  *                              each task comes back shaped per its variant
  *                              (Bug: severity/stepsToRepro, Feature: priority/targetRelease)
@@ -127,6 +127,7 @@
  * - src/app/main.tsx: React browser app for visualizing contract.json
  */
 import 'dotenv/config';
+import 'temporal-polyfill/full/global';
 import { loadAppConfig } from './app-config';
 import { ormClientConnectPostTags } from './orm-client/connect-post-tags';
 import { ormClientCreatePostConnectTags } from './orm-client/create-post-connect-tags';
@@ -320,16 +321,18 @@ async function main() {
 
       console.log(JSON.stringify(posts, null, 2));
     } else if (cmd === 'repo-recent-posts') {
-      const [sinceStr, sort = 'createdAt', directionStr, limitStr] = args;
+      const [sinceStr, orderBy = 'createdAt', directionStr, limitStr] = args;
       if (!sinceStr) {
-        console.error('Usage: pnpm start -- repo-recent-posts <since> [sort] [asc|desc] [limit]');
+        console.error(
+          'Usage: pnpm start -- repo-recent-posts <since> [orderBy] [asc|desc] [limit]',
+        );
         process.exit(1);
       }
       const direction = directionStr === 'asc' ? 'asc' : 'desc';
       const limit = limitStr ? Number.parseInt(limitStr, 10) : 10;
       const posts = await ormClientGetRecentPosts(
         Temporal.Instant.from(sinceStr),
-        sort,
+        orderBy,
         direction,
         limit,
         runtime,
@@ -855,7 +858,7 @@ async function main() {
           'repo-user <email> | repo-posts <userId> [limit] | orm-user-profile <id> | ' +
           'repo-dashboard <emailDomain> <postTitleTerm> [limit] [postsPerUser] | ' +
           'repo-post-feed <postTitleTerm> [limit] | repo-users-cursor [cursor] [limit] | ' +
-          'repo-recent-posts <since> [sort] [asc|desc] [limit] | ' +
+          'repo-recent-posts <since> [orderBy] [asc|desc] [limit] | ' +
           'repo-tasks [limit] | repo-bugs [limit] | repo-features [limit] | ' +
           'repo-task-board [limit] | repo-bug-triage [severity] [limit] | ' +
           'repo-feature-roadmap <targetRelease> [limit] | ' +

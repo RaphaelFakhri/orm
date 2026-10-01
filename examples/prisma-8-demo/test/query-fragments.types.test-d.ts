@@ -1,10 +1,9 @@
 import type { Runtime } from '@prisma/orm-postgres/family-runtime';
 import {
+  type CodecField,
   type CollectionRowOf,
-  type FieldExpression,
   type ModelAccessor,
-  type ModelFieldCodec,
-  sortField,
+  orderByField,
 } from '@prisma/orm-postgres/orm-client';
 import { websearchToTsquery } from '@prisma/orm-postgres/target/full-text';
 import { describe, expectTypeOf, test } from 'vitest';
@@ -16,36 +15,36 @@ import type { Contract } from '../src/prisma/contract.d';
 
 declare const runtime: Runtime;
 declare const since: Temporal.Instant;
-declare const sort: string;
+declare const orderBy: string;
 
 const db = createOrmClient(runtime);
 
 type TimestampCodec = 'pg/timestamptz-temporal@1';
-type CreatedAt = FieldExpression<Contract, TimestampCodec>;
-type Title = FieldExpression<Contract, 'pg/text@1'>;
+type CreatedAt = CodecField<Contract, TimestampCodec>;
+type Title = CodecField<Contract, 'pg/text@1'>;
 type PostAccessor = ModelAccessor<Contract, 'Post', 'public'>;
 type PostSummary = CollectionRowOf<ReturnType<typeof postSummary>>;
 
-describe('FieldExpression', () => {
-  test('a timestamp field and its FieldExpression are assignable both ways', () => {
+describe('CodecField', () => {
+  test('a timestamp field and its CodecField are assignable both ways', () => {
     expectTypeOf<PostAccessor['createdAt']>().toExtend<CreatedAt>();
     expectTypeOf<CreatedAt>().toExtend<PostAccessor['createdAt']>();
     expectTypeOf<Temporal.Instant>().toExtend<Parameters<CreatedAt['gte']>[0]>();
     expectTypeOf<string>().not.toExtend<Parameters<CreatedAt['gte']>[0]>();
   });
 
-  test('a text field with full-text operations and its FieldExpression are assignable both ways', () => {
+  test('a text field with full-text operations and its CodecField are assignable both ways', () => {
     expectTypeOf<PostAccessor['title']>().toExtend<Title>();
     expectTypeOf<Title>().toExtend<PostAccessor['title']>();
     const matches = (row: { title: Title }) => row.title.fullTextMatches(websearchToTsquery('orm'));
     db.Post.where(matches);
   });
 
-  test('ModelFieldCodec names the codec of a field', () => {
-    expectTypeOf<ModelFieldCodec<Contract, 'Post', 'createdAt', 'public'>>().toEqualTypeOf<{
-      readonly codecId: TimestampCodec;
-      readonly nullable: false;
-    }>();
+  test('a fragment checks values against the codec, not the enum of the field', () => {
+    const kindIs = (row: { kind: CodecField<Contract, 'pg/text@1'> }) => row.kind.eq('superuser');
+    db.User.where(kindIs);
+    // @ts-expect-error the field's own type is the user_type enum, which has no superuser
+    db.User.where((user) => user.kind.eq('superuser'));
   });
 
   test('a row fragment fits every model with the field and no other', () => {
@@ -58,7 +57,7 @@ describe('FieldExpression', () => {
   });
 });
 
-describe('rowFragment', () => {
+describe('modelStep', () => {
   test('names the row of the summary', () => {
     expectTypeOf<PostSummary>().toEqualTypeOf<{
       id: string;
@@ -76,13 +75,13 @@ describe('rowFragment', () => {
   });
 });
 
-describe('sortField', () => {
+describe('orderByField', () => {
   test('the allowed list takes only fields that can be ordered', () => {
-    db.Post.orderBy(sortField(db.Post, sort, 'asc', ['title', 'createdAt']));
+    db.Post.orderBy(orderByField(db.Post, orderBy, 'asc', ['title', 'createdAt']));
     // @ts-expect-error the codec of embedding has no order trait
-    sortField(db.Post, sort, 'asc', ['embedding']);
+    orderByField(db.Post, orderBy, 'asc', ['embedding']);
     // @ts-expect-error user is a relation
-    sortField(db.Post, sort, 'asc', ['user']);
+    orderByField(db.Post, orderBy, 'asc', ['user']);
   });
 });
 
