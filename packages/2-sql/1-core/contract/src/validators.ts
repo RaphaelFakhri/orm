@@ -413,11 +413,6 @@ const ContractMetaSchema = type({
   '[string]': 'unknown',
 });
 
-/**
- * Builds the full SQL contract schema. The storage subtree threads
- * pack contributions through {@link createSqlStorageSchema}; the rest
- * of the contract envelope is family-shared.
- */
 const SqlColumnHintSchema = type({ '+': 'reject', was: 'string > 0' }).or({
   '+': 'reject',
   deleted: 'true',
@@ -440,6 +435,11 @@ const SqlContractHintsSchema = type({
   }),
 });
 
+/**
+ * Builds the full SQL contract schema. The storage subtree threads
+ * pack contributions through {@link createSqlStorageSchema}; the rest
+ * of the contract envelope is family-shared.
+ */
 export function createSqlContractSchema(
   kinds: ReadonlyMap<string, AnyEntityKindDescriptor>,
 ): Type<unknown> {
