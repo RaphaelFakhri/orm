@@ -120,9 +120,10 @@ export interface HasOrderBy extends HasState<{ readonly hasOrderBy: true }> {}
 
 export type CollectionStateOf<C extends HasState> = C[typeof StateType];
 
-export type CollectionRowOf<C extends HasRow> = C[typeof RowType] extends infer Row
-  ? { [K in keyof Row]: Row[K] }
-  : never;
+export type CollectionRowOf<C extends HasRow> =
+  C[typeof RowType] extends infer Row extends C[typeof RowType]
+    ? { [K in keyof Row]: Row[K] }
+    : never;
 ```
 
 The base class declares both properties. This outline of its signatures is abridged: parameter lists and the long relation-value type are cut, every name in it is real.
@@ -147,7 +148,7 @@ class CollectionBase<TContract, ModelName, Row, State> {
   ): Collection<TContract, ModelName, SimplifyDeep<Pick<...> & IncludedRelationsForRow<TContract, ModelName, R>>, S>;
 
   first<Self extends this>(this: Self): Promise<CollectionRowOf<Self> | null>;
-  first(filter?: WhereInput<...>): Promise<CollectionRowOf<this> | null>;
+  first(filter: WhereInput<...>): Promise<CollectionRowOf<this> | null>;
   update<Self extends HasWhere>(this: Self, data: MutationUpdateInput<...>): Promise<CollectionRowOf<this & Self> | null>;
   deleteAll<Self extends HasWhere>(this: Self): AsyncIterableResult<CollectionRowOf<this & Self>>;
   cursor<Self extends HasOrderBy>(this: Self, cursorValues: Partial<...>): Self;
@@ -160,7 +161,7 @@ The public `Collection` type is `CollectionBase` intersected with one reducer me
 - `Including` takes the fields it adds, not a relation name, so that it does not have to look up the model behind its receiver. `include` passes `{ [K in RelName]: IncludeRelationValue<...> }`, the included relation's row.
 - The `= never` default on `include`'s `Self` is what an explicit type argument meets: with `include<'user'>` the type parameter `Self` is not inferred, so it is `never`. In a call that is an error, because the receiver is not assignable to `never`; in `ReturnType<typeof posts.include<'user'>>` the result is `never`.
 - Declaration output must print the row and the state by the alias names. Inside a custom class, `this.all()` has a type that mentions the class's own `this`, and TypeScript writes it into the class's declaration as `CollectionRowOf<this>` or `CollectionStateOf<this>`. If it wrote `this[typeof RowType]` instead, the declaration would name the `RowType` symbol, which a consumer of the published facade cannot reach, and declaration emit would fail with TS2527 ("references an inaccessible 'unique symbol' type"). `CollectionStateOf` is an indexed access, which TypeScript keeps by name. `CollectionRowOf` flattens the row, and it does so with a type of its own: an alias of another flattening helper would be printed as that helper, expanded, and would name the symbol. A test in `examples/prisma-8-demo` emits the declaration of a library of such classes through the facade and typechecks a consumer of it that asserts the exact row and collection types.
-- Every method that returns rows reads them from the receiver it is called on. Inside a class method, `this.include('author')` has the type `this & HasRow<...>`, and a signature that names only the polymorphic `this` reads the class's row from it and loses `author`. So `all`, `first`, `create`, `createAll` and `upsert` take `this: Self` with `Self extends this` and return `CollectionRowOf<Self>`, the row the chain built. Each ends with an overload in the form it had before, returning `CollectionRowOf<this>`; `ReturnType`, `Parameters` and `infer` patterns read that one, so `Awaited<ReturnType<typeof posts.first>>` is the row. The writes take `this: Self` with `Self extends HasWhere`, for the guard, and return `CollectionRowOf<this & Self>`; `ReturnType` reads them through the constraint. The `prepared` getter cannot take a `this` parameter: inside a class method, `this.include(...).prepared` describes the class's row. `combine` and include refinements read rows with `CollectionRowOf` too. The row property after two includes is an intersection, `Row & { author } & { comments }`; `CollectionRowOf` turns it into one object when it is read, so rows print and compare as plain objects. The pieces share no keys, so the flatten is shallow and changes no property type. `CollectionRowOf` maps over a type it infers, so a row that is a union of variants is flattened member by member.
+- Every method that returns rows reads them from the receiver it is called on. Inside a class method, `this.include('author')` has the type `this & HasRow<...>`, and a signature that names only the polymorphic `this` reads the class's row from it and loses `author`. So `all`, `first`, `create`, `createAll` and `upsert` take `this: Self` with `Self extends this` and return `CollectionRowOf<Self>`, the row the chain built. Each ends with the overloads it had before, returning `CollectionRowOf<this>`; `ReturnType`, `Parameters` and `infer` patterns read those, so `Awaited<ReturnType<typeof posts.first>>` is the row, and the same calls are refused, such as `first(undefined)`. The writes take `this: Self` with `Self extends HasWhere`, for the guard, and return `CollectionRowOf<this & Self>`; `ReturnType` reads them through the constraint. The `prepared` getter cannot take a `this` parameter: inside a class method, `this.include(...).prepared` describes the class's row. `combine` and include refinements read rows with `CollectionRowOf` too. The row property after two includes is an intersection, `Row & { author } & { comments }`; `CollectionRowOf` turns it into one object when it is read, so rows print and compare as plain objects. The pieces share no keys, so the flatten is shallow and changes no property type. `CollectionRowOf` maps over a type it infers, so a row that is a union of variants is flattened member by member. The inferred type is constrained to the row property, so where the receiver is generic, such as `this` inside a class method or a type parameter, the row's fields can still be read.
 - At run time each chained collection is built with `this.constructor`, so the object is an instance of the receiver's class, as its type says.
 
 **Guards.** All eight guarded methods use one form: a `this` parameter whose type parameter is constrained to the fact. `update`, `updateAll`, `updateAndCount`, `delete`, `deleteAll` and `deleteAndCount` take `this: Self` with `Self extends HasWhere`; `cursor` and `distinctOn` take `this: Self` with `Self extends HasOrderBy`. When the fact is missing, the error is on the receiver and names the fact: "The 'this' context of type 'PostCollection' is not assignable to method's 'this' of type 'HasWhere'".
@@ -173,7 +174,7 @@ The requirement is about the receiver, so the receiver is where it is checked: n
 
 | | Whole application | Per use |
 | --- | --- | --- |
-| The properties, `this`-typed methods and rows read through `this` | −6.7% on the application (744,614 to 694,561), −13% on the client package (1,512,211 to 1,313,325) | a ten-call chain, about 60 to 160; the same on a custom class |
+| The properties, `this`-typed methods and rows read through `this` | −5.9% on the application (744,614 to 700,735), −11% on the client package (1,512,211 to 1,348,389) | a ten-call chain, about 60 to 160; the same on a custom class |
 | A conditional between two collections | none | 10,000 to 14,000 once per pair of collection types, then under 10 |
 
 The cost stays low because `include` adds one small property to its receiver instead of building a new collection type from a deep simplification of the whole row, and because no chaining signature is rebuilt per receiver type.
@@ -183,7 +184,7 @@ A conditional makes TypeScript compare the two branch types. It caches the compa
 ## Consequences
 
 - **Class methods chain**, before and after the built-in methods, and after `include`.
-- **Inside a class body, a class method called on the result of another call loses that call's facts.** In `latest() { return this.withTitle('orm').newestFirst(); }`, `newestFirst()` returns `Ordered<this>`, and `Filtered` is lost; `this.include('user').withTitle('orm')` loses `user`. TypeScript resolves a method's polymorphic `this` on an intersection that contains the class's own `this` as the class's `this` alone. Built-in methods are not affected, because they infer their receiver; chaining class methods from outside the class is not affected either. Inside a class body, chain the built-in methods after a class method, or call one class method per expression.
+- **Inside a class body, a class method called on the result of another call loses that call's facts.** In `latest() { return this.withTitle('orm').newestFirst(); }`, `newestFirst()` returns `Ordered<this>`, and `Filtered` is lost; `this.include('user').withTitle('orm')` loses `user`. TypeScript resolves a method's polymorphic `this` on an intersection that contains the class's own `this` as the class's `this` alone. The `prepared` getter has the same limit: inside a class body, `this.include('user').prepared` describes the class's row without `user`. Built-in methods are not affected, because they infer their receiver; chaining class methods from outside the class is not affected either. Inside a class body, chain the built-in methods after a class method, or call one class method per expression.
 - **A built-in method, a class method and a step are one typed thing.** A query shared between places is written once as a step and applied with `pipe`, or wrapped in a class method; both give the same type. A package can supply steps without any knowledge of the application's classes.
 - **Conditional queries are sound.** A ternary, an `if`, a loop or a reassigned `let` never unlocks a write or `cursor` on a collection that may lack the filter or order.
 - **After `select` or `variant`, class methods are gone.** After `select` the rows are no longer the model's; after `variant` the type argument is a different one.
