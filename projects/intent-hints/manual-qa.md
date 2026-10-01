@@ -59,14 +59,14 @@ Use an example with a TS contract (the demo has `contract-base.ts`-style fixture
 | Step | Do | Expect |
 | --- | --- | --- |
 | E1 | In a `db update` project, remove an `@@index` from a model (no hint involved). Emit, `db update --json` with no `--confirm`. | Exit 0, no consent prompt; the index drop is `widening`. |
-| E2 | Remove a scalar field instead. Emit, `db update --json`. | `DESTRUCTIVE_CHANGES` refusal naming the column drop; `--confirm <database>` is still required. |
+| E2 | Remove a scalar field instead. Emit, `db update --json` without `--confirm`. | Refused with `CLI.CONSENT_REQUIRED` naming the column drop and the `--confirm <database>` token; the human form asks for the database name. |
 | E3 | Read `upgrade-instructions/pending/intent-hints-model-rename/app/instructions.md`. | It describes E1, the `migration plan` baseline consent, the re-emit warning, the required `ContractDefinition.hints`, and the forwarded planner warnings, and nothing it says contradicts what A to E showed. |
 
 ## Scenario F — extension author
 
 | Step | Do | Expect |
 | --- | --- | --- |
-| F1 | Read `docs/architecture docs/subsystems/7. Migration System.md` § planner hints and `packages/1-framework/3-tooling/cli/README.md` § `migration plan`. | Both say a hint in an extension's own `contract.json` has no effect and that `--to` destinations carry no hints; the text matches what B6/B7 showed. |
+| F1 | Read `docs/architecture docs/subsystems/7. Migration System.md` § planner hints and `packages/1-framework/3-tooling/cli/README.md` § `migration plan`. | The subsystem doc says a hint in an extension's own `contract.json` has no effect; both say `--to` destinations carry no hints; the CLI README's `migration plan` section carries the one-sentence extension note too; the text matches what B6/B7 showed. |
 | F2 | In a copy of `packages/3-extensions/pgvector` (or any extension with a PSL or TS contract), add `@@hint(was: "x")` to one of its models and run its `build:contract-space`. | The emitted contract carries the section; nothing else changes; no error. (Record whether the extension's tests still pass on the copy.) |
 
 ## Out of scope for this script
