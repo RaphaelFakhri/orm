@@ -46,7 +46,7 @@ Before this change the name of a column's database type was written or computed 
 ## What the declaration holds
 
 - **Texts.** Each text is marked `written` (a migration writes it), `catalog` (the database reports it), both, or neither (it only recognises a reported type). `numeric(10)` is written as `numeric(10)` but reported as `numeric(10,0)`, so `pg/numeric` declares both texts. Placeholders such as `{precision}` name a parameter; only integers may be substituted.
-- **Parameters and bounds.** `params` is an arktype object schema and is the only place a bound is written. A codec's `paramsSchema` is its data type's `params`, referenced, never restated. Constructor and preset arguments lost their `minimum` and `maximum`; PSL reports a violation at the argument with `PSL_INVALID_ATTRIBUTE_ARGUMENT`, and a TypeScript contract refuses it when it is built with `CONTRACT.TYPE_PARAMS_INVALID`.
+- **Parameters and bounds.** `params` is an arktype object schema and is the only place a bound is written. `pg/numeric` allows a negative scale, as Postgres 15 does. A codec's `paramsSchema` is its data type's `params`, referenced, never restated. Constructor and preset arguments lost their `minimum` and `maximum`; PSL reports a violation at the argument with `PSL_INVALID_ATTRIBUTE_ARGUMENT`, and a TypeScript contract refuses it when it is built with `CONTRACT.TYPE_PARAMS_INVALID`.
 - **Normal form.** `normalize` gives the parameters the catalog compares by: `numeric(10)` becomes `{ precision: 10, scale: 0 }`; `char` becomes `{ length: 1 }`. Writing uses the raw parameters, so migration SQL is unchanged.
 - **Kinds.** `pg/enum` declares `claimsKind: 'enum'` and a `render` hook that quotes the type name, instead of texts.
 - **Casts** stay exactly as they were.
@@ -55,7 +55,7 @@ The Postgres target declares every Postgres type, pgvector declares `vector({len
 
 ## Who declares and who reads
 
-- **Targets declare; adapters stop.** The Postgres and SQLite targets register their data types and type constructors for both migrations and the runtime, and contribute the PSL entries for their data types. The adapters no longer carry any of this.
+- **Targets declare.** The Postgres and SQLite targets register their data types for both migrations and the runtime, and contribute the PSL entries for them. The scalar type constructors are defined in each target and still contributed by its adapter, so the TypeScript builder's `type.*` helpers do not change.
 - **Readers.** Both planners write a column type with `renderSqlTypeName`. `SERIAL`, identity values, JSON defaults and the safe-widening table are keyed by data type id. The Postgres SQL renderer casts a parameter to the type's base name: `$1::integer` becomes `$1::int4`, and a `varchar(255)` column casts as `character varying` with no length, because an explicit cast with a length would truncate.
 - **Assembly checks.** A stack is refused when a constructor names a codec no component registers, maps an argument onto a parameter its data type does not declare, or marks two constructors of one data type `inferred`; and when two data types' claiming texts would both match one reported type.
 - **Deleted.** `targetTypes`, `targetTypesFor`, `byTargetType`, the `nativeType()` hook and `nativeTypeFor`, every `expandNativeType` hook, `buildNativeTypeExpander`, `typeMetadataRegistry`, `normalizeNativeType`, `validateScalarTypeCodecIds`, `assertSafeNativeType` and `CONTRACT.NATIVE_TYPE_INVALID`. ADR 171 is superseded by ADR 254.
@@ -81,7 +81,7 @@ Two entries under `upgrade-instructions/pending/data-types-declare-names/`, both
 
 ## Proof
 
-- A golden planner test plans all 340 committed SQL contracts plus two fixture contracts with every parameter shape from an empty schema and compares the operations byte for byte with the base commit. It commits one SHA-256 per contract in `test/integration/test/planner-golden/manifest.json`, hashed from the recordings made at the base commit; only the two fixture contracts keep their full planner output for review. Only the `typeRef` quoting fix and one error message changed.
+- A golden planner test plans every committed SQL contract plus two fixture contracts with every parameter shape from an empty schema and compares the operations byte for byte with `main`'s planner. It commits one SHA-256 per contract in `test/integration/test/planner-golden/manifest.json`, hashed from recordings made with `main`'s planner; only the two fixture contracts keep their full planner output for review. Of 343 contracts, 340 plan identically; two differ only by the `typeRef` quoting fix and one only by the planner's error code for an unregistered codec.
 - Per package, a test lists every registered data type and asserts its declaration; every bound is tested at its edges; `normalize` applied twice equals once.
 - `pnpm fixtures:check` shows no contract change. The framework vocabulary count fell from 272 to 262.
 - The Postgres runtime bundle grows about 2% (size-limit report), because the data type declarations now reach the runtime for parameter casts. Mongo is unchanged.
