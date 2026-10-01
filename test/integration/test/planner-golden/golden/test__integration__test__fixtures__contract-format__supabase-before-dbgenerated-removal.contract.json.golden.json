@@ -1,9 +1,0 @@
-{
-  "contract": "test/integration/test/fixtures/contract-format/supabase-before-dbgenerated-removal.contract.json",
-  "target": "postgres",
-  "extensions": [],
-  "planned": {
-    "kind": "success",
-    "operations": []
-  }
-}

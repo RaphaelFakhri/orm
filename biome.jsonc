@@ -20,7 +20,8 @@
       "!**/mongo-contract.json",
       "!**/migrations/*/*/migration.json",
       "!**/migrations/*/*/ops.json",
-      "!**/planner-golden/golden/*.golden.json"
+      "!**/planner-golden/fixtures/*/planned.golden.json",
+      "!**/planner-golden/manifest.json"
     ]
   },
   "formatter": {
