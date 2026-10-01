@@ -44,7 +44,7 @@ A collection's type is its class plus what the chain has established. Every meth
 ```ts
 type Filtered<Self>              = Self & HasWhere;
 type Ordered<Self>               = Self & HasOrderBy;
-type Including<Self, Rel>        = Self & { readonly [RowType]: CollectionRowOf<Self> & { [K in Rel]: RelationRow<Self, K> } };
+type Including<Self, Added>      = Self & RowSelection<CollectionRowOf<Self> & Added>;
 type Step<In, Out>               = (collection: In) => Out;
 ```
 
@@ -52,8 +52,8 @@ type Step<In, Out>               = (collection: In) => Out;
 | --- | --- | --- | --- |
 | `where` | `Filtered<Self>` | yes | a filter has been applied |
 | `orderBy` | `Ordered<Self>` | yes | an order has been applied |
-| `limit`, `offset`, `distinct`, `cursor` | `Self` | yes | nothing |
-| `include` | `Including<Self, Rel>` | yes | each row has the included relation |
+| `limit`, `offset`, `distinct`, `distinctOn`, `cursor` | `Self` | yes | nothing |
+| `include` | `Including<Self, { [Rel]: RelationRow }>` | yes | each row has the included relation |
 | `pipe(step)` | whatever `step(this)` returns | as the step | as the step |
 | `select` | `Collection<Contract, Model, NarrowedRow, State>` | no | a different row |
 | `variant` | `Collection<Contract, Model, VariantRow, State>` | no | a different row |
@@ -102,9 +102,9 @@ export declare const RowType: unique symbol;
 export interface HasWhere   { readonly [StateType]: { readonly hasWhere: true } }
 export interface HasOrderBy { readonly [StateType]: { readonly hasOrderBy: true } }
 
-export type CollectionStateOf<C> = C extends { readonly [StateType]: infer S } ? S : never;
+export type CollectionStateOf<C extends { readonly [StateType]: CollectionTypeState }> = C[typeof StateType];
 
-export type CollectionRowOf<C> = FlatRow<C[typeof RowType]>;   // a shallow flatten of the row property
+export type CollectionRowOf<C extends { readonly [RowType]: unknown }> = FlatRow<C[typeof RowType]>;   // a shallow flatten of the row property
 
 export class CollectionImpl<TContract, ModelName, Row, State> {
   declare readonly [StateType]: State;
@@ -113,7 +113,7 @@ export class CollectionImpl<TContract, ModelName, Row, State> {
   where<Self>(this: Self, ...): Filtered<Self>;
   orderBy<Self>(this: Self, ...): Ordered<Self>;
   limit<Self>(this: Self, n: number): Self;
-  include<Self, Rel>(this: Self, relation: Rel): Including<Self, Rel>;
+  include<Rel, Self extends IncludeReceiver>(this: Self, relation: Rel): Including<Self, { [K in Rel]: RelationRow<K> }>;
   pipe<Self, Out>(this: Self, step: Step<Self, Out>): Out { return step(this); }
 
   all(): Promise<CollectionRowOf<this>[]>;
@@ -123,19 +123,20 @@ export class CollectionImpl<TContract, ModelName, Row, State> {
 ```
 
 - `HasWhere` and `HasOrderBy` are named interfaces rather than inline object types, so that every `where` produces the same type, duplicates collapse, and error messages print the name.
+- `Including` takes the fields it adds, not a relation name, so that it does not have to look up the model behind `Self`. `include` passes `{ [K in Rel]: ... }`, the included relation's row.
 - `CollectionStateOf` is a named alias because a consumer's declaration output cannot spell `this[typeof StateType]` when `StateType` is a unique symbol.
 - Every method that returns rows reads them as `CollectionRowOf<this>`. The row property after two includes is an intersection, `Row & { author } & { comments }`; the flatten turns it into one object when it is read, so rows print and compare as plain objects. The pieces share no keys, so the flatten is shallow and changes no property type.
 - At run time nothing changes. Each chained collection is already built with `this.constructor`, so the subclass has always been the run-time object. The type now says so.
 
 **Guards.** A method with an argument guards it through a conditional on the argument's type, which yields the error "not assignable to parameter of type 'never'". A method without an argument guards through a `this` parameter, which yields "The 'this' context of type 'PostCollection' is not assignable to method's 'this' of type 'PostCollection & HasWhere'". The `this` form gives the clearer message; the argument form is kept where an argument exists so that a cast on the argument can still bypass the guard in tests.
 
-**Methods that narrow the row.** A signature that mentions the polymorphic `this` is instantiated again for every receiver type, and `select` and `variant` have large signatures. They infer the state and the row from a `this` parameter, which is instantiated once per receiver type, and `select` after `include` therefore keeps the included relations. Each also carries an overload without the `this` parameter for a receiver whose state is not one type; that overload returns the root state, which refuses writes, so it is sound.
+**Methods that narrow the row.** A signature that mentions the polymorphic `this` is instantiated again for every receiver type, and `select` and `variant` have large signatures. They infer the state from a `this` parameter, which is instantiated once per receiver type; `select` infers the row the same way, so `select` after `include` keeps the included relations. Each also carries an overload without the `this` parameter for a receiver whose state is not one type; that overload returns the root state, which refuses writes, so it is sound.
 
-**Cost.** Measured as type instantiations, TypeScript 5.9.3, on an application with four custom collection classes and about 745,000 instantiations:
+**Cost.** Measured as type instantiations, TypeScript 5.9.3, on `examples/prisma-8-demo`, an application with four custom collection classes, and on the client package:
 
 | | Whole application | Per use |
 | --- | --- | --- |
-| The properties, `this`-typed methods and rows read through `this` | −9.6% on the application, −18% on the client package | a ten-call chain, about 60 to 160; the same on a custom class |
+| The properties, `this`-typed methods and rows read through `this` | −9.1% on the application (744,614 to 676,778), −19% on the client package (1,512,211 to 1,226,983) | a ten-call chain, about 60 to 160; the same on a custom class |
 | A conditional between two collections | none | 10,000 to 14,000 once per pair of collection types, then under 10 |
 
 The saving comes from `include` no longer building a new `Collection` type with a deep simplification of the whole row at every call, and from no signature being rebuilt per receiver type.
@@ -150,7 +151,7 @@ A conditional makes TypeScript compare the two branch types. It caches the compa
 - **After `select` or `variant`, class methods are gone**, because the rows are no longer the model's.
 - **A conditional between two differently flagged collections keeps a union.** `flag ? db.Post.published() : db.Post.newestFirst()` is `(PostCollection & HasWhere) | (PostCollection & HasOrderBy)`. Reads, `select`, `include` and class methods work on it; writes and `cursor` are refused. Annotating the result as `PostCollection` reduces it.
 - **A chain on the plain `Collection` prints as an intersection.** A hover shows `CollectionImpl<...> & HasWhere` rather than a single alias.
-- **These names are part of the public surface**, because step authors write them and declaration output needs them for any library that exports a collection class: `Step`, `Filtered`, `Ordered`, `Including`, `CollectionImpl`, `HasWhere`, `HasOrderBy`, `StateType`, `RowType`, `CollectionStateOf`, `CollectionRowOf`, `RowSelection` and `IncludeReceiver`.
+- **These names are part of the public surface**, because step authors write them and declaration output needs them for any library that exports a collection class: `Step`, `Filtered`, `Ordered`, `Including`, `CollectionImpl`, `HasWhere`, `HasOrderBy`, `StateType`, `RowType`, `CollectionStateOf`, `CollectionRowOf`, `RowSelection`, `IncludeReceiver`, `AggregateIncludeReducers` and `IncludeScalar`.
 - **The state and the row are read with `CollectionStateOf<C>` and `CollectionRowOf<C>`**, not by extracting a type argument of `Collection`. The type arguments hold what the collection started with; the facts are in the intersection.
 - **`ReturnType` of a chaining method gives only the fact it adds.** `ReturnType<C['where']>` is `HasWhere`, because `ReturnType` of a generic method uses the type parameter's constraint. The type of a filtered collection is written `C & HasWhere`.
 - **`include` takes no explicit type argument.** `include<'tasks'>` leaves `Self` uninferred and the result is `never`. The relation name is inferred from the argument.

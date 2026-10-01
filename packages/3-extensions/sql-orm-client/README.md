@@ -60,6 +60,28 @@ const posts = await db.Post
   .all();
 ```
 
+## Custom collections
+
+An application extends `Collection` with its own query methods and registers the class with `orm({ collections })`:
+
+```ts
+class PostCollection extends Collection<Contract, 'Post'> {
+  published() { return this.where((p) => p.publishedAt.isNotNull()); }
+  newestFirst() { return this.orderBy((p) => p.publishedAt.desc()); }
+}
+
+const db = orm({ runtime, context, collections: { Post: PostCollection } });
+
+db.Post.where({ userId }).published().newestFirst().limit(10).all();
+db.Post.include('user').published();
+```
+
+`where`, `orderBy`, `limit`, `offset`, `distinct`, `distinctOn`, `cursor` and `include` return the collection they were called on, so the class's methods stay available. What a chain has established is added to the type: `where` gives `Filtered<Self>`, `orderBy` gives `Ordered<Self>`, and `include` gives `Including<Self, ...>`, whose rows also have the included relation. `select` and `variant` change the row, so they return the shared `Collection` type and the class's methods are gone after them.
+
+`pipe(step)` calls `step` with the collection and returns its result. A step has the type `Step<In, Out>`; `db.Post.pipe(published)` has the same type as `db.Post.published()`.
+
+The type state is `{ hasWhere, hasOrderBy, hasUniqueFilter }`. A flag that has not been established is `boolean`; a method that establishes it sets it to `true`. `update` and `delete` and their variants need `hasWhere: true`, and `cursor` needs `hasOrderBy: true`. Because `true` is a subtype of `boolean`, a filtered collection is a subtype of an unfiltered one: `search ? db.Post.published() : db.Post` is a `PostCollection` that may have no filter, and `deleteAll()` on it does not compile. Read a collection's state and row with `CollectionStateOf<C>` and `CollectionRowOf<C>`. See [ADR 258](../../../docs/architecture%20docs/adrs/ADR%20258%20-%20A%20collection%20keeps%20its%20class%20through%20the%20chain.md).
+
 ## Skipping rows that collide with a unique constraint
 
 `createAll` and `createAndCount` take an options object in second position that asks the database to skip rows colliding with a unique constraint instead of failing the whole statement.
