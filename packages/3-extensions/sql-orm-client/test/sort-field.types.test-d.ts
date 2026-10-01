@@ -61,6 +61,14 @@ describe('sortField', () => {
     expectTypeOf(posts.cursor({ id: 1 })).toEqualTypeOf<Ordered<PostCollection>>();
   });
 
+  test('fits a plain root collection', () => {
+    expectTypeOf(
+      plain.Post.orderBy(sortField(plain.Post, input.sort, 'asc', ['title'])).cursor({
+        title: 'x',
+      }),
+    ).not.toBeAny();
+  });
+
   test('fits a chained collection, an include refinement and this', () => {
     expectTypeOf(
       db.Post.where({ title: 'x' }).orderBy(sortField(db.Post, input.sort)),

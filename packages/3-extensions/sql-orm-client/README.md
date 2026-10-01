@@ -84,6 +84,44 @@ Inside a class body, a class method called on the result of another call loses w
 
 The type state holds the flags `hasWhere` and `hasOrderBy`. A flag that has not been established is `boolean`; a method that establishes it sets it to `true`. `update`, `updateAll`, `updateAndCount`, `delete`, `deleteAll` and `deleteAndCount` need `hasWhere: true`; `cursor` and `distinctOn` need `hasOrderBy: true`. Because `true` is a subtype of `boolean`, a filtered collection is a subtype of an unfiltered one: `search ? db.Post.withTitle(search) : db.Post` is a `PostCollection` that may have no filter, and `deleteAll()` on it does not compile. Read a collection's state and row with `CollectionStateOf<C>` and `CollectionRowOf<C>`. See [ADR 258](../../../docs/architecture%20docs/adrs/ADR%20258%20-%20A%20collection%20keeps%20its%20class%20through%20the%20chain.md).
 
+## Query fragments
+
+A piece of a query shared between places is a function: a function of the row for `where` and `orderBy`, or a step for `pipe`. Three helpers cover the common cases. See [ADR 259](../../../docs/architecture%20docs/adrs/ADR%20259%20-%20Query%20fragments%20are%20functions.md).
+
+**A filter for every model with a field.** `FieldExpression<Contract, CodecId, Nullable>` is the row accessor's type for any field with that codec and nullability. A `where` callback whose parameter asks for that one field fits every model that has it:
+
+```ts
+type DeletedAt = FieldExpression<Contract, 'pg/timestamptz-temporal@1', true>;
+const notDeleted = (row: { deletedAt: DeletedAt }) => row.deletedAt.isNull();
+
+db.Post.where(notDeleted);
+db.Comment.where((c) => and(notDeleted(c), c.postId.eq(postId)));
+db.Tag.where(notDeleted); // error: Property 'deletedAt' is missing in type 'ModelAccessor<Contract, "Tag", ...>'
+```
+
+It has the comparison methods the codec's traits allow and the operations registered for the codec, such as `fullTextMatches` on a text field. A model without the field, a field of another codec and a field of another nullability are compile errors. `ModelFieldCodec<Contract, Model, Field>` gives a field's `codecId` and `nullable`.
+
+**A shared `select` and `include`.** `rowFragment<Contract, Model>()(body)` types the body once, against the model's plain collection, and returns a step:
+
+```ts
+const summary = rowFragment<Contract, 'Post'>()((posts) => posts.select('id', 'title').include('user'));
+type PostSummary = CollectionRowOf<ReturnType<typeof summary>>;
+
+db.Post.where({ userId }).pipe(summary);
+db.User.include('posts', (posts) => posts.pipe(summary));
+db.Post.select('id').pipe(summary); // error: the rows no longer have every Post field
+```
+
+The step accepts any collection of the model whose rows have every field of the model: a root, filtered, ordered or included collection, an include refinement, or `this` in a custom class. It refuses a collection of another model and one narrowed by `select` or `variant`. Its result has the default type state: a filter or order applied before it still runs, but `update` and `cursor` are refused after it.
+
+**A sort field from a request.** `sortField(collection, name, direction?, allowed?)` returns an `orderBy` selector:
+
+```ts
+db.Post.orderBy(sortField(db.Post, input.sort, input.direction, ['title', 'createdAt']));
+```
+
+`allowed` takes only fields whose codec has the `order` trait (`SortableFieldName<Contract, Model>`); without it, every such field is allowed. `sortField` throws `ORM.ARGUMENT_INVALID`, before any query runs, for a `name` that is not a field of the model, is a relation, has a codec without the `order` trait or is not in `allowed`, and for a `direction` other than `asc` or `desc`. It reads the trait from the codec descriptors of the execution context. The selector fits any collection of a model with the allowed fields, and `orderBy` records the order, so `cursor` is allowed after it.
+
 ## Skipping rows that collide with a unique constraint
 
 `createAll` and `createAndCount` take an options object in second position that asks the database to skip rows colliding with a unique constraint instead of failing the whole statement.
