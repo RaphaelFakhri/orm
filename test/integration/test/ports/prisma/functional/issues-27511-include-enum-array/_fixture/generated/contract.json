@@ -214,7 +214,7 @@
               "columns": {
                 "id": {
                   "codecId": "sql/varchar@1",
-                  "nativeType": "character varying",
+                  "dataType": "pg/varchar",
                   "nullable": false,
                   "typeParams": {
                     "length": 30
@@ -234,12 +234,12 @@
               "columns": {
                 "memberId": {
                   "codecId": "pg/text@1",
-                  "nativeType": "text",
+                  "dataType": "pg/text",
                   "nullable": false
                 },
                 "roleId": {
                   "codecId": "pg/text@1",
-                  "nativeType": "text",
+                  "dataType": "pg/text",
                   "nullable": false
                 }
               },
@@ -319,7 +319,7 @@
               "columns": {
                 "id": {
                   "codecId": "sql/varchar@1",
-                  "nativeType": "character varying",
+                  "dataType": "pg/varchar",
                   "nullable": false,
                   "typeParams": {
                     "length": 30
@@ -327,13 +327,13 @@
                 },
                 "name": {
                   "codecId": "pg/text@1",
-                  "nativeType": "text",
+                  "dataType": "pg/text",
                   "nullable": false
                 },
                 "permissions": {
                   "codecId": "pg/text@1",
+                  "dataType": "pg/text",
                   "many": true,
-                  "nativeType": "text",
                   "nullable": false,
                   "valueSet": {
                     "entityKind": "valueSet",
@@ -367,7 +367,7 @@
         "kind": "postgres-schema"
       }
     },
-    "storageHash": "8beb060aa674cb67f64b19e1f5b5803bb39b87bbad4ef05b861e794aeb39a9ac"
+    "storageHash": "65f489f78a66b03b9873d2e42da52f412451e71a68e3832bc0e39c3e57c6d14b"
   },
   "capabilities": {
     "postgres": {
