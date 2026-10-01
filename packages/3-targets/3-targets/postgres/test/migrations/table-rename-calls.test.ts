@@ -9,7 +9,6 @@ function companionLabels(previousSpec: ProfileSpec, nextSpec: ProfileSpec): read
   const next = contractOf('UserProfile', nextSpec, 'to');
   const call = postgresTableRenameCall({
     previous: postgresContractToSchema(contractOf('userProfile', previousSpec, 'from'), []),
-    next: postgresContractToSchema(next, []),
     contract: next,
     rename: RENAME,
     frameworkComponents: [],

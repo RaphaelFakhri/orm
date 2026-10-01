@@ -48,7 +48,7 @@ import {
   resolvePostgresNodeIssueCreationFactoryName,
 } from './control-policy';
 import { buildPostgresPlanDiff } from './diff-database-schema';
-import { noHintRenames, planHintRenames } from './hint-renames';
+import { planHintRenames } from './hint-renames';
 import { pairCheckRenames, pairIndexRenames } from './index-and-check-renames';
 import {
   coalesceSubtreeIssues,
@@ -72,7 +72,6 @@ import {
 import { renameTableStatement } from './operations/tables';
 import { TypeScriptRenderablePostgresMigration } from './planner-produced-postgres-migration';
 import { postgresPlannerStrategies } from './planner-strategies';
-import { postgresContractToSchema } from './postgres-contract-to-schema';
 import { resolveDdlSchemaForNamespaceStorage } from './resolve-ddl-schema';
 import { postgresSchemaTables } from './schema-tables';
 import { emissionSchemaForNamespace } from './table-rename-calls';
@@ -230,17 +229,13 @@ export class PostgresMigrationPlanner implements MigrationPlanner<'sql', 'postgr
     if (hints.conflicts.length > 0) {
       return plannerFailure(hints.conflicts);
     }
-    const hintRenames =
-      hints.tableRenames.length === 0
-        ? noHintRenames(options.schema)
-        : planHintRenames({
-            origin: options.schema,
-            destination: postgresContractToSchema(options.contract, options.frameworkComponents),
-            contract: options.contract,
-            hints,
-            frameworkComponents: options.frameworkComponents,
-          });
-    const planOptions = { ...options, schema: hintRenames.origin };
+    const hintRenames = planHintRenames({
+      origin: options.schema,
+      contract: options.contract,
+      hints,
+      frameworkComponents: options.frameworkComponents,
+    });
+    const planOptions = { ...options, schema: hintRenames.adjustedOrigin };
 
     // The one combined tree diff drives the whole plan: relational findings
     // become structural DDL via `planIssues`, policy findings become RLS ops

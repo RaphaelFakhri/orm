@@ -17,16 +17,11 @@ import { createWorkingSchema } from './working-schema';
 export interface HintRenames {
   readonly calls: readonly RenameTableCall[];
   /** The origin with every planned rename applied: the schema the rest of the plan diffs. */
-  readonly origin: PostgresDatabaseSchemaNode;
+  readonly adjustedOrigin: PostgresDatabaseSchemaNode;
   readonly consumed: readonly ConsumedHint[];
   /** The renamed tables, keyed by `renamedTableKey` of the old name, valued by the new name. */
   readonly renamedTables: ReadonlyMap<string, string>;
   readonly warnings: readonly SuppressionRecord[];
-}
-
-/** The outcome when there is nothing to rename: the origin unchanged. */
-export function noHintRenames(origin: PostgresDatabaseSchemaNode): HintRenames {
-  return { calls: [], origin, consumed: [], renamedTables: new Map(), warnings: [] };
 }
 
 /**
@@ -37,7 +32,6 @@ export function noHintRenames(origin: PostgresDatabaseSchemaNode): HintRenames {
  */
 export function planHintRenames(input: {
   readonly origin: PostgresDatabaseSchemaNode;
-  readonly destination: PostgresDatabaseSchemaNode;
   readonly contract: Contract<SqlStorage>;
   readonly hints: Pick<ResolvedHints, 'tableRenames'>;
   readonly frameworkComponents: ReadonlyArray<TargetBoundComponentDescriptor<'sql', string>>;
@@ -63,7 +57,6 @@ export function planHintRenames(input: {
     }
     const call = postgresTableRenameCall({
       previous: working.current,
-      next: input.destination,
       contract,
       rename,
       frameworkComponents: input.frameworkComponents,
@@ -77,5 +70,5 @@ export function planHintRenames(input: {
       from: rename.from,
     });
   }
-  return { calls, origin: working.current, consumed, renamedTables, warnings };
+  return { calls, adjustedOrigin: working.current, consumed, renamedTables, warnings };
 }

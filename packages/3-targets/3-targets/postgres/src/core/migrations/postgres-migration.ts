@@ -410,7 +410,6 @@ export abstract class PostgresMigration<
     }
     const call = postgresTableRenameCall({
       previous: working.current,
-      next: postgresContractToSchema(endContract, this.frameworkComponents()),
       contract: endContract,
       rename: resolved.value,
       frameworkComponents: this.frameworkComponents(),

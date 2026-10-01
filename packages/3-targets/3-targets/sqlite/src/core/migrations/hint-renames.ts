@@ -11,17 +11,12 @@ import { createWorkingSchema } from './working-schema';
 export interface HintRenames {
   readonly calls: readonly RenameTableCall[];
   /** The origin with every planned rename applied: the schema the rest of the plan diffs. */
-  readonly origin: SqlSchemaIR;
+  readonly adjustedOrigin: SqlSchemaIR;
   readonly consumed: readonly ConsumedHint[];
   /** The renamed tables, keyed by `renamedTableKey` of the old name, valued by the new name. */
   readonly renamedTables: ReadonlyMap<string, string>;
   /** Always empty: SQLite applies a hint whatever the table's control policy. */
   readonly warnings: readonly [];
-}
-
-/** The outcome when there is nothing to rename: the origin unchanged. */
-export function noHintRenames(origin: SqlSchemaIR): HintRenames {
-  return { calls: [], origin, consumed: [], renamedTables: new Map(), warnings: [] };
 }
 
 /**
@@ -54,5 +49,5 @@ export function planHintRenames(input: {
       from: rename.from,
     });
   }
-  return { calls, origin: working.current, consumed, renamedTables, warnings: [] };
+  return { calls, adjustedOrigin: working.current, consumed, renamedTables, warnings: [] };
 }
