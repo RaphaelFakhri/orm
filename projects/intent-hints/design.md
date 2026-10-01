@@ -45,7 +45,7 @@ Terms used throughout:
 
 ### 1.4 Placement and uniqueness (in the interpreter)
 
-A new module `packages/2-sql/2-authoring/contract-psl/src/psl-hint-resolution.ts` exports `collectHints(input): { hints: HintEntry[]; tombstoneModels: ReadonlySet<ModelSymbol>; tombstoneFields: ReadonlySet<FieldSymbol>; diagnostics: PslDiagnostic[] }`. `interpretPslDocumentToSqlContract` (`interpreter.ts`) calls it immediately after it has built `physicalNames` (the `@@map` / `@map` resolution, lines 2151 to 2184 today) and before `buildModelNodeFromPsl` runs, so every later stage can skip tombstones. Each rule below is one diagnostic.
+A new module `packages/2-sql/2-authoring/contract-psl/src/psl-hint-resolution.ts` exports `collectHints(input): { hints: HintEntry[]; tombstoneModels: ReadonlySet<ModelSymbol>; tombstoneFields: ReadonlySet<FieldSymbol> }`; it takes the interpreter's `PslDiagnosticCollector` in `input` and pushes its diagnostics there (the tombstone sets are added by slice 4; until then the result carries `hints` only). `interpretPslDocumentToSqlContract` (`interpreter.ts`) calls it immediately after it has built `physicalNames` (the `@@map` / `@map` resolution, lines 2151 to 2184 today) and before `buildModelNodeFromPsl` runs, so every later stage can skip tombstones. Each rule below is one diagnostic.
 
 - **R1.11** A model declares `@@hint` at most once. The duplicate is reported with the existing `duplicateModelAttributeDiagnostic` (`interpreter.ts:375`, code `PSL_DUPLICATE_ATTRIBUTE`, message `` `@@hint` declared more than once on model "<M>". ``). Fields use a new field form of the helper (none exists today) with message `` `@hint` declared more than once on field "<M>.<f>". ``
 - **R1.12** `@@hint` is accepted on `model` blocks only. The Prisma 8 SQL grammar has no `view` block; `type` blocks already reject every `@@` attribute.
@@ -96,7 +96,7 @@ Package: `packages/2-sql/2-authoring/contract-ts`.
     | { readonly namespaceId: string | undefined; readonly table: string; readonly column: string; readonly hint: ColumnHint };
   ```
 
-  `namespaceId` resolves like `ModelNode.namespaceId` (`undefined` is the target's default namespace). `buildSqlContractFromDefinition` (`build-contract.ts`) groups the entries into the section of section 3 as a plain `JsonObject` (R3.2), creating a `tables` or `columns` container only when it has at least one entry. A definition with no entries produces a contract with no `hints` key.
+  `namespaceId` resolves like `ModelNode.namespaceId` (`undefined` is the target's default namespace). `TableHint`, `ColumnHint` and `HintEntry` are declared in `contract-definition.ts` (not `contract-dsl.ts`, which imports it; this avoids a cycle), and `HintEntry`'s arms grow with the slices that need them. `buildSqlContractFromDefinition` (`build-contract.ts`) groups the entries into the section of section 3 as a plain `JsonObject` (R3.2), creating a `tables` or `columns` container only when it has at least one entry. A definition with no entries produces a contract with no `hints` key.
 - **R2.8** Type-level derivation (`contract-ts/src/contract-types.ts`, the `SqlContractResult` mapped types): a model whose `SqlSpec['hint']` extends `{ deleted: true }` is omitted from the inferred domain and storage types, and a field whose state `Hint` extends `{ deleted: true }` is omitted from its model's inferred fields. A `.test-d.ts` asserts both omissions and that `{ deprecated: true }` and `{ was: 'x', deleted: true }` are compile errors.
 
 ## 3. The contract section
