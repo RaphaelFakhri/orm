@@ -1,3 +1,4 @@
+import type { Contract } from '@internal/contract/types';
 import type { SchemaDiffIssue } from './schema-diff';
 
 export const VERIFY_CODE_MARKER_MISSING = 'CONTRACT.MARKER_MISSING';
@@ -100,6 +101,29 @@ export interface IntrospectSchemaResult<TSchemaIR> {
   };
   readonly timings: {
     readonly total: number;
+  };
+}
+
+/** A contract space whose marker is to be written with its contract's hashes. */
+export interface SpaceToSign {
+  readonly space: string;
+  readonly contract: Contract;
+}
+
+/** What signing did to one contract space's marker. */
+export interface SpaceSignature {
+  readonly space: string;
+  readonly contract: {
+    readonly storageHash: string;
+    readonly profileHash: string;
+  };
+  readonly marker: {
+    readonly created: boolean;
+    readonly updated: boolean;
+    readonly previous?: {
+      readonly storageHash: string;
+      readonly profileHash: string;
+    };
   };
 }
 

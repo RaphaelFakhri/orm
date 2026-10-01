@@ -73,6 +73,8 @@ export type {
   IntrospectSchemaResult,
   OperationContext,
   SignDatabaseResult,
+  SpaceSignature,
+  SpaceToSign,
   VerifyDatabaseResult,
   VerifyDatabaseSchemaResult,
 } from '../control/control-operation-results';

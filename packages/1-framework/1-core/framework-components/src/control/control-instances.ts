@@ -9,6 +9,8 @@ import type {
 } from '../shared/framework-components';
 import type {
   SignDatabaseResult,
+  SpaceSignature,
+  SpaceToSign,
   VerifyDatabaseResult,
   VerifyDatabaseSchemaResult,
 } from './control-operation-results';
@@ -57,6 +59,14 @@ export interface ControlFamilyInstance<TFamilyId extends string, TSchemaIR>
     readonly contractPath: string;
     readonly configPath?: string;
   }): Promise<SignDatabaseResult>;
+
+  /**
+   * Writes the marker of every space in `spaces` with its contract's hashes. Does not check the schema: callers verify each space first. A family whose database has transactions writes every marker in one, so a failed write leaves every marker as it was.
+   */
+  signSpaces(options: {
+    readonly driver: ControlDriverInstance<TFamilyId, string>;
+    readonly spaces: readonly SpaceToSign[];
+  }): Promise<readonly SpaceSignature[]>;
 
   /**
    * Reads the contract marker for `space` from the database, returning

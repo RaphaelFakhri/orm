@@ -1,119 +1,10 @@
-import { computeStorageHash } from '@internal/contract/hashing';
-import { type Contract, coreHash, profileHash } from '@internal/contract/types';
-import type {
-  ControlFamilyDescriptor,
-  ControlStack,
-  ControlTargetDescriptor,
-  SchemaDiffIssue,
-} from '@internal/framework-components/control';
-import { createControlStack } from '@internal/framework-components/control';
-import { UNBOUND_NAMESPACE_ID } from '@internal/framework-components/ir';
-import { sqlContractCanonicalizationHooks } from '@internal/sql-contract/canonicalization-hooks';
+import type { SchemaDiffIssue } from '@internal/framework-components/control';
 import type { SqlControlDriverInstance } from '@internal/sql-contract/types';
-import { SqlStorage } from '@internal/sql-contract/types';
 import { isStructuredError } from '@internal/utils/structured-error';
-import { applicationDomainOf } from '@repo/test-utils';
 import { describe, expect, it } from 'vitest';
-import { createTestSqlNamespace } from '../../1-core/contract/test/test-support';
 import type { SqlControlAdapter } from '../src/core/control-adapter';
 import { createSqlFamilyInstance } from '../src/core/control-instance';
-
-const TARGET = 'postgres' as const;
-const TARGET_FAMILY = 'sql' as const;
-
-const fixtureTables = {
-  fixture_box: {
-    columns: {
-      x: { codecId: 'pg/int4@1', dataType: 'pg/int4', nullable: false },
-    },
-    uniques: [],
-    indexes: [],
-    foreignKeys: [],
-  },
-};
-
-const FIXTURE_HASH = computeStorageHash({
-  target: TARGET,
-  targetFamily: TARGET_FAMILY,
-  storage: {
-    namespaces: {
-      [UNBOUND_NAMESPACE_ID]: {
-        id: UNBOUND_NAMESPACE_ID,
-        entries: { table: fixtureTables },
-      },
-    },
-  },
-  ...sqlContractCanonicalizationHooks,
-});
-
-function buildContract(): Contract<SqlStorage> {
-  return {
-    target: TARGET,
-    targetFamily: TARGET_FAMILY,
-    roots: {},
-    domain: applicationDomainOf({ models: {} }),
-    capabilities: {},
-    extensions: {},
-    meta: {},
-    profileHash: profileHash('fixture-profile-v1'),
-    storage: new SqlStorage({
-      storageHash: coreHash(FIXTURE_HASH),
-      namespaces: {
-        [UNBOUND_NAMESPACE_ID]: createTestSqlNamespace({
-          id: UNBOUND_NAMESPACE_ID,
-          entries: { table: fixtureTables },
-        }),
-      },
-    }),
-  };
-}
-
-function makeStack(options?: {
-  readonly createAdapter?: () => unknown;
-}): ControlStack<'sql', 'postgres'> {
-  return createControlStack({
-    family: {
-      kind: 'family',
-      id: 'sql',
-      familyId: 'sql',
-      version: '0.0.1',
-      create: (() => ({})) as unknown as ControlFamilyDescriptor<'sql'>['create'],
-      emission: {
-        id: 'sql',
-        generateStorageType: () => '{ readonly storageHash: StorageHash }',
-        generateModelStorageType: () => 'Record<string, never>',
-        getFamilyImports: () => [],
-        getFamilyTypeAliases: () => '',
-        getTypeMapsExpression: () => 'unknown',
-        getContractWrapper: (base: string) => `export type Contract = ${base};`,
-      },
-    },
-    target: {
-      kind: 'target',
-      id: 'postgres',
-      version: '0.0.1',
-      familyId: 'sql',
-      targetId: 'postgres',
-      contractSerializer: {
-        deserializeContract: (json) => json as never,
-        serializeContract: (contract) => contract as never,
-      },
-      create: () => ({ familyId: 'sql', targetId: 'postgres' }),
-    } as ControlTargetDescriptor<'sql', 'postgres'>,
-    adapter: {
-      kind: 'adapter',
-      id: 'postgres',
-      version: '0.0.1',
-      familyId: 'sql',
-      targetId: 'postgres',
-      create: (options?.createAdapter ??
-        (() => ({ familyId: 'sql', targetId: 'postgres' }))) as unknown as (
-        stack: unknown,
-      ) => never,
-    },
-    extensions: [],
-  });
-}
+import { buildContract, makeStack } from './control-instance-stack.helpers';
 
 function captureError(fn: () => void): unknown {
   try {
@@ -150,6 +41,7 @@ describe('sql family instance structured error codes', () => {
       familyId: 'sql',
       targetId: 'postgres',
       bootstrapSignMarkerQueries: () => [],
+      withTransaction: (_driver: unknown, fn: () => Promise<unknown>) => fn(),
       readMarker: async () => ({
         storageHash: 'stale-hash',
         profileHash: 'stale-profile',

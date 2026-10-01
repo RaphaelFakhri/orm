@@ -17,6 +17,8 @@ import type {
   SchemaDiffIssue,
   SchemaViewCapable,
   SignDatabaseResult,
+  SpaceSignature,
+  SpaceToSign,
   VerifyDatabaseResult,
   VerifyDatabaseSchemaResult,
 } from '@internal/framework-components/control';
@@ -580,6 +582,75 @@ export function createSqlFamilyInstance<TTargetId extends string>(
     return serializer.deserializeContract(json);
   };
 
+  const signSpaceMarker = async (
+    controlAdapter: SqlControlAdapter<string>,
+    driver: SqlControlDriverInstance<string>,
+    { space, contract }: SpaceToSign,
+  ): Promise<SpaceSignature> => {
+    const storageHash = contract.storage.storageHash;
+    const profileHash =
+      'profileHash' in contract && typeof contract.profileHash === 'string'
+        ? contract.profileHash
+        : storageHash;
+    const signed = { space, contract: { storageHash, profileHash } };
+
+    const existing = await controlAdapter.readMarker(driver, space);
+    if (existing === null) {
+      await controlAdapter.insertMarker(driver, space, { storageHash, profileHash });
+      return { ...signed, marker: { created: true, updated: false } };
+    }
+    if (existing.storageHash === storageHash && existing.profileHash === profileHash) {
+      return { ...signed, marker: { created: false, updated: false } };
+    }
+    const updated = await controlAdapter.updateMarker(driver, space, existing.storageHash, {
+      storageHash,
+      profileHash,
+    });
+    if (!updated) {
+      throw sqlFamilyError(
+        'MIGRATION.MARKER_CAS_FAILURE',
+        'CAS conflict: marker was modified by another process during sign',
+        {
+          why: 'Another process updated the contract marker between the read and the compare-and-swap write.',
+          fix: 'Re-run the sign command; if it keeps failing, make sure only one migration process runs at a time.',
+          meta: { space },
+        },
+      );
+    }
+    return {
+      ...signed,
+      marker: {
+        created: false,
+        updated: true,
+        previous: { storageHash: existing.storageHash, profileHash: existing.profileHash },
+      },
+    };
+  };
+
+  const signSpaces = async (
+    driver: SqlControlDriverInstance<string>,
+    spaces: readonly SpaceToSign[],
+  ): Promise<readonly SpaceSignature[]> => {
+    const [first] = spaces;
+    if (first === undefined) {
+      return [];
+    }
+    const controlAdapter = getControlAdapter();
+    return controlAdapter.withTransaction(driver, async () => {
+      for (const query of controlAdapter.bootstrapSignMarkerQueries()) {
+        const lowered = await controlAdapter.lowerToExecuteRequest(query, {
+          contract: first.contract,
+        });
+        await driver.query(lowered.sql, lowered.params);
+      }
+      const signatures: SpaceSignature[] = [];
+      for (const space of spaces) {
+        signatures.push(await signSpaceMarker(controlAdapter, driver, space));
+      }
+      return signatures;
+    });
+  };
+
   return {
     familyId: 'sql',
     codecTypeImports,
@@ -780,106 +851,45 @@ export function createSqlFamilyInstance<TTargetId extends string>(
     }): Promise<SignDatabaseResult> {
       const { driver, contract: contractInput, contractPath, configPath } = options;
       const startTime = Date.now();
-
       const contract = deserializeWithTargetSerializer(contractInput);
-
-      const contractStorageHash = contract.storage.storageHash;
-      const contractProfileHash =
-        'profileHash' in contract && typeof contract.profileHash === 'string'
-          ? contract.profileHash
-          : contractStorageHash;
-      const contractTarget = contract.target;
-
-      const controlAdapter = getControlAdapter();
-      const lowererContext = { contract };
-      for (const query of controlAdapter.bootstrapSignMarkerQueries()) {
-        const lowered = await controlAdapter.lowerToExecuteRequest(query, lowererContext);
-        await driver.query(lowered.sql, lowered.params);
+      const [signature] = await signSpaces(driver, [{ space: APP_SPACE_ID, contract }]);
+      if (signature === undefined) {
+        throw new InternalError('signing the app space returned no signature');
       }
-
-      const existingMarker = await controlAdapter.readMarker(driver, APP_SPACE_ID);
-
-      let markerCreated = false;
-      let markerUpdated = false;
-      let previousHashes: { storageHash?: string; profileHash?: string } | undefined;
-
-      if (!existingMarker) {
-        await controlAdapter.insertMarker(driver, APP_SPACE_ID, {
-          storageHash: contractStorageHash,
-          profileHash: contractProfileHash,
-        });
-        markerCreated = true;
-      } else {
-        const existingStorageHash = existingMarker.storageHash;
-        const existingProfileHash = existingMarker.profileHash;
-
-        const storageHashMatches = existingStorageHash === contractStorageHash;
-        const profileHashMatches = existingProfileHash === contractProfileHash;
-
-        if (!storageHashMatches || !profileHashMatches) {
-          previousHashes = {
-            storageHash: existingStorageHash,
-            profileHash: existingProfileHash,
-          };
-          const updated = await controlAdapter.updateMarker(
-            driver,
-            APP_SPACE_ID,
-            existingStorageHash,
-            {
-              storageHash: contractStorageHash,
-              profileHash: contractProfileHash,
-            },
-          );
-          if (!updated) {
-            throw sqlFamilyError(
-              'MIGRATION.MARKER_CAS_FAILURE',
-              'CAS conflict: marker was modified by another process during sign',
-              {
-                why: 'Another process updated the contract marker between the read and the compare-and-swap write.',
-                fix: 'Re-run the sign command; if it keeps failing, make sure only one migration process runs at a time.',
-                meta: { space: APP_SPACE_ID },
-              },
-            );
-          }
-          markerUpdated = true;
-        }
-      }
+      const { marker } = signature;
 
       let summary: string;
-      if (markerCreated) {
+      if (marker.created) {
         summary = 'Database signed (marker created)';
-      } else if (markerUpdated) {
-        summary = `Database signed (marker updated from ${previousHashes?.storageHash ?? 'unknown'})`;
+      } else if (marker.updated) {
+        summary = `Database signed (marker updated from ${marker.previous?.storageHash ?? 'unknown'})`;
       } else {
         summary = 'Database already signed with this contract';
       }
 
-      const totalTime = Date.now() - startTime;
-
       return {
         ok: true,
         summary,
-        contract: {
-          storageHash: contractStorageHash,
-          profileHash: contractProfileHash,
-        },
+        contract: signature.contract,
         target: {
-          expected: contractTarget,
-          actual: contractTarget,
+          expected: contract.target,
+          actual: contract.target,
         },
-        marker: {
-          created: markerCreated,
-          updated: markerUpdated,
-          ...(previousHashes ? { previous: previousHashes } : {}),
-        },
+        marker,
         meta: {
           contractPath,
           ...(configPath ? { configPath } : {}),
         },
         timings: {
-          total: totalTime,
+          total: Date.now() - startTime,
         },
       };
+    },
+    async signSpaces(options: {
+      readonly driver: SqlControlDriverInstance<string>;
+      readonly spaces: readonly SpaceToSign[];
+    }): Promise<readonly SpaceSignature[]> {
+      return signSpaces(options.driver, options.spaces);
     },
     async readMarker(options: {
       readonly driver: SqlControlDriverInstance<string>;

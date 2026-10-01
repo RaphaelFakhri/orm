@@ -171,6 +171,44 @@ describe('createMongoFamilyInstance', () => {
     }
   });
 
+  it('signSpaces() writes the marker of each space it is given', async () => {
+    const writes: string[] = [];
+    const adapter = {
+      readMarker: async (_driver: unknown, space: string) =>
+        space === 'app' ? null : { storageHash: 'old', profileHash: 'old' },
+      initMarker: async (_driver: unknown, space: string) => {
+        writes.push(`init ${space}`);
+      },
+      updateMarker: async (_driver: unknown, space: string) => {
+        writes.push(`update ${space}`);
+        return true;
+      },
+    } as unknown as MongoControlAdapter<'mongo'>;
+    const instance = createMongoFamilyInstance(
+      createControlStack({
+        family: mongoFamilyDescriptor,
+        target: stubMongoTargetDescriptor,
+        adapter: stubAdapterDescriptor(adapter),
+      }),
+    );
+    const contract = instance.deserializeContract(mongoContractJson({}));
+    const driver = { targetId: 'mongo' } as Parameters<typeof instance.signSpaces>[0]['driver'];
+
+    const signatures = await instance.signSpaces({
+      driver,
+      spaces: [
+        { space: 'app', contract },
+        { space: 'audit', contract },
+      ],
+    });
+
+    expect(signatures.map((s) => [s.space, s.marker.created, s.marker.updated])).toEqual([
+      ['app', true, false],
+      ['audit', false, true],
+    ]);
+    expect(writes).toEqual(['init app', 'update audit']);
+  });
+
   it('createRunnerDependencies() returns the dependencies the adapter builds for the driver', () => {
     const runnerDeps = {} as MongoRunnerDependencies;
     const driversSeen: unknown[] = [];
