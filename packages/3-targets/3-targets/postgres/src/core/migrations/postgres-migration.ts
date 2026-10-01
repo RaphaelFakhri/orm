@@ -102,6 +102,8 @@ export abstract class PostgresMigration<
   protected readonly controlAdapter: SqlControlAdapter<'postgres'> | undefined;
 
   #workingSchema: WorkingSchema | undefined;
+  /** Renames made before the first `renameTable`, applied when the working schema is built. */
+  #earlierRenames: (RenameConstraintCall | RenameIndexCall | RenamePostgresRlsPolicyCall)[] = [];
 
   #endView = new MigrationContractViews<PostgresContractView<End>>(
     this,
@@ -418,26 +420,34 @@ export abstract class PostgresMigration<
   }
 
   private workingSchemaFrom(startContract: Contract<SqlStorage>): WorkingSchema {
-    this.#workingSchema ??= new WorkingSchema(
-      postgresContractToSchema(startContract, this.frameworkComponents()),
-    );
+    if (this.#workingSchema === undefined) {
+      const working = new WorkingSchema(
+        postgresContractToSchema(startContract, this.frameworkComponents()),
+      );
+      for (const call of this.#earlierRenames) working.apply(call);
+      this.#workingSchema = working;
+    }
     return this.#workingSchema;
   }
 
   /**
-   * Applies a rename to the working schema, so a later `renameTable` sees it. A migration with no
-   * start contract has no working schema to advance.
+   * Records a rename so a later `renameTable` sees it. The working schema is built from the start
+   * contract only when a `renameTable` needs it, so a migration that renames no table never reads
+   * its start contract.
    */
   private advanceWorkingSchema(
     call: RenameConstraintCall | RenameIndexCall | RenamePostgresRlsPolicyCall,
   ): void {
-    const startContract = this.startContract;
-    if (startContract === null) return;
-    this.workingSchemaFrom(startContract).apply(call);
+    if (this.#workingSchema === undefined) {
+      this.#earlierRenames.push(call);
+    } else {
+      this.#workingSchema.apply(call);
+    }
   }
 
   protected override resetAuthoringState(): void {
     this.#workingSchema = undefined;
+    this.#earlierRenames = [];
   }
 
   protected dropTable(options: {

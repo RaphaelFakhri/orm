@@ -103,4 +103,27 @@ describe('PostgresMigration authoring state', () => {
       `Rename index "${OLD_INDEX}" to "UserProfile_handle_idx_${HANDLE_HASH}" on "UserProfile"`,
     ]);
   });
+
+  it('renames an index without reading the start contract when the migration renames no table', async () => {
+    const endJson = jsonOf(contractOf('userProfile', withHandleIndex, 'to'));
+    class IndexOnly extends PostgresMigration {
+      override readonly startContractJson = { storage: { storageHash: 'not-a-full-contract' } };
+      override readonly endContractJson = endJson;
+      override get operations(): readonly Promise<Op>[] {
+        return [
+          this.renameIndex({
+            schema: 'public',
+            table: 'userProfile',
+            from: OLD_INDEX,
+            to: 'custom_handle',
+          }),
+        ];
+      }
+    }
+    const ops = await Promise.all(new IndexOnly(stack).operations);
+
+    expect(ops.map((op) => op.label)).toEqual([
+      `Rename index "${OLD_INDEX}" to "custom_handle" on "userProfile"`,
+    ]);
+  });
 });
