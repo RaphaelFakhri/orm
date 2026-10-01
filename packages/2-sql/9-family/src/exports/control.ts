@@ -21,14 +21,11 @@ export type {
   SqlPslBuildContext,
 } from '../core/control-target-descriptor';
 export type {
-  AppliedTableRename,
-  ApplyTableRenameInput,
   ResolvedTableRename,
   TableLookup,
   TableRename,
 } from '../core/migrations/apply-table-rename';
 export {
-  applyTableRename,
   resolveTableRenameAgainst,
   unmatchedTableRename,
 } from '../core/migrations/apply-table-rename';
