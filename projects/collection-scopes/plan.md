@@ -1,53 +1,38 @@
-# Plan: query fragments, collection scopes and weighted full-text search
+# Plan: collection chaining, query fragments, collection scopes and weighted full-text search
 
-**Spec:** [spec.md](spec.md). **Linear project:** none yet; issue IDs are filled in when it exists.
+**Spec:** [spec.md](spec.md). No slice starts until the operator has reviewed ADR 258 and ADR 259.
 
 ## Slices
 
-### 1. Sound conditional collections and `pipe`
+### 1. A collection keeps its class through the chain
 
-**Outcome.** `Collection` has `pipe`. A filtered collection is a subtype of an unfiltered one, so any function body inside `pipe`, a ternary, or `let` with `if` yields a sound type. TML-3397 is closed.
+**Outcome.** Class methods chain, conditionals are sound, and `pipe` exists. ADR 258 in full, apart from its "Later decisions". Closes TML-3397 and the chaining part of TML-3403.
 
-**Builds on:** nothing. **Hands to:** slices 2 and 4 a `Collection` with `pipe` and the structural state.
+**Builds on:** nothing. **Hands to:** slices 2 and 4 a `Collection` whose methods are steps, the named facts `Filtered`, `Ordered`, `Including`, `Step`, and `pipe`.
 
-- `DefaultCollectionTypeState` flags become `boolean`; the state is a declared property of `Collection`.
-- `pipe<Self, Result>(this: Self, step: (collection: Self) => Result): Result`.
-- Type tests for every site and every control-flow form in the spec; a regression test for TML-3397.
-- Upgrade instruction for the `DefaultCollectionTypeState` change.
-- Spike reference: `bot/spike-collection-state-subtyping`, write-up `spikes/state-subtyping.md`.
+Slice spec: [slices/1-collection-keeps-its-class/spec.md](slices/1-collection-keeps-its-class/spec.md). Reference implementation: `bot/spike-this-typed-chaining`, write-up `spikes/this-typed-chaining.md`.
 
 ### 2. Fragment helpers
 
-**Outcome.** `FieldExpression`, `rowFragment`, `RowOf` and `sortField` are exported from the ORM client and the Postgres facade. The missing-field error for a row fragment names the field.
+**Outcome.** `FieldExpression`, `rowFragment`, `RowOf` and `sortField` are exported from the ORM client and the Postgres facade, and the demo uses them. ADR 259.
 
 **Builds on:** slice 1. **Hands to:** the demo and docs a complete fragment surface.
 
-- `FieldExpression<Contract, CodecId, Nullable>` in `types.ts`, built from the same parts as the row accessor's field type.
-- `rowFragment<Contract, Model>()(body)` and `RowOf`; `sortField(collection, name, direction, allowed)` with the `order` trait check at run time.
-- The demo's list query written with `pipe`, a soft-delete fragment and a sort field.
-- Spike reference: `bot/spike-pipe-fragments`, write-up `spikes/pipe-fragments.md`.
+Reference: `bot/spike-pipe-fragments`, write-up `spikes/pipe-fragments.md`. The spike's `when`, `fragment` and `stateFragment` do not land.
 
 ### 3. Weighted full-text index as data
 
 **Outcome.** `@@fullTextIndex` and the TypeScript `fullTextIndex` helper take fields in weight groups, the contract records fields, weights and language as data, and one renderer produces the index DDL and the query expression. `fullTextMatches` and `fullTextRank` accept weight groups in the SQL builder.
 
-**Builds on:** nothing. Runs in parallel with slice 1. **Hands to:** slice 4 a structured index the builder can read from the contract type.
-
-- Postgres target: `full-text-index-expression.ts`, `full-text-options.ts`, `authoring.ts`, `query-operations.ts`; the extension's `contract/full-text-index.ts`.
-- Storage-hash change and its upgrade instruction; fixtures regenerated.
-- Integration test: `EXPLAIN` uses the index for a query built by the renderer, with sequential scans disabled and a negative control.
+**Builds on:** nothing. Runs in parallel with slice 1. **Hands to:** slice 4 a structured index readable from the contract type.
 
 ### 4. Scope helpers
 
-**Outcome.** The ORM client exports `defineIndexScopes`; the Postgres package exports `fulltextSearchScopes`; the demo searches posts across fields through a scope on a custom collection class.
+**Outcome.** The ORM client exports `defineIndexScopes`; the Postgres package exports `fulltextSearchScopes`; the demo searches posts across fields through a scope on a custom collection class. ADR 260.
 
-**Builds on:** slices 1 and 3. **Hands to:** close-out.
+**Builds on:** slices 1 and 3, and the design discussion on how packages contribute scopes. **Hands to:** close-out.
 
-- First dispatch is a type spike inside the slice: a fragment whose result is the caller's type with `hasWhere` set, at every site. Fallback per the spec if it cannot be typed.
-- `defineIndexScopes({ match, operation | operations })` with the instantiated-kind form for index-dependent arguments; index lookup from the contract type and model name.
-- `fulltextSearchScopes` in the Postgres target, re-exported by the facade.
-- A test-only second kind of index with its own helper. A test through the built `dist` of the published packages.
-- Spike references: `bot/spike-scope-helper-api`, `bot/spike-scope-helper-authoring`, write-ups `spikes/helper-api-options.md`, `spikes/helper-authoring.md`.
+Reference: `bot/spike-scope-helper-authoring`, write-up `spikes/helper-authoring.md`. The spike's helper takes the collection; the slice produces steps typed `Step<Self, Filtered<Self>>`.
 
 ## Sequence
 
@@ -56,6 +41,7 @@
 
 ## After the last slice
 
-- Set ADR 259 and ADR 260 to Accepted in the slice that completes their examples.
+- Set ADR 258, ADR 259 and ADR 260 to Accepted in the slice that completes their examples.
+- File the include refinement registry as its own ticket and design.
 - Delete the spike branches on `bot`.
 - Close-out per the projects README: move anything long-lived to `docs/`, delete `projects/collection-scopes/`.
