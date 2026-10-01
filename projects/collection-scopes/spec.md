@@ -1,130 +1,116 @@
-# Collection scopes and weighted full-text search
+# Query fragments, collection scopes and weighted full-text search
 
 **Linear project:** none yet.
-**Design record:** [ADR 257 — Packages offer collection scopes for their kinds of index](../../docs/architecture%20docs/adrs/ADR%20257%20-%20Packages%20offer%20collection%20scopes%20for%20their%20kinds%20of%20index.md) (Proposed).
+**Design records:** [ADR 259 — Query fragments are functions](../../docs/architecture%20docs/adrs/ADR%20259%20-%20Query%20fragments%20are%20functions.md) (Proposed) and [ADR 260 — Packages offer collection scopes for their kinds of index](../../docs/architecture%20docs/adrs/ADR%20260%20-%20Packages%20offer%20collection%20scopes%20for%20their%20kinds%20of%20index.md) (Proposed).
 
 ## Purpose
 
-A developer can search a model across several fields, with some fields counting more than others, through the ORM client, and the search always uses the index declared for it. The mechanism that makes this possible is general: a model declares named scopes in the contract, and any target or extension can introduce a scope type and supply its operations.
+A developer can share and compose parts of a query as ordinary functions, with the collection's type staying sound however the function is written. A package that introduces a kind of index can give applications a typed search built from the index's own definition, so the search cannot miss the index. The first such search is Postgres full-text search over several weighted fields.
 
 ## At a glance
 
 ```prisma
 model Post {
-  id    Int     @id
-  title String
-  body  String?
-}
+  id        Int       @id
+  title     String
+  body      String?
+  deletedAt DateTime?
 
-scopes Post {
-  search fullTextSearch([title, body])
+  @@fullTextIndex([[title], body], name: "post_search")
 }
 ```
 
 ```ts
-const q = websearchToTsquery(input);
+import { fulltextSearchScopes, FieldExpression, sortField } from '@prisma/orm-postgres/orm-client';
 
-db.Post.scopes.search.fulltext(q).limit(10).all();
-db.User.where({ id }).include('posts', (posts) => posts.scopes.search.fulltext(q).limit(3));
+const postScopes = fulltextSearchScopes<Contract, 'Post'>();
+
+type DeletedAt = FieldExpression<Contract, 'pg/timestamptz@1', true>;
+const notDeleted = (row: { deletedAt: DeletedAt }) => row.deletedAt.isNull();
+
+const posts = await db.Post
+  .where(notDeleted)
+  .pipe((posts) => (input.q ? posts.pipe(postScopes.post_search(websearchToTsquery(input.q))) : posts))
+  .pipe((posts) => (input.sort ? posts.orderBy(sortField(db.Post, input.sort, 'asc', ['title', 'createdAt'])) : posts))
+  .limit(20)
+  .all();
 ```
 
-## Where things stand (grounded 2026-09-27)
+- `pipe` applies any function to the collection. The conditional yields a collection that may be unfiltered, and its type says so: `deleteAll` is refused on it.
+- `notDeleted` fits any model with a nullable `deletedAt` of that codec.
+- `postScopes.post_search(q)` is a fragment built from the index's definition in the contract. The query it adds uses the index.
+
+## Where things stand (grounded 2026-09-30)
 
 - **Single-column full-text search works.** `fullTextMatches`, `fullTextRank` and `fullTextHeadline` are column operations taking a `tsquery`; `@@fullTextIndex([field])` and the TypeScript `fullTextIndex` helper author a GIN index over one field. The parsers and the `tsquery` template tag build the query.
 - **The Postgres full-text index is stored as an opaque expression.** The contract holds `expression: "to_tsvector('english', \"title\")"` with `type: "gin"`. Nothing can recover the field or language from it.
-- **Queries can address only columns and relations.** The ORM row accessor exposes stored fields and relations. The SQL builder's field proxy exposes columns. No query-side code reads a table's indexes.
-- **Collections are created from a per-model class.** Chained collections use the current collection's constructor, and include refinements use the class registered for the related model. Custom collection classes are registered through `orm({ collections })`, and the client's types come from those classes.
-- **Runtime extensions are not typed at the client factory.** The Postgres facade takes `extensions` as an untyped array of descriptors, so an extension cannot contribute to the client's types today.
-- **The ORM client already installs members by name with precedence.** Aggregate reducers (`count`, `sum`, …) are installed per collection only when the name is free.
-- **MongoDB models text indexes with weights** on `MongoIndex`. Verified against MongoDB: a text search must be in the first pipeline stage, works inside a `$lookup` sub-pipeline, returns results unordered unless sorted by score, and a collection can have one text index.
-- **There is no MySQL target.**
-- **Two spikes showed the types work without the caller writing any.** Contributions register their types in a registry interface the ORM client declares. With scopes declared on the model and none in use, this adds 0.12% to type checking on the demo application. See [the first findings](spikes/type-composition.md) and [the findings for declared scopes](spikes/declared-scopes.md).
-- **The contract lists its extensions**, and a client refuses to start when one of them was not passed to it.
-- **A model in the contract has no `scopes` member**, and no package contributes to the domain plane. The schema language has no way to declare one: a model body holds fields and `@@` attributes, and a top-level block's body holds `key = value` lines and `@@` attributes.
-- **Contract deserialization keeps an unknown `scopes` key on a model** without a validator change, as the second spike found.
+- **The collection's type state is not part of assignability.** It appears only in method parameter types, so a filtered and an unfiltered collection are assignable to each other, and a ternary between them may keep the filtered one. `deleteAll` is then allowed on a collection that may have no filter. This exists in code today (TML-3397).
+- **`Collection` has no `pipe` method.** Spikes on the `bot` remote have one (`spike-pipe-fragments`), the state fix (`spike-collection-state-subtyping`), and the scope helper builder in its collection-taking form (`spike-scope-helper-api`, `spike-scope-helper-authoring`). Their write-ups are under `spikes/`.
+- **Collections are created from a per-model class.** Chained collections use the current collection's constructor, and include refinements use the class registered for the related model. Custom collection classes are registered through `orm({ collections })`.
+- **Runtime extensions are not typed at the client factory.** Nothing in this project needs them to be: a scope helper is imported from the package, and its types come from the contract type and model name the application writes.
+- **There is no MySQL target.** MongoDB models text indexes with weights on `MongoIndex`; the MongoDB ORM client is out of scope for delivery.
 
 ## Decided
 
-- **Scopes are declared on the model in the contract's domain plane.** Each has a name, an open scope type id, a `target`, and parameters. `target` is an entity coordinate for the storage entity that serves the scope, with an optional `spaceId`. The full-text scope's target is the model's table, and its one parameter names an index of that table.
-- **Scopes are declared in a top-level `scopes <Model> { }` block**, one line for each scope: the name, then the kind of scope with its arguments, as `search fullTextSearch([title, body])`. A declaration creates the scope and its index. The index name is generated unless `index:` gives one. A line has the grammar of a field line. A model may have several `scopes` blocks, which are read as one, and a model's scopes are a namespace separate from its fields.
-- **`fullTextSearch` replaces `@@fullTextIndex`.** An index without a scope is written with `@@index(expression: ...)`.
-- **The Prisma 7 grammar does not get the block.**
-- **A scope's operations are built from public query operations.** `fullTextMatches` and `fullTextRank` take several fields in weight groups, and ORM predicates receive `fns` as the SQL builder's do. An application may call them directly.
-- **An arbitrary scope is a method on a custom collection class.** The schema language offers only the kinds of scope that packages supply.
-- **No kind or type id on the index.**
-- **The TypeScript builder declares scopes through a `scopes` method on the model.** The target contributes the helper, so nothing is imported: `.scopes(({ fields, scopes }) => ({ search: scopes.fullTextSearch([[fields.title, fields.subtitle], fields.body]) }))`. The key is the scope's name.
-- **The index expression contains only what the search needs.** `setweight` appears only when there is more than one weight group, and `coalesce` only when there is more than one field. A search over one field therefore has the expression `to_tsvector(language, column)`, which is the one `fullTextMatches` on that column uses.
-- **A scope is in no contract hash**, as the rest of the domain plane is in none. Its index is in the storage hash.
+- **A query fragment is a function.** A row fragment is a function of the row accessor, taken by `where` and `orderBy`. A collection fragment is a function from a collection to a collection, applied by `pipe`. There are no control-flow combinators in the query API.
+- **A filtered collection is a subtype of an unfiltered one.** The default state's flags are `boolean`, `where` and `orderBy` set `true`, and the state is a declared property of `Collection`. A conditional therefore reduces to the unfiltered type, and any function body inside `pipe` is sound.
+- **`FieldExpression<Contract, CodecId, Nullable>`** is the type of a row field named by codec. **`rowFragment` and `RowOf`** define a row-changing step once per model. **`sortField`** turns a request string into a checked `orderBy` selector.
+- **A scope is a named fragment that a package builds from an index definition.** `fulltextSearchScopes<Contract, 'Post'>()` returns one scope per full-text index on the model, named after the index. Each scope's result has the caller's type with the filter recorded.
+- **The ORM client provides `defineIndexScopes`.** The package author writes a type guard for its kind of index and an ordinary function returning a filter and a default order.
+- **`@@fullTextIndex` takes fields in weight groups**, `name:` is the scope's name, and the contract records fields, weights and language as data. One renderer produces the index expression and the query expression.
+- **A scope's order is a default** that `orderBy` anywhere in the chain replaces. After a scope, `update` and `delete` are allowed and `cursor` is not.
+- **Nothing is added to the schema grammar, the contract's domain plane, or the `Collection` type beyond `pipe`.** Scopes declared in the schema are a possible later step.
 
 ## Non-goals
 
-- **Generated or stored `tsvector` columns.** The contract cannot represent generated columns. Search documents are expression indexes.
-- **A MySQL target, or scope support for it.**
-- **Combining relevance with another sort key.** An explicit `orderBy` replaces relevance order.
-- **Highlighting a whole search document.** Highlighting stays per column through `fullTextHeadline`.
-- **Scope types other than full-text**, such as vector or geospatial search. The mechanism must allow them; this project delivers full-text only.
-- **Changes to the ParadeDB extension.**
-- **Relation navigation on collections** (`db.User.where(...).posts`).
+- **A default fragment per model** (a Rails default scope). A filter every query must apply is a separate feature.
+- **Chaining on a custom collection class after a chained call.** `where` on a subclass returns the base `Collection`; a conditional between a subclass and its filtered collection is a union. That is a limit of custom classes and needs its own decision.
+- **A general `fragment` builder** that declares required fields by codec and keeps the caller's type. `FieldExpression` covers the need.
+- **Generated or stored `tsvector` columns.** Search documents are expression indexes.
+- **Combining relevance with another sort key**, highlighting a whole search document, scope kinds other than full-text (vector, geospatial), MongoDB scopes, and changes to the ParadeDB extension.
+- **A MySQL target.**
 
 ## Place in the larger world
 
-- **Framework contract.** A model gains a `scopes` member with a fixed shape: name, scope type, target, parameters. The framework knows no scope type. The contract validator checks that each target exists, and that a target in the model's own space agrees with `model.storage`.
-- **Schema language.** The parser, binder, formatter, printer and language server gain the `scopes` block. Its lines are read as a name followed by a constructor with arguments. Packages supply the kinds of scope through a new kind of authoring contribution, and each produces a scope and an index together.
-- **TypeScript contract builder.** Gains the `scopes` method on a model, with the same contributions.
-- **ORM client (`sql-orm-client`).** Gains the `scopes` member on collections, the registry and interface that contributions satisfy, a check at construction that each declared scope has a contribution and an index, and default-order handling.
-- **ORM client predicates.** `where` and `orderBy` callbacks receive `fns`.
-- **Postgres target.** May reference the ORM client's interface type directly. Owns the full-text scope type: its declaration form, the structured index, its DDL, and the scope's operations. Reuses the existing full-text lowering and the `tsquery` helpers.
-- **Postgres facade.** Its signature does not change. It passes the runtime contributions from the target and from `extensions` to the ORM client.
-- **Package build.** Rewrites the internal module name in a registry declaration to the published one.
-- **Contract and emitter.** Carry the scope on the model and the index as structured data. No types describing the ORM client are emitted.
-- **Migrations and upgrades.** A changed index representation changes storage hashes of contracts that declare a full-text index. The feature has no consumers yet, so no migration path from the opaque representation is provided. Removing `@@fullTextIndex` needs an upgrade instruction.
-- **Mongo ORM client.** Out of scope for delivery, but the design must not rule it out; the ADR records the MongoDB constraints.
+- **ORM client (`sql-orm-client`).** Gains `pipe`, the state subtyping, `FieldExpression`, `rowFragment`, `RowOf`, `sortField`, and the `defineIndexScopes` builder with its refinement and index-lookup types. `DefaultCollectionTypeState` is a public type and changes.
+- **Postgres target.** Owns the weighted full-text index: `@@fullTextIndex` with weight groups, the structured index data in the contract, its DDL, and `fullTextMatches` and `fullTextRank` over weight groups. Owns `fulltextSearchScopes`.
+- **Postgres facade (`@prisma/orm-postgres`).** Re-exports the new ORM client surface and the scope helper from `orm-client`.
+- **Contract and emitter.** Carry the full-text index as structured data. A changed index representation changes storage hashes of contracts that declare one.
+- **Migrations and upgrades.** The feature has no consumers yet, so no migration path from the opaque representation is provided. The index change and the `DefaultCollectionTypeState` change need upgrade instructions.
+- **Mongo ORM client.** Out of scope, but ADR 260 records the MongoDB constraints so the design does not rule it out.
 
 ## Cross-cutting requirements
 
-- **The contract is not coupled to the ORM client.** It states that a scope exists and what type it has. Nothing emitted describes collection members, operations, or any one query interface.
-- **The domain plane holds nothing specific to an index.** Fields, weights and language stay on the storage index.
-- **The query expression and the index expression come from one renderer**, so a scope query always matches its index. An integration test proves the planner uses the index, with sequential scans disabled and negative controls.
-- **The `Collection` type's `scopes` member is written inline.** Moving it into a helper type alias fails with a circular reference. A test and a note in the code protect it.
-- **No special cases by scope type or target in the ORM client or the framework.** They know the shape and the interface; the package that introduces a scope type supplies behaviour.
-- **A scope is reachable on every collection of its model**: root, chained, inside an include refinement, and on a custom collection class.
-- **Scopes are reached through `scopes.<name>` only.** Nothing is placed directly on the collection.
-- **Constructing a client needs no type arguments or annotations for scopes**, whichever package contributes them, first-party or not.
-- **A user who declares no scope pays at most one percent more type checking**, measured on `examples/prisma-8-demo`.
-- **Existing column operations on one field keep their behaviour.** The operations over several fields are added beside them.
-- **User input stays safe.** Scope operations take a `tsquery`, as the column operations do; a plain string does not compile.
+- **Any function body inside `pipe` yields a sound type.** A ternary in either order, an early return, a `switch`, a loop, and `let` with `if` all refuse `update`, `delete` and `cursor` unless every path sets the flag.
+- **Nothing that compiles on an unconditional chain today stops compiling.** A filtered collection is accepted where the root collection type is expected.
+- **Every fragment works at every site**: a root collection, a chained collection, a collection after `select`, an include refinement, and `this` inside a custom collection class. Scopes additionally keep a custom class's type when applied with `this.pipe`.
+- **A scope's result records the filter.** The type-level mechanism that keeps the caller's type and sets `hasWhere` is unproven and is the first thing the scope slice settles.
+- **The query expression and the index expression come from one renderer.** An integration test proves the planner uses the index, with sequential scans disabled and negative controls.
+- **User input stays safe.** Scope operations take a `tsquery`; a plain string does not compile. `sortField` rejects names outside the allowed list at run time.
+- **A user who uses none of this pays at most one percent more type checking**, measured on `examples/prisma-8-demo`. Measured so far: `pipe` +0.08%, state subtyping +0.08%.
+- **Every negative type test fails for the stated reason**, checked by removing the directive and reading the error.
 
 ## Transitional-shape constraints
 
-- **The structured full-text index and the `scopes` member land before any scope reads them.**
 - **Green main between slices; each slice is one independently mergeable PR.**
+- **The structured full-text index lands before any scope reads it.** The scope slice builds on both the fragment slice and the index slice.
+- **Spike branches are deleted after the ADRs are accepted.** Only the write-ups under `spikes/` are kept until close-out.
 
 ## Project Definition of Done
 
 - [ ] Team-DoD floor (repo checks, docs, upgrade instructions, Linear close-out).
-- [ ] ADR 257 is Accepted and matches what shipped, including its examples.
-- [ ] A model with a weighted multi-field full-text index can be searched through `scopes.<name>.fulltext(query)` on a root collection, a chained collection, an include refinement, and a custom collection class, with whole-result assertions.
+- [ ] ADR 259 and ADR 260 are Accepted and match what shipped, including their examples.
+- [ ] TML-3397 is closed by a test: a ternary between a filtered and an unfiltered collection refuses `deleteAll`.
+- [ ] `examples/prisma-8-demo` has a conditional list query written with `pipe`, a shared soft-delete filter typed with `FieldExpression`, and a sort field from a request.
+- [ ] A model with a weighted multi-field full-text index can be searched through a scope on a root collection, a chained collection, an include refinement, and a custom collection class, with whole-result assertions.
 - [ ] Results are ordered by relevance by default, a title match ranks above a body match in a test, and an explicit `orderBy` replaces that order.
-- [ ] `EXPLAIN` shows the planner using the declared index for a scope query.
-- [ ] Type tests show the scope and its operation typed from the contract's index data, and show a model that declares no scope has none.
-- [ ] A test on the built, published packages shows a registered scope is typed, so a registry declaration naming an internal module cannot ship.
-- [ ] A client refuses to start when a declared scope's type has no contribution, or its index does not exist, and the error names what is missing.
-- [ ] `EXPLAIN` shows `fullTextMatches` on a column using the index of a search declared over that one field.
-- [ ] Tests cover: two packages registering the same scope type, which is a compile error; a grouped collection; a collection after `.variant()`; and a contract with several namespaces.
-- [ ] A second, test-only scope type works without any change to the ORM client or the framework, proving the mechanism is general.
+- [ ] `EXPLAIN` shows the planner using the declared index for a scope query, and for `fullTextMatches` on a column of a single-field index.
+- [ ] Type tests show a scope typed from the contract's index data, a model without such an index has no scopes, and a scope is rejected on a collection of another model.
+- [ ] A test on the built, published packages shows the scope helper and the fragment helpers are typed through `dist`.
+- [ ] A second, test-only kind of index gets a scope helper without any change to the ORM client, proving the builder is general.
 - [ ] `examples/prisma-8-demo` searches posts across more than one field through a scope.
-- [ ] The skill reference and upgrade instructions describe the new index representation and the scope surface.
+- [ ] The skill reference and upgrade instructions describe the new index representation, the `DefaultCollectionTypeState` change, and the fragment and scope surface.
 
 ## Open questions
 
-None.
-
-## References
-
-- [ADR 257 — Packages offer collection scopes for their kinds of index](../../docs/architecture%20docs/adrs/ADR%20257%20-%20Packages%20offer%20collection%20scopes%20for%20their%20kinds%20of%20index.md)
-- [ADR 175 — Shared ORM Collection interface](../../docs/architecture%20docs/adrs/ADR%20175%20-%20Shared%20ORM%20Collection%20interface.md): collections and custom collection classes.
-- [ADR 180 — Dot-path field accessor](../../docs/architecture%20docs/adrs/ADR%20180%20-%20Dot-path%20field%20accessor.md): separate namespaces for user-chosen and framework-chosen names.
-- [ADR 174 — Aggregate roots and relation strategies](../../docs/architecture%20docs/adrs/ADR%20174%20-%20Aggregate%20roots%20and%20relation%20strategies.md): what a root is, and why a search is not one.
-- [ADR 126 — PSL top-level block SPI](../../docs/architecture%20docs/adrs/ADR%20126%20-%20PSL%20top-level%20block%20SPI.md) and [ADR 170 — Pack-provided type constructors and field presets](../../docs/architecture%20docs/adrs/ADR%20170%20-%20Pack-provided%20type%20constructors%20and%20field%20presets.md): how packages add blocks and constructors to the schema language.
-- [ADR 206 — Operations as TypeScript functions](../../docs/architecture%20docs/adrs/ADR%20206%20-%20Operations%20as%20TypeScript%20functions.md): the column operations and `tsquery` helpers.
-- Code: `packages/3-extensions/sql-orm-client/src/collection.ts` (class-based cloning, aggregate reducers), `packages/3-extensions/sql-orm-client/src/orm.ts` (collection registry and client types), `packages/3-targets/3-targets/postgres/src/core/full-text-index-expression.ts` (index expression renderer).
+None for the operator. One type-level mechanism is unproven and is settled inside the scope slice: a fragment whose result is the caller's type with `hasWhere` set. If it cannot be typed, the fallback is a scope whose result is the caller's type with the state unchanged, and `update` after a scope then needs an explicit `where`.
