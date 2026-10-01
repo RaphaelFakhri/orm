@@ -75,6 +75,15 @@ changes:
       glob: "**/*.{ts,mts,cts}"
       matches:
         - '\bkind\s*:\s*[''"]tag[''"]'
+  - id: db-sign-signs-extension-spaces
+    summary: |
+      `db sign` now signs every contract space, the extension's included, and only a space whose
+      schema verifies. Documentation that describes `db sign` for an extension's space says so.
+    detection:
+      glob: "**/*.md"
+      matches:
+        - '\bdb sign\b'
+        - '\bfails verify and cannot repair it\b'
 ---
 
 ## `contract-stores-data-type`
@@ -242,3 +251,9 @@ import { tagEntryKey } from '@internal/framework-components/authoring';
 ```
 
 An entry under a data type's id keeps naming no `type`. Any other combination fails assembly with `CONTRACT.DATA_TYPE_ENTRY_KEY_INVALID`.
+
+## `db-sign-signs-extension-spaces`
+
+`db sign` signs the contract space of every extension in the project together with the application's, and signs a space only when its schema verifies; a space that does not verify is reported with its differences and the command exits with code 4. If your extension's documentation explains what happens when a user's database does not match your contract space, add that `db sign` does not sign the space either. The Supabase extension's `src/contract/CONTRACT-FIDELITY.md` adds this sentence at the end of the paragraph that says a database with a different constraint set fails verify:
+
+> `db sign` signs a contract space only when its schema verifies, so such a database cannot be signed for this pack's space either: `db sign` signs the application's space, reports this one with its differences and exits 4.
