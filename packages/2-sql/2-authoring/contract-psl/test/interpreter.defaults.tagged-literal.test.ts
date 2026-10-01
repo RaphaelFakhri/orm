@@ -144,7 +144,7 @@ describe('interpretPslDocumentToSqlContract tagged literal defaults', () => {
       {
         code: 'PSL_INVALID_ATTRIBUTE_SYNTAX',
         message:
-          'Expected one of: string | number | boolean | autoincrement() | now() | uuid() | cuid() | ulid() | nanoid() | sql`...` | json`...` | list of (string | number | boolean | json`...`)',
+          'Expected one of: string | number | boolean | null | autoincrement() | now() | uuid() | cuid() | ulid() | nanoid() | sql`...` | json`...` | list of (string | number | boolean | null | json`...`)',
         sourceId: 'schema.prisma',
         span: lineThreeSpan(21, 'gen_random_uuid()'.length),
       },
@@ -316,6 +316,17 @@ describe('interpretPslDocumentToSqlContract tagged literal defaults', () => {
         message: 'Field "Lit.tags" at element 2: pg/int4 has no cast from pg/text; write a number',
         sourceId: 'schema.prisma',
         span: lineThreeSpan(27, '"x"'.length),
+      },
+    ]);
+  });
+
+  it('counts null elements when it reports a refused list element', () => {
+    expect(diagnostics('tags Int?[] @default([null, 1, "x"])')).toEqual([
+      {
+        code: 'PSL_VALUE_TYPE_INCOMPATIBLE',
+        message: 'Field "Lit.tags" at element 3: pg/int4 has no cast from pg/text; write a number',
+        sourceId: 'schema.prisma',
+        span: lineThreeSpan(34, '"x"'.length),
       },
     ]);
   });

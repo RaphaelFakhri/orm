@@ -66,7 +66,7 @@ import type {
 import { FunctionCallAst } from '@internal/psl-parser/syntax';
 import { SQL_EXPRESSION_DATA_TYPE_ID } from '@internal/sql-contract/sql-expression';
 import { blindCast } from '@internal/utils/casts';
-import { notOk } from '@internal/utils/result';
+import { notOk, ok } from '@internal/utils/result';
 import { removedDbgeneratedMessage } from './default-function-registry';
 import { getAttribute } from './psl-attribute-parsing';
 
@@ -251,7 +251,21 @@ const mapFieldSpec = fieldAttribute('map', {
   refine: validateMappedName,
 });
 
-type DefaultLiteralElement = string | NumLiteral | boolean | ParsedTaggedLiteral;
+type DefaultLiteralElement = string | NumLiteral | boolean | ParsedTaggedLiteral | null;
+
+function nullLiteral(): ArgType<null, AttributeCtx> {
+  const nullIdentifier = identifier('null', {
+    documentation: 'A null list element or nullable scalar default.',
+  });
+  return {
+    kind: 'null',
+    label: 'null',
+    parse: (arg, ctx) => {
+      const result = nullIdentifier.parse(arg, ctx);
+      return result.ok ? ok(null) : result;
+    },
+  };
+}
 
 type DefaultArgValue = DefaultLiteralElement | DefaultLiteralElement[] | TypedFuncCall;
 
@@ -282,6 +296,7 @@ function scalarDefaultArms(
       str(),
       numLiteral(),
       bool(),
+      nullLiteral(),
       ...tagArms((dataType) => dataType !== SQL_EXPRESSION_DATA_TYPE_ID),
     );
   const listArm = () => list(literal(), { label: `list of (${literal().label})` });
@@ -294,11 +309,9 @@ function scalarDefaultArms(
       >(entry.signature),
     ),
   );
-  // A scalar column takes a list literal too: a codec such as `pg/vector@1` declares a list of
-  // element types, and its value is written as a PSL list on a column that is not a list.
   return isList
     ? [listArm(), ...funcArms, ...anyTag()]
-    : [str(), numLiteral(), bool(), ...funcArms, ...anyTag(), listArm()];
+    : [str(), numLiteral(), bool(), nullLiteral(), ...funcArms, ...anyTag(), listArm()];
 }
 
 /**
@@ -312,7 +325,7 @@ function defaultValueArm(
   ],
   registry: ControlDefaultRegistries['defaultFunctionRegistry'],
 ) {
-  const value = oneOf(...arms);
+  const value = arms.length === 1 && arms[0].kind === 'list' ? arms[0] : oneOf(...arms);
   return {
     ...value,
     parse: (arg: Parameters<typeof value.parse>[0], ctx: AttributeCtx) =>
@@ -359,11 +372,13 @@ function enumMemberNames(ctx: FieldAttributeSpecContext): readonly string[] | un
 function enumDefaultArms(
   members: readonly string[],
   enumName: string,
+  isList: boolean,
 ): readonly [ArgType<DefaultArgValue, AttributeCtx>, ...ArgType<DefaultArgValue, AttributeCtx>[]] {
   const [first, ...rest] = members;
   if (first === undefined) return [noEnumMember()];
   const member = (name: string) =>
     identifier(name, { documentation: `The \`${name}\` member of enum \`${enumName}\`.` });
+  if (isList) return [list(oneOf(member(first), ...rest.map(member), nullLiteral()))];
   return [member(first), ...rest.map(member)];
 }
 
@@ -372,7 +387,7 @@ function defaultFieldSpec(ctx: FieldAttributeSpecContext) {
   const valueArms =
     members === undefined
       ? scalarDefaultArms(ctx.field.list, ctx.dataTypes, ctx.controlMutationDefaults)
-      : enumDefaultArms(members, ctx.field.typeName);
+      : enumDefaultArms(members, ctx.field.typeName, ctx.field.list);
   return fieldAttribute('default', {
     documentation: 'Supplies a default value when this field is omitted from a mutation.',
     positional: [

@@ -58,6 +58,7 @@ import {
   ArrayLiteralAst,
   type ExpressionAst,
   type FieldAttributeAst,
+  IdentifierAst,
   type PslSources,
 } from '@internal/psl-parser/syntax';
 import {
@@ -573,6 +574,31 @@ function listElements(expression: ExpressionAst | undefined): readonly Expressio
   return list === undefined ? [] : [...list.elements()];
 }
 
+export function rejectStrictListNullDefault(input: {
+  readonly field: FieldSymbol;
+  readonly modelName: string;
+  readonly node: FieldAttributeAst;
+  readonly sources: PslSources;
+  readonly diagnostics: PslDiagnosticCollector;
+}): boolean {
+  if (input.field.elementOptional) return false;
+  for (const arg of input.node.argList()?.args() ?? []) {
+    const expression = arg.value();
+    const list = expression ? ArrayLiteralAst.cast(expression.syntax) : undefined;
+    for (const element of list?.elements() ?? []) {
+      const identifier = IdentifierAst.cast(element.syntax);
+      if (identifier?.token()?.text !== 'null') continue;
+      input.diagnostics.push({
+        code: 'PSL_INVALID_DEFAULT_APPLICABILITY',
+        message: `Field "${input.modelName}.${input.field.name}" has strict list elements and cannot use null in a literal list default. Make the element type nullable or remove null from the default.`,
+        ...diagnosticSource(input.sources, identifier.syntax).at(),
+      });
+      return true;
+    }
+  }
+  return false;
+}
+
 export function lowerDefaultForField(input: {
   readonly modelName: string;
   readonly fieldName: string;
@@ -621,6 +647,23 @@ export function lowerDefaultForField(input: {
   });
   if (interpreted === undefined) return {};
   const value = interpreted.value;
+  if (
+    Array.isArray(value) &&
+    value.includes(null) &&
+    rejectStrictListNullDefault({ ...input, node })
+  )
+    return {};
+  if (value === null) {
+    if (!input.field.optional) {
+      input.diagnostics.push({
+        code: 'PSL_INVALID_DEFAULT_APPLICABILITY',
+        message: `Field "${input.modelName}.${input.fieldName}" is non-nullable and cannot use null as its literal default. Make the field nullable or use a non-null default.`,
+        ...source.at(),
+      });
+      return {};
+    }
+    return { defaultValue: { kind: 'literal', value: null, canonical: true } };
+  }
   const valueExpression = defaultValueExpression(node);
   const refusalLocation = (place: DefaultRefusalPlace) => {
     if (place.kind === 'attribute') return source.at();
@@ -640,9 +683,10 @@ export function lowerDefaultForField(input: {
   // whole value.
   const readsListElements = (written: WrittenValue) =>
     input.isListColumn || (input.field.list && written.kind === 'list');
-  const readAsLiteral = (written: WrittenValue) => {
+  const readAsLiteral = (written: WrittenValue, sourceElementIndexes?: readonly number[]) => {
     const lowered = lowerDataTypeDefault({
       written,
+      sourceElementIndexes,
       isList: readsListElements(written),
       column: input.columnDescriptor,
       codecLookup: input.codecLookup,
@@ -657,12 +701,21 @@ export function lowerDefaultForField(input: {
       });
       return {};
     }
+    let restoredValue = lowered.value;
+    if (Array.isArray(value) && value.includes(null) && Array.isArray(lowered.value)) {
+      let index = 0;
+      const nonNullValues = lowered.value;
+      restoredValue = value.map((element) =>
+        element === null ? null : (nonNullValues[index++] ?? null),
+      );
+    }
     if (input.valueObjectDefault !== undefined) {
       const mismatches = valueObjectDefaultMismatches({
         fieldPath: `${input.modelName}.${input.fieldName}`,
-        value: lowered.value,
+        value: restoredValue,
         list: input.field.list,
         nullable: input.field.optional,
+        elementNullable: input.field.elementOptional,
         ...input.valueObjectDefault,
         codecLookup: input.codecLookup,
       });
@@ -671,7 +724,7 @@ export function lowerDefaultForField(input: {
       }
       if (mismatches.length > 0) return {};
     }
-    return { defaultValue: { kind: 'literal' as const, value: lowered.value, canonical: true } };
+    return { defaultValue: { kind: 'literal' as const, value: restoredValue, canonical: true } };
   };
 
   const writtenScalar = (
@@ -714,7 +767,9 @@ export function lowerDefaultForField(input: {
   if (input.columnDescriptor.valueSet !== undefined) {
     if (typeof value === 'string') return { defaultValue: { kind: 'literal', value } };
     if (Array.isArray(value)) {
-      const members = value.filter((element): element is string => typeof element === 'string');
+      const members = value.filter(
+        (element): element is string | null => element === null || typeof element === 'string',
+      );
       if (members.length === value.length) {
         return { defaultValue: { kind: 'literal', value: members } };
       }
@@ -723,12 +778,15 @@ export function lowerDefaultForField(input: {
 
   if (Array.isArray(value)) {
     const elements: WrittenValue[] = [];
-    for (const element of value) {
+    const sourceElementIndexes: number[] = [];
+    for (const [sourceIndex, element] of value.entries()) {
+      if (element === null) continue;
       const written = writtenScalar(element);
       if ('ok' in written) return {};
       elements.push(written);
+      sourceElementIndexes.push(sourceIndex);
     }
-    return readAsLiteral({ kind: 'list', elements });
+    return readAsLiteral({ kind: 'list', elements }, sourceElementIndexes);
   }
 
   if (typeof value === 'string') return readAsLiteral({ kind: 'string', text: value });
