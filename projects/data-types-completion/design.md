@@ -251,7 +251,7 @@ One script per audience, under `upgrade-instructions/pending/data-type-in-contra
 6. Build the map from old to new storage hash. Rename each snapshot directory; if the target name already exists with different content, stop. In each `migration.json` replace `from` and `to` through the map and recompute `migrationHash`. Replace the hash in each ref file.
 7. In each `migration.ts` under `migrations/`, replace each hash in a `snapshots/<hash>/` import specifier through the map. Other text is unchanged.
 8. Rewrite each `contract.d.ts` beside a rewritten contract: each `readonly nativeType: '…'` line becomes the `dataType` line for that column's codec, and hash literals go through the map.
-9. Write each file in its own form: an emitted `contract.json` with the emitter's top-level key order, sorted nested keys, two-space indent and a trailing newline; a snapshot `contract.json` as `JSON.stringify` of the key-sorted object on one line with a trailing newline. On a stop, the script changes no file, prints one line per case (`<file>: unknown codec <id>`, `<path>: snapshot directory already exists with different content`), and exits 1.
+9. Write each file in its own form: an emitted `contract.json` with the emitter's top-level key order, sorted nested keys, two-space indent, and the file's own final newline kept as it was (the emitter writes none); a snapshot `contract.json` as `JSON.stringify` of the key-sorted object on one line with a trailing newline. On a stop, the script changes no file, prints one line per case (`<file>: unknown codec <id>`, `<path>: snapshot directory already exists with different content`), and exits 1.
 
 ### 10.2 The instruction text
 
