@@ -155,6 +155,11 @@ export interface SqlControlAdapter<TTarget extends string = string>
   ): Promise<void>;
 
   /**
+   * Runs `fn` in one transaction on `driver`: `BEGIN`, then `COMMIT` when `fn` resolves, or `ROLLBACK` and the error rethrown when it throws.
+   */
+  withTransaction<T>(driver: SqlControlDriverInstance<TTarget>, fn: () => Promise<T>): Promise<T>;
+
+  /**
    * Introspects a database schema and returns the target's schema-IR node.
    *
    * This is a pure schema discovery operation that queries the database catalog

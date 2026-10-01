@@ -500,6 +500,22 @@ export class PostgresControlAdapter implements SqlControlAdapter<'postgres'> {
    * ledger row whose stored destination contract is missing. See the
    * `SqlControlAdapter.writeLedgerEntry` contract.
    */
+  async withTransaction<T>(
+    driver: SqlControlDriverInstance<'postgres'>,
+    fn: () => Promise<T>,
+  ): Promise<T> {
+    await driver.query('BEGIN');
+    let result: T;
+    try {
+      result = await fn();
+    } catch (error) {
+      await driver.query('ROLLBACK');
+      throw error;
+    }
+    await driver.query('COMMIT');
+    return result;
+  }
+
   async writeLedgerEntry(
     driver: SqlControlDriverInstance<'postgres'>,
     space: string,
