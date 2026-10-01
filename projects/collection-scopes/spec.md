@@ -111,7 +111,7 @@ const posts = await db.Post
 
 ## Open questions
 
-For the design discussion on how packages contribute scopes, before the scope slice is specified:
+None. The two points left for the scope-contribution discussion are decided as ADR 260 states them:
 
-1. The builder form: `defineIndexScopes({ match, operation })`, with a three-line interface when an argument's type depends on the index.
-2. Whether the index lookup reads the contract type and model name the application writes, `fulltextSearchScopes<Contract, 'Post'>()`, or the type of the collection the step receives.
+1. **The builder form** is `defineIndexScopes({ match, operation })`, or `operations` for several, as the authoring spike recommended (`spikes/helper-authoring.md`): a type guard for the package's kind of index and an ordinary function returning a filter and a default order. Only when an argument's type depends on the index does the author add the three-line interface that names `typeof operation<this['index']>`.
+2. **The index lookup reads the contract type and model name the application writes**, `fulltextSearchScopes<Contract, 'Post'>()`. That is what lets index names complete and be checked where the scopes are made, and what makes a scope a value. The step each scope returns reads the contract, model and namespace from the collection it receives only to refuse a collection of another model.
