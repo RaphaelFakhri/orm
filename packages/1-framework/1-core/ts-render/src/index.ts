@@ -2,6 +2,7 @@ export {
   type JsonObject,
   type JsonValue,
   jsonToTsSource,
+  tsArraySource,
   tsObjectSource,
 } from './json-to-ts-source';
 export { renderImports } from './render-imports';
