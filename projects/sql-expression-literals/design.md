@@ -87,12 +87,12 @@ export function requireSqlExpression(value: unknown, what: string): SqlExpressio
 `sql` does, in order:
 
 1. For each `values[i]`: if `!isSqlExpression(values[i])`, throw `contractError('CONTRACT.SQL_EXPRESSION_INTERPOLATION', 'sql`...` only interpolates other sql`...` values; write any other text inside the template.', { meta: { index: i } })`.
-2. `joined` = `resolveTemplateTagEscapes(strings.raw[0])`, then for each `i`, `values[i].text` followed by `resolveTemplateTagEscapes(strings.raw[i + 1])`. Escapes are resolved per chunk, and interpolated text is inserted as it is.
-3. Return `new SqlExpression(joined)`. The whole joined text is canonicalized once. An interpolated multi-line value inside an indented template keeps the template's indentation on its first line only; write such SQL as one literal when indentation matters.
+2. `joined` = `resolveTemplateTagEscapes(strings.raw[0])`, then for each `i`, `values[i].text` followed by `resolveTemplateTagEscapes(strings.raw[i + 1])`. Escapes are resolved per chunk. Each line of `values[i].text` after its first is prefixed with the leading whitespace of the template line in which the `${…}` sits (the spaces and tabs at the start of the last line of the text joined so far). The joined text is then what the author sees, so a multi-line value inside an indented template keeps the template's indentation on every line.
+3. Return `new SqlExpression(joined)`. The whole joined text is canonicalized once, so the result equals the canonical text of the same SQL written out as one PSL literal.
 
 It performs no other check. An empty text is allowed.
 
-`requireSqlExpression(value, what)` returns `value` when `isSqlExpression(value)`. Otherwise it throws `contractError('CONTRACT.ARGUMENT_INVALID', \`${what} must be a sql\\\`...\\\` value.\`, { meta: { what } })`, for example ``Index "where" must be a sql`...` value.``
+`requireSqlExpression(value, what)` returns `value` when `isSqlExpression(value)`. Otherwise it throws `contractError('CONTRACT.ARGUMENT_INVALID', \`${what} must be a sql\\\`...\\\` value.\`, { meta: { what } })`, for example ``Index "post_user_active" where must be a sql`...` value.`` Section 15 lists the `what` strings.
 
 In slice 3, add `'SQL_EXPRESSION_INTERPOLATION'` and `'SQL_EXPRESSION_INVALID'` to `ContractSubcode` in `packages/2-sql/1-core/contract/src/contract-errors.ts`.
 
@@ -431,7 +431,7 @@ export function printTaggedLiteral(tag: string, text: string): string {
 - **Bodies that do not read back.** An exact-named (`map:`) object compares its body with the database byte for byte, so infer never prints a body that would read back changed. A wire-named object is compared by name, and `normalizeSqlBody` gives its canonical text the same name, so infer prints it with that text. `psl-infer/infer-sql-text.ts` holds the note text and `printableIndex`:
   - In `buildModel` (`infer-model-blocks.ts`), `printableIndex` returns an index unchanged when its `expression` and `where` read back, the index with canonical texts when they do not and its naming is wire, and `undefined` otherwise. Infer detects every live check and policy as exact-named, so a non-derived check whose `expression` fails `sqlTextsReadBack` is skipped. Each skip adds the note `` `// prisma: skipped ${kind} "${name}": its SQL cannot be written as a sql literal that reads back unchanged. It is not in this schema, so migration plan will drop it. A sql literal written by hand holds different text, so migration plan then stops with a conflict for an index or check, or drops and recreates a policy. Either change the SQL in the database to the text of the literal, or add the object without map: or @@map so Prisma names it.` `` (`kind` is `index` or `check`) to the model's comment lines, after any policy notes.
   - In `buildIntrospectedPolicyBlocks` (`infer-policy-blocks.ts`), a policy whose `using` or `withCheck` fails `sqlTextsReadBack` is skipped with the same note, `policy` as its kind, through the existing `skipNotesByTable`.
-  - Function defaults keep printing unconditionally, with `printTaggedLiteral` rather than the checking printer. Default expressions are compared with case and whitespace ignored (`resolvedDefaultsEqual`), not byte for byte, and canonicalization changes only whitespace, so the canonical text never shows as a difference. A string constant inside a default whose whitespace canonicalization changes reads back as a different value. Decided in slice 3: `contract infer` keeps printing such a default (a skipped default would be dropped by the next plan) and adds `` `// prisma: default of "${column}" holds text a sql literal cannot write back unchanged; check its string constants before applying a migration` `` to the model's comment lines (`defaultDoesNotReadBackNote` in `psl-infer/infer-sql-text.ts`). `contract print` refuses such a default through `refuseSqlTextThatDoesNotReadBack` with kind `default` and the column's coordinate.
+  - Function defaults keep printing unconditionally, with `printTaggedLiteral` rather than the checking printer. Default expressions are compared with case and whitespace ignored (`resolvedDefaultsEqual`), not byte for byte, and canonicalization changes only whitespace, so the canonical text never shows as a difference. A string constant inside a default whose whitespace canonicalization changes reads back as a different value. Decided in slice 3, with the reason in ADR 260 ("Column defaults that do not read back"): `contract infer` keeps printing such a default and adds `` `// prisma: default of "${column}" holds text a sql literal cannot write back unchanged; check its string constants before applying a migration` `` to the model's comment lines (`defaultDoesNotReadBackNote` in `psl-infer/infer-sql-text.ts`). `contract print` refuses such a default through `refuseSqlTextThatDoesNotReadBack` with kind `default` and the column's coordinate.
 
 ## 12. Language server (slice 2b)
 
@@ -572,20 +572,21 @@ In `contract-dsl.ts`: `IndexOptionsBase.where?: SqlExpression`; `IndexExpression
 
 In `contract-ts/src/contract-lowering.ts`, `resolveModelNode`:
 
-- Index `where`: `index.where === undefined ? undefined : requireSqlExpression(index.where, 'Index "where"').text`.
-- Index `expression`, in this order: `isSqlExpression(e)` → `e.text`; `typeof e === 'object' && e !== null && 'render' in e` → render as today; otherwise `requireSqlExpression(e, 'Index "expression"')`, which throws. Testing `'render' in e` on a string would throw a `TypeError`, so the order matters.
-- Check: `expression: requireSqlExpression(check.expression, 'Check "expression"').text`.
+- The `what` string names the object. An index or check with a `name` or `map` is `Index "<name>"` or `Check "<name>"` (`map` when there is no `name`). One with neither, before lowering names it, is `Index on "<Model>"` or `Check on "<Model>"`. The field follows: `where` or `expression`.
+- Index `where`: `index.where === undefined ? undefined : requireSqlExpression(index.where, \`${owner} where\`).text`, for example `Index "post_user_active" where` or `Index on "Post" where`.
+- Index `expression`, in this order: `isSqlExpression(e)` → `e.text`; `typeof e === 'object' && e !== null && 'render' in e` → `new SqlExpression(e.render(...)).text`, so rendered text is canonicalized like every other raw-SQL text; otherwise `requireSqlExpression(e, \`${owner} expression\`)`, which throws. Testing `'render' in e` on a string would throw a `TypeError`, so the order matters.
+- Check: `expression: requireSqlExpression(check.expression, \`${owner} expression\`).text`, for example `Check "post_email_no_space" expression`.
 
-In `packages/3-extensions/postgres/src/contract/full-text-index.ts`: `FullTextIndexOptionsBase.where?: SqlExpression`, passed to `IndexConstraint.where` unchanged.
+In `packages/3-extensions/postgres/src/contract/full-text-index.ts`: `FullTextIndexOptionsBase.where?: SqlExpression`. `fullTextIndex` checks it with `requireSqlExpression(where, 'Full-text index "<name>" where')`, `<name>` being its `name` or `map`, because lowering sees only an index and cannot tell the author used `fullTextIndex`.
 
 ### 15.4 Policies
 
 - `packages/3-extensions/postgres/src/contract/rls.ts`: every `using` and `withCheck` in `RlsPolicyHandle`, `RlsUsingPolicyDescriptor`, `RlsWithCheckPolicyDescriptor`, `RlsUsingWithCheckPolicyDescriptor` and `buildPolicyHandle`'s parameter becomes `SqlExpression`; values are copied unchanged.
-- `packages/3-targets/3-targets/postgres/src/core/authoring.ts`: `RlsPolicyHandleShape.using?: SqlExpression`, `withCheck?: SqlExpression`. `postgresLowerEntityHandles` passes `requireSqlExpression(policy.using, 'Policy "using"').text` (and `'Policy "withCheck"'`) to `buildRlsPolicyEntity` when defined.
+- `packages/3-targets/3-targets/postgres/src/core/authoring.ts`: `RlsPolicyHandleShape.using?: SqlExpression`, `withCheck?: SqlExpression`. `postgresLowerEntityHandles` passes `requireSqlExpression(policy.using, 'Policy "<name>" using').text` (and `'Policy "<name>" withCheck'`) to `buildRlsPolicyEntity` when defined, `<name>` being the policy's name (its prefix).
 
 ### 15.5 What stays strings
 
-`buildSqlContractFromDefinition` and the definition tree (`IndexNode`, `CheckNode`) take strings; PSL builds the same tree. `DeferredIndexExpression.render` returns a string.
+`buildSqlContractFromDefinition` and the definition tree (`IndexNode`, `CheckNode`) take strings; PSL builds the same tree. `DeferredIndexExpression.render` returns a string, which lowering canonicalizes (section 15.3).
 
 ## 16. Migration files: untagged template literals (slice 4)
 
