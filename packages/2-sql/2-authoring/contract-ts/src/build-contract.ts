@@ -50,12 +50,7 @@ import {
 } from '@internal/sql-contract/foreign-key-materialization';
 import { type AuthoredIndexInput, lowerAuthoredIndex } from '@internal/sql-contract/index-naming';
 import { validateIndexTypes } from '@internal/sql-contract/index-type-validation';
-import {
-  createIndexTypeRegistry,
-  type IndexTypeMap,
-  type IndexTypeRegistration,
-  type IndexTypeRegistry,
-} from '@internal/sql-contract/index-types';
+import { type IndexTypeRegistry, indexTypeRegistryOf } from '@internal/sql-contract/index-types';
 import {
   applyFkDefaults,
   CheckConstraint,
@@ -290,38 +285,6 @@ function assertStorageSemantics(
     );
   }
   validateIndexTypes(contract, indexTypeRegistry);
-}
-
-/** The index types the target and the extension packs register. */
-function indexTypeRegistryOf(definition: ContractDefinition): IndexTypeRegistry {
-  const indexTypeRegistry = createIndexTypeRegistry();
-  const packsToRegister: ReadonlyArray<{ readonly id?: string; readonly indexTypes?: unknown }> = [
-    definition.target,
-    ...Object.values(definition.extensions ?? {}),
-  ];
-  for (const pack of packsToRegister) {
-    const registration = pack.indexTypes;
-    if (registration === undefined) continue;
-    if (
-      typeof registration !== 'object' ||
-      registration === null ||
-      !('entries' in registration) ||
-      !Array.isArray(registration.entries)
-    ) {
-      throw contractError(
-        'CONTRACT.PACK_CONTRIBUTION_INVALID',
-        `Pack "${pack.id ?? '<unknown>'}" declares "indexTypes" but its value is not an IndexTypeRegistration (expected an object with an "entries" array; got ${typeof registration}).`,
-        { meta: { packId: pack.id, contribution: 'indexTypes', reason: 'invalid-shape' } },
-      );
-    }
-    for (const entry of blindCast<
-      IndexTypeRegistration<IndexTypeMap>,
-      'checked above to be an object with an entries array; each entry is validated when registered'
-    >(registration).entries) {
-      indexTypeRegistry.register(entry);
-    }
-  }
-  return indexTypeRegistry;
 }
 
 function assertKnownTargetModel(
@@ -1175,7 +1138,10 @@ export function buildSqlContractFromDefinition(
 ): Contract<SqlStorage> {
   const target = definition.target.targetId;
   const defaultNamespaceId = definition.target.defaultNamespaceId;
-  const indexTypeRegistry = indexTypeRegistryOf(definition);
+  const indexTypeRegistry = indexTypeRegistryOf([
+    definition.target,
+    ...Object.values(definition.extensions ?? {}),
+  ]);
   const qualifyColumnType = resolveColumnTypeQualifier(definition.target);
   const renderCheckExpressions = resolveCheckExpressionRenderer(definition.target);
   const targetFamily = 'sql';

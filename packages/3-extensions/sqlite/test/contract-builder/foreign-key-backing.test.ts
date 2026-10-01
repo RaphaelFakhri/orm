@@ -1,6 +1,7 @@
 /**
- * SQLite registers no index types, so a declared index over a foreign key's
- * columns backs the foreign key exactly when it has no `where` predicate.
+ * SQLite registers no index types and refuses partial indexes, so every
+ * declared index over a foreign key's columns backs the foreign key, as
+ * before.
  */
 import { UNBOUND_NAMESPACE_ID } from '@internal/framework-components/ir';
 import type { IndexConstraint } from '@internal/sql-contract-ts/contract-builder';
@@ -33,6 +34,17 @@ describe('a SQLite foreign key backing index', () => {
     expect(postIndexesBeside({ kind: 'index', fields: ['authorId'], name: 'post_author' })).toEqual(
       [expect.objectContaining({ prefix: 'post_author' })],
     );
+  });
+
+  it('never meets a partial index, which SQLite refuses', () => {
+    expect(() =>
+      postIndexesBeside({
+        kind: 'index',
+        fields: ['authorId'],
+        where: 'id > 0',
+        name: 'post_author_live',
+      }),
+    ).toThrow(/does not support expression or partial indexes/);
   });
 
   it('is derived when the table has no index on the foreign key column', () => {

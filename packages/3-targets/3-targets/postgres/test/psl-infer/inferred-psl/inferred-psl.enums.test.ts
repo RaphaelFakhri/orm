@@ -43,6 +43,7 @@ function printWithEnums(
     typeMap: createPostgresTypeMap(enumInfo.typeNames),
     defaultMapping: createPostgresDefaultMapping(),
     parseRawDefault: parsePostgresDefault,
+    backsForeignKey: inferBuildContext.indexTypes.backsForeignKey,
     enumInfo,
   };
   const ast = buildPslDocumentAst(new SqlSchemaIR({ tables }), options, {

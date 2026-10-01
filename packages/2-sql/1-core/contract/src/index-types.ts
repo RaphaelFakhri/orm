@@ -67,7 +67,8 @@ export function defineIndexTypes(): IndexTypeBuilder<Record<never, never>> {
 }
 
 export interface IndexTypeRegistry {
-  register(entry: IndexTypeEntry): void;
+  /** `registrant` names the pack the entry comes from, for the refusal of a malformed entry. */
+  register(entry: IndexTypeEntry, registrant?: string): void;
   get(typeLiteral: string): IndexTypeEntry | undefined;
   has(typeLiteral: string): boolean;
   /** Whether an index of this type can back a foreign key; false for a type nobody registered. */
@@ -77,12 +78,20 @@ export interface IndexTypeRegistry {
 class IndexTypeRegistryImpl implements IndexTypeRegistry {
   private readonly entries = new Map<string, IndexTypeEntry>();
 
-  register(entry: IndexTypeEntry): void {
+  register(entry: IndexTypeEntry, registrant?: string): void {
     if (typeof entry.backsForeignKey !== 'boolean') {
+      const source = registrant === undefined ? '' : ` registered by pack "${registrant}"`;
       throw contractError(
         'CONTRACT.PACK_CONTRIBUTION_INVALID',
-        `Index type "${entry.type}" does not declare backsForeignKey (true or false)`,
-        { meta: { indexType: entry.type } },
+        `Index type "${entry.type}"${source} does not declare backsForeignKey.`,
+        {
+          why: "Each index type says whether an index of that type can serve a foreign key's lookups, so a foreign key gets a backing index only when no declared index can serve it.",
+          fix: `Upgrade ${registrant === undefined ? 'the pack that registers this index type' : `the pack "${registrant}"`}, or add \`backsForeignKey\` to its registration: \`true\` only for an index that answers equality lookups on its leading columns, as btree and hash do; \`false\` for search, spatial and range-summary indexes.`,
+          meta: {
+            indexType: entry.type,
+            ...(registrant === undefined ? {} : { packId: registrant }),
+          },
+        },
       );
     }
     if (this.entries.has(entry.type)) {
@@ -110,4 +119,46 @@ class IndexTypeRegistryImpl implements IndexTypeRegistry {
 
 export function createIndexTypeRegistry(): IndexTypeRegistry {
   return new IndexTypeRegistryImpl();
+}
+
+/** A pack as it offers index types: its id and, optionally, its `indexTypes` registration. */
+export interface IndexTypeRegistrant {
+  readonly id?: string;
+  readonly indexTypes?: unknown;
+}
+
+function isIndexTypeRegistration(value: unknown): value is IndexTypeRegistration<IndexTypeMap> {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    'entries' in value &&
+    Array.isArray(value.entries)
+  );
+}
+
+/**
+ * The registry of every index type the given packs register: the target and the extension packs a
+ * contract is built or inferred with.
+ */
+export function indexTypeRegistryOf(
+  registrants: readonly IndexTypeRegistrant[],
+): IndexTypeRegistry {
+  const registry = createIndexTypeRegistry();
+  for (const registrant of registrants) {
+    const registration = registrant.indexTypes;
+    if (registration === undefined) continue;
+    if (!isIndexTypeRegistration(registration)) {
+      throw contractError(
+        'CONTRACT.PACK_CONTRIBUTION_INVALID',
+        `Pack "${registrant.id ?? '<unknown>'}" declares "indexTypes" but its value is not an IndexTypeRegistration (expected an object with an "entries" array; got ${typeof registration}).`,
+        {
+          meta: { packId: registrant.id, contribution: 'indexTypes', reason: 'invalid-shape' },
+        },
+      );
+    }
+    for (const entry of registration.entries) {
+      registry.register(entry, registrant.id);
+    }
+  }
+  return registry;
 }

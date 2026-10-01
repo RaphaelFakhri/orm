@@ -1,6 +1,6 @@
 import { type } from 'arktype';
 import { describe, expect, it } from 'vitest';
-import { createIndexTypeRegistry, defineIndexTypes } from '../src/index-types';
+import { createIndexTypeRegistry, defineIndexTypes, indexTypeRegistryOf } from '../src/index-types';
 
 describe('defineIndexTypes builder', () => {
   it('starts empty', () => {
@@ -99,6 +99,60 @@ describe('createIndexTypeRegistry', () => {
     const entry = { type: 'legacy', options: type('object') };
 
     expect(() => registry.register(entry as never)).toThrow(
+      expect.objectContaining({
+        code: 'CONTRACT.PACK_CONTRIBUTION_INVALID',
+        message: expect.stringContaining('"legacy"'),
+        why: expect.stringContaining('foreign key'),
+        fix: expect.stringContaining('backsForeignKey'),
+      }),
+    );
+  });
+
+  it('names the pack that registered an entry without backsForeignKey', () => {
+    expect(() =>
+      indexTypeRegistryOf([
+        {
+          id: 'legacy-pack',
+          indexTypes: { entries: [{ type: 'legacy', options: type('object') }] },
+        },
+      ]),
+    ).toThrow(
+      expect.objectContaining({
+        message: expect.stringContaining('"legacy-pack"'),
+        meta: expect.objectContaining({ indexType: 'legacy', packId: 'legacy-pack' }),
+      }),
+    );
+  });
+});
+
+describe('indexTypeRegistryOf', () => {
+  it('registers the index types of every pack that declares some', () => {
+    const registry = indexTypeRegistryOf([
+      {
+        id: 'target',
+        indexTypes: defineIndexTypes().add('ordered', {
+          options: type('object'),
+          backsForeignKey: true,
+        }),
+      },
+      { id: 'no-indexes' },
+      {
+        id: 'search',
+        indexTypes: defineIndexTypes().add('search', {
+          options: type('object'),
+          backsForeignKey: false,
+        }),
+      },
+    ]);
+
+    expect([registry.backsForeignKey('ordered'), registry.backsForeignKey('search')]).toEqual([
+      true,
+      false,
+    ]);
+  });
+
+  it('refuses a pack whose indexTypes is not a registration', () => {
+    expect(() => indexTypeRegistryOf([{ id: 'broken', indexTypes: 'nope' }])).toThrow(
       expect.objectContaining({ code: 'CONTRACT.PACK_CONTRIBUTION_INVALID' }),
     );
   });
