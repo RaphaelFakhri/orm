@@ -10,6 +10,7 @@ const librarySource = resolve(demoRoot, 'test/fixtures/declaration-library.ts');
 const libraryDeclaration = resolve(demoRoot, 'test/fixtures/declaration-library.d.ts');
 const consumerSource = resolve(demoRoot, 'test/fixtures/declaration-consumer.ts');
 const temporalGlobals = resolve(demoRoot, 'src/temporal-global.d.ts');
+const packagesBehindTheFacade = ['@prisma/orm-family-sql/', '@prisma/orm-framework/'];
 const facadeManifest = createRequire(resolve(demoRoot, 'package.json')).resolve(
   '@prisma/orm-postgres/package.json',
 );
@@ -68,10 +69,11 @@ function emitLibraryDeclaration(options: ts.CompilerOptions) {
 /**
  * Typechecks the consumer against the emitted declaration instead of the library's source.
  *
- * The emitted declaration names `@prisma/orm-family-sql/orm-client`, which the demo does not depend
- * on, so under pnpm it does not resolve from the demo. That predates custom collection chaining and
- * is tracked separately; until it is fixed, a module that does not resolve from the importing file
- * is resolved from the facade package, as a hoisted install would.
+ * The emitted declaration names `@prisma/orm-family-sql/*` and `@prisma/orm-framework/*`, the packages
+ * behind the facade, which the demo does not depend on, so under pnpm they do not resolve from the
+ * demo (TML-3433). Until that is fixed, those specifiers, and only those, are resolved from the facade
+ * package when the emitted declaration imports them, as a hoisted install would. Any other name that
+ * does not resolve fails the check.
  */
 function checkConsumer(options: ts.CompilerOptions, declaration: string) {
   const host = ts.createCompilerHost(options);
@@ -94,7 +96,9 @@ function checkConsumer(options: ts.CompilerOptions, declaration: string) {
         compilerOptions,
         host,
       );
-      return fromImporter.resolvedModule
+      return fromImporter.resolvedModule ||
+        containingFile !== libraryDeclaration ||
+        !packagesBehindTheFacade.some((prefix) => literal.text.startsWith(prefix))
         ? fromImporter
         : ts.resolveModuleName(literal.text, facadeManifest, compilerOptions, host);
     });

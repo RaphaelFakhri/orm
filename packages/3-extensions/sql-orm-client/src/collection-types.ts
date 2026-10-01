@@ -36,6 +36,7 @@ export type Step<In, Out> = (collection: In) => Out;
 export type CollectionStateOf<C extends HasState> = C[typeof StateType];
 
 /** The rows a collection produces, as one object type. Declarations print it by this name, so it never names `RowType`. */
-export type CollectionRowOf<C extends HasRow> = C[typeof RowType] extends infer Row
+export type CollectionRowOf<C extends HasRow> = C[typeof RowType] extends infer Row extends
+  C[typeof RowType]
   ? { [K in keyof Row]: Row[K] }
   : never;

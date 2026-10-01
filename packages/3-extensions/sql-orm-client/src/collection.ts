@@ -1385,8 +1385,13 @@ export class CollectionBase<
     filter: WhereInput<TContract, State['nsId'], ModelName, State['variantName']>,
     configure?: (meta: MetaBuilder<'read'>) => void,
   ): Promise<CollectionRowOf<Self> | null>;
+  async first(): Promise<CollectionRowOf<this> | null>;
   async first(
-    filter?: WhereInput<TContract, State['nsId'], ModelName, State['variantName']>,
+    filter: undefined,
+    configure: (meta: MetaBuilder<'read'>) => void,
+  ): Promise<CollectionRowOf<this> | null>;
+  async first(
+    filter: WhereInput<TContract, State['nsId'], ModelName, State['variantName']>,
     configure?: (meta: MetaBuilder<'read'>) => void,
   ): Promise<CollectionRowOf<this> | null>;
   async first(
