@@ -23,12 +23,12 @@ model('Post', { fields: { id, title, subtitle, body } }).sql(({ cols }) => ({
 
 ```json
 {
-  "name": "post_search_0a1b2c3d",
-  "prefix": "post_search",
   "columns": ["title", "subtitle", "body"],
-  "type": "gin",
-  "unique": false,
-  "options": { "fields": [["title", "subtitle"], ["body"]], "language": "english" }
+  "name": "post_search_033e8055",
+  "options": { "fields": [["title", "subtitle"], ["body"]], "language": "english" },
+  "prefix": "post_search",
+  "type": "fullText",
+  "unique": false
 }
 ```
 
@@ -39,8 +39,8 @@ db.sql.public.post
 ```
 
 ```sql
-CREATE INDEX "post_search_0a1b2c3d" ON "post" USING gin ((
-  setweight(to_tsvector('english', "title"), 'A') || setweight(to_tsvector('english', coalesce("subtitle", '')), 'A')
+CREATE INDEX "post_search_033e8055" ON "post" USING gin ((
+  setweight(to_tsvector('english', coalesce("title", '')), 'A') || setweight(to_tsvector('english', coalesce("subtitle", '')), 'A')
   || setweight(to_tsvector('english', coalesce("body", '')), 'B')
 ));
 ```
@@ -48,11 +48,12 @@ CREATE INDEX "post_search_0a1b2c3d" ON "post" USING gin ((
 ## Chosen design
 
 - **Authoring.** `@@fullTextIndex` and the TypeScript `fullTextIndex` helper take one field, a flat list, or a list whose items are fields or lists of fields. Each top-level item is a weight group; earlier groups weigh more, `A` to `D`, so at most four groups. A single field stays valid and has no weight.
-- **Contract.** The index is stored in the `columns` form, not the `expression` form: `columns` lists the covered columns flat, in order; `type` is `gin`; `options` holds `fields` (the weight groups, as storage column names) and `language`. No SQL string is stored. The Postgres `gin` index type's options schema accepts and validates `fields` and `language` when present.
-- **One renderer.** A single function in the Postgres target renders the search document from `{ fields, language }` and a way to reference each column. The index DDL, the contract-to-schema-node conversion, and the query operations all call it. `setweight` appears only when there is more than one weight group; `coalesce` only around a nullable column and only when the document has more than one column; fields are joined with `||`. A single non-nullable or nullable field alone renders `to_tsvector(language, column)`, the expression the existing column operations use.
+- **Contract.** The index has the type `fullText`, which the Postgres target registers in its index type registry; in the database it is a `gin` index. It is stored in the `columns` form: `columns` lists the covered columns flat, in order, and must equal `options.fields` read flat; `options` holds `fields` (the weight groups, as storage column names) and `language`, and nothing else. No SQL string is stored. `fullText` declares that it cannot back a foreign key, and cannot be unique.
+- **One renderer.** A single function in the Postgres target renders the search document from `{ fields, language }` and a way to reference each column. The index DDL, the contract-to-schema-node conversion, and the query operations all call it. `setweight` appears only when there is more than one weight group; in a document of more than one column every column is wrapped in `coalesce`, whether or not it is nullable, so nullability is not an input; fields are joined with `||`. A single field renders `to_tsvector(language, column)`, the expression the existing column operations use.
 - **Schema node.** `contract-to-postgres-database-schema-node.ts` produces the expression-form `SqlIndexIR` for such an index, with the rendered expression, and `dependsOn` naming exactly the covered columns rather than every column of the table.
 - **Query operations.** `fullTextMatches` and `fullTextRank` gain a form on the SQL builder's `fns` that takes weight groups of column expressions and the `tsquery`, with the same options as the column form. The column-method forms are unchanged. `fullTextHeadline` stays per column.
-- **Existing single-field indexes** change representation in the contract and keep their DDL.
+- **Existing single-field indexes** change representation in the contract and keep their DDL. Their generated name changes; `migration plan` from the previous contract renames them, and `db update` against a live database rebuilds them.
+- **Foreign-key backing.** Because the index now lists its columns, the rule for which indexes back a foreign key is decided per index type. That rule ships first, on its own (TML-3430), and this slice is stacked on it.
 
 ## Coherence rationale
 
