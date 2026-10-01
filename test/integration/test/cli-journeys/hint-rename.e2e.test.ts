@@ -1,15 +1,24 @@
 /**
  * Renaming a model with a rename hint keeps its table's rows (Postgres).
  *
- * The seeded `Profile` table has rows, a default-named primary key, a unique constraint, a foreign key to `Account`, a foreign key from `Post`, a secondary index, a named check, and row-level security with a policy. The schema change renames the model to `Member` and adds `@@hint(was: "Profile")`.
+ * The seeded `Profile` table has rows, a default-named primary key, a unique constraint, a foreign
+ * key to `Account`, a foreign key from `Post`, a secondary index, a named check, and row-level
+ * security with a policy. The schema change renames the model to `Member` and adds
+ * `@@hint(was: "Profile")`.
  *
- * Journey H1 plans the change with `migration plan`: the plan reports the hint it consumed, every operation is widening, and `migration.ts` holds only the `renameTable` call. After `migrate` the rows and every object are present under the new table, a follow-up plan is empty, and `db verify --schema-only` is clean.
+ * Journey H1 plans the change with `migration plan`: the plan reports the hint it consumed, every
+ * operation is widening, and `migration.ts` holds only the `renameTable` call. After `migrate` the
+ * rows and every object are present under the new table, a follow-up plan is empty, and
+ * `db verify --schema-only` is clean.
  *
- * Journey H2 applies the same change to a fresh database with `db update`, which asks for no consent, reaches the same state, and plans nothing on a second run.
+ * Journey H2 applies the same change to a fresh database with `db update`, which asks for no
+ * consent, reaches the same state, and plans nothing on a second run.
  *
- * Journey H3 keeps the hint in the schema after the rename is applied: the next plan is empty and prints no `Hints applied` block.
+ * Journey H3 keeps the hint in the schema after the rename is applied: the next plan is empty and
+ * prints no `Hints applied` block.
  *
- * Journey H4 names, as the old table, a table that still exists beside the new one: `migration plan` fails with `MIGRATION.HINT_CONTRADICTED` and writes nothing.
+ * Journey H4 names, as the old table, a table that still exists beside the new one:
+ * `migration plan` fails with `MIGRATION.HINT_CONTRADICTED` and writes nothing.
  */
 
 import { readFileSync, writeFileSync } from 'node:fs';
@@ -97,7 +106,9 @@ function emittedContract(ctx: JourneyContext): {
   return JSON.parse(readFileSync(join(ctx.testDir, 'contract.json'), 'utf-8'));
 }
 
-/** Emits the hinted schema with its `@@hint` line removed, and returns that contract's storage hash. */
+/**
+ * Emits the hinted schema with its `@@hint` line removed, and returns that contract's storage hash.
+ */
 async function storageHashWithoutHint(ctx: JourneyContext, label: string): Promise<string> {
   const hinted = readFileSync(pslContractFixtures['contract-hint-rename-to'], 'utf-8');
   const unhinted = hinted.replace('    @@hint(was: "Profile")\n', '');

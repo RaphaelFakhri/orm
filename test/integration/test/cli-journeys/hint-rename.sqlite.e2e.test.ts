@@ -1,9 +1,16 @@
 /**
  * Renaming a model with a rename hint keeps its table's rows (SQLite).
  *
- * The SQLite twin of `hint-rename.e2e.test.ts`, driven through a file database and the SQLite PSL config. The seeded `Profile` table has rows, a default primary key, a unique constraint, a foreign key to `Account`, a foreign key from `Post` and a secondary index; SQLite has no check constraints and no row-level security. The schema change renames the model to `Member` and adds `@@hint(was: "Profile")`. SQLite cannot rename an index, so the rename drops each index named after the old table and creates it under the new name.
+ * The SQLite twin of `hint-rename.e2e.test.ts`, driven through a file database and the SQLite PSL
+ * config. The seeded `Profile` table has rows, a default primary key, a unique constraint, a
+ * foreign key to `Account`, a foreign key from `Post` and a secondary index; SQLite has no check
+ * constraints and no row-level security. The schema change renames the model to `Member` and adds
+ * `@@hint(was: "Profile")`. SQLite cannot rename an index, so the rename drops each index named
+ * after the old table and creates it under the new name.
  *
- * Journey H1 plans the change with `migration plan` and applies it with `migrate`; journey H2 applies it with `db update`, which asks for no consent; journey H3 keeps the spent hint in the schema; journey H4 names, as the old table, a table that still exists beside the new one.
+ * Journey H1 plans the change with `migration plan` and applies it with `migrate`; journey H2
+ * applies it with `db update`, which asks for no consent; journey H3 keeps the spent hint in the
+ * schema; journey H4 names, as the old table, a table that still exists beside the new one.
  */
 
 import { readFileSync, writeFileSync } from 'node:fs';
