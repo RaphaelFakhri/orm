@@ -387,6 +387,13 @@ describe('SetDefaultCall', () => {
     );
     expect(additive.importRequirements()).toEqual([]);
   });
+
+  it('renders a default holding both quote kinds as a template literal', () => {
+    const call = new SetDefaultCall('public', 'user', 'meta', `DEFAULT '{"a": 1}'::jsonb`);
+    expect(call.renderTypeScript()).toBe(
+      'this.setDefault({ schema: "public", table: "user", column: "meta", defaultSql: `DEFAULT \'{"a": 1}\'::jsonb` })',
+    );
+  });
 });
 
 describe('DropDefaultCall', () => {

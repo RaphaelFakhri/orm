@@ -679,7 +679,7 @@ export class SetDefaultCall extends PostgresOpFactoryCallNode {
     }
     opts.push(`table: ${jsonToTsSource(this.tableName)}`);
     opts.push(`column: ${jsonToTsSource(this.columnName)}`);
-    opts.push(`defaultSql: ${jsonToTsSource(this.defaultSql)}`);
+    opts.push(`defaultSql: ${tsQuotedTextSource(this.defaultSql)}`);
     if (this.operationClass !== 'additive') {
       opts.push(`operationClass: ${jsonToTsSource(this.operationClass)}`);
     }
@@ -1797,18 +1797,19 @@ export class CreatePostgresRlsPolicyCall extends PostgresOpFactoryCallNode {
       ...ifDefined('withCheck', p.withCheck),
       permissive: p.permissive,
     };
-    const entries = Object.entries(input)
-      .filter(([, value]) => value !== undefined)
-      .map(
-        ([key, value]) =>
-          [
-            key,
-            (key === 'using' || key === 'withCheck') && typeof value === 'string'
-              ? tsQuotedTextSource(value)
-              : jsonToTsSource(value),
-          ] as const,
-      );
-    return `this.createRlsPolicy({ schema: ${jsonToTsSource(this.schemaName)}, table: ${jsonToTsSource(this.tableName)}, policy: ${tsObjectSource(entries)} })`;
+    const policy = tsObjectSource([
+      ['naming', jsonToTsSource(input.naming)],
+      ['tableName', jsonToTsSource(input.tableName)],
+      ['namespaceId', jsonToTsSource(input.namespaceId)],
+      ['operation', jsonToTsSource(input.operation)],
+      ['roles', jsonToTsSource(input.roles)],
+      ...(input.using === undefined ? [] : [['using', tsQuotedTextSource(input.using)] as const]),
+      ...(input.withCheck === undefined
+        ? []
+        : [['withCheck', tsQuotedTextSource(input.withCheck)] as const]),
+      ['permissive', jsonToTsSource(input.permissive)],
+    ]);
+    return `this.createRlsPolicy({ schema: ${jsonToTsSource(this.schemaName)}, table: ${jsonToTsSource(this.tableName)}, policy: ${policy} })`;
   }
 
   override importRequirements(): readonly ImportRequirement[] {
