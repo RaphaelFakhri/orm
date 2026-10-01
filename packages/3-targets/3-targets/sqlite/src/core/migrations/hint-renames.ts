@@ -17,6 +17,11 @@ export interface HintRenames {
   readonly warnings: readonly [];
 }
 
+/** The outcome when there is nothing to rename: the origin unchanged. */
+export function noHintRenames(origin: SqlSchemaIR): HintRenames {
+  return { calls: [], origin, consumed: [], warnings: [] };
+}
+
 /**
  * Turns the resolved table renames into rename calls, in order, each computed against the origin as
  * the earlier renames leave it.

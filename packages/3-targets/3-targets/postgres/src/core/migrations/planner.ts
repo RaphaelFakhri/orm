@@ -49,7 +49,7 @@ import {
 } from './control-policy';
 import { buildPostgresPlanDiff } from './diff-database-schema';
 import { postgresHintOrigin } from './hint-origin';
-import { planHintRenames } from './hint-renames';
+import { noHintRenames, planHintRenames } from './hint-renames';
 import { pairCheckRenames, pairIndexRenames } from './index-and-check-renames';
 import {
   coalesceSubtreeIssues,
@@ -230,13 +230,16 @@ export class PostgresMigrationPlanner implements MigrationPlanner<'sql', 'postgr
     if (hints.conflicts.length > 0) {
       return plannerFailure(hints.conflicts);
     }
-    const hintRenames = planHintRenames({
-      origin: options.schema,
-      destination: postgresContractToSchema(options.contract, options.frameworkComponents),
-      contract: options.contract,
-      hints,
-      frameworkComponents: options.frameworkComponents,
-    });
+    const hintRenames =
+      hints.tableRenames.length === 0
+        ? noHintRenames(options.schema)
+        : planHintRenames({
+            origin: options.schema,
+            destination: postgresContractToSchema(options.contract, options.frameworkComponents),
+            contract: options.contract,
+            hints,
+            frameworkComponents: options.frameworkComponents,
+          });
     const planOptions = { ...options, schema: hintRenames.origin };
 
     // The one combined tree diff drives the whole plan: relational findings

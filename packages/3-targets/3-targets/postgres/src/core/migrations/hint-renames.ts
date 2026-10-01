@@ -21,6 +21,11 @@ export interface HintRenames {
   readonly warnings: readonly SuppressionRecord[];
 }
 
+/** The outcome when there is nothing to rename: the origin unchanged. */
+export function noHintRenames(origin: PostgresDatabaseSchemaNode): HintRenames {
+  return { calls: [], origin, consumed: [], warnings: [] };
+}
+
 /**
  * Turns the resolved table renames into rename calls, in order, each computed against the origin as
  * the earlier renames leave it. A rename onto a table whose effective control policy is not

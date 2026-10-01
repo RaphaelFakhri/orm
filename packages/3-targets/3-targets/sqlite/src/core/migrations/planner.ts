@@ -29,7 +29,7 @@ import {
 } from '@internal/sql-schema-ir/types';
 import { buildSqlitePlanDiff, sqlitePlanOrigin } from './diff-database-schema';
 import { sqliteHintOrigin } from './hint-origin';
-import { type HintRenames, planHintRenames } from './hint-renames';
+import { type HintRenames, noHintRenames, planHintRenames } from './hint-renames';
 import { indexNameCaseChange, pairIndexReplacements } from './index-replacements';
 import {
   coalesceSubtreeIssues,
@@ -150,12 +150,15 @@ export class SqliteMigrationPlanner
     if (hints.conflicts.length > 0) {
       return plannerFailure(hints.conflicts);
     }
-    const hintRenames = planHintRenames({
-      origin,
-      contract: options.contract,
-      hints,
-      frameworkComponents: options.frameworkComponents,
-    });
+    const hintRenames =
+      hints.tableRenames.length === 0
+        ? noHintRenames(origin)
+        : planHintRenames({
+            origin,
+            contract: options.contract,
+            hints,
+            frameworkComponents: options.frameworkComponents,
+          });
     return this.planFromOrigin({ ...options, schema: hintRenames.origin }, hintRenames);
   }
 
