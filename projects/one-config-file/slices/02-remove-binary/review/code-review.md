@@ -137,3 +137,71 @@ Suggestion: Keep historical records verbatim, as `.drive/` and `docs/design/` we
 | P8 | No guide, README, example or skill names `prisma-composer` as a command or names the config file; a CI check enforces it; docs name only commands the released `prisma` has | PASS | Lint clean; allowlist 3 + 2 migration passages; commands named (`deploy`, `dev`, `auth login`, `skills sync`, ORM commands) exist in `prisma@8.0.0-rc.19`. prisma/web is slice 3. Weak spots in F03 and F06. |
 
 Totals: 5 PASS, 1 FAIL, 1 NOT VERIFIED, 1 WEAK (8 criteria).
+
+## Round 2 verification
+
+Range: `203eb1a3..e6fe66e8` (eight fix commits), plus the spec corrections in this repository's `7c44a6fc`. Commands run on the branch, all exit 0: `pnpm check:cli-engine-pin` (prints "prisma@8.0.0-rc.19 resolves the workspace family and shares @prisma/cli-engine with it"), `pnpm test:scripts` (218 pass, including 13 `composer-destroy` tests and the renamed lint's tests), `pnpm lint:retired-binary-name`, root `pnpm lint` (no diagnostics in changed files), root `pnpm typecheck` (78 tasks), and `pnpm test` in `packages/0-framework/3-tooling/cli` (220 pass, 3 skip). I also typechecked `scripts/composer-destroy.ts` by hand with `tsc --strict --exactOptionalPropertyTypes`; it is clean. Not run: `pnpm install --frozen-lockfile` (no installs allowed; the lockfile's `catalogs` block and all 14 importer specifiers read `catalog:`, and the root importer lists `@prisma/composer`) and `check:npm-effect-resolution` (needs a registry install).
+
+| Id | Verdict | Evidence |
+| --- | --- | --- |
+| F01 | FIXED | ada7abc7, e6fe66e8. The pin check resolves `@prisma/composer-cli/family` from the installed host and requires a path under the real workspace package; a missing root link fails at resolve, a dropped override resolves a nested registry copy and fails `startsWith`. gotchas.md names both root entries. No negative test (F11). |
+| F02 | FIXED | ada7abc7. `prisma` is `catalog:` in all 14 manifests and the check rejects any other specifier; the catalog pin must equal the installed host; Dependabot ignores `prisma` (valid exact-name entry). Residual: the host's `@prisma/orm-toolchain` pin (8.0.0-rc.13) agrees with the workspace today, but nothing checks it. The engine assertion has a new defect (F10). |
+| F03 | FIXED | 6cb8c2cc. Test "finds a command, a wrapped shell line, a bare prompt, a package runner and a backticked name" asserts all five lines. Scratch probe: flags sentence-final `prisma-composer.`, backticks, `$ prisma-composer`, `\` continuation, `bin/prisma-composer` (once, as path); skips `prisma-composer.config.ts` as binary name (flags it as config file), `-core-concepts`, `.prisma-composer/`, `.map.json`. Remaining misses in F12. |
+| F04 | FIXED | 6cb8c2cc. Exact-path exclusions for `website/src/generated` and the staged skill; root `*.md` and `docs/oss` scanned. Test "scans root Markdown, docs/oss and a hand-written generated folder in an example". `.agents/rules` is still not scanned; acceptable. |
+| F05 | FIXED | 6cb8c2cc. "allowlists only files that exist in the repository" now asserts `existsSync` per key. |
+| F06 | FIXED | 06df12c4. deploying.md says how to run the script and that the login session is not used; getting-started's teardown pointer names both variables; the skill's gap list says the same. |
+| F07 | FIXED | 478b5208. Control load, config import, missing section, and a throwing `destroy` each print one line and exit 1; bad arguments exit 2. Four matching tests assert the exact line and status. The header says the script does not search parent directories; `--config` added and tested. The "does not export destroy" branch is untested; trivial. |
+| F08 | FIXED | 06df12c4 drops the repo-relative path from the store README; slice spec line 67 records the hoisted-path deviation. The replacement has its own small gap (F14). |
+| F09 | FIXED | 6cb8c2cc restores both gotchas.md lines verbatim; the file is allowlisted at 2. |
+| D01 | PARTIAL | Store README fixed and the deploy-path deviation recorded in the spec. Nine example `destroy` scripts and `destroy:stage` still call `composer-destroy.ts --production` / `--stage`, the deleted grammar, and the store README now points readers at `pnpm destroy`. No acceptance record found. |
+| D02 | PARTIAL | Catalog done (ada7abc7); the root devDependency's reason is in gotchas.md. The examples' own `@prisma/composer-cli` devDependency (the build edge) is still unexplained. |
+| D03 | FIXED | 06df12c4. getting-started, deploying.md § Credentials and skill gap item 1. Claims checked against code: `container.ts` `requireWorkspaceId` reads only `PRISMA_WORKSPACE_ID` when no credentials are passed (the `prismaCloud({ workspaceId })` option is not read downstream, per `extension.ts` line 272), and `requireTokenUnlessInjected` requires `PRISMA_SERVICE_TOKEN`; `/control` passes no credentials. `log` attaches to local processes and `dev` uses the local target, which never requires either. The project spec's Deferred section does not yet name the credential gap. |
+| D04 | FIXED | 06df12c4. § Runtime says Node by default, Bun when loaded modules use Bun APIs. Consistent with the code: the getting-started `module.ts` imports `service.ts`, and only `server.ts` calls `Bun.serve`. Not executed. |
+| D05 | FIXED | da920d70. The probe prints `mounts deploy: true` and the assertion requires only that. Not re-run. |
+| D06 | PARTIAL | 478b5208 imports the types, but no tsconfig covers `scripts/` and nothing in CI typechecks the script, so a `DestroyInput` change still fails nobody. The new root `@prisma/composer` devDependency serves only the editor. Add the script to a typechecked project or add a `satisfies` test in the cli package. |
+| D07 | FIXED | 6cb8c2cc. `packages/**` scanned, test and fixture folders skipped, `composer-config.ts` allowlisted at 5, renamed to `lint-retired-binary-name` in package.json and ci.yml; no stale reference to the old name. |
+| D08 | FIXED | 06df12c4, deploying.md and the skill. Not recorded under the project's Deferred section; fine. |
+| D09 | FIXED / ACCEPTED-AS-IS | 203eb1a3 removes the `.` entry, its tsdown entry, `types` and the depcruise alias; no importer remains. `destroyWithDeps`/`logWithDeps` kept for 21 tests, comments corrected. |
+| D10 | FIXED | 5cd954fb. `createOperationsDouble` and its types; the doc says it does not cover `destroy` and `log`; all consumers (two family tests, its own test, both `testing` re-exports, `check-family-static-graph.mjs`) renamed. See F13. |
+| D11 | FIXED | 7c44a6fc. design-notes line 52 now says `destroy` and `log` remain on `/control`; spec line 67 records both deviations. |
+| D12 | NOT FIXED | No in-repo release note lists the removed `./family` exports or the double's rename, and slice 3 has no recorded prisma-cli check. Belongs in the PR description and the slice 3 spec. |
+| S2b `.drive` | ACCEPTED-AS-IS | Historical records; `open-chat-port-friction.md` is allowlisted at 5. |
+
+### F10: The host's declared engine must equal the workspace pin, which blocks the documented release order (correctness; medium-high)
+
+Location: scripts/check-cli-engine-pin.mjs, the `host.dependencies?.[ENGINE] === cliPeerPin` assertion; runs in ci.yml and as a publish blocker in publish.yml.
+
+Issue: The release order is engine, then composer, then prisma-cli (the script header and dependabot.yml say so). When composer bumps the engine pin, the published host still declares the old engine, so this assertion fails in CI and in `publish.yml`, and composer cannot publish the release prisma-cli is waiting for. The only in-repo fix is a root override of `@prisma/cli-engine`, which makes the host and the family share one copy; the third assertion (same resolved copy) would then pass, but this one still reads the host's published manifest and fails. It fails for a reason that is not a runtime defect.
+
+Suggestion: Drop the manifest comparison and keep the resolved-copy assertion, which is the actual invariant. If it fails, say in the message that the host declares a different engine and name the root override as the fix during a tandem release.
+
+### F11: The new host assertions have never been shown to fail (tests; low)
+
+The script has no test file, and the host half is proven only by a green run. Resolving `./family` also fails when `composer-cli` is not built, and that message blames the override. Suggestion: factor the host checks into a function over `(hostManifestPath, cliDir)` and test it against scratch trees for a nested registry copy, a missing link, and two engine copies; mention the build in the resolve-failure message. The catalog regex fails loudly on a blank line or CRLF inside `catalog:`, which is acceptable.
+
+### F12: Lint gaps left after F03 (correctness of the check; low)
+
+The scratch probe did not flag `./prisma-composer deploy` (the `/` lookbehind), `prisma-composer.cmd` or `prisma-composer.js` (the `.\w` lookahead). It also confirmed that `EXCLUDED_PACKAGE_DIRECTORIES` skips any directory named `test` or `fixtures` at any depth under `packages/`: a message in `packages/a/src/test/msg.ts` or `src/fixtures/msg.ts` was not reported, while `src/testing/msg.ts` was. Every such tracked directory today sits under `__tests__`, so nothing is skipped now. Suggestion: skip only `__tests__` plus test-file names, and let `/` precede the name when it is `./`.
+
+### F13: A stale comment names the wrong republishing package (docs; low)
+
+packages/0-framework/3-tooling/cli/src/exports/testing.ts says the surface is "republished through `@prisma/composer/testing`"; it is republished through `@prisma/composer-cli/testing` (5cd954fb touched the paragraph). Fix the package name.
+
+### F14: The store README's bare `prisma` commands (docs; low)
+
+examples/store/README.md now shows `prisma dev module.ts` and `prisma deploy module.ts`. getting-started uses `pnpm prisma`, and in this checkout `prisma` is only in the root `node_modules/.bin`. Suggestion: write `pnpm prisma dev module.ts` to match the guide.
+
+### Acceptance criteria, round 2
+
+| # | Verdict | Change |
+| --- | --- | --- |
+| S1 | PASS | Now guarded automatically by the pin check's host assertions (F01). |
+| S2a | PASS | Unchanged. |
+| S2b | PASS (accepted exception) | `.drive/**` accepted as historical; `open-chat-port-friction.md` allowlisted. |
+| S2c | PASS | Stronger pattern and scope; 218 script tests. Gaps in F12. |
+| S3 | NOT VERIFIED | Still no PR run of `e2e-deploy.yml`. |
+| P5 | PASS | Unchanged; the cli package's dead `.` entry is gone. |
+| P6 | WEAK | Unchanged: scripts call a repo-relative bin path, now recorded in the spec. |
+| P8 | PASS | Credentials and runtime docs now match the code. |
+
+Totals: 6 PASS, 1 NOT VERIFIED, 1 WEAK. Ready for PR once F10 is fixed; D01, D06 and D12 should be settled or explicitly accepted in the PR description.
