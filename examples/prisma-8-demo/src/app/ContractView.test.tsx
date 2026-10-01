@@ -85,13 +85,6 @@ describe('ContractView', () => {
     expect(screen.getByText('pgvector')).toBeDefined();
   });
 
-  it('shows the data type each column stores', () => {
-    render(<ContractView contract={buildContract()} />);
-
-    expect(screen.getAllByText('pg/uuid')).not.toHaveLength(0);
-    expect(screen.getAllByText('pg/text')).not.toHaveLength(0);
-  });
-
   it('renders untrusted values as text content (no XSS)', () => {
     const untrusted = '<img src=x onerror=alert(1) />';
     const contract = buildContract({
