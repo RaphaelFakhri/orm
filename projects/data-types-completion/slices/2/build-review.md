@@ -19,6 +19,7 @@ Reviewer-maintained. Contract: `projects/data-types-completion/design.md` sectio
 | c | 1 (`3190ecd3bd`, `dda8c4e356`, `596626b778`, `ae59f32967`, `190e4c7c28`, `4797502384`, `187c1a572c`, `d8eb478422`) | SATISFIED: 1 low; notes for dispatch f |
 | c | 2 (`91e087fc09`) | SATISFIED: S2-c-R1-1 closed, no new finding |
 | d | 1 (`dee5832fd2`, `86ce42fb16`) | ANOTHER ROUND NEEDED: 2 should-fix; 1 design gap |
+| d | 2 (`02642c08c1`, `54b62a3e30`, `809938fa82`) | SATISFIED: S2-d-R1-1 and S2-d-R1-2 closed, the ruled option built, no new finding |
 
 ## Findings log
 
@@ -105,7 +106,16 @@ Reviewer-maintained. Contract: `projects/data-types-completion/design.md` sectio
 - What is wrong: neither file tells the user to run their formatter afterwards, although the script replaces text in `migration.ts` and `contract.d.ts`, so line wrapping can differ from a fresh emit. Neither file says that the script rewrites every `*.json` under the root that parses as a SQL contract (skipping `node_modules`, `.git`, `dist` and `build`), so a test fixture of an old contract kept on purpose is rewritten too.
 - Change: add both to each file: commit first; run the formatter after the script; restore any old-format fixture that must stay old with git (or keep such fixtures outside the project root). The design text of 10.2 (`db sign`, extension release order, the `$1::int4` change) is dispatch f's.
 
+### Dispatch d round 2 status of the round 1 findings
+
+- S2-d-R1-1: closed (`02642c08c1`). `test/integration/test/upgrade-instructions/data-type-in-contract-hashes.test.ts` checks every `after` contract with the real `createSnapshotContentVerifier(sqlContractCanonicalizationHooks)`, which recomputes with `recomputePublishedStorageHash` and throws on any difference, and every `migration.json` with the real `computeMigrationHash`. A corrupted stored hash therefore fails it, and a separate test fails when the fixture set holds no contract or no migration.
+- S2-d-R1-2: closed (`809938fa82`). Both files say to commit first, that every SQL contract JSON under the root is rewritten (with the skipped directories), how to keep an old fixture, and to run the formatter afterwards.
+
 ## Round notes
+
+### Dispatch d, round 2
+
+The ruled `--data-type <codec id>=<data type id>` option (`54b62a3e30`): a value whose codec the table knows on any target is refused (`the script already maps …`), and the table is spread after the extra entries, so it would win anyway. A malformed value, an unknown option and an unknown codec all exit 1 before any file is written; the tests assert the whole tree unchanged for each. The stop line now names the option. Both script copies are byte-identical, as the test asserts. The two `instructions.md` files differ only where the audience differs: the extension file tells the author to publish the `--data-type` lines for their own codecs. Checks: the script's test file, 24 pass; the new integration test file passes. I touched nothing but this file; another implementer was working in the tree.
 
 ### Dispatch d, round 1
 
