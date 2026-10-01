@@ -169,13 +169,26 @@ describe('sqlExpressionRegistration', () => {
     );
   });
 
-  it('is frozen, so no importer can change what the family registers', () => {
-    expect([
-      Object.isFrozen(sqlExpressionRegistration),
-      Object.isFrozen(sqlExpressionRegistration.dataTypes),
-      Object.isFrozen(sqlExpressionRegistration.authoring),
-      Object.isFrozen(sqlExpressionRegistration.authoring.dataTypes),
-    ]).toEqual([true, true, true, true]);
+  it('freezes the registration, its containers, the data type and its casts, and the authoring entry and its written form', () => {
+    expect({
+      registration: Object.isFrozen(sqlExpressionRegistration),
+      dataTypes: Object.isFrozen(sqlExpressionRegistration.dataTypes),
+      authoring: Object.isFrozen(sqlExpressionRegistration.authoring),
+      authoringDataTypes: Object.isFrozen(sqlExpressionRegistration.authoring.dataTypes),
+      dataType: Object.isFrozen(sqlExpressionDataType),
+      casts: Object.isFrozen(sqlExpressionDataType.casts),
+      entry: Object.isFrozen(sqlExpressionAuthoringEntry),
+      written: Object.isFrozen(sqlExpressionAuthoringEntry.written),
+    }).toEqual({
+      registration: true,
+      dataTypes: true,
+      authoring: true,
+      authoringDataTypes: true,
+      dataType: true,
+      casts: true,
+      entry: true,
+      written: true,
+    });
   });
 });
 
@@ -310,6 +323,43 @@ describe('sql', () => {
       AND y = 2
     `.text,
     ).toBe('x = 1 AND a\nb\nAND y = 2');
+  });
+
+  it('indents a second value on a line by the template line, not by the first value', () => {
+    const a = new SqlExpression('x\n  y');
+    const b = new SqlExpression('p\nq');
+    expect(
+      sql`
+    ${a} AND ${b}
+`.text,
+    ).toBe('x\n  y AND p\nq');
+  });
+
+  it('indents a value after a multi-line value that ends on an indented line by the template line', () => {
+    const a = new SqlExpression('x\n  OR y');
+    const b = new SqlExpression('p\nq');
+    expect(
+      sql`
+      (${a}) AND (${b})
+      AND z
+    `.text,
+    ).toBe('(x\n  OR y) AND (p\nq)\nAND z');
+    expect(
+      sql`
+      ${a}${b}
+    `.text,
+    ).toBe('x\n  OR yp\nq');
+  });
+
+  it('takes the indentation of a new template line after a value', () => {
+    const a = new SqlExpression('x\n  y');
+    const b = new SqlExpression('p\nq');
+    expect(
+      sql`
+      ${a}
+        AND ${b}
+    `.text,
+    ).toBe('x\n  y\n  AND p\n  q');
   });
 
   it('inserts interpolated text as it is, resolving escapes only in the template', () => {

@@ -17,15 +17,22 @@ export const SQL_EXPRESSION_DATA_TYPE_ID: DataTypeId = dataTypeId('sql/expressio
 export const SQL_EXPRESSION_TAG = 'sql';
 
 /** The data type of a SQL expression in the target database's language. It declares no casts. The SQL family registers it. ADR 254. */
-export const sqlExpressionDataType: DataType = dataType(SQL_EXPRESSION_DATA_TYPE_ID, {});
+export const sqlExpressionDataType: DataType = frozenWithCasts(
+  dataType(SQL_EXPRESSION_DATA_TYPE_ID, {}),
+);
 
 /** PSL support for `sql/expression`. The SQL family registers it under `SQL_EXPRESSION_DATA_TYPE_ID`. */
-export const sqlExpressionAuthoringEntry: DataTypeAuthoringEntry = {
-  written: { kind: 'tag', tag: SQL_EXPRESSION_TAG, parse: (text) => text },
-  print: (value) => sqlTextFromCanonical(value),
+export const sqlExpressionAuthoringEntry: DataTypeAuthoringEntry = Object.freeze({
+  written: Object.freeze({ kind: 'tag', tag: SQL_EXPRESSION_TAG, parse: (text: string) => text }),
+  print: (value: JsonValue) => sqlTextFromCanonical(value),
   documentation:
     "A SQL expression in the target database's language. Prisma passes it to the database unchanged.",
-};
+});
+
+function frozenWithCasts(type: DataType): DataType {
+  Object.freeze(type.casts);
+  return Object.freeze(type);
+}
 
 export interface SqlExpressionRegistration {
   readonly dataTypes: readonly DataType[];
@@ -142,18 +149,21 @@ export function sql(
     }
     return value.text;
   });
-  const joined = texts.reduce(
-    (text, value, index) =>
-      text +
-      value.replaceAll('\n', `\n${indentOfLastLine(text)}`) +
-      resolveTemplateTagEscapes(strings.raw[index + 1] ?? ''),
-    resolveTemplateTagEscapes(strings.raw[0] ?? ''),
-  );
+  const pieces = strings.raw.map((piece) => resolveTemplateTagEscapes(piece));
+  let joined = pieces[0] ?? '';
+  let templateLineIndent = indentOfLastLine(joined);
+  texts.forEach((value, index) => {
+    const piece = pieces[index + 1] ?? '';
+    joined += value.replaceAll('\n', `\n${templateLineIndent}`) + piece;
+    if (/[\n\r]/.test(piece)) templateLineIndent = indentOfLastLine(piece);
+  });
   return new SqlExpression(joined);
 }
 
-function indentOfLastLine(text: string): string {
-  const lastLine = text.slice(Math.max(text.lastIndexOf('\n'), text.lastIndexOf('\r')) + 1);
+function indentOfLastLine(templatePiece: string): string {
+  const lastLine = templatePiece.slice(
+    Math.max(templatePiece.lastIndexOf('\n'), templatePiece.lastIndexOf('\r')) + 1,
+  );
   return LEADING_WHITESPACE.exec(lastLine)?.[0] ?? '';
 }
 
