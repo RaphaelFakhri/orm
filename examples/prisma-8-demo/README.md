@@ -101,7 +101,7 @@ The demo includes ORM client examples under `src/orm-client/`:
 - `ormClientGetUsers(limit, runtime)` — list users using ORM client API
 - `ormClientGetAdminUsers(limit, runtime)` — filter through a custom collection scope
 - `ormClientFindUserByEmail(email, runtime)` — `first()` with collection helpers
-- `ormClientGetUserPosts(userId, limit, runtime)` — fetch user posts by chaining two custom collection methods, `forUser` and `newestFirst`
+- `ormClientGetUserPosts(userId, limit, runtime)` — fetch user posts with collection filters + ordering
 - `ormClientGetUserProfile(userId, runtime)` — **`Shape`-declared response type**: `UserProfile` is `Shape<Models.public_User, { '-': 'email'; posts: { '+': 'id' | 'title' | 'tags' } }>`; the nested include (`User → posts → tags`) is an implementation detail the compiler checks at the `return`
 - `ormClientGetDashboardUsers(emailDomain, postTitleTerm, limit, postsPerUser, runtime)` — compound `and/or/not` filters + relation filters + `select()` and `include()` composition
 - `ormClientGetPostFeed(postTitleTerm, limit, runtime)` — to-one include (`post -> user`) with projected fields
