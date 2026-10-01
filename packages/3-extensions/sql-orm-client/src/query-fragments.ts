@@ -21,7 +21,9 @@ import type {
 } from './types';
 
 type OneModelName<TContract extends Contract<SqlStorage>, ModelName> =
-  IsUnion<ModelName> extends true ? never : CollectionModelName<TContract>;
+  IsUnion<ModelName> extends true
+    ? 'modelStep takes one model name, not a union of names'
+    : CollectionModelName<TContract>;
 
 /**
  * A collection of `ModelName` that neither `select` nor `variant` has narrowed: its rows have every field of the model, and it is not narrowed to a variant.
@@ -86,11 +88,19 @@ interface ShownText {
 }
 
 function shown(value: string): ShownText {
-  const cut = value.length > SHOWN_LENGTH;
+  const characters = Array.from(value);
+  const cut = characters.length > SHOWN_LENGTH;
   return {
-    text: JSON.stringify(cut ? `${value.slice(0, SHOWN_LENGTH)}…` : value),
+    text: JSON.stringify(cut ? `${characters.slice(0, SHOWN_LENGTH).join('')}…` : value),
     cut,
   };
+}
+
+function describeReceived(value: unknown): string {
+  if (value === undefined || value === null) return String(value);
+  if (Array.isArray(value)) return 'an array';
+  const kind = typeof value;
+  return kind === 'object' ? 'an object' : `a ${kind}`;
 }
 
 function cutNote(subject: string, value: ShownText): string {
@@ -160,31 +170,59 @@ export function orderByField<
   allowed?: readonly Allowed[],
 ): (row: { readonly [K in Allowed]: Orderable }) => OrderByItem {
   const { modelName } = collection;
-  if (!isOrderByDirection(direction)) {
-    const shownDirection = shown(direction);
+  const requestedName: unknown = name;
+  const requestedDirection: unknown = direction;
+  if (typeof requestedDirection !== 'string') {
+    throw ormError(
+      'ORM.ARGUMENT_INVALID',
+      `Cannot order ${modelName}: the direction is not a string`,
+      {
+        why: `An order direction is "asc" or "desc"; received ${describeReceived(requestedDirection)}.`,
+        fix: 'Pass "asc" or "desc".',
+        meta: { model: modelName, direction: requestedDirection },
+      },
+    );
+  }
+  if (!isOrderByDirection(requestedDirection)) {
+    const shownDirection = shown(requestedDirection);
     throw ormError(
       'ORM.ARGUMENT_INVALID',
       `Cannot order ${modelName} in direction ${shownDirection.text}`,
       {
         why: 'An order direction is "asc" or "desc".',
         fix: `Pass "asc" or "desc".${cutNote('direction', shownDirection)}`,
-        meta: { model: modelName, direction },
+        meta: { model: modelName, direction: requestedDirection },
       },
     );
   }
   const orderable = orderableFieldNames(collection);
   const allowedNames: readonly string[] = allowed ?? orderable;
-  if (!orderable.includes(name) || !allowedNames.includes(name)) {
-    const shownName = shown(name);
-    const names = allowedNames.filter((field) => orderable.includes(field)).join(', ');
+  const names = allowedNames.filter((field) => orderable.includes(field));
+  const orderByOneOf =
+    names.length === 0
+      ? `Pass an allowed list that names at least one field of ${modelName} that can be ordered.`
+      : `Order by one of: ${names.join(', ')}.`;
+  if (typeof requestedName !== 'string') {
+    throw ormError(
+      'ORM.ARGUMENT_INVALID',
+      `Cannot order ${modelName}: the field name is not a string`,
+      {
+        why: `An order field name is a string; received ${describeReceived(requestedName)}.`,
+        fix: orderByOneOf,
+        meta: { model: modelName, field: requestedName },
+      },
+    );
+  }
+  if (!names.includes(requestedName)) {
+    const shownName = shown(requestedName);
     throw ormError('ORM.ARGUMENT_INVALID', `Cannot order ${modelName} by ${shownName.text}`, {
-      why: whyNotOrderable(collection, name),
-      fix: `Order by one of: ${names}.${cutNote('name', shownName)}`,
-      meta: { model: modelName, field: name },
+      why: whyNotOrderable(collection, requestedName),
+      fix: `${orderByOneOf}${cutNote('name', shownName)}`,
+      meta: { model: modelName, field: requestedName },
     });
   }
   const field = blindCast<Allowed, 'checked against the orderable fields and the allowed list'>(
-    name,
+    requestedName,
   );
-  return (row) => row[field][direction]();
+  return (row) => row[field][requestedDirection]();
 }

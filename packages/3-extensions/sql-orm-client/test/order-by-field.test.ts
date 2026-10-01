@@ -152,5 +152,86 @@ describe('orderByField', () => {
         }),
       );
     });
+
+    it('cuts by characters, so a character at the limit stays whole', () => {
+      const { db } = createChainingOrm();
+      const name = `${'a'.repeat(63)}😀${'b'.repeat(5)}`;
+      expect(() => orderByField(db.Post, name)).toThrow(
+        expect.objectContaining({
+          message: `Cannot order Post by "${'a'.repeat(63)}😀…"`,
+          meta: { model: 'Post', field: name },
+        }),
+      );
+    });
+
+    it('does not cut a name of exactly 64 characters', () => {
+      const { db } = createChainingOrm();
+      const name = `${'a'.repeat(63)}😀`;
+      expect(() => orderByField(db.Post, name)).toThrow(
+        expect.objectContaining({
+          message: `Cannot order Post by "${name}"`,
+          fix: 'Order by one of: id, title, userId, views.',
+        }),
+      );
+    });
+  });
+
+  describe('refuses a request value that is not a string', () => {
+    const received = [
+      ['undefined', undefined],
+      ['null', null],
+      ['a number', 5],
+      ['an array', ['title']],
+      ['an object', { field: 'title' }],
+    ] as const;
+
+    it.each(received)('for a name that is %s', (description, value) => {
+      const { db } = createChainingOrm();
+      expect(() => orderByField(db.Post, value as unknown as string)).toThrow(
+        expect.objectContaining({
+          code: 'ORM.ARGUMENT_INVALID',
+          message: 'Cannot order Post: the field name is not a string',
+          why: `An order field name is a string; received ${description}.`,
+          fix: 'Order by one of: id, title, userId, views.',
+          meta: { model: 'Post', field: value },
+        }),
+      );
+    });
+
+    it.each(received.slice(1))('for a direction that is %s', (description, value) => {
+      const { db } = createChainingOrm();
+      expect(() => orderByField(db.Post, 'title', value as unknown as Direction)).toThrow(
+        expect.objectContaining({
+          code: 'ORM.ARGUMENT_INVALID',
+          message: 'Cannot order Post: the direction is not a string',
+          why: `An order direction is "asc" or "desc"; received ${description}.`,
+          fix: 'Pass "asc" or "desc".',
+          meta: { model: 'Post', direction: value },
+        }),
+      );
+    });
+
+    it('orders ascending for an undefined direction, the default', async () => {
+      const { db, runtime } = createChainingOrm();
+      await db.Post.orderBy((p) => p.title.asc()).all();
+      await db.Post.orderBy(orderByField(db.Post, 'title', undefined)).all();
+      const [direct, ordered] = runtime.executions;
+      expect(ordered?.plan.ast).toBeDefined();
+      expect(ordered?.plan.ast).toEqual(direct?.plan.ast);
+    });
+  });
+
+  describe('with an empty allowed list', () => {
+    it('refuses every name and says the list names no field', () => {
+      const { db } = createChainingOrm();
+      expect(() => orderByField(db.Post, 'title', 'asc', [])).toThrow(
+        expect.objectContaining({
+          code: 'ORM.ARGUMENT_INVALID',
+          message: 'Cannot order Post by "title"',
+          why: '"title" is not one of the fields allowed for ordering.',
+          fix: 'Pass an allowed list that names at least one field of Post that can be ordered.',
+        }),
+      );
+    });
   });
 });

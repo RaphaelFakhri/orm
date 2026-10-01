@@ -2,6 +2,7 @@ import { describe, expectTypeOf, test } from 'vitest';
 import { Collection } from '../src/collection';
 import type { CollectionRowOf } from '../src/collection-types';
 import { modelStep } from '../src/query-fragments';
+import type { CollectionModelName } from '../src/types';
 import { createChainingOrm } from './collection-chaining-fixture';
 import type { Contract as PolyContract } from './fixtures/polymorphism/generated/contract';
 import type { TestContract } from './helpers';
@@ -85,6 +86,14 @@ describe('modelStep', () => {
     modelStep<TestContract, 'Pots'>();
     // @ts-expect-error a step is defined for one model, not a union of models
     modelStep<TestContract, 'Post' | 'Article'>();
+  });
+
+  test('does not take a generic model name', () => {
+    function stepFor<M extends CollectionModelName<TestContract>>() {
+      // @ts-expect-error TypeScript cannot tell whether a type parameter is one name or a union
+      return modelStep<TestContract, M>();
+    }
+    expectTypeOf(stepFor).toBeFunction();
   });
 
   test('refuses a collection of another model', () => {
