@@ -22,6 +22,7 @@ Reviewer-maintained. Contract: `projects/data-types-completion/design.md` sectio
 | d | 2 (`02642c08c1`, `54b62a3e30`, `809938fa82`) | SATISFIED: S2-d-R1-1 and S2-d-R1-2 closed, the ruled option built, no new finding |
 | e | 1 and 2 (`813a092bc5`..`da192ec6ab`, implementer commits only) | ANOTHER ROUND NEEDED: 1 must-fix |
 | e | 3 (`40bde80ebb`, `5ffb0d42f6`) | SATISFIED: S2-e-R1-1 closed, no new finding |
+| f | 1 (`8819d89a73`, `b237abc245`, `a8cbeacfb9`, `a1438656e8`, `625fa4411a`, `16f4682c19`) | ANOTHER ROUND NEEDED: 4 must-fix, 1 should-fix, 1 low |
 
 ## Findings log
 
@@ -123,7 +124,52 @@ Reviewer-maintained. Contract: `projects/data-types-completion/design.md` sectio
 
 - S2-e-R1-1: closed (`40bde80ebb`, `5ffb0d42f6`). `test/integration/test/utils/tracked-contract-files.ts` lists tracked `*.json` files with two git exclusions only, `upgrade-instructions/` and the old-format refusal fixture, and both the round-trip and golden tests use it. The round-trip test passes 546 (560 less the 14 failing cases); the golden test passes 684 (686 less the refusal fixture's two cases), and the manifest lost only that entry.
 
+### S2-f-R1-1 (must-fix): the extension text leaves out two changes that break an extension
+
+- Where: `upgrade-instructions/pending/data-type-in-contract/extension/instructions.md`.
+- What is wrong: it does not say that `sqlite/json`, `sqlite/datetime` and `sqlite/bigint` are deleted (an extension that names them as a codec's data type, a cast source or an entry key fails assembly), nor that assembly now refuses an authoring entry under the wrong key with `CONTRACT.DATA_TYPE_ENTRY_KEY_INVALID` (a tag entry that names its `type` sits under `tagEntryKey(tag)`; an entry under a data type id names none). Both are new in this slice; neither is in the slice 1 entry. The SQLite `DEFAULT 42` change is in the app text only; an extension that asserts planned SQLite SQL sees it too.
+- Change: add one change per item with a token-precise detection (for example `['"]sqlite/(?:json|datetime|bigint)['"]`, tested against `sqlite/json@1` and `sqlite/bigintnumber@1`), with before and after code: the codec's `dataType` becomes `sqliteText`/`sqliteInteger`; an entry keyed by `sqlite/json` moves under `tagEntryKey('json')` with `type: sqliteText.id`. Add the `DEFAULT 42` paragraph to the extension text. Everything else checked is present in its audience: `db sign` signing every space and its JSON, `signSpaces`, the `DefaultRenderer` and `typeText` renames, `--data-type`, `valueObjectStorageType` on targets, `column()` without its fourth argument, `ColumnTypeDescriptor` and `StorageTypeMetadata` without `nativeType`, commit first and format afterwards. The cast change `$1::int4` is in the app text here and in the pending slice 1 extension text, so both audiences have it in the release.
+
+### S2-f-R1-2 (must-fix): the app proof fails on `ContractView.test.tsx`
+
+- Where: `examples/prisma-8-demo/src/app/ContractView.test.tsx`, the case "shows the data type each column stores".
+- What is wrong: the file is in `src/app/`, not under a `test/` directory, so `':(exclude)examples/*/test/**'` does not exclude it. Step 4 prints ` M examples/prisma-8-demo/src/app/ContractView.test.tsx` after the script and the prose (rerun in `wip/proof-review`). The prose cannot add a test case, and the skill says it must not.
+- Change: move that one case into `examples/prisma-8-demo/test/` as a `.ts` file (`// @vitest-environment jsdom`, `createElement(ContractView, { contract })`), because the demo's `tsconfig.json` includes `test/**/*.ts` but not `test/**/*.tsx` and changing it would break step 4 again. If that is not wanted, delete the case.
+
+### S2-f-R1-3 (must-fix): the extension proof's step 5 fails on 12 generated fixtures
+
+- Where: `packages/3-extensions/{postgres,sql-orm-client,supabase}/test/fixtures/**/contract.{json,d.ts}`.
+- What is wrong: the script rewrites every SQL contract under the root, as both instruction files say, so `git diff --exit-code <base> -- 'packages/3-extensions/*/test/**'` exits 1. Each of the 12 files equals the tip byte for byte; nothing else in a test directory changed and nothing was created. The instruction is true for users, and the repository's tests need these fixtures in the new format, so changing the script or the prose is wrong.
+- Change: amend step 5 of `skills-contrib/record-upgrade-instructions/SKILL.md` (both flows) with one sentence: a file in a test directory that the entry's colocated script writes passes when it equals `<head>` byte for byte; every other test file must stay at `<base>`. This changes a skill, so it needs the orchestrator's ruling; record it in the slice plan.
+
+### S2-f-R1-4 (must-fix): the extension proof's step 4 fails on `CONTRACT-FIDELITY.md`
+
+- Where: `packages/3-extensions/supabase/src/contract/CONTRACT-FIDELITY.md`, the sentence added by `a1438656e8` ("`db sign` signs a contract space only when its schema verifies, …").
+- What is wrong: it is outside a test directory, so step 4 prints it. Design 10.4 requires the update, so removing it is not the fix.
+- Change: add to the extension text one paragraph telling authors whose docs describe `db sign` that it now signs their space too, only when its schema verifies, quoting this sentence as the Supabase example. Applying that paragraph reproduces the file.
+
+### S2-f-R1-5 (should-fix): the slice 2 grep check has lines outside the allowed classes
+
+- Where: `packages/3-targets/3-targets/postgres/test/errors.test.ts:67` (a `StorageColumn` built with `nativeType: 'varchar'` and cast through `unknown`); `packages/3-targets/3-targets/postgres/test/authoring-field-presets.test.ts:13` (test name "and nativeType uuid"); `packages/2-sql/9-family/test/mutation-default-assembly.test.ts:153` (a preset output with `"nativeType": "text"`); the doc comments in the pgvector and postgis `migrations/20260601T0000_*/migration.ts`.
+- What is wrong: `wip/s2f/grep-classification.txt` files the first three under "SqlColumnIR and test locals holding a type text", but they are the old column and preset shapes. The migration comment class is not in `plan.md` "Grep checks"; the reason to keep it (the proof's equality) is sound.
+- Change: write `dataType: 'pg/varchar'` in the first, drop "and nativeType uuid" from the second, remove the key in the third; add the migration comment class to the allowed list in `plan.md`.
+
+### S2-f-R1-6 (low): `check:upgrade-coverage --prev bot/data-types-completion` now fails for a reason outside this branch
+
+- Where: `wip/rev-f/upgrade-coverage.log`.
+- What is wrong: `bot/data-types-completion` merged main and is at 8.0.0-rc.14, so the check stops with "head 8.0.0-rc.13 is behind prev 8.0.0-rc.14 (reversed range)". Against the merge base `1e9cc29f05` it passes.
+- Change: merge the base before opening the pull request; no change to this dispatch.
+
 ## Round notes
+
+### Dispatch f, round 1
+
+1. Instruction text: read both files against design 10.2 and every slice plan note for dispatch f; the two gaps and the `DEFAULT 42` line are S2-f-R1-1. The detection samples (`wip/s2f/detect/samples.mjs`) rerun: SAMPLES OK. Public exports changed by the slice (`*/exports/*` diff) are all covered by the text or additive (`executeDbSign`, `ControlClient.dbSign`, `tagEntryKey`).
+2. Proof rerun in a disposable linked checkout `wip/proof-review` at `16f4682c19`, `examples/` and `packages/3-extensions/` restored to `bot/tml-3386-data-types-declare-names`, both scripts run (exit 0), the prose applied with `wip/s2f/proof/apply-prose.py` after reading it against the prose. Outside test directories the tree differs from the tip in five files by formatting only (import order and line width, which the formatter step settles; a hook blocks running Biome directly, so I compared by eye), plus `ContractView.test.tsx` (S2-f-R1-2) and `CONTRACT-FIDELITY.md` (S2-f-R1-4). Step 5 fails on the 12 fixtures (S2-f-R1-3). Checkout removed.
+3. ADR 254: status Accepted; "Data types" carries the `sqlDataType` declaration of design 2 and the rule "a data type is what the database stores"; the old paragraph is gone. The SQLite paragraph and the `tagEntryKey('json')` entry match `packages/3-targets/3-targets/sqlite/src/core/data-type-entries.ts`. The stored column example matches committed contracts, and the refusal text matches `contract-stack-checks.ts:52`. Assembly lists the checks of design 5 plus the entry key check. The `pgInt8`/`pgNumeric` block typechecks against `@internal/sql-contract/data-type` with the four referenced names declared (`wip/rev-f/adr-tc`), and fails on a misspelt key. No object has two names.
+4. Docs: every remaining `nativeType` in `docs` and Markdown is historical (superseded ADRs, release notes, archived upgrade guides) or names `SqlColumnIR.nativeType` (schema IR README, the CLI `db schema` JSON example), which slice 3 changes. The CLI README `db sign` section matches `src/orm/db/sign.ts` (options, tree lines, summary, exit code 4). Cited snapshot hashes in ADR 240 and `gotchas.md` exist. `CONTRACT.NATIVE_TYPE_INVALID` is gone.
+5. Golden test deletion: the directory, its `emit-fixture-configs.mjs` root, its two Biome globs and the round-trip test's expected refusal for its fixture; nothing else names `planner-golden`.
+6. Checks: `lint:agent` exit 0; `lint:deps` clean; `lint:docs` exit 0 (pre-existing README warnings); `check:error-reference` 361 codes; `turbo run typecheck --continue` 171 of 171; `check:upgrade-coverage` see S2-f-R1-6. Logs in `wip/rev-f/`.
 
 ### Dispatch e, rounds 1 and 2
 
