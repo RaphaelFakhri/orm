@@ -12,11 +12,6 @@ export interface TableRenameConstraintInput {
   /** The schema name the rename calls carry: the unbound sentinel for the unbound namespace. */
   readonly schemaName: string;
   /**
-   * The DDL schema the table lives in, for foreign keys that leave their referenced schema
-   * implicit.
-   */
-  readonly ddlSchema: string;
-  /**
    * The renamed table as the working schema has it after the rename, its constraint names as they
    * are in the database.
    */
@@ -28,7 +23,9 @@ export interface TableRenameConstraintInput {
 /**
  * The constraint renames that follow a table rename. Each primary key, unique constraint and
  * foreign key of the renamed table is paired with the destination constraint of the same kind on
- * the same columns, and for a foreign key the same referenced table and columns. A paired
+ * the same columns, and for a foreign key the same referenced columns. A foreign key pairs whatever
+ * table it references, because a later rename in the same plan may change that table and a foreign
+ * key's derived name never depends on it. A paired
  * constraint is renamed to the destination's explicit name, or else to the name the planner derives
  * from the new table name, when that differs from its name in the database. An unpaired constraint
  * is being dropped or changed and keeps its name. Indexes and checks are not handled here: their
@@ -37,7 +34,7 @@ export interface TableRenameConstraintInput {
 export function constraintRenamesForTableRename(
   input: TableRenameConstraintInput,
 ): readonly RenameConstraintCall[] {
-  const { schemaName, ddlSchema, previous, next } = input;
+  const { schemaName, previous, next } = input;
   const table = next.name;
   const rename = (
     kind: 'primaryKey' | 'unique' | 'foreignKey',
@@ -77,15 +74,11 @@ export function constraintRenamesForTableRename(
     );
   });
 
-  const referencedSchemaOf = (fk: PostgresTableSchemaNode['foreignKeys'][number]) =>
-    fk.resolvedReferencedNamespace ?? ddlSchema;
   const foreignKeys = previous.foreignKeys.flatMap((fk) => {
     const paired = next.foreignKeys.find(
       (candidate) =>
         isArrayEqual(candidate.columns, fk.columns) &&
-        candidate.referencedTable === fk.referencedTable &&
-        isArrayEqual(candidate.referencedColumns, fk.referencedColumns) &&
-        referencedSchemaOf(candidate) === referencedSchemaOf(fk),
+        isArrayEqual(candidate.referencedColumns, fk.referencedColumns),
     );
     return rename(
       'foreignKey',

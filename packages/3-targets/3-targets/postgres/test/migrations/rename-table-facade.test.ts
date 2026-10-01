@@ -199,7 +199,7 @@ describe('PostgresMigration.renameTable', () => {
     ]);
   });
 
-  it('leaves a foreign key the end contract points at another table under its current name', async () => {
+  it('renames a foreign key the end contract points at another table, which the plan then replaces under its new name', async () => {
     const memberTable = () => ({
       member: new StorageTable({
         columns: { id: { nativeType: 'int4', codecId: 'pg/int4@1', nullable: false } },
@@ -232,7 +232,10 @@ describe('PostgresMigration.renameTable', () => {
       ),
     );
 
-    expect(ops.map((op) => op.label)).toEqual(['Rename table "userProfile" to "UserProfile"']);
+    expect(ops.map((op) => op.label)).toEqual([
+      'Rename table "userProfile" to "UserProfile"',
+      'Rename foreign key "userProfile_accountId_fkey" to "profile_member_fk" on "UserProfile"',
+    ]);
   });
 
   it('leaves a primary key whose columns the end contract changes under its current name', async () => {

@@ -30,7 +30,6 @@ describe('constraintRenamesForTableRename', () => {
       expect(() =>
         constraintRenamesForTableRename({
           schemaName: 'public',
-          ddlSchema: 'public',
           previous: table,
           next: table,
         }),

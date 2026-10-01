@@ -67,7 +67,6 @@ export function postgresTableRenameCall(input: {
   return new RenameTableCall(schemaName, rename.from, rename.to, [
     ...constraintRenamesForTableRename({
       schemaName,
-      ddlSchema,
       previous: tableNode(renamed, ddlSchema, rename.to),
       next: tableNode(input.next, ddlSchema, rename.to),
     }),
