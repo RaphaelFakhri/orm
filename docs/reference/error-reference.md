@@ -441,6 +441,10 @@ An index or column mapping references a field the model does not declare (unknow
 
 A foreign key's target refs are empty or inconsistent: no target ref given, refs point at different models, or compound refs disagree on `spaceId`, `namespaceId`, or `tableName`. Raised by the SQL contract DSL while declaring the FK. Payload: `mismatch`, `first`, `second`.
 
+### CONTRACT.HINT_INVALID
+
+The contract's `hints` section disagrees with the contract it belongs to: a hint names a namespace or table the contract does not declare, a rename hint's old name is still declared by the contract, or two entries claim the same old name. The message names the table or column and the rule it breaks, for example `Contract hints: table "User" claims it was "Post", which the contract also declares.` Raised when the hints of an emitted contract are checked before they are used. Payload: `namespaceId`, `table`; `column` and `was` when they apply.
+
 ### CONTRACT.IDENTITY_INVALID
 
 A model's identity is wrong: multiple fields marked `.id()`, identity declared both inline and in `.attributes(...)`, an empty identity, a model with non-owning relations but no id to anchor them, or an M:N target with no primary/unique key to derive junction columns from. Raised while lowering/building a SQL contract. Payload: `modelName`, `reason`.
