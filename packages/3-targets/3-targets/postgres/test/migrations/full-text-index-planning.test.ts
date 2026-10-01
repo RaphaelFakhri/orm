@@ -28,11 +28,13 @@ import {
 } from '../../src/core/authoring';
 import { PostgresCreateIndex } from '../../src/core/ddl/nodes';
 import { postgresTargetDescriptorMeta } from '../../src/core/descriptor-meta';
+import { contractToPostgresDatabaseSchemaNode } from '../../src/core/migrations/contract-to-postgres-database-schema-node';
 import { createPostgresMigrationPlanner } from '../../src/core/migrations/planner';
 import { postgresCreateNamespace } from '../../src/core/postgres-schema';
 import { PostgresDatabaseSchemaNode } from '../../src/core/schema-ir/postgres-database-schema-node';
 import { PostgresNamespaceSchemaNode } from '../../src/core/schema-ir/postgres-namespace-schema-node';
 import { PostgresTableSchemaNode } from '../../src/core/schema-ir/postgres-table-schema-node';
+import { postgresRenderDefault } from '../../src/exports/control';
 
 const postgresDataTypeLookup = createDataTypeLookup(postgresDataTypes);
 
@@ -157,6 +159,40 @@ async function plannedCreateIndexNodes(schema: string): Promise<readonly Postgre
   await Promise.all(result.plan.operations);
   return lowered.filter((node) => node instanceof PostgresCreateIndex);
 }
+
+describe('a single-field index authored before full-text indexes were stored as data', () => {
+  it('is renamed, not rebuilt, when planned from the contract that stored its expression', async () => {
+    const previous = blindCast<
+      Parameters<typeof contractToPostgresDatabaseSchemaNode>[0],
+      'the authored contract targets Postgres'
+    >(authoredContract(HAND_WRITTEN_EXPRESSION_SCHEMA));
+    const result = createPostgresMigrationPlanner({
+      lower: () => ({ sql: 'stub', params: [] }),
+      renderColumnDefault: async () => '',
+      lowerToExecuteRequest: async () => ({ sql: 'stub', params: [] }),
+    }).plan({
+      contract: authoredContract(TYPED_ATTRIBUTE_SCHEMA),
+      schema: contractToPostgresDatabaseSchemaNode(previous, {
+        annotationNamespace: 'pg',
+        renderDefault: postgresRenderDefault,
+      }),
+      policy: { allowedOperationClasses: ['additive', 'widening', 'destructive'] },
+      fromContract: previous,
+      frameworkComponents: [],
+      spaceId: APP_SPACE_ID,
+      snapshotsImportPath: '../../snapshots',
+    });
+
+    expect(result.kind).toBe('success');
+    if (result.kind !== 'success') return;
+    const operations = await Promise.all(result.plan.operations);
+    expect(operations.map((operation) => operation.label)).toEqual([
+      expect.stringMatching(
+        /^Rename index "message_text_search_[0-9a-f]{8}" to "message_text_search_[0-9a-f]{8}"/,
+      ),
+    ]);
+  });
+});
 
 describe('a GIN index over to_tsvector, authored in PSL', () => {
   it('plans one CREATE INDEX from @@fullTextIndex', async () => {
