@@ -570,7 +570,7 @@ The TypeScript `sql` template tag was given something other than a `sql` value i
 
 ### CONTRACT.SQL_EXPRESSION_INVALID
 
-A TypeScript `sql` value cannot be made because its text cannot be canonicalized: it holds a NUL character, or it is larger than 65536 bytes. Raised by the `SqlExpression` constructor, which the `sql` tag calls, with the same messages as the PSL diagnostics `PSL_TAGGED_LITERAL_NUL` and `PSL_TAGGED_LITERAL_TOO_LARGE`. Before the tag returned a `sql` value, this was `CONTRACT.DEFAULT_INVALID`. Meta: `reason` (`nul` or `too-large`), `offset`.
+A TypeScript `sql` value cannot be made because its text cannot be canonicalized: it holds a NUL character, or it is larger than 65536 bytes. Raised by the `SqlExpression` constructor, which the `sql` tag calls, with the same messages as the PSL diagnostics `PSL_TAGGED_LITERAL_NUL` and `PSL_TAGGED_LITERAL_TOO_LARGE`. Also raised in lowering when the text a deferred index expression's `render` returns has a NUL character or is too large; the message then starts with the index, as in `Index "message_text_search" expression: `, and meta adds `what`. Before the tag returned a `sql` value, this was `CONTRACT.DEFAULT_INVALID`. Meta: `reason` (`nul` or `too-large`), `offset`.
 
 ### CONTRACT.TABLE_AMBIGUOUS
 

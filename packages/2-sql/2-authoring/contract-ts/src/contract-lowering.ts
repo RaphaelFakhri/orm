@@ -20,6 +20,7 @@ import type { StorageTypeInstance } from '@internal/sql-contract/types';
 import { blindCast } from '@internal/utils/casts';
 import { ifDefined } from '@internal/utils/defined';
 import { InternalError } from '@internal/utils/internal-error';
+import { isStructuredError } from '@internal/utils/structured-error';
 import type {
   AttachedEntities,
   CheckNode,
@@ -860,11 +861,24 @@ function indexExpressionText(
 ): string {
   if (isSqlExpression(expression)) return expression.text;
   if (typeof expression === 'object' && expression !== null && 'render' in expression) {
-    return new SqlExpression(
+    return renderedSqlText(
       expression.render(resolveDeferredColumns(spec, expression, fieldCodecIds)),
-    ).text;
+      `${owner} expression`,
+    );
   }
   return requireSqlExpression(expression, `${owner} expression`).text;
+}
+
+function renderedSqlText(rendered: string, what: string): string {
+  try {
+    return new SqlExpression(rendered).text;
+  } catch (cause) {
+    if (!isStructuredError(cause) || cause.code !== 'CONTRACT.SQL_EXPRESSION_INVALID') throw cause;
+    throw contractError('CONTRACT.SQL_EXPRESSION_INVALID', `${what}: ${cause.message}`, {
+      meta: { what, ...cause.meta },
+      cause,
+    });
+  }
 }
 
 function constraintOwner(

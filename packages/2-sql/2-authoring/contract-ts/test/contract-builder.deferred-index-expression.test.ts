@@ -98,6 +98,17 @@ describe('a deferred index expression', () => {
     });
   });
 
+  it('refuses a rendered text the canonicalizer refuses, naming the index', () => {
+    expect(() => messageIndexes({ render: () => 'a\u0000b' })).toThrow(
+      expect.objectContaining({
+        code: 'CONTRACT.SQL_EXPRESSION_INVALID',
+        message:
+          'Index "message_text_search" expression: Tagged literals must not contain NUL characters.',
+        meta: { what: 'Index "message_text_search" expression', reason: 'nul', offset: 1 },
+      }),
+    );
+  });
+
   it('lowers to exactly what the equivalent string expression lowers to', () => {
     const deferred = messageIndexes({ mappedColumn: 'body_text' });
     const literal = defineContract({

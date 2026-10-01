@@ -457,7 +457,7 @@ In `packages/1-framework/3-tooling/language-server/src/`:
 | `PSL_INVALID_JSON_LITERAL`, `PSL_UNKNOWN_DEFAULT_LITERAL_TAG` | — | Retired / renamed |
 | `CONTRACT.DATA_TYPE_CASTS_FROM_SQL_EXPRESSION` (new, slice 2a) | SQL family, when it creates its control instance | A registered data type declares a cast or a list cast from `sql/expression` (section 3.5) |
 | `CONTRACT.SQL_EXPRESSION_INTERPOLATION` (renamed from `CONTRACT.DEFAULT_SQL_INTERPOLATION`) | TS `sql` tag | Something other than a `sql` value interpolated |
-| `CONTRACT.SQL_EXPRESSION_INVALID` (new) | `SqlExpression` constructor | Canonicalization failed |
+| `CONTRACT.SQL_EXPRESSION_INVALID` (new) | `SqlExpression` constructor; lowering, for a rendered index expression | Canonicalization failed; in lowering the message starts with the index's `what` |
 | `CONTRACT.DEFAULT_INVALID` | TS `.default()` | Reserved text or unsafe SQL (moved from the tag) |
 | `CONTRACT.ARGUMENT_INVALID` | `requireSqlExpression` | A TS raw-SQL field holds something other than a `SqlExpression` at run time |
 
@@ -574,7 +574,7 @@ In `contract-ts/src/contract-lowering.ts`, `resolveModelNode`:
 
 - The `what` string names the object. An index or check with a `name` or `map` is `Index "<name>"` or `Check "<name>"` (`map` when there is no `name`). One with neither, before lowering names it, is `Index on "<Model>"` or `Check on "<Model>"`. The field follows: `where` or `expression`.
 - Index `where`: `index.where === undefined ? undefined : requireSqlExpression(index.where, \`${owner} where\`).text`, for example `Index "post_user_active" where` or `Index on "Post" where`.
-- Index `expression`, in this order: `isSqlExpression(e)` → `e.text`; `typeof e === 'object' && e !== null && 'render' in e` → `new SqlExpression(e.render(...)).text`, so rendered text is canonicalized like every other raw-SQL text; otherwise `requireSqlExpression(e, \`${owner} expression\`)`, which throws. Testing `'render' in e` on a string would throw a `TypeError`, so the order matters.
+- Index `expression`, in this order: `isSqlExpression(e)` → `e.text`; `typeof e === 'object' && e !== null && 'render' in e` → `new SqlExpression(e.render(...)).text`, so rendered text is canonicalized like every other raw-SQL text; a refusal is rethrown as `CONTRACT.SQL_EXPRESSION_INVALID` with the message prefixed by `` `${owner} expression: ` `` and `what` added to `meta`; otherwise `requireSqlExpression(e, \`${owner} expression\`)`, which throws. Testing `'render' in e` on a string would throw a `TypeError`, so the order matters.
 - Check: `expression: requireSqlExpression(check.expression, \`${owner} expression\`).text`, for example `Check "post_email_no_space" expression`.
 
 In `packages/3-extensions/postgres/src/contract/full-text-index.ts`: `FullTextIndexOptionsBase.where?: SqlExpression`. `fullTextIndex` checks it with `requireSqlExpression(where, 'Full-text index "<name>" where')`, `<name>` being its `name` or `map`, because lowering sees only an index and cannot tell the author used `fullTextIndex`.
