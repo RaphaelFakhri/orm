@@ -35,7 +35,7 @@ model('Post', { fields: { id, title, subtitle, body } }).sql(({ cols }) => ({
 ```ts
 db.sql.public.post
   .where((f, fns) => fns.fullTextMatches([[f.title, f.subtitle], [f.body]], q))
-  .orderBy((f, fns) => fns.fullTextRank([[f.title, f.subtitle], [f.body]], q).desc());
+  .orderBy((f, fns) => fns.fullTextRank([[f.title, f.subtitle], [f.body]], q), { direction: 'desc' });
 ```
 
 ```sql
