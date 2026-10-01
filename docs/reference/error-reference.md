@@ -1444,7 +1444,7 @@ While finalizing an apply, the compare-and-swap update of the database's contrac
 
 ### MIGRATION.MARKER_MISMATCH
 
-The live database marker's contract hash is not reachable anywhere in the on-disk migration graph: the database and the local migration history have diverged. The fix depends on which side is canonical: `migration plan` (catch the graph up), `ref set db <markerHash>` (fix a drifted local ref), or investigate out-of-band migration. Payload: `markerHash`, `reachableHashes`.
+The live database marker's contract hash is not reachable anywhere in the on-disk migration graph: the database and the local migration history have diverged. The fix depends on which side is canonical: `db sign` (overwrite the marker when the database already matches the contract, as after an upgrade that changed contract hashes), `migration plan` (catch the graph up), `ref set db <markerHash>` (fix a drifted local ref), or investigate out-of-band migration. Payload: `markerHash`, `reachableHashes`.
 
 ### MIGRATION.MARKER_NOT_IN_HISTORY
 

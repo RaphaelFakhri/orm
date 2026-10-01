@@ -492,17 +492,24 @@ export function errorMarkerMismatch(
   const planFromFix =
     'Run `{bin} migration plan --from <contract>`, naming the graph node the database was migrated from, if the live marker is canonical and the on-disk graph needs catching up.';
   const planCommand = '{bin} migration plan --from <contract>';
+  const signFix =
+    'Run `{bin} db sign` to overwrite the marker if the database already matches the contract.';
   return new ActionableCliError(
     'MIGRATION.MARKER_MISMATCH',
     'Database marker is not reachable in the on-disk migration graph',
     {
       why: `DB marker is ${markerHash}, but the on-disk migration graph reaches: ${reachableList}.`,
       fix: [
+        signFix,
         planFromFix,
         `Run \`{bin} migration ref set db ${markerHash}\` if the on-disk graph is canonical and the local \`db\` ref drifted.`,
         'Investigate whether the database was migrated by an out-of-band process.',
       ].join('\n'),
       nextActions: [
+        runCommandAction(
+          'Overwrite the marker if the database already matches the contract',
+          '{bin} db sign',
+        ),
         runCommandAction('Catch the on-disk graph up to the live marker', planCommand),
         runCommandAction(
           'Point the local db ref at the live marker',
