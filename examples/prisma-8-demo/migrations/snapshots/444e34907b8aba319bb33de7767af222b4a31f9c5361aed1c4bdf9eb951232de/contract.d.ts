@@ -23,7 +23,7 @@ import type {
 } from '@prisma/orm-postgres/contract/types';
 
 export type StorageHash =
-  StorageHashBase<'3769f67036b96f2d2e97038f6511d20591f5cb4953941a152d69b7204f243d8e'>;
+  StorageHashBase<'444e34907b8aba319bb33de7767af222b4a31f9c5361aed1c4bdf9eb951232de'>;
 export type ExecutionHash =
   ExecutionHashBase<'eb9bffd4c01945792e83de10d571b20df42f5bf40405ec8c642c6592f7dc4655'>;
 export type ProfileHash =
@@ -716,11 +716,11 @@ type ContractBase = Omit<
               uniques: readonly [];
               indexes: readonly [
                 {
-                  readonly name: 'post_title_search_fef4158d';
+                  readonly name: 'post_title_search_1c180f5a';
                   readonly prefix: 'post_title_search';
                   readonly columns: readonly ['title'];
                   readonly unique: false;
-                  readonly type: 'gin';
+                  readonly type: 'fullText';
                   readonly options: {
                     readonly fields: readonly [readonly ['title']];
                     readonly language: 'english';

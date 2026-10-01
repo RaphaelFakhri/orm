@@ -61,16 +61,61 @@ describe('weighted full-text index usage', { timeout: timeouts.databaseOperation
       )
       .build();
 
-  it('renders the same search document in the DDL, the schema node and the query', () => {
-    const document = `(setweight(to_tsvector('english', "title"), 'A') || setweight(to_tsvector('english', coalesce("subtitle", '')), 'A') || setweight(to_tsvector('english', coalesce("body", '')), 'B'))`;
+  const document = `(setweight(to_tsvector('english', coalesce("title", '')), 'A') || setweight(to_tsvector('english', coalesce("subtitle", '')), 'A') || setweight(to_tsvector('english', coalesce("body", '')), 'B'))`;
 
+  it('renders the same search document in the DDL, the schema node and the query', () => {
     expect(searchIndex.expression).toBe(document);
     expect(searchIndex.createSql).toBe(
       `CREATE INDEX "${searchIndex.name}" ON "public"."documents" USING "gin" (${document})`,
     );
-    expect(lower(matchesQuery()).sql).toContain(
-      `${document} @@ websearch_to_tsquery('english', $1)`,
+    expect(lower(matchesQuery()).sql).toBe(
+      `SELECT "id" AS "id" FROM "public"."documents" WHERE ${document} @@ websearch_to_tsquery('english', $1)`,
     );
+  });
+
+  it('is stored by Postgres as the document the query searches', async () => {
+    const lowered = lower(matchesQuery());
+    const queryDocument = lowered.sql.slice(
+      lowered.sql.indexOf('WHERE ') + 'WHERE '.length,
+      lowered.sql.lastIndexOf(' @@ '),
+    );
+    await client().query(
+      `CREATE INDEX documents_search_from_query ON documents USING gin (${queryDocument})`,
+    );
+    const definitions = await client().query(
+      `SELECT indexname, regexp_replace(indexdef, '^.* USING ', '') AS body FROM pg_indexes WHERE indexname IN ($1, 'documents_search_from_query') ORDER BY indexname = 'documents_search_from_query'`,
+      [searchIndex.name],
+    );
+    await client().query('DROP INDEX documents_search_from_query');
+
+    expect(definitions.rows).toHaveLength(2);
+    expect(definitions.rows[0].body).toBe(
+      `gin ((((setweight(to_tsvector('english'::regconfig, COALESCE(title, ''::text)), 'A'::"char") || setweight(to_tsvector('english'::regconfig, COALESCE(subtitle, ''::text)), 'A'::"char")) || setweight(to_tsvector('english'::regconfig, COALESCE(body, ''::text)), 'B'::"char"))))`,
+    );
+    expect(definitions.rows[1].body).toBe(definitions.rows[0].body);
+  });
+
+  it('searches the same document text over the nullable side of an outer join', () => {
+    const joined = lower(
+      db()
+        .public.users.outerLeftJoin(db().public.documents, (f, fns) =>
+          fns.eq(f.users.id, f.documents.id),
+        )
+        .select('name')
+        .where((f, fns) =>
+          fns.fullTextMatches(
+            [[f.documents.title, f.documents.subtitle], [f.documents.body]],
+            fns.websearchToTsquery(QUERY),
+          ),
+        )
+        .build(),
+    );
+
+    const plain = lower(matchesQuery()).sql;
+    const searchOf = (sql: string) => sql.slice(sql.indexOf('WHERE '));
+
+    expect(searchOf(joined.sql).replaceAll('"documents".', '')).toBe(searchOf(plain));
+    expect(searchOf(plain)).toBe(`WHERE ${document} @@ websearch_to_tsquery('english', $1)`);
   });
 
   it('uses the index for fullTextMatches over the same weight groups', async () => {

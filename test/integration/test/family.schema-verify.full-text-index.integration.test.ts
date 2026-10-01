@@ -119,6 +119,16 @@ describe('a weighted full-text index in a live database', () => {
       const result = await runSchemaVerify(getConnectionString(), contract);
 
       expect(result.ok).toBe(false);
+      expect(result.schema.issues).toEqual([
+        expect.objectContaining({
+          path: [
+            'database',
+            'public',
+            'post',
+            expect.stringMatching(/^index:post_search_[0-9a-f]{8}$/),
+          ],
+        }),
+      ]);
     },
     timeouts.spinUpPpgDev,
   );
@@ -135,7 +145,7 @@ describe('a weighted full-text index in a live database', () => {
       const result = await runSchemaVerify(getConnectionString(), contract);
 
       expect(definition.rows[0].def).toContain(
-        `setweight(to_tsvector('english'::regconfig, title)`,
+        `setweight(to_tsvector('english'::regconfig, COALESCE(title, ''::text)), 'A'::"char")`,
       );
       expect(result.schema.issues).toContainEqual(
         expect.objectContaining({

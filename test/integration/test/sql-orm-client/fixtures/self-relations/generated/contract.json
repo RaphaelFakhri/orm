@@ -439,7 +439,7 @@
                   "columns": [
                     "name"
                   ],
-                  "name": "person_name_search_a9fb7fff",
+                  "name": "person_name_search_6cfa8cd0",
                   "options": {
                     "fields": [
                       [
@@ -449,7 +449,7 @@
                     "language": "english"
                   },
                   "prefix": "person_name_search",
-                  "type": "gin",
+                  "type": "fullText",
                   "unique": false
                 }
               ],
@@ -623,7 +623,7 @@
         "kind": "postgres-schema"
       }
     },
-    "storageHash": "58ee42a509f7515e97674e3341421149e61b9bc0365f05b6499553448cba6fb4"
+    "storageHash": "c4eea44ff5ad9ad9b0b2da640a3474a169b73e0aa7b00e77d6632fde28b39235"
   },
   "capabilities": {
     "postgres": {

@@ -20,7 +20,7 @@ import type {
 } from '@internal/contract/types';
 
 export type StorageHash =
-  StorageHashBase<'68ffcbd59f147a03f765b964bc4f80a295f1823e0bb37a8c0239cc2e45cf5de1'>;
+  StorageHashBase<'da8a51f3d282fc4fe8370572fbd9912de1a1dee4b28ccab3b1f7be6b6ee43202'>;
 export type ExecutionHash =
   ExecutionHashBase<'551678164cf11e55dbfa5b34642fb312efdfc63dfd0d165887eaa0d73bb2db84'>;
 export type ProfileHash =
@@ -507,34 +507,34 @@ type ContractBase = Omit<
               uniques: readonly [];
               indexes: readonly [
                 {
-                  readonly name: 'comments_body_live_077f973d';
+                  readonly name: 'comments_body_live_b354147d';
                   readonly prefix: 'comments_body_live';
                   readonly columns: readonly ['body'];
                   readonly where: 'post_id = 1';
                   readonly unique: false;
-                  readonly type: 'gin';
+                  readonly type: 'fullText';
                   readonly options: {
                     readonly fields: readonly [readonly ['body']];
                     readonly language: 'english';
                   };
                 },
                 {
-                  readonly name: 'comments_body_search_d5558f0a';
+                  readonly name: 'comments_body_search_36cd47c3';
                   readonly prefix: 'comments_body_search';
                   readonly columns: readonly ['body'];
                   readonly unique: false;
-                  readonly type: 'gin';
+                  readonly type: 'fullText';
                   readonly options: {
                     readonly fields: readonly [readonly ['body']];
                     readonly language: 'english';
                   };
                 },
                 {
-                  readonly name: 'comments_subject_search_34e4ea7c';
+                  readonly name: 'comments_subject_search_694ff7b0';
                   readonly prefix: 'comments_subject_search';
                   readonly columns: readonly ['subject'];
                   readonly unique: false;
-                  readonly type: 'gin';
+                  readonly type: 'fullText';
                   readonly options: {
                     readonly fields: readonly [readonly ['subject']];
                     readonly language: 'english';
@@ -570,11 +570,11 @@ type ContractBase = Omit<
               uniques: readonly [];
               indexes: readonly [
                 {
-                  readonly name: 'documents_search_573be8e4';
+                  readonly name: 'documents_search_033e8055';
                   readonly prefix: 'documents_search';
                   readonly columns: readonly ['title', 'subtitle', 'body'];
                   readonly unique: false;
-                  readonly type: 'gin';
+                  readonly type: 'fullText';
                   readonly options: {
                     readonly fields: readonly [readonly ['title', 'subtitle'], readonly ['body']];
                     readonly language: 'english';

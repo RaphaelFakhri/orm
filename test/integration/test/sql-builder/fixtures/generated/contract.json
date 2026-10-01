@@ -489,7 +489,7 @@
                   "columns": [
                     "body"
                   ],
-                  "name": "comments_body_live_077f973d",
+                  "name": "comments_body_live_b354147d",
                   "options": {
                     "fields": [
                       [
@@ -499,7 +499,7 @@
                     "language": "english"
                   },
                   "prefix": "comments_body_live",
-                  "type": "gin",
+                  "type": "fullText",
                   "unique": false,
                   "where": "post_id = 1"
                 },
@@ -507,7 +507,7 @@
                   "columns": [
                     "body"
                   ],
-                  "name": "comments_body_search_d5558f0a",
+                  "name": "comments_body_search_36cd47c3",
                   "options": {
                     "fields": [
                       [
@@ -517,14 +517,14 @@
                     "language": "english"
                   },
                   "prefix": "comments_body_search",
-                  "type": "gin",
+                  "type": "fullText",
                   "unique": false
                 },
                 {
                   "columns": [
                     "subject"
                   ],
-                  "name": "comments_subject_search_34e4ea7c",
+                  "name": "comments_subject_search_694ff7b0",
                   "options": {
                     "fields": [
                       [
@@ -534,7 +534,7 @@
                     "language": "english"
                   },
                   "prefix": "comments_subject_search",
-                  "type": "gin",
+                  "type": "fullText",
                   "unique": false
                 }
               ],
@@ -576,7 +576,7 @@
                     "subtitle",
                     "body"
                   ],
-                  "name": "documents_search_573be8e4",
+                  "name": "documents_search_033e8055",
                   "options": {
                     "fields": [
                       [
@@ -590,7 +590,7 @@
                     "language": "english"
                   },
                   "prefix": "documents_search",
-                  "type": "gin",
+                  "type": "fullText",
                   "unique": false
                 }
               ],
@@ -706,7 +706,7 @@
         "kind": "postgres-schema"
       }
     },
-    "storageHash": "68ffcbd59f147a03f765b964bc4f80a295f1823e0bb37a8c0239cc2e45cf5de1"
+    "storageHash": "da8a51f3d282fc4fe8370572fbd9912de1a1dee4b28ccab3b1f7be6b6ee43202"
   },
   "execution": {
     "executionHash": "551678164cf11e55dbfa5b34642fb312efdfc63dfd0d165887eaa0d73bb2db84",
