@@ -18,7 +18,7 @@ import type {
 } from '@internal/contract/types';
 
 export type StorageHash =
-  StorageHashBase<'68cbf64f1e2ea804ae94e926908ae4a093edc4f7e897b835b1eacc66ddd89b2b'>;
+  StorageHashBase<'58ee42a509f7515e97674e3341421149e61b9bc0365f05b6499553448cba6fb4'>;
 export type ExecutionHash = ExecutionHashBase<string>;
 export type ProfileHash =
   ProfileHashBase<'3916f444a8a17ad749191acf9e08dad97d1a327b88c2f1d45d12f240296aa8b2'>;
@@ -408,11 +408,15 @@ type ContractBase = Omit<
                   readonly unique: false;
                 },
                 {
-                  readonly name: 'person_name_search_2455a3e1';
+                  readonly name: 'person_name_search_a9fb7fff';
                   readonly prefix: 'person_name_search';
-                  readonly expression: 'to_tsvector(\'english\', "name")';
+                  readonly columns: readonly ['name'];
                   readonly unique: false;
                   readonly type: 'gin';
+                  readonly options: {
+                    readonly fields: readonly [readonly ['name']];
+                    readonly language: 'english';
+                  };
                 },
               ];
               foreignKeys: readonly [

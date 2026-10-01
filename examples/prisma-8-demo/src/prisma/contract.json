@@ -869,8 +869,18 @@
               ],
               "indexes": [
                 {
-                  "expression": "to_tsvector('english', \"title\")",
-                  "name": "post_title_search_724b05e5",
+                  "columns": [
+                    "title"
+                  ],
+                  "name": "post_title_search_fef4158d",
+                  "options": {
+                    "fields": [
+                      [
+                        "title"
+                      ]
+                    ],
+                    "language": "english"
+                  },
                   "prefix": "post_title_search",
                   "type": "gin",
                   "unique": false
@@ -1155,7 +1165,7 @@
         "kind": "postgres-schema"
       }
     },
-    "storageHash": "06b2dc7bf45a1c5bf00ae3a80653b88fc0146101673e2a029b2c7db290833284",
+    "storageHash": "3769f67036b96f2d2e97038f6511d20591f5cb4953941a152d69b7204f243d8e",
     "types": {
       "Embedding1536": {
         "codecId": "pg/vector@1",
