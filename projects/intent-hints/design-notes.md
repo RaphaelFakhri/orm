@@ -102,6 +102,7 @@ The model rename reuses `applyTableRename` and the companion-rename rules from p
 - The verbatim guard's remedy list names the hint first; the hand-written migration and the by-hand statements stay as fallbacks.
 - The column rename operation is exported through each target's migration facade, so it serves hand-written migrations too.
 - `deprecated` is rejected by the attribute spec with a "not yet supported" message, so the reserved word cannot be silently ignored.
+- A hint the running command cannot act on is ignored, never refused. Under `db init`, which is additive only, a `was` hint does nothing; the new table is created and the old one is left alone, and a later `db update` reports the contradiction. (Operator ruling, 2026-10-01: a hint that is not applicable is simply ignored; nothing is destroyed.)
 - Slice order: `was` on models; `was` on fields; the `migration plan` refusal; `deleted`. Namespace moves, enum value renames, named-index renames, Mongo, `deprecated` and value hints are follow-ons.
 
 ## Open questions

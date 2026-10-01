@@ -179,7 +179,7 @@ Package: `packages/2-sql/2-authoring/contract-ts`.
   ```
 
   Postgres implements it in `core/migrations/hint-origin.ts` over `PostgresDatabaseSchemaNode`, mapping `namespaceId` through `resolveDdlSchemaForNamespaceStorage(contract.storage, namespaceId)`; SQLite implements it in the same-named file over `SqlSchemaIR`, ignoring `namespaceId`.
-- **R4.2** Hints are resolved under every policy, but what they produce depends on it (R5.2 to R5.5, R5.7). Renames are `widening`; drops are `destructive`.
+- **R4.2** Hints are resolved under every policy, but what they produce depends on it (R5.2 to R5.5). Renames are `widening`; drops are `destructive`. A hint the policy cannot act on is ignored, never refused.
 - **R4.3** Ownership: `SchemaOwnership` (`control-migration-types.ts`) gains `ownerOf(coordinate: SchemaEntityCoordinate): string | undefined`, returning the id of the space that declares the entity; the aggregate implements it beside `declaresEntity`. `resolveHints` receives the planner's `ownership` (possibly `undefined`). A `was` whose old table has an owner other than `input.spaceId` is a conflict (R5.6, reason `foreign`) naming that owner.
 
 ## 5. Resolution
@@ -210,7 +210,7 @@ export interface ResolvedHints {
 - **R5.0** `resolveHints` first calls `assertContractHintsConsistent` (R3.10); a throw propagates as a planner failure with one conflict `kind: 'hintRejected'`, `summary` the error message, `meta.code: 'CONTRACT.HINT_INVALID'`.
 - **R5.1** Entries are visited in code-point order of their keys: namespaces, then tables within a namespace, then columns within a table. Output arrays preserve that order.
 - **R5.2 Table `was`.** `old = was`, `new = table key`. Exactly one applies:
-  - origin has `old`, not `new`: if the policy includes `widening`, push `{ namespaceId, from: old, to: new }`; otherwise conflict, reason `notAdditive`.
+  - origin has `old`, not `new`: if the policy includes `widening`, push `{ namespaceId, from: old, to: new }`; otherwise nothing (a hint that cannot apply is ignored; under `db init`'s additive-only policy the new table is created and the old one is left as it is).
   - origin has `new`, not `old`: spent, nothing.
   - origin has neither: nothing.
   - origin has both: conflict, reason `contradicted`.
@@ -224,7 +224,6 @@ export interface ResolvedHints {
   | --- | --- | --- | --- |
   | `contradicted` | `MIGRATION.HINT_CONTRADICTED` | `MIGRATION.HINT_CONTRADICTED: the rename hint on table "<new>" (was "<old>") cannot apply: namespace "<ns>" has both "<old>" and "<new>".` | `A rename hint applies only while the old name exists and the new one does not. If "<old>" was already renamed, remove the hint. If "<old>" is a different table that should stay, remove the hint and give the model another table name. If "<old>" should be dropped, remove the hint and state the drop with a deleted hint on a model mapped to "<old>".` |
   | `foreign` | `MIGRATION.HINT_FOREIGN_TABLE` | `MIGRATION.HINT_FOREIGN_TABLE: the rename hint on table "<new>" (was "<old>") names a table that contract space "<space>" owns.` | `A hint may rename only tables this contract space declares. Remove the hint, or move the table into this space first.` |
-  | `notAdditive` | `MIGRATION.HINT_NOT_ADDITIVE` | `MIGRATION.HINT_NOT_ADDITIVE: the rename hint on table "<new>" (was "<old>") needs a rename, which db init does not perform.` | `Run db update, which renames the table and keeps its rows, instead of db init.` |
 
   Column forms substitute `the rename hint on column "<table>"."<new>" (was "<old>")` and `table "<table>" has both ...`; `location` is `{ namespaceId, entityKind: 'table', entityName: <table key> }` plus `column: <new>` for columns; `meta` also carries `from`, `to`, and `column` when applicable. The conflicts are returned, not thrown; the planner fails early (R6.0). Each code gets an error-reference entry.
 - **R5.7** Resolution reads the destination contract, `HintOrigin` and `ownership` only. It never reads `fromContract`, a snapshot or the source file.
@@ -392,7 +391,7 @@ Each slice's tests, all red before their change. A slice spec may rename a file 
 
 - `packages/1-framework/3-tooling/cli/README.md`: the `--to` note (slice 1), the `Hints applied` block (slice 1), the opaque-body rule for column renames (slice 2), the `migration plan` refusal and consent (slice 3).
 - `packages/2-sql/2-authoring/contract-psl/README.md`: `@@hint` / `@hint` beside `@@map` and `@@control`, and `PSL_HINT_INVALID`.
-- `docs/reference/error-reference.md`: `CONTRACT.HINT_INVALID`, `MIGRATION.HINT_CONTRADICTED`, `MIGRATION.HINT_FOREIGN_TABLE`, `MIGRATION.HINT_NOT_ADDITIVE`, `MIGRATION.HINT_SUPPRESSED`, `MIGRATION.COLUMN_RENAME_UNMATCHED`, and the extended `MIGRATION.DESTRUCTIVE_CHANGES` entry.
+- `docs/reference/error-reference.md`: `CONTRACT.HINT_INVALID`, `MIGRATION.HINT_CONTRADICTED`, `MIGRATION.HINT_FOREIGN_TABLE`, `MIGRATION.HINT_SUPPRESSED`, `MIGRATION.COLUMN_RENAME_UNMATCHED`, and the extended `MIGRATION.DESTRUCTIVE_CHANGES` entry.
 - `skills/prisma-8/references/contract.md` and `references/migrations.md`: replace the "no in-contract rename hint" statements; `skills/journey-tests/02b-rename-with-hint.md` inverts its assertion.
 - Upgrade fragments under `upgrade-instructions/pending/`: `intent-hints-model-rename/app` (slice 1; `changes: []` unless an example schema changes), `intent-hints-field-rename/app` (slice 2; same), `migration-plan-refuses-destructive/app` (slice 3; one change: plans with destructive operations now ask for consent, CI passes `--no-interactive --confirm <directory>`), `intent-hints-deleted/app` (slice 4). Released upgrade sources are never edited.
 - Close-out: the ADR named in `spec.md`; amendments to ADR 001, ADR 028, ADR 232 and the Data Contract and Migration System subsystem docs.
