@@ -1,6 +1,11 @@
 export {
+  describeWeightGroupProblem,
+  type FullTextFieldsInput,
+  type FullTextIndexDefinition,
   isFullTextIndexableCodec,
   renderFullTextIndexExpression,
+  weightGroupProblems,
+  weightGroupsOf,
 } from '../core/full-text-index-expression';
 export {
   escapeLiteral,
