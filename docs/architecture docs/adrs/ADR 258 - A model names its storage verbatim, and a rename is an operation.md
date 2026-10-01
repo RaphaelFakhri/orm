@@ -52,7 +52,7 @@ A rule that lowered the first letter of a model name produced storage names that
 
 An object the migration also changes keeps the name the database has, so an author writing that change by hand refers to the name they can see. Explicitly named objects, and foreign keys on other tables that point at the renamed table, keep their names.
 
-The rename is its own schema change. The migration runner verifies the database against the migration's end contract, so a migration that renames a table while the same schema change also altered something else fails and leaves the table untouched.
+The migration must reach its end contract. The runner applies a migration's operations together and then verifies the database against that contract, so a migration whose operations leave any part of the change unapplied is rolled back, the rename included. A rename can therefore sit beside other operations in one migration, as long as the migration carries every operation its end contract needs. The simplest way to satisfy that is to make the rename its own schema change, which is what the planner's refusal message recommends.
 
 ## Why the user states the rename
 
