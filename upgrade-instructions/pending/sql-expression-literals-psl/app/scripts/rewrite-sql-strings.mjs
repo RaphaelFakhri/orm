@@ -42,19 +42,21 @@ function commentEnd(source, start) {
   return newline === -1 ? source.length : newline;
 }
 
-/** The `[start, end)` ranges of `//` and `///` comments, found outside strings and tagged literals. */
-function commentRanges(source) {
+/** The `[start, end)` ranges of `//` and `///` comments, quoted strings and backtick literals: text in which nothing declares an attribute or a policy. */
+function inertRanges(source) {
   const ranges = [];
   for (let i = 0; i < source.length; i += 1) {
     const ch = source[i];
     if (ch === '"' || ch === "'") {
       const end = stringEnd(source, i);
+      if (end !== -1) ranges.push([i, end]);
       i = end === -1 ? commentEnd(source, i) : end - 1;
       continue;
     }
     if (ch === '`') {
       const end = source.indexOf('`', i + 1);
       if (end === -1) continue;
+      ranges.push([i, end + 1]);
       i = end;
       continue;
     }
@@ -156,11 +158,11 @@ export function printSqlLiteral(text) {
 
 /** The quoted strings to rewrite, as `[start, end)` ranges of `source`. */
 function stringRanges(source) {
-  const comments = commentRanges(source);
-  const inComment = (index) => comments.some(([start, end]) => index >= start && index < end);
+  const inert = inertRanges(source);
+  const isInert = (index) => inert.some(([start, end]) => index >= start && index < end);
   const ranges = [];
   for (const match of source.matchAll(ATTRIBUTE_START)) {
-    if (inComment(match.index)) continue;
+    if (isInert(match.index)) continue;
     const open = match.index + match[0].length - 1;
     const close = closingEnd(source, open, '(', ')');
     if (close === -1) continue;
@@ -191,7 +193,7 @@ function stringRanges(source) {
     }
   }
   for (const match of source.matchAll(POLICY_START)) {
-    if (inComment(match.index + match[0].search(/\S/))) continue;
+    if (isInert(match.index + match[0].search(/\S/))) continue;
     const open = match.index + match[0].length - 1;
     const close = closingEnd(source, open, '{', '}');
     if (close === -1) continue;

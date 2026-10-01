@@ -114,6 +114,37 @@ describe('rewriteSqlStrings', () => {
   });
 });
 
+describe('rewriteSqlStrings and existing literals', () => {
+  it('leaves an attribute written inside a sql literal alone', () => {
+    const source = [
+      'model Post {',
+      '  id Int @id',
+      '  @@check(expression: sql`note <> \'@@check(expression: "x", name: "c")\'`, name: "n")',
+      '}',
+    ].join('\n');
+    strictEqual(rewriteSqlStrings(source), source);
+  });
+
+  it('leaves an attribute written inside a quoted string alone', () => {
+    const source = '  @@map("@@index([a], where: \'x\')")';
+    strictEqual(rewriteSqlStrings(source), source);
+  });
+
+  it('leaves a policy block written inside a sql literal alone', () => {
+    const source = [
+      'policy_select read {',
+      '  target = Post',
+      '  using  = sql`',
+      'policy_select inner {',
+      '  using = "x"',
+      '}',
+      '`',
+      '}',
+    ].join('\n');
+    strictEqual(rewriteSqlStrings(source), source);
+  });
+});
+
 describe('rewriteSqlStrings and comments', () => {
   it('rewrites a policy after an apostrophe in a comment inside the block', () => {
     const before = [
