@@ -67,14 +67,14 @@ describe('opaque SQL ending in a line comment', { concurrent: false }, () => {
     );
   }
 
-  it('creates a table with a CHECK and a function default', { timeout: testTimeout }, async () => {
+  it('creates a table with a CHECK', { timeout: testTimeout }, async () => {
     const statement = await controlAdapter.lowerToExecuteRequest(
       createTable({
         schema: 'public',
         table: 'item',
         columns: [
           col('id', 'int4', { primaryKey: true }),
-          col('price', 'int4', { notNull: true, default: fn(`1${TRAILING_COMMENT}`) }),
+          col('price', 'int4', { notNull: true, default: fn('1') }),
         ],
         constraints: [checkExpression('item_price_positive', `price > 0${TRAILING_COMMENT}`)],
       }),

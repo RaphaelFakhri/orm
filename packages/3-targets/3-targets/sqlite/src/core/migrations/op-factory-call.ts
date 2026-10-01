@@ -34,10 +34,10 @@ import { columnExistsAst, indexExistsAst, tableExistsAst } from '../../contract-
 import * as contractFreeDdl from '../../contract-free/ddl';
 import { sqliteError } from '../errors';
 import { quoteIdentifier } from '../sql-utils';
-import { addColumnExecuteSql, dropColumnExecuteSql } from './operations/columns';
+import { addColumn, dropColumnExecuteSql } from './operations/columns';
 import type { SqliteColumnSpec, SqliteIndexSpec, SqliteTableSpec } from './operations/shared';
 import { step } from './operations/shared';
-import { recreateTable } from './operations/tables';
+import { type RecreatePostcheck, recreateTable } from './operations/tables';
 import { buildCreateIndexSql, buildDropIndexSql } from './planner-ddl-builders';
 import type { SqlitePlanTargetDetails } from './planner-target-details';
 import { buildTargetDetails } from './planner-target-details';
@@ -85,6 +85,7 @@ function renderDdlColumnAsTsCall(column: DdlColumn): string {
   if (column.notNull) opts.push('notNull: true');
   if (column.primaryKey) opts.push('primaryKey: true');
   if (column.default) opts.push(`default: ${renderDdlColumnDefault(column.default)}`);
+  if (column.codecRef) opts.push(`codecRef: ${jsonToTsSource(column.codecRef)}`);
   const optsStr = opts.length > 0 ? `, { ${opts.join(', ')} }` : '';
   return `col(${jsonToTsSource(column.name)}, ${jsonToTsSource(column.type)}${optsStr})`;
 }
@@ -277,7 +278,7 @@ export class RecreateTableCall extends SqliteOpFactoryCallNode {
   readonly schemaColumnNames: readonly string[];
   readonly indexes: readonly SqliteIndexSpec[];
   readonly summary: string;
-  readonly postchecks: readonly { readonly description: string; readonly sql: string }[];
+  readonly postchecks: readonly RecreatePostcheck[];
   readonly label: string;
 
   constructor(args: {
@@ -286,7 +287,7 @@ export class RecreateTableCall extends SqliteOpFactoryCallNode {
     schemaColumnNames: readonly string[];
     indexes: readonly SqliteIndexSpec[];
     summary: string;
-    postchecks: readonly { readonly description: string; readonly sql: string }[];
+    postchecks: readonly RecreatePostcheck[];
     operationClass: MigrationOperationClass;
   }) {
     super();
@@ -376,24 +377,7 @@ export class AddColumnCall extends SqliteOpFactoryCallNode {
         },
       );
     }
-    const checks = columnExistsAst(this.tableName, this.column.name);
-    const absent = await lowerer.lowerToExecuteRequest(checks.columnAbsent());
-    const present = await lowerer.lowerToExecuteRequest(checks.columnPresent());
-    return {
-      id: `column.${this.tableName}.${this.column.name}`,
-      label: `Add column ${this.column.name} on ${this.tableName}`,
-      summary: `Adds column ${this.column.name} on ${this.tableName}`,
-      operationClass: 'additive',
-      target: {
-        id: 'sqlite',
-        details: buildTargetDetails('column', this.column.name, this.tableName),
-      },
-      precheck: [step(`ensure column "${this.column.name}" is missing`, absent.sql, absent.params)],
-      execute: [
-        step(`add column "${this.column.name}"`, addColumnExecuteSql(this.tableName, this.column)),
-      ],
-      postcheck: [step(`verify column "${this.column.name}" exists`, present.sql, present.params)],
-    };
+    return addColumn(this.tableName, this.column, lowerer);
   }
 
   renderTypeScript(): string {
