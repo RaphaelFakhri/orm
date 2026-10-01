@@ -25,14 +25,18 @@ import type {
 import {
   assertNoCrossRegistryCollisions,
   assertResolvableTypeConstructorTemplates,
+  authoringEntryType,
   collectContributedDescriptorPaths,
   collectScalarTypeConstructors,
   isAuthoringArgRef,
   isAuthoringFieldPresetDescriptor,
   isAuthoringTypeConstructorDescriptor,
+  isDataTypeLoweringEntry,
   isLoweringEntryKey,
+  isTagEntryKey,
   mergeAuthoringAttributeSpecs,
   mergeAuthoringNamespaces,
+  tagEntryKey,
 } from '../shared/framework-authoring';
 import type { ComponentMetadata } from '../shared/framework-components';
 import type {
@@ -495,6 +499,21 @@ export function enforceDataTypeInvariants(input: DataTypeInvariantInput): void {
 
   for (const { key, entry, contributedBy } of input.authoringEntries) {
     if (isLoweringEntryKey(key)) continue;
+    const written = entry.written;
+    const tagType = written.kind === 'tag' && 'type' in written ? written.type : undefined;
+    if (isTagEntryKey(key) || tagType !== undefined) {
+      if (written.kind !== 'tag' || tagType === undefined || key !== tagEntryKey(written.tag)) {
+        throw runtimeError(
+          'CONTRACT.DATA_TYPE_ENTRY_KEY_INVALID',
+          `Authoring entry "${key}" contributed by "${contributedBy}" must sit under its tag's key and name the data type its body is, or sit under that data type's id and name none.`,
+          { key, contributedBy },
+        );
+      }
+      if (!input.lookup.has(tagType)) {
+        unregistered(contributedBy, tagType, `Authoring entry "${key}"`);
+      }
+      continue;
+    }
     if (!input.lookup.has(key)) {
       unregistered(contributedBy, key, 'Authoring entry');
     }
@@ -511,10 +530,10 @@ export function enforceDataTypeInvariants(input: DataTypeInvariantInput): void {
   // entry that reads it is keyed under another type.
   const writable = new Set(
     input.authoringEntries.flatMap(({ key, entry }) =>
-      isLoweringEntryKey(key)
+      isLoweringEntryKey(key) || isDataTypeLoweringEntry(entry)
         ? []
         : [
-            key,
+            authoringEntryType(key, entry),
             ...(entry.written.kind === 'plain' && entry.written.syntax === 'number'
               ? entry.written.types
               : []),

@@ -11,7 +11,10 @@ import type {
   AuthoringDataTypeEntry,
   DataTypeAuthoringEntry,
 } from '@internal/framework-components/authoring';
-import { isDataTypeLoweringEntry } from '@internal/framework-components/authoring';
+import {
+  authoringEntryType,
+  isDataTypeLoweringEntry,
+} from '@internal/framework-components/authoring';
 import type { CodecLookup, DataTypeId, DataTypeLookup } from '@internal/framework-components/codec';
 import { materializeCodec } from '@internal/framework-components/codec';
 import type { ContributedPslDiagnosticCode } from '@internal/framework-components/psl-ast';
@@ -198,7 +201,9 @@ function readValue(
     return {
       ok: true,
       typed: {
-        type: blindCast<DataTypeId, 'an entry key is the id of the type it reads'>(found.key),
+        type: blindCast<DataTypeId, 'an entry reads its key’s type, or the type its tag names'>(
+          authoringEntryType(found.key, found.entry),
+        ),
         value: form.parse(text),
       },
     };

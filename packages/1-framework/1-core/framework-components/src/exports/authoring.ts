@@ -47,6 +47,7 @@ export type {
 export {
   assertNoCrossRegistryCollisions,
   assertResolvableTypeConstructorTemplates,
+  authoringEntryType,
   classifyEnumMemberType,
   collectScalarTypeConstructors,
   flushAuthoringWarnings,
@@ -62,10 +63,12 @@ export {
   isAuthoringTypeConstructorDescriptor,
   isDataTypeLoweringEntry,
   isLoweringEntryKey,
+  isTagEntryKey,
   loweringEntryKey,
   mergeAuthoringNamespaces,
   resolveAuthoringTemplateValue,
   resolveEnumCodecId,
+  tagEntryKey,
   validateAuthoringHelperArguments,
   validateAuthoringTypeParams,
 } from '../shared/framework-authoring';

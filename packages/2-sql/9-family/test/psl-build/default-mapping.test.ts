@@ -1,5 +1,5 @@
 import type { JsonValue } from '@internal/contract/types';
-import type { AuthoringDataTypeEntry } from '@internal/framework-components/authoring';
+import { type AuthoringDataTypeEntry, tagEntryKey } from '@internal/framework-components/authoring';
 import type { Cast, DataType } from '@internal/framework-components/codec';
 import { createDataTypeLookup, dataType } from '@internal/framework-components/codec';
 import { isNonFiniteText, numeralText } from '@internal/sql-contract/data-type';
@@ -247,5 +247,39 @@ describe('mapDefault prints a stored value as the literal its column takes', () 
 
   it('writes nothing for a literal when no data types are given at all', () => {
     expect(mapDefault({ kind: 'literal', value: 'hello' })).toBeUndefined();
+  });
+});
+
+describe('mapDefault with a tag entry that names the type its body is', () => {
+  const storedText = dataType('demo/text', {});
+  const textEntries: Readonly<Record<string, AuthoringDataTypeEntry>> = {
+    [tagEntryKey('json')]: {
+      written: {
+        kind: 'tag',
+        tag: 'json',
+        type: storedText.id,
+        parse: (body) => JSON.stringify(parseJsonBody(body)),
+      },
+      print: (value) => String(value),
+      documentation: 'A JSON document stored as its text.',
+    },
+    [storedText.id]: {
+      written: { kind: 'plain', syntax: 'string', parse: (body) => body },
+      print: (value) => String(value),
+      documentation: 'Text.',
+    },
+  };
+
+  it('prints the stored JSON text as a string, the plain form of the type the tag names', () => {
+    expect(
+      mapDefault(
+        { kind: 'literal', value: '{"a":1}' },
+        {
+          dataTypeEntries: textEntries,
+          dataTypeLookup: createDataTypeLookup([storedText]),
+          columnDataType: storedText.id,
+        },
+      ),
+    ).toEqual({ attribute: '@default("{\\"a\\":1}")' });
   });
 });

@@ -611,6 +611,16 @@ A value is written either with a tag — a qualified name followed by a string i
 },
 ```
 
+A tag whose value is a type that another syntax already reads sits under `tagEntryKey(tag)` and names that type in `type`. SQLite stores a JSON document as text, so its `json` tag yields `sqlite/text`, whose own entry reads a plain string:
+
+```ts
+[tagEntryKey('json')]: {
+  written: { kind: 'tag', tag: 'json', type: sqliteText.id, parse: (text) => canonicalizeJson(parseJsonBody(text)) },
+  print: (value) => String(value),
+  documentation: 'Reads the body as a JSON document and stores its JSON text as the default value.',
+},
+```
+
 A number is the one plain form that yields several types, so its arm carries a classifier in place of `parse`: `classify` picks the type from the digits and returns the canonical form with it, and `types` lists every data type the classifier can return. Assembly reads `types` to know those types can be written, so leaving one out turns a cast from it into an assembly error.
 
 ```ts
@@ -637,14 +647,15 @@ The control stack assembles every pack's data types, codec descriptors and autho
 1. **A codec names a type nobody registers.** `CONTRACT.DATA_TYPE_UNREGISTERED`.
 2. **An authoring entry, a type in a number entry's `types`, or a type some cast takes values of, is not registered.** Also `CONTRACT.DATA_TYPE_UNREGISTERED`.
 3. **Two entries claim one tag or one plain form.** `CONTRACT.DATA_TYPE_WRITTEN_FORM_DUPLICATE`. Two packs registering one type id is `CONTRACT.DATA_TYPE_DUPLICATE`, and two entries under one key is `CONTRACT.DATA_TYPE_ENTRY_DUPLICATE`.
-4. **A type some cast takes values of cannot be written.** `CONTRACT.DATA_TYPE_NOT_WRITABLE`: a cast from a type no contract source can write is never exercised. A type counts as writable when it has an authoring entry of its own, or when a number entry's `types` names it.
+4. **A type some cast takes values of cannot be written.** `CONTRACT.DATA_TYPE_NOT_WRITABLE`: a cast from a type no contract source can write is never exercised. A type counts as writable when it has an authoring entry of its own, when a tag entry's `type` names it, or when a number entry's `types` names it.
+5. **An entry sits under the wrong key.** `CONTRACT.DATA_TYPE_ENTRY_KEY_INVALID`: a tag entry that names its `type` sits under `tagEntryKey(tag)`, and only there.
 
 Type constructors, field presets and SQL declarations are checked at assembly too. Each failure is an `InternalError` naming the contributor and the id:
 
-5. **A type constructor or field preset names a codec no component registers.**
-6. **A type constructor maps an argument onto a parameter** that neither the codec's data type's `params` nor the codec's own parameters declare.
-7. **Two type constructors of one data type are both marked `inferred`.**
-8. **Two SQL data types claim the same reported type**: a claiming text of one matches a claiming text of the other, or both claim the same kind.
+6. **A type constructor or field preset names a codec no component registers.**
+7. **A type constructor maps an argument onto a parameter** that neither the codec's data type's `params` nor the codec's own parameters declare.
+8. **Two type constructors of one data type are both marked `inferred`.**
+9. **Two SQL data types claim the same reported type**: a claiming text of one matches a claiming text of the other, or both claim the same kind.
 
 The reverse of the fourth is not required: a type may be reachable only through casts. These checks span packs, which is why they run at assembly — `pgvector/vector` taking `pg/numeric` values is valid only when the Postgres target that owns `pg/numeric` is in the stack. Within a pack, refer to a type by its constant rather than by string, so a misspelt id fails to compile.
 

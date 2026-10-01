@@ -18,7 +18,10 @@ import type {
   AuthoringDataTypeEntry,
   DataTypeAuthoringEntry,
 } from '@internal/framework-components/authoring';
-import { isDataTypeLoweringEntry } from '@internal/framework-components/authoring';
+import {
+  authoringEntryType,
+  isDataTypeLoweringEntry,
+} from '@internal/framework-components/authoring';
 import type { DataTypeId, DataTypeLookup } from '@internal/framework-components/codec';
 import { dataTypeId } from '@internal/framework-components/codec';
 import { numeralText } from '@internal/sql-contract/data-type';
@@ -106,8 +109,9 @@ function writingSurface(entries: Readonly<Record<string, AuthoringDataTypeEntry>
     if (isDataTypeLoweringEntry(entry)) continue;
     const written = entry.written;
     if (written.kind === 'tag') {
-      entryOf.set(key, entry);
-      tagTypes.push(dataTypeId(key));
+      const type = dataTypeId(authoringEntryType(key, entry));
+      if (!entryOf.has(type)) entryOf.set(type, entry);
+      tagTypes.push(type);
       continue;
     }
     if (written.syntax === 'number') {
