@@ -19,6 +19,11 @@ const authenticated = role('authenticated');
 
 const owner = sql`"userId"::uuid = auth.uid()`;
 
+const ownerOrAdmin = sql`
+  "userId"::uuid = auth.uid()
+    OR auth.role() = 'admin'
+`;
+
 const Post = model('Post', {
   fields: {
     id: field.column(int4Column).id(),
@@ -57,6 +62,17 @@ export const contract = defineContract({
       roles: [authenticated],
       using: owner,
       withCheck: sql`${owner} AND "archivedAt" IS NULL`,
+    }),
+    policyUpdate(Post, {
+      name: 'post_admin_write',
+      roles: [authenticated],
+      using: ownerOrAdmin,
+      withCheck: sql`
+        (
+          ${ownerOrAdmin}
+        )
+        AND "archivedAt" IS NULL
+      `,
     }),
   ],
 });

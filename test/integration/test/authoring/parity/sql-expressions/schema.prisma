@@ -30,4 +30,20 @@ namespace public {
     using     = sql`"userId"::uuid = auth.uid()`
     withCheck = sql`"userId"::uuid = auth.uid() AND "archivedAt" IS NULL`
   }
+
+  policy_update post_admin_write {
+    target    = Post
+    roles     = [authenticated]
+    using     = sql`
+      "userId"::uuid = auth.uid()
+        OR auth.role() = 'admin'
+    `
+    withCheck = sql`
+      (
+        "userId"::uuid = auth.uid()
+          OR auth.role() = 'admin'
+      )
+      AND "archivedAt" IS NULL
+    `
+  }
 }

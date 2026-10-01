@@ -93,6 +93,18 @@
       "public": {
         "entries": {
           "policy": {
+            "post_admin_write": {
+              "kind": "policy",
+              "name": "post_admin_write_06087940",
+              "namespaceId": "public",
+              "operation": "update",
+              "permissive": true,
+              "prefix": "post_admin_write",
+              "roles": ["authenticated"],
+              "tableName": "post",
+              "using": "\"userId\"::uuid = auth.uid()\n  OR auth.role() = 'admin'",
+              "withCheck": "(\n  \"userId\"::uuid = auth.uid()\n    OR auth.role() = 'admin'\n)\nAND \"archivedAt\" IS NULL"
+            },
             "post_owner_write": {
               "kind": "policy",
               "name": "post_owner_write_45617e86",
@@ -192,7 +204,7 @@
         "id": "public"
       }
     },
-    "storageHash": "1b8ea38ae88d1f61c9d5afc0e307d1635fdc70a9e3ca9991f641bd2621e02eeb"
+    "storageHash": "a86b2c7e7180df34ac9202481d470b7a04f6a4921ee5f8651a14eb620f3f91ee"
   },
   "capabilities": {
     "postgres": {
