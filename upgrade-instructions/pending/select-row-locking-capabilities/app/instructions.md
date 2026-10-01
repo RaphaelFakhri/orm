@@ -1,7 +1,7 @@
 ---
 changes:
   - id: re-emit-for-the-row-locking-capabilities
-    summary: "The Postgres adapter reports seven new capability keys (sql.forUpdate, sql.forShare, sql.lockOf, sql.lockNowait, sql.lockSkipLocked, postgres.forNoKeyUpdate, postgres.forKeyShare), which gate the new row-locking methods on the SQL builder and the ORM client; a contract emitted before this release does not carry them and the methods are unavailable against it, so re-emit the contract before using them."
+    summary: "The Postgres adapter reports seven new capability keys (sql.forUpdate, sql.forShare, sql.lockOf, sql.lockNowait, sql.lockSkipLocked, postgres.forNoKeyUpdate, postgres.forKeyShare), which gate the new row-locking methods on the SQL builder; a contract emitted before this release does not carry them and the methods are unavailable against it, so re-emit the contract before using them."
     detection:
       glob: "**/contract.json"
       contains:
@@ -25,20 +25,7 @@ await db.transaction(async (tx) => {
 });
 ```
 
-The ORM client's collections gain the same four methods. Each takes an optional `{ nowait, skipLocked }`, which exclude each other; there is no `of`, because the ORM always locks only the model's own table:
-
-```ts
-await db.transaction(async (tx) => {
-  const job = await tx.orm.public.Job.where({ state: 'queued' })
-    .orderBy((j) => j.createdAt.asc())
-    .forUpdate({ skipLocked: true })
-    .first();
-});
-```
-
-On the ORM a lock cannot be combined with `include`, `groupBy`, `aggregate`, `distinct`, `distinctOn` or a mutation terminal; those throw `ORM.LOCK_INCOMPATIBLE`.
-
-Each method and each option is gated on a capability key that the Postgres adapter now reports: `sql.forUpdate`, `sql.forShare`, `postgres.forNoKeyUpdate`, `postgres.forKeyShare`, and `sql.lockOf`, `sql.lockNowait`, `sql.lockSkipLocked` for the options. A `contract.json` emitted before this release carries none of them, so the methods do not exist on its builder or its collections.
+Each method and each option is gated on a capability key that the Postgres adapter now reports: `sql.forUpdate`, `sql.forShare`, `postgres.forNoKeyUpdate`, `postgres.forKeyShare`, and `sql.lockOf`, `sql.lockNowait`, `sql.lockSkipLocked` for the options. A `contract.json` emitted before this release carries none of them, so the methods do not exist on its builder.
 
 Re-emit your contract to pick up the keys:
 
