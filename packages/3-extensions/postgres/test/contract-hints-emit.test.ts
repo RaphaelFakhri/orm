@@ -18,8 +18,7 @@ const hints = {
   namespaces: {
     public: {
       tables: {
-        Legacy: { deleted: true },
-        user: { columns: { email: { was: 'mail' } }, was: 'account' },
+        user: { was: 'account' },
       },
     },
   },
