@@ -231,6 +231,22 @@ withTempDir(({ createTempDir }) => {
         expect(apply.exitCode, `H1.06: migrate: ${apply.stderr}`).toBe(0);
         await expectRenamed(ctx, db.connectionString, 'H1.07');
 
+        const stored = await sql(
+          db.connectionString,
+          `SELECT contract_json FROM "prisma_contract"."contract" WHERE core_hash = $1`,
+          [planned.to],
+        );
+        expect(stored.rows, 'H1.07: migrate stored the destination contract').toHaveLength(1);
+        const storedJson = stored.rows[0]?.['contract_json'];
+        const storedContract = typeof storedJson === 'string' ? JSON.parse(storedJson) : storedJson;
+        expect(
+          storedContract?.storage?.storageHash,
+          'H1.07: the stored contract is the plan destination',
+        ).toBe(planned.to);
+        expect(storedContract, 'H1.07: the stored contract carries no hints').not.toHaveProperty(
+          'hints',
+        );
+
         const migrationCount = getMigrationDirs(ctx).length;
         const followUp = await runMigrationPlan(ctx, [
           '--from',
