@@ -50,10 +50,4 @@ describe('describeConsumedHint', () => {
       'deleted hint on column "User"."nickname": dropped and recorded; you can remove the field.',
     );
   });
-
-  it('refuses a rename that does not carry the old name', () => {
-    expect(() => describeConsumedHint({ kind: 'renamed', coordinate: onTable('User') })).toThrow(
-      /old name/,
-    );
-  });
 });

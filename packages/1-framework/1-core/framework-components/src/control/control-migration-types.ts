@@ -184,15 +184,22 @@ export interface OpFactoryCall {
 // ============================================================================
 
 /**
- * A planner hint the plan acted on. `coordinate` is the table the hint is on; `memberName` names
- * the column when the hint is on one; `from` is the old name of a rename.
+ * A planner hint the plan acted on. `coordinate` is the entity the hint is on; `memberName` names
+ * a member of it, such as a column or a field, when the hint is on one; a rename carries the old
+ * name in `from`.
  */
-export interface ConsumedHint {
-  readonly kind: 'renamed' | 'deleted';
-  readonly coordinate: SchemaEntityCoordinate;
-  readonly memberName?: string;
-  readonly from?: string;
-}
+export type ConsumedHint =
+  | {
+      readonly kind: 'renamed';
+      readonly coordinate: SchemaEntityCoordinate;
+      readonly memberName?: string;
+      readonly from: string;
+    }
+  | {
+      readonly kind: 'deleted';
+      readonly coordinate: SchemaEntityCoordinate;
+      readonly memberName?: string;
+    };
 
 /**
  * A migration plan for display purposes.

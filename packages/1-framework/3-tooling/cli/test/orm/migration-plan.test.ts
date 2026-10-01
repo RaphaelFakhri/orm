@@ -902,7 +902,9 @@ describe('migration plan hints and planner warnings', () => {
     from: 'userProfile',
   };
   const described = (hint: ConsumedHint) =>
-    `rename hint on table "${hint.coordinate.entityName}" (was "${hint.from}")`;
+    hint.kind === 'renamed'
+      ? `rename hint on table "${hint.coordinate.entityName}" (was "${hint.from}")`
+      : `deleted hint on table "${hint.coordinate.entityName}"`;
 
   it('reports each consumed hint with the text the family gives it', async () => {
     const project = await plannableProject();
