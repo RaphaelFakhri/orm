@@ -62,7 +62,10 @@ describe('errorPathUnreachable', () => {
     expect(envelope.fix).toContain('{bin} migration list');
     expect(envelope.fix).toContain('{bin} migration show');
     expect((envelope.fix ?? '').toLowerCase()).toContain('destructive');
-    expect((envelope.fix ?? '').toLowerCase()).toContain('hint');
+    expect(envelope.fix).toContain(
+      'A table rename is stated with @@hint(was: "<old name>") on the model in the schema and planned with migration plan',
+    );
+    expect(envelope.fix).not.toContain('hint in the planned migration');
   });
 
   it('prescribes a bare plan command when the runner kind is neverPlanned (no graph to resolve --to against)', () => {
@@ -119,7 +122,10 @@ describe('errorPathUnreachable', () => {
     );
     expect(envelope.fix).toContain(`{bin} db migrate --to ${targetHash}`);
     expect((envelope.fix ?? '').toLowerCase()).toContain('destructive');
-    expect((envelope.fix ?? '').toLowerCase()).toContain('hint');
+    expect(envelope.fix).toContain(
+      'A table rename is stated with @@hint(was: "<old name>") on the model in the schema and planned with migration plan',
+    );
+    expect(envelope.fix).not.toContain('hint in the planned migration');
   });
 
   it('omits --from in the fix when buildPathNotFoundFailure uses the empty-marker sentinel', () => {
@@ -147,7 +153,10 @@ describe('errorPathUnreachable', () => {
     expect(envelope.fix).toContain('{bin} db migrate');
     expect(envelope.fix).not.toContain('--to');
     expect((envelope.fix ?? '').toLowerCase()).toContain('destructive');
-    expect((envelope.fix ?? '').toLowerCase()).toContain('hint');
+    expect(envelope.fix).toContain(
+      'A table rename is stated with @@hint(was: "<old name>") on the model in the schema and planned with migration plan',
+    );
+    expect(envelope.fix).not.toContain('hint in the planned migration');
   });
 });
 
