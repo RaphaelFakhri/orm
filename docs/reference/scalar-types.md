@@ -99,7 +99,7 @@ These are the current names. The Postgres and SQLite rename project will change 
 
 A literal default of a date or time type is stored in the type's canonical form, whichever codec the column uses and however the default was written; [ADR 254](../architecture%20docs/adrs/ADR%20254%20-%20Data%20types%20and%20casts.md#date-and-time-types) states each form.
 
-The tools that write a schema for you use the text date and time types. `prisma orm init` scaffolds the `temporal.createdAtString()` and `temporal.updatedAtString()` presets, which are `TimestamptzString` columns. `prisma contract infer` and `prisma7Schema(...)` write `TimestampString(p)`, `TimestamptzString(p)`, `DateString` and `TimeString(p)`. The types without the suffix read and write `Temporal` values, so an application that uses them needs a global `Temporal`: on a runtime without one, such as Node.js 24, install it, for example with `import 'temporal-polyfill/full/global'`.
+The tools that write a schema for you use the text date and time types. In a PSL schema, `prisma orm init` writes `createdAt TimestamptzString @default(now())` and `updatedAt temporal.updatedAtString()`. In a TypeScript contract, it writes `field.temporal.createdAtString()` and `field.temporal.updatedAtString()`. All of these are `TimestamptzString` columns. `prisma contract infer` and `prisma7Schema(...)` write `TimestampString(p)`, `TimestamptzString(p)`, `DateString` and `TimeString(p)`. Four types read and write `Temporal` values: `Timestamptz` (also written `DateTime`), `Timestamp`, `Date` and `Time`. An application that uses them needs a global `Temporal`: on a runtime without one, such as Node.js 24, install it, for example with `import 'temporal-polyfill/full/global'`.
 
 ## SQLite
 
