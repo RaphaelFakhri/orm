@@ -63,7 +63,7 @@ describe('errorPathUnreachable', () => {
     expect(envelope.fix).toContain('{bin} migration show');
     expect((envelope.fix ?? '').toLowerCase()).toContain('destructive');
     expect(envelope.fix).toContain(
-      'A rename is stated with @@hint(was: "<old name>") on the model in the schema and planned with migration plan',
+      'A rename that must keep its data is stated in the schema, with a rename hint where the schema language has one, and planned with migration plan',
     );
     expect(envelope.fix).not.toContain('hint in the planned migration');
   });
@@ -123,7 +123,7 @@ describe('errorPathUnreachable', () => {
     expect(envelope.fix).toContain(`{bin} db migrate --to ${targetHash}`);
     expect((envelope.fix ?? '').toLowerCase()).toContain('destructive');
     expect(envelope.fix).toContain(
-      'A rename is stated with @@hint(was: "<old name>") on the model in the schema and planned with migration plan',
+      'A rename that must keep its data is stated in the schema, with a rename hint where the schema language has one, and planned with migration plan',
     );
     expect(envelope.fix).not.toContain('hint in the planned migration');
   });
@@ -154,7 +154,7 @@ describe('errorPathUnreachable', () => {
     expect(envelope.fix).not.toContain('--to');
     expect((envelope.fix ?? '').toLowerCase()).toContain('destructive');
     expect(envelope.fix).toContain(
-      'A rename is stated with @@hint(was: "<old name>") on the model in the schema and planned with migration plan',
+      'A rename that must keep its data is stated in the schema, with a rename hint where the schema language has one, and planned with migration plan',
     );
     expect(envelope.fix).not.toContain('hint in the planned migration');
   });

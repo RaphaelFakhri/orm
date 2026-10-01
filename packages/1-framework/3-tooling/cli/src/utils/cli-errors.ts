@@ -521,7 +521,7 @@ export function errorMarkerMismatch(
 const ROLLBACK_IS_DESTRUCTIVE =
   'A rollback (reverse) plan is expected to contain destructive (DROP) operations — review them before applying';
 const RENAMES_AND_DATA_CHANGES =
-  'A rename is stated with @@hint(was: "<old name>") on the model in the schema and planned with migration plan; re-adding a required field without a safe default, or a type change that needs data, may leave a placeholder in the planned migration.ts to fill in';
+  'A rename that must keep its data is stated in the schema, with a rename hint where the schema language has one, and planned with migration plan; re-adding a required field without a safe default, or a type change that needs data, may leave a placeholder in the planned migration.ts to fill in';
 
 export function errorPathUnreachable(failure: MigrateFailure): ActionableCliError {
   const meta = failure.meta ?? {};
