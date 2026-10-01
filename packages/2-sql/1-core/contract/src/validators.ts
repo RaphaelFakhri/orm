@@ -418,6 +418,28 @@ const ContractMetaSchema = type({
  * pack contributions through {@link createSqlStorageSchema}; the rest
  * of the contract envelope is family-shared.
  */
+const SqlColumnHintSchema = type({ '+': 'reject', was: 'string > 0' }).or({
+  '+': 'reject',
+  deleted: 'true',
+});
+
+const SqlColumnHintsSchema = type({ '[string]': SqlColumnHintSchema });
+
+const SqlTableHintsSchema = type({
+  '+': 'reject',
+  was: 'string > 0',
+  'columns?': SqlColumnHintsSchema,
+})
+  .or({ '+': 'reject', deleted: 'true', 'control?': ControlPolicySchema })
+  .or({ '+': 'reject', columns: SqlColumnHintsSchema });
+
+const SqlContractHintsSchema = type({
+  '+': 'reject',
+  namespaces: type({
+    '[string]': type({ '+': 'reject', tables: type({ '[string]': SqlTableHintsSchema }) }),
+  }),
+});
+
 export function createSqlContractSchema(
   kinds: ReadonlyMap<string, AnyEntityKindDescriptor>,
 ): Type<unknown> {
@@ -432,6 +454,7 @@ export function createSqlContractSchema(
     'extensions?': 'Record<string, unknown>',
     'meta?': ContractMetaSchema,
     'defaultControlPolicy?': ControlPolicySchema,
+    'hints?': SqlContractHintsSchema,
     'roots?': type({ '[string]': CrossReferenceSchema }),
     domain: type({
       namespaces: type({
