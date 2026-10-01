@@ -4,6 +4,7 @@ import type {
   TargetDescriptor,
 } from '@internal/framework-components/components';
 import type {
+  AuthoredContractValidationCapable,
   ControlFamilyInstance,
   ControlStack,
   CoreSchemaView,
@@ -32,6 +33,7 @@ import { isPlainRecord } from '@internal/framework-components/ir';
 import type { PslDocumentAst } from '@internal/framework-components/psl-ast';
 import { assertDescriptorSelfConsistency } from '@internal/migration-tools/spaces';
 import { sqlContractCanonicalizationHooks } from '@internal/sql-contract/canonicalization-hooks';
+import { assertContractHintsConsistent } from '@internal/sql-contract/hints';
 import { assertNothingCastsFromSqlExpression } from '@internal/sql-contract/sql-expression';
 import type { SqlControlDriverInstance, SqlStorage } from '@internal/sql-contract/types';
 import type {
@@ -212,6 +214,7 @@ export interface SqlControlFamilyInstance
     SchemaViewCapable<SqlSchemaIRNode>,
     PslContractInferCapable<SqlSchemaIRNode>,
     PslContractBuildCapable<Contract<SqlStorage>>,
+    AuthoredContractValidationCapable<Contract<SqlStorage>>,
     OperationPreviewCapable,
     SqlFamilyInstanceState {
   /**
@@ -1065,6 +1068,10 @@ export function createSqlFamilyInstance<TTargetId extends string>(
 
     toOperationPreview(operations: readonly MigrationPlanOperation[]): OperationPreview {
       return sqlOperationsToPreview(operations);
+    },
+
+    validateAuthoredContract(contract: Contract<SqlStorage>): void {
+      assertContractHintsConsistent(contract);
     },
 
     toSchemaView(schema: SqlSchemaIRNode): CoreSchemaView {

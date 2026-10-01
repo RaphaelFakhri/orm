@@ -7,6 +7,7 @@ export {
   storageHashHex,
 } from '../control/contract-snapshot-layout';
 export type {
+  AuthoredContractValidationCapable,
   DiffSubjectGranularity,
   MigratableTargetDescriptor,
   OperationPreviewCapable,
@@ -18,6 +19,7 @@ export type {
   SchemaViewCapable,
 } from '../control/control-capabilities';
 export {
+  hasAuthoredContractValidation,
   hasMigrations,
   hasOperationPreview,
   hasPslContractBuild,

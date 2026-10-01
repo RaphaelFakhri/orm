@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  hasAuthoredContractValidation,
   hasOperationPreview,
   hasPslContractBuild,
   hasPslContractInfer,
@@ -76,6 +77,30 @@ describe('hasSchemaView', () => {
 
   it('returns false when instance does not declare toSchemaView', () => {
     expect(hasSchemaView(baseInstance)).toBe(false);
+  });
+});
+
+describe('hasAuthoredContractValidation', () => {
+  it('returns true when instance exposes validateAuthoredContract function', () => {
+    const instance = {
+      ...baseInstance,
+      validateAuthoredContract: () => {},
+    } as ControlFamilyInstance<'sql', unknown>;
+
+    expect(hasAuthoredContractValidation(instance)).toBe(true);
+  });
+
+  it('returns false when instance does not declare validateAuthoredContract', () => {
+    expect(hasAuthoredContractValidation(baseInstance)).toBe(false);
+  });
+
+  it('returns false when validateAuthoredContract is present but not a function', () => {
+    const instance = {
+      ...baseInstance,
+      validateAuthoredContract: true,
+    } as unknown as ControlFamilyInstance<'sql', unknown>;
+
+    expect(hasAuthoredContractValidation(instance)).toBe(false);
   });
 });
 

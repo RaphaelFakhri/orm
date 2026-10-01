@@ -86,6 +86,24 @@ export function hasPslContractBuild<TFamilyId extends string, TSchemaIR>(
 }
 
 /**
+ * Capability declaring that a family checks rules of an authored contract that the contract
+ * serializer does not, because the application runtime must still load a contract that breaks
+ * them. `contract emit` and `contract print` call it on the contract the serializer returns.
+ */
+export interface AuthoredContractValidationCapable<TContract = Contract> {
+  validateAuthoredContract(contract: TContract): void;
+}
+
+export function hasAuthoredContractValidation<TFamilyId extends string, TSchemaIR>(
+  instance: ControlFamilyInstance<TFamilyId, TSchemaIR>,
+): instance is ControlFamilyInstance<TFamilyId, TSchemaIR> & AuthoredContractValidationCapable {
+  return (
+    'validateAuthoredContract' in instance &&
+    typeof Reflect.get(instance, 'validateAuthoredContract') === 'function'
+  );
+}
+
+/**
  * Capability declaring that a family can render a textual preview of migration
  * operations for the CLI's "DDL preview" output. SQL families emit
  * `language: 'sql'` statements; Mongo families emit `language: 'mongodb-shell'`.
