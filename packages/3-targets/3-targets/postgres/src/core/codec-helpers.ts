@@ -26,7 +26,7 @@ export function renderLength(
     throw postgresError(
       'RUNTIME.TYPE_PARAMS_INVALID',
       `renderOutputType: expected integer "length" in typeParams for ${typeName}, got ${String(length)}`,
-      { meta: { typeName: typeName, param: 'length', received: String(length) } },
+      { meta: { typeName, param: 'length', received: String(length) } },
     );
   }
   return `${typeName}<${length}>`;
@@ -48,7 +48,7 @@ export function renderPrecision(
     throw postgresError(
       'RUNTIME.TYPE_PARAMS_INVALID',
       `renderOutputType: expected integer "precision" in typeParams for ${typeName}, got ${String(precision)}`,
-      { meta: { typeName: typeName, param: 'precision', received: String(precision) } },
+      { meta: { typeName, param: 'precision', received: String(precision) } },
     );
   }
   return `${typeName}<${precision}>`;
