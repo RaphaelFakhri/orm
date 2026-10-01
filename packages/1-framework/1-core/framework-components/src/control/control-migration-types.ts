@@ -420,6 +420,11 @@ export interface SchemaOwnership {
    * entity at this coordinate.
    */
   declaresEntity(coordinate: SchemaEntityCoordinate): boolean;
+  /**
+   * The id of the contract space that declares a storage entity at this coordinate, or
+   * `undefined` when none does.
+   */
+  ownerOf(coordinate: SchemaEntityCoordinate): string | undefined;
 }
 
 /**

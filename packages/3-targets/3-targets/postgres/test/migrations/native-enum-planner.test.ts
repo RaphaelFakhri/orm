@@ -213,6 +213,8 @@ function twoSpaceOwnership(...storages: readonly SqlStorage[]): SchemaOwnership 
   }
   return {
     declaresEntity: (coordinate) => ownedCoordinates.has(coordinateKey(coordinate)),
+    ownerOf: (coordinate) =>
+      ownedCoordinates.has(coordinateKey(coordinate)) ? 'sibling' : undefined,
   };
 }
 
@@ -371,7 +373,10 @@ describe('op building (typed DDL node)', () => {
 describe('planner ownership + policy for enum extras', () => {
   const ownsOnly = (...coordinates: readonly SchemaEntityCoordinate[]): SchemaOwnership => {
     const owned = new Set(coordinates.map(coordinateKey));
-    return { declaresEntity: (coordinate) => owned.has(coordinateKey(coordinate)) };
+    return {
+      declaresEntity: (coordinate) => owned.has(coordinateKey(coordinate)),
+      ownerOf: (coordinate) => (owned.has(coordinateKey(coordinate)) ? 'sibling' : undefined),
+    };
   };
 
   function planLive(

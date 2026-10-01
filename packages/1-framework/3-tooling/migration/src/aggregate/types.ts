@@ -95,9 +95,10 @@ export interface AggregateContractSpace {
  * - `listSpaces()` / `hasSpace()` / `space()` / `spaces()`: the query
  *   surface the read commands consume — `app` first, then extension ids
  *   lex-ascending.
- * - `declaresEntity(coordinate)` / `declaringSpaces(coordinate)`: ownership
- *   queries — does any contract space declare a storage entity at this
- *   coordinate (namespace, entity kind, and name), and which spaces do? The verifier's
+ * - `declaresEntity(coordinate)` / `ownerOf(coordinate)` / `declaringSpaces(coordinate)`:
+ *   ownership queries — does any contract space declare a storage entity at
+ *   this coordinate (namespace, entity kind, and name), which space declares
+ *   it first, and which spaces do? The verifier's
  *   unclaimed-elements pass asks these of the diff's extra findings; the
  *   migration planner asks `declaresEntity` per live extra node to decide
  *   whether some space owns it (the aggregate satisfies the framework
@@ -117,6 +118,7 @@ export interface ContractSpaceAggregate extends SchemaOwnership {
   space(id: string): AggregateContractSpace | undefined;
   spaces(): readonly AggregateContractSpace[];
   declaresEntity(coordinate: SchemaEntityCoordinate): boolean;
+  ownerOf(coordinate: SchemaEntityCoordinate): string | undefined;
   declaringSpaces(coordinate: SchemaEntityCoordinate): readonly string[];
   checkIntegrity(opts?: IntegrityQueryOptions): readonly IntegrityViolation[];
 }
