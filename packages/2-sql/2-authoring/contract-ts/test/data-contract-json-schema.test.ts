@@ -79,8 +79,8 @@ describe('data contract JSON schema', () => {
         namespaces: {
           public: {
             tables: {
-              Legacy: { deleted: true, control: 'tolerated' },
-              User: { columns: { firstName: { was: 'first_name' } }, was: 'Profile' },
+              Account: { was: 'Customer' },
+              User: { was: 'Profile' },
             },
           },
         },
@@ -90,6 +90,14 @@ describe('data contract JSON schema', () => {
       valid: true,
       errors: null,
     });
+  });
+
+  it('rejects a hints table entry no planner acts on yet', () => {
+    const validate = compileGeneratedSchema();
+    const contract = validSqlContractJson({
+      hints: { namespaces: { public: { tables: { Legacy: { deleted: true } } } } },
+    });
+    expect(validate(contract)).toBe(false);
   });
 
   it('rejects a hints table entry with an unknown property', () => {

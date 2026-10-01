@@ -443,7 +443,7 @@ A foreign key's target refs are empty or inconsistent: no target ref given, refs
 
 ### CONTRACT.HINT_INVALID
 
-The contract's `hints` section disagrees with the contract it belongs to: a hint names a namespace or table the contract does not declare, a rename hint's old name is still declared by the contract, or two entries claim the same old name. The message names the table or column and the rule it breaks, for example `Contract hints: table "User" claims it was "Post", which the contract also declares.` Raised when the hints of an emitted contract are checked before they are used. Payload: `namespaceId`, `table`; `column` and `was` when they apply.
+The contract's `hints` section disagrees with the contract it belongs to: a hint names a namespace or table the contract does not declare, a rename hint's old name is still declared by the contract, or two entries claim the same old name. The message names the table and the rule it breaks, for example `Contract hints: table "User" claims it was "Post", which the contract also declares.` Raised when the hints of an emitted contract are checked before they are used. An entry the planner cannot act on, such as a `deleted` or `columns` entry written by hand, fails the contract's structural validation instead. Payload: `namespaceId`, `table`; `was` when it applies.
 
 ### CONTRACT.IDENTITY_INVALID
 

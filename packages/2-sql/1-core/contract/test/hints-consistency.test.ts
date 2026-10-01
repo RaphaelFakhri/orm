@@ -25,14 +25,9 @@ describe('assertContractHintsConsistent', () => {
   describe('namespaces', () => {
     it('rejects a renamed table in a namespace the contract does not declare', () => {
       expectHintInvalid(
-        tableHints({ Legacy: { deleted: true }, User: { was: 'Profile' } }, 'ghost'),
+        tableHints({ User: { was: 'Profile' } }, 'ghost'),
         'Contract hints: table "User" names namespace "ghost", which the contract does not declare.',
       );
-    });
-
-    it('accepts an undeclared namespace holding only deleted tables', () => {
-      const contract = loadContract(tableHints({ Legacy: { deleted: true } }, 'ghost'));
-      expect(() => assertContractHintsConsistent(contract)).not.toThrow();
     });
   });
 
@@ -40,13 +35,6 @@ describe('assertContractHintsConsistent', () => {
     it('rejects a rename hint on a table the contract does not declare', () => {
       expectHintInvalid(
         tableHints({ Customer: { was: 'Client' } }),
-        'Contract hints: table "Customer" carries a hint but the contract does not declare it.',
-      );
-    });
-
-    it('rejects column hints on a table the contract does not declare', () => {
-      expectHintInvalid(
-        tableHints({ Customer: { columns: { name: { was: 'full_name' } } } }),
         'Contract hints: table "Customer" carries a hint but the contract does not declare it.',
       );
     });
@@ -65,34 +53,6 @@ describe('assertContractHintsConsistent', () => {
         tableHints({ User: { was: 'Profile' }, Account: { was: 'Profile' } }),
         'Contract hints: table "Account" and "User" both claim they were "Profile".',
       );
-    });
-
-    it('rejects a column was naming a column the table declares', () => {
-      expectHintInvalid(
-        tableHints({ User: { columns: { firstName: { was: 'email' } } } }),
-        'Contract hints: column "User"."firstName" claims it was "email", which the contract also declares.',
-      );
-    });
-
-    it('rejects two columns of one table claiming the same was', () => {
-      expectHintInvalid(
-        tableHints({
-          User: {
-            columns: { givenName: { was: 'first_name' }, firstName: { was: 'first_name' } },
-          },
-        }),
-        'Contract hints: column "User"."firstName" and "givenName" both claim they were "first_name".',
-      );
-    });
-
-    it('accepts the same column was on two different tables', () => {
-      const contract = loadContract(
-        tableHints({
-          User: { columns: { firstName: { was: 'name' } } },
-          Account: { columns: { id: { was: 'name' } } },
-        }),
-      );
-      expect(() => assertContractHintsConsistent(contract)).not.toThrow();
     });
   });
 });

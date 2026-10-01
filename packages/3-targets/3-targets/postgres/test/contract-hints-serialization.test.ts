@@ -6,8 +6,7 @@ const hints = {
   namespaces: {
     public: {
       tables: {
-        Legacy: { deleted: true },
-        users: { columns: { firstName: { was: 'first_name' } }, was: 'Profile' },
+        users: { was: 'Profile' },
       },
     },
   },

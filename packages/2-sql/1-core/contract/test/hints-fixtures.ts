@@ -37,8 +37,8 @@ export const exampleHints = {
   namespaces: {
     public: {
       tables: {
-        Legacy: { deleted: true },
-        User: { columns: { firstName: { was: 'first_name' } }, was: 'Profile' },
+        Account: { was: 'Customer' },
+        User: { was: 'Profile' },
       },
     },
   },

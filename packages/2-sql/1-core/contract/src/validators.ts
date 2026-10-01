@@ -413,25 +413,17 @@ const ContractMetaSchema = type({
   '[string]': 'unknown',
 });
 
-const SqlColumnHintSchema = type({ '+': 'reject', was: 'string > 0' }).or({
-  '+': 'reject',
-  deleted: 'true',
-});
-
-const SqlColumnHintsSchema = type({ '[string]': SqlColumnHintSchema });
-
-const SqlTableHintsSchema = type({
-  '+': 'reject',
-  was: 'string > 0',
-  'columns?': SqlColumnHintsSchema,
-})
-  .or({ '+': 'reject', deleted: 'true', 'control?': ControlPolicySchema })
-  .or({ '+': 'reject', columns: SqlColumnHintsSchema });
-
-const SqlContractHintsSchema = type({
+/**
+ * The contract's `hints` section. It accepts only the entries a planner acts on, a table's `was`,
+ * so an entry nothing would act on fails validation instead of being ignored.
+ */
+export const sqlContractHintsSchema = type({
   '+': 'reject',
   namespaces: type({
-    '[string]': type({ '+': 'reject', tables: type({ '[string]': SqlTableHintsSchema }) }),
+    '[string]': type({
+      '+': 'reject',
+      tables: type({ '[string]': type({ '+': 'reject', was: 'string > 0' }) }),
+    }),
   }),
 });
 
@@ -454,7 +446,7 @@ export function createSqlContractSchema(
     'extensions?': 'Record<string, unknown>',
     'meta?': ContractMetaSchema,
     'defaultControlPolicy?': ControlPolicySchema,
-    'hints?': SqlContractHintsSchema,
+    'hints?': sqlContractHintsSchema,
     'roots?': type({ '[string]': CrossReferenceSchema }),
     domain: type({
       namespaces: type({

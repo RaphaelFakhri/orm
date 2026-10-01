@@ -194,25 +194,6 @@ describe('resolveHints on an inconsistent contract', () => {
   });
 });
 
-describe('resolveHints scope in this release', () => {
-  it('produces nothing for column hints and deleted table hints', () => {
-    const contract = contractWith(
-      { public: { User: sqlTable('id', 'firstName') } },
-      {
-        namespaces: {
-          public: {
-            tables: {
-              Legacy: { deleted: true },
-              User: { columns: { firstName: { was: 'first_name' } } },
-            },
-          },
-        },
-      },
-    );
-    expect(resolve({ contract, origin: origin('public.Legacy', 'public.User') })).toEqual(nothing);
-  });
-});
-
 describe('resolveHints ordering and purity', () => {
   const contract = contractWith(
     {

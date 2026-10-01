@@ -165,7 +165,6 @@ export function resolveHints(input: ResolveHintsInput): ResolvedHints {
   const hints = sqlContractHints(input.contract);
   for (const [namespaceId, namespaceHints] of sortedEntries(hints?.namespaces ?? {})) {
     for (const [table, entry] of sortedEntries<SqlTableHints>(namespaceHints.tables)) {
-      if (entry.was === undefined) continue;
       const { rename, conflict } = resolveTableRename(input, namespaceId, table, entry.was);
       if (rename !== undefined) tableRenames.push(rename);
       if (conflict !== undefined) conflicts.push(conflict);

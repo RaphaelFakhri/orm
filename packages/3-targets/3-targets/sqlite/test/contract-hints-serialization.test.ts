@@ -6,8 +6,7 @@ const hints = {
   namespaces: {
     __unbound__: {
       tables: {
-        Legacy: { deleted: true },
-        users: { columns: { email: { was: 'mail' } }, was: 'accounts' },
+        users: { was: 'accounts' },
       },
     },
   },
