@@ -339,7 +339,17 @@ type FieldOperations<
   FieldName extends string,
 > =
   FieldCodecId<TContract, ModelName, FieldName, NsId> extends infer CodecId extends string
-    ? CodecOperations<TContract, CodecId>
+    ? ExtractQueryOperationTypes<TContract> extends infer AllOps
+      ? {
+          [OpName in keyof AllOps & string as OpMatchesField<
+            AllOps[OpName],
+            CodecId,
+            ExtractCodecTypes<TContract>
+          > extends true
+            ? OpName
+            : never]: QueryOperationMethod<AllOps[OpName], ExtractCodecTypes<TContract>>;
+        }
+      : unknown
     : unknown;
 
 type CodecTraits<
@@ -1347,7 +1357,11 @@ type FieldTraits<
   NsId extends string = never,
 > =
   FieldCodecId<TContract, ModelName, FieldName, NsId> extends infer Id extends string
-    ? CodecTraits<TContract, Id>
+    ? Id extends keyof ExtractCodecTypes<TContract>
+      ? ExtractCodecTypes<TContract>[Id] extends { readonly traits: infer T }
+        ? T
+        : never
+      : never
     : never;
 
 export type NumericFieldNames<
