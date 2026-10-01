@@ -5,51 +5,7 @@ import { describe, expect, it } from 'vitest';
 import { sqlContractHints } from '../src/hints';
 import type { SqlStorage } from '../src/types';
 import { validateSqlContractFully } from '../src/validators';
-
-const column = { nativeType: 'text', codecId: 'pg/text@1', nullable: false };
-
-function sqlTable(...columnNames: string[]) {
-  return {
-    columns: Object.fromEntries(columnNames.map((name) => [name, column])),
-    uniques: [],
-    indexes: [],
-    foreignKeys: [],
-  };
-}
-
-function contractJsonWithHints(hints: unknown): Record<string, unknown> {
-  return {
-    ...createSqlContract({
-      tables: {
-        public: {
-          User: sqlTable('id', 'firstName', 'givenName', 'email'),
-          Post: sqlTable('id'),
-          Account: sqlTable('id'),
-        },
-      },
-    }),
-    hints,
-  };
-}
-
-function loadContract(hints: unknown): Contract<SqlStorage> {
-  return validateSqlContractFully<Contract<SqlStorage>>(contractJsonWithHints(hints));
-}
-
-const exampleHints = {
-  namespaces: {
-    public: {
-      tables: {
-        Legacy: { deleted: true },
-        User: { columns: { firstName: { was: 'first_name' } }, was: 'Profile' },
-      },
-    },
-  },
-};
-
-function tableHints(tables: Record<string, unknown>, namespace = 'public') {
-  return { namespaces: { [namespace]: { tables } } };
-}
+import { exampleHints, loadContract, tableHints } from './hints-fixtures';
 
 describe('hints section validation', () => {
   it('accepts the full section and keeps it on the loaded contract', () => {
