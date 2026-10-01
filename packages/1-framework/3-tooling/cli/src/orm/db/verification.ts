@@ -224,7 +224,10 @@ export function issueLabel(issue: SchemaDiffIssue): string {
   return `${OUTCOME_LABEL[issueOutcome(issue)]}: ${issue.path.join('/')}`;
 }
 
-function issueNodes(issues: readonly SchemaDiffIssue[], status: 'error' | 'warn'): TreeNode[] {
+export function issueNodes(
+  issues: readonly SchemaDiffIssue[],
+  status: 'error' | 'warn',
+): TreeNode[] {
   return issues.map((issue) => ({ label: issueLabel(issue), status }));
 }
 

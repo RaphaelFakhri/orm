@@ -1,34 +1,42 @@
+import type { PrismaNextConfig } from '@internal/config/config-types';
 import { ormConfigSection } from '@internal/config-loader';
-import type {
-  SignDatabaseResult,
-  VerifyDatabaseSchemaResult,
-} from '@internal/framework-components/control';
+import type { Contract } from '@internal/contract/types';
+import { APP_SPACE_ID, createControlStack } from '@internal/framework-components/control';
 import { MigrationToolsError } from '@internal/migration-tools/errors';
-import { readRef } from '@internal/migration-tools/refs';
+import { readRef, writeRef } from '@internal/migration-tools/refs';
+import { spaceMigrationDirectory, spaceRefsDirectory } from '@internal/migration-tools/spaces';
 import { ifDefined } from '@internal/utils/defined';
-import { InternalError, isInternalError } from '@internal/utils/internal-error';
-import type { Block, Presentations, Span } from '@prisma/cli-engine';
+import { isInternalError } from '@internal/utils/internal-error';
+import { notOk as notOkResult, ok as okResult, type Result } from '@internal/utils/result';
+import type { Block, Presentations, Span, Text, TreeNode } from '@prisma/cli-engine';
 import { flag, positional } from '@prisma/cli-engine';
+import type { Diagnostic } from '@prisma/cli-engine/protocol';
 import { notOk, ok } from '@prisma/cli-engine/protocol';
 import { createControlClient } from '../../control-api/client';
 import { resolveContractRefToSnapshot } from '../../control-api/operations/contract-snapshot-resolution';
+import type { DbSignSpaceOutcome } from '../../control-api/operations/db-sign';
 import {
   advanceRefSafely,
   type ContractIR,
   preflightRefAdvancement,
 } from '../../control-api/operations/ref-advancement';
-import { errorAdvanceRefArgConflict, errorContractArgConflict } from '../../utils/cli-errors';
+import {
+  type CliStructuredError,
+  errorAdvanceRefArgConflict,
+  errorContractArgConflict,
+  errorContractValidationFailed,
+} from '../../utils/cli-errors';
 import { closeQuietly, maskConnectionUrl } from '../../utils/command-helpers';
 import { defineOrmCommand } from '../define-command';
 import { dbFlag } from '../flags';
-import { appRefsDirFor, baseDirFor, displayPath, migrationsDirFor } from '../migration/paths';
+import { appRefsDirFor, baseDirFor, migrationsDirFor } from '../migration/paths';
 import { normalizeError } from '../normalize-error';
 import { controlProgressReporter } from '../progress';
 import {
+  issueNodes,
   readEmittedContract,
   requireVerifyConnection,
   schemaDriftNextActions,
-  schemaFindingBlocks,
   schemaVerdictDiagnostic,
   verificationThrow,
 } from './verification';
@@ -40,17 +48,6 @@ import {
  */
 const FINDINGS_EXIT_CODE = 4;
 
-/** The config file this bin reads; the handler is not told which one was loaded. */
-const CONFIG_DISPLAY_PATH = 'prisma.config.ts';
-
-/**
- * The refusal document. `schemaVerify` never evaluates unclaimed elements, so
- * the document carries no `unclaimed` key at all — `db verify` reports the
- * same absence when the check did not run, and an empty array would read as
- * "evaluated, none found".
- */
-type SchemaVerifyDocument = VerifyDatabaseSchemaResult;
-
 /**
  * The ref a signature checkpoints. Unlike `db init` / `db update`, `--db` does
  * not suppress the write: signing does not touch the schema, and adoption is
@@ -60,9 +57,9 @@ type SchemaVerifyDocument = VerifyDatabaseSchemaResult;
 const DEFAULT_ADVANCE_REF = 'db';
 
 interface AdvancedRef {
+  readonly space: string;
   readonly name: string;
   readonly hash: string;
-  readonly previousHash: string | undefined;
 }
 
 const NO_PREVIOUS_HASH_CODES: ReadonlySet<string> = new Set([
@@ -86,8 +83,11 @@ async function previousRefHash(refsDir: string, name: string): Promise<string | 
   }
 }
 
-interface DbSignDocument extends SignDatabaseResult {
-  readonly advancedRef: { readonly name: string; readonly hash: string } | null;
+interface DbSignDocument {
+  readonly ok: boolean;
+  readonly summary: string;
+  readonly spaces: readonly DbSignSpaceOutcome[];
+  readonly advancedRefs: readonly AdvancedRef[];
 }
 
 /** The contract that was signed, as the bytes the snapshot store keeps. */
@@ -107,79 +107,146 @@ function headerBlock(inputs: { readonly contract: string; readonly database: str
   };
 }
 
-function advancedRefSpans(advanced: AdvancedRef): readonly Span[] {
+function hashSpans(hash: string, previousHash: string | undefined): readonly Span[] {
   return [
-    { text: `Advanced ref "${advanced.name}" → ` },
-    { text: advanced.hash, tone: 'identifier' },
-    ...(advanced.previousHash === undefined
+    { text: hash, tone: 'identifier' },
+    ...(previousHash === undefined
       ? []
       : [
           { text: ' (was ', tone: 'muted' as const },
-          { text: advanced.previousHash, tone: 'identifier' as const },
+          { text: previousHash, tone: 'identifier' as const },
           { text: ')', tone: 'muted' as const },
         ]),
   ];
 }
 
-function refOutcomeBlock(advanced: AdvancedRef | null): Block {
-  return advanced === null
-    ? {
-        kind: 'summary',
-        status: 'info',
-        tone: 'muted',
-        text: `Left ref "${DEFAULT_ADVANCE_REF}" untouched (--no-advance-ref)`,
-      }
-    : { kind: 'summary', status: 'ok', text: advancedRefSpans(advanced) };
+function spaceNode(outcome: DbSignSpaceOutcome): TreeNode {
+  switch (outcome.status) {
+    case 'signed':
+      return {
+        label: [
+          { text: `${outcome.space}: signed ` },
+          ...(outcome.marker.previous === undefined
+            ? [
+                { text: outcome.contract.storageHash, tone: 'identifier' as const },
+                { text: ' (no marker before)', tone: 'muted' as const },
+              ]
+            : hashSpans(outcome.contract.storageHash, outcome.marker.previous.storageHash)),
+        ],
+        status: 'ok',
+      };
+    case 'unchanged':
+      return {
+        label: [
+          { text: `${outcome.space}: unchanged, already signed with ` },
+          { text: outcome.contract.storageHash, tone: 'identifier' },
+        ],
+        status: 'ok',
+      };
+    case 'failed':
+      return {
+        label: `${outcome.space}: not signed, the schema does not satisfy its contract`,
+        status: 'error',
+        children: issueNodes(outcome.schema.schema.issues, 'error'),
+      };
+  }
+}
+
+function quotedList(spaces: readonly DbSignSpaceOutcome[]): string {
+  return spaces.map((outcome) => `"${outcome.space}"`).join(', ');
+}
+
+function signSummary(spaces: readonly DbSignSpaceOutcome[]): string {
+  const failed = spaces.filter((outcome) => outcome.status === 'failed');
+  if (failed.length === 0) {
+    return 'Database signed';
+  }
+  const signed = spaces.filter((outcome) => outcome.status !== 'failed');
+  const noun = failed.length === 1 ? 'space' : 'spaces';
+  const signedText = signed.length === 0 ? 'signed nothing' : `signed ${quotedList(signed)}`;
+  return `Database schema does not satisfy contract for ${noun} ${quotedList(failed)}; ${signedText}`;
+}
+
+function advancedRefSpans(
+  advanced: AdvancedRef & { readonly previousHash: string | undefined },
+): Text {
+  const subject =
+    advanced.space === APP_SPACE_ID
+      ? `Advanced ref "${advanced.name}" → `
+      : `Advanced ref "${advanced.name}" of space "${advanced.space}" → `;
+  return [{ text: subject }, ...hashSpans(advanced.hash, advanced.previousHash)];
 }
 
 function signPresentations(inputs: {
   readonly document: DbSignDocument;
-  readonly advanced: AdvancedRef | null;
+  readonly advanced:
+    | readonly (AdvancedRef & { readonly previousHash: string | undefined })[]
+    | null;
   readonly header: Block;
 }): Presentations {
-  const marker = inputs.document.marker;
+  const { document } = inputs;
   return {
     stdout: () => [],
     next: () => [],
     human: (): readonly Block[] => [
       inputs.header,
-      { kind: 'summary', status: 'ok', text: 'Database signed' },
-      {
-        kind: 'fields',
-        rows: [
-          {
-            label: 'from',
-            value:
-              marker.previous?.storageHash === undefined
-                ? [{ text: 'none', tone: 'muted' }]
-                : [{ text: marker.previous.storageHash, tone: 'identifier' }],
-          },
-          {
-            label: 'to',
-            value: [{ text: inputs.document.contract.storageHash, tone: 'identifier' }],
-          },
-        ],
-      },
-      refOutcomeBlock(inputs.advanced),
+      { kind: 'tree', roots: document.spaces.map(spaceNode) },
+      { kind: 'summary', status: document.ok ? 'ok' : 'error', text: document.summary },
+      ...(inputs.advanced === null
+        ? [
+            {
+              kind: 'summary' as const,
+              status: 'info' as const,
+              tone: 'muted' as const,
+              text: `Left ref "${DEFAULT_ADVANCE_REF}" untouched (--no-advance-ref)`,
+            },
+          ]
+        : inputs.advanced.map((advanced) => ({
+            kind: 'summary' as const,
+            status: 'ok' as const,
+            text: advancedRefSpans(advanced),
+          }))),
     ],
-    json: () => inputs.document,
+    json: () => document,
   };
 }
 
-function refusedPresentations(inputs: {
-  readonly document: SchemaVerifyDocument;
-  readonly header: Block;
-}): Presentations {
-  return {
-    stdout: () => [],
-    next: () => [],
-    human: (): readonly Block[] => [
-      inputs.header,
-      ...schemaFindingBlocks({ result: inputs.document, unclaimed: [], strict: false }),
-      { kind: 'summary', status: 'error', text: inputs.document.summary },
-    ],
-    json: () => inputs.document,
-  };
+function hydrateContract(
+  config: PrismaNextConfig,
+  json: unknown,
+  path: string,
+): Result<Contract, CliStructuredError> {
+  try {
+    return okResult(config.family.create(createControlStack(config)).deserializeContract(json));
+  } catch (error) {
+    return notOkResult(
+      errorContractValidationFailed(
+        `Contract JSON is invalid: ${error instanceof Error ? error.message : String(error)}`,
+        { where: { path } },
+      ),
+    );
+  }
+}
+
+/**
+ * Writes the named ref of an extension space. Its contract snapshot is already in the store: the aggregate read the space's contract from it.
+ */
+async function advanceExtensionRef(args: {
+  readonly migrationsDir: string;
+  readonly space: string;
+  readonly name: string;
+  readonly hash: string;
+}): Promise<Result<void, CliStructuredError>> {
+  const refsDir = spaceRefsDirectory(spaceMigrationDirectory(args.migrationsDir, args.space));
+  try {
+    await writeRef(refsDir, args.name, { hash: args.hash, invariants: [] });
+    return okResult(undefined);
+  } catch (error) {
+    if (MigrationToolsError.is(error)) {
+      return notOkResult(error);
+    }
+    throw error;
+  }
 }
 
 /**
@@ -193,15 +260,16 @@ export function createDbSignCommand(
     help: {
       summary: 'Sign the database with your contract so you can safely run queries',
       description:
-        'Verifies that your database schema satisfies the emitted contract, and if\n' +
-        'so, writes or updates the database signature. The signature records that\n' +
+        'Verifies that your database schema satisfies the emitted contract and the\n' +
+        'contract of every extension that ships one, and writes or updates the\n' +
+        'signature of each that does, in one transaction. A signature records that\n' +
         'this database instance is aligned with a specific contract version.\n' +
-        'Idempotent. After signing, the db ref in the checkout is advanced to the\n' +
-        'signed contract; pass --no-advance-ref to sign without touching any ref,\n' +
+        'Idempotent. After signing, the db ref of each signed space is advanced to\n' +
+        'its contract; pass --no-advance-ref to sign without touching any ref,\n' +
         'which is what a CI or deployment pipeline usually wants.\n' +
         'Exit codes: 0 = signed, 2 = the command could not run (unresolvable\n' +
         'contract reference, no emitted contract, unreachable database),\n' +
-        '4 = schema verification failed and no signature was written.',
+        '4 = schema verification failed for a space, whose signature was not written.',
       examples: [
         'db sign',
         'db sign --db $DATABASE_URL',
@@ -235,7 +303,7 @@ export function createDbSignCommand(
       },
     },
     needs: { config: ormConfigSection },
-    exitCodes: { 4: 'schema verification failed; no signature was written' },
+    exitCodes: { 4: 'schema verification failed for a space; its signature was not written' },
     handler: async (args, ctx) => {
       const positionalContract = args.positionals.contract;
       const flagContract = args.flags.contract;
@@ -263,7 +331,7 @@ export function createDbSignCommand(
       }
 
       const migrationsDir = migrationsDirFor(ctx.config);
-      let contractInput: unknown = emitted.value.contract;
+      let contract: Contract = emitted.value.contract;
       let signedSource: SignedContractSource;
       if (contractRef !== undefined) {
         const resolvedRef = await resolveContractRefToSnapshot({
@@ -276,7 +344,15 @@ export function createDbSignCommand(
         if (!resolvedRef.ok) {
           return notOk(normalizeError(resolvedRef.failure));
         }
-        contractInput = resolvedRef.value.contractJson;
+        const hydrated = hydrateContract(
+          ctx.config,
+          resolvedRef.value.contractJson,
+          resolvedRef.value.contractJsonPath,
+        );
+        if (!hydrated.ok) {
+          return notOk(normalizeError(hydrated.failure));
+        }
+        contract = hydrated.value;
         signedSource = {
           json: resolvedRef.value.contractJson,
           jsonPath: resolvedRef.value.contractJsonPath,
@@ -325,80 +401,78 @@ export function createDbSignCommand(
         contract: contractRef ?? emitted.value.displayPath,
         database: maskConnectionUrl(dbConnection),
       });
-      const onProgress = controlProgressReporter(ctx.report);
 
       try {
-        const verified = await client.schemaVerify({
-          contract: contractInput,
-          strict: false,
-          connection: dbConnection,
-          onProgress,
-        });
-        if (!verified.ok) {
-          const document: SchemaVerifyDocument = verified;
-          return ok(
-            ctx.present(
-              {
-                data: document,
-                exitCode: FINDINGS_EXIT_CODE,
-                diagnostics: [
-                  schemaVerdictDiagnostic({
-                    result: verified,
-                    space: undefined,
-                    nextActions: schemaDriftNextActions({ verb: 'sign', contractRef }),
-                  }),
-                ],
-              },
-              refusedPresentations({ document, header }),
-            ),
-          );
-        }
-
-        const signed = await client.sign({
-          contract: contractInput,
-          contractPath: displayPath(emitted.value.path, ctx.cwd),
-          configPath: CONFIG_DISPLAY_PATH,
-          onProgress,
-        });
-        // The control contract says a family either writes the marker or throws,
-        // so a returned `ok: false` is a family breaking that contract rather
-        // than anything the user did.
-        if (!signed.ok) {
-          throw new InternalError(
-            `The family returned a sign result that did not sign: ${signed.summary}`,
-          );
-        }
-
-        if (advancement === null) {
-          const document: DbSignDocument = { ...signed, advancedRef: null };
-          return ok(
-            ctx.present(
-              { data: document, exitCode: 0 },
-              signPresentations({ document, advanced: null, header }),
-            ),
-          );
-        }
-
-        const refsDir = appRefsDirFor(ctx.config);
-        const previousHash = await previousRefHash(refsDir, advancement.name);
-        const advanced = await advanceRefSafely({
-          refsDir,
+        const signed = await client.dbSign({
+          contract,
           migrationsDir,
-          name: advancement.name,
-          hash: signed.contract.storageHash,
-          contractIR: advancement.contractIR,
+          connection: dbConnection,
+          onProgress: controlProgressReporter(ctx.report),
         });
-        if (!advanced.ok) {
-          return notOk(normalizeError(advanced.failure));
+        if (!signed.ok) {
+          return notOk(normalizeError(signed.failure));
+        }
+        const spaces = signed.value.spaces;
+
+        const advanced: (AdvancedRef & { readonly previousHash: string | undefined })[] = [];
+        if (advancement !== null) {
+          for (const outcome of spaces) {
+            if (outcome.status === 'failed') continue;
+            const hash = outcome.contract.storageHash;
+            const isApp = outcome.space === APP_SPACE_ID;
+            const refsDir = isApp
+              ? appRefsDirFor(ctx.config)
+              : spaceRefsDirectory(spaceMigrationDirectory(migrationsDir, outcome.space));
+            const previousHash = await previousRefHash(refsDir, advancement.name);
+            const written = isApp
+              ? await advanceRefSafely({
+                  refsDir,
+                  migrationsDir,
+                  name: advancement.name,
+                  hash,
+                  contractIR: advancement.contractIR,
+                })
+              : await advanceExtensionRef({
+                  migrationsDir,
+                  space: outcome.space,
+                  name: advancement.name,
+                  hash,
+                });
+            if (!written.ok) {
+              return notOk(normalizeError(written.failure));
+            }
+            advanced.push({ space: outcome.space, name: advancement.name, hash, previousHash });
+          }
         }
 
-        const document: DbSignDocument = { ...signed, advancedRef: advanced.value };
+        const failed = spaces.filter((outcome) => outcome.status === 'failed');
+        const document: DbSignDocument = {
+          ok: failed.length === 0,
+          summary: signSummary(spaces),
+          spaces,
+          advancedRefs: advanced.map(({ space, name, hash }) => ({ space, name, hash })),
+        };
+        const diagnostics: Diagnostic[] = failed.flatMap((outcome) =>
+          outcome.status === 'failed'
+            ? [
+                schemaVerdictDiagnostic({
+                  result: outcome.schema,
+                  space: outcome.space,
+                  nextActions: schemaDriftNextActions({ verb: 'sign', contractRef }),
+                }),
+              ]
+            : [],
+        );
         return ok(
           ctx.present(
-            { data: document, exitCode: 0 },
+            {
+              data: document,
+              exitCode: failed.length === 0 ? 0 : FINDINGS_EXIT_CODE,
+              ...(diagnostics.length === 0 ? {} : { diagnostics }),
+            },
             signPresentations({
               document,
-              advanced: { ...advanced.value, previousHash },
+              advanced: advancement === null ? null : advanced,
               header,
             }),
           ),
