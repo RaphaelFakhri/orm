@@ -239,7 +239,6 @@ export abstract class SqliteMigration<
 function workingTableLookup(working: WorkingSchema): TableLookup {
   const declares = (tableName: string): boolean => Object.hasOwn(working.current.tables, tableName);
   return {
-    where: 'at this point of the migration',
     declares: (_namespaceId, tableName) => declares(tableName),
     namespacesDeclaring: (tableName) => (declares(tableName) ? [UNBOUND_NAMESPACE_ID] : []),
   };

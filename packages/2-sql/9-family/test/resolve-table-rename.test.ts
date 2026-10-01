@@ -67,7 +67,6 @@ describe('resolveTableRenameAgainst', () => {
     auth: { Session: table() },
   });
   const atThisPoint = (namespaces: Readonly<Record<string, readonly string[]>>): TableLookup => ({
-    where: 'at this point of the migration',
     declares: (namespaceId, tableName) => namespaces[namespaceId]?.includes(tableName) === true,
     namespacesDeclaring: (tableName) =>
       Object.keys(namespaces).filter((namespaceId) => namespaces[namespaceId]?.includes(tableName)),

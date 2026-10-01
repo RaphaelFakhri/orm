@@ -648,7 +648,6 @@ function workingTableLookup(
       tableName,
     );
   return {
-    where: 'at this point of the migration',
     declares,
     namespacesDeclaring: (tableName) =>
       Object.keys(startContract.storage.namespaces).filter((namespaceId) =>

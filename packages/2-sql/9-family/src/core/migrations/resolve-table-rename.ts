@@ -49,12 +49,8 @@ export function unmatchedTableRename(rename: TableRename, reason: string): Struc
   );
 }
 
-/**
- * The tables a rename is resolved against. `where` names that state in a refusal, for example
- * `at this point of the migration`.
- */
+/** The tables a migration has at the point of a rename, after its earlier operations. */
 export interface TableLookup {
-  readonly where: string;
   declares(namespaceId: string, tableName: string): boolean;
   namespacesDeclaring(tableName: string): readonly string[];
 }
@@ -80,7 +76,7 @@ export function resolveTableRenameAgainst(
     return notOk(
       unmatchedTableRename(
         rename,
-        `table "${tableLabel(rename.namespaceId, rename.from)}" does not exist ${lookup.where}`,
+        `table "${tableLabel(rename.namespaceId, rename.from)}" does not exist at this point of the migration`,
       ),
     );
   }
@@ -96,7 +92,7 @@ export function resolveTableRenameAgainst(
     return notOk(
       unmatchedTableRename(
         rename,
-        `table "${tableLabel(namespaceId, rename.to)}" already exists ${lookup.where}`,
+        `table "${tableLabel(namespaceId, rename.to)}" already exists at this point of the migration`,
       ),
     );
   }
