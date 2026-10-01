@@ -54,6 +54,7 @@ import {
   createIndexTypeRegistry,
   type IndexTypeMap,
   type IndexTypeRegistration,
+  type IndexTypeRegistry,
 } from '@internal/sql-contract/index-types';
 import {
   applyFkDefaults,
@@ -277,8 +278,8 @@ function encodeColumnDefault(
 }
 
 function assertStorageSemantics(
-  definition: ContractDefinition,
   contract: Contract<SqlStorage>,
+  indexTypeRegistry: IndexTypeRegistry,
 ): void {
   const semanticErrors = validateStorageSemantics(contract.storage);
   if (semanticErrors.length > 0) {
@@ -288,7 +289,11 @@ function assertStorageSemantics(
       { meta: { errors: semanticErrors } },
     );
   }
+  validateIndexTypes(contract, indexTypeRegistry);
+}
 
+/** The index types the target and the extension packs register. */
+function indexTypeRegistryOf(definition: ContractDefinition): IndexTypeRegistry {
   const indexTypeRegistry = createIndexTypeRegistry();
   const packsToRegister: ReadonlyArray<{ readonly id?: string; readonly indexTypes?: unknown }> = [
     definition.target,
@@ -316,7 +321,7 @@ function assertStorageSemantics(
       indexTypeRegistry.register(entry);
     }
   }
-  validateIndexTypes(contract, indexTypeRegistry);
+  return indexTypeRegistry;
 }
 
 function assertKnownTargetModel(
@@ -1170,6 +1175,7 @@ export function buildSqlContractFromDefinition(
 ): Contract<SqlStorage> {
   const target = definition.target.targetId;
   const defaultNamespaceId = definition.target.defaultNamespaceId;
+  const indexTypeRegistry = indexTypeRegistryOf(definition);
   const qualifyColumnType = resolveColumnTypeQualifier(definition.target);
   const renderCheckExpressions = resolveCheckExpressionRenderer(definition.target);
   const targetFamily = 'sql';
@@ -1509,6 +1515,7 @@ export function buildSqlContractFromDefinition(
         declaredIndexes,
         uniques,
         primaryKey,
+        (indexType) => indexTypeRegistry.backsForeignKey(indexType),
       );
 
       const tableInput: StorageTableInput = {
@@ -1877,7 +1884,7 @@ export function buildSqlContractFromDefinition(
     meta: {},
   };
 
-  assertStorageSemantics(definition, contract);
+  assertStorageSemantics(contract, indexTypeRegistry);
   flushAuthoringWarnings(authoringWarnings);
 
   return contract;
