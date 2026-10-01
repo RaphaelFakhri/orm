@@ -602,10 +602,6 @@ export function refuseUnwritableIndexOptions(entry: ModelWithTable, index: Index
   }
 }
 
-/**
- * Refuses an index, check or policy whose SQL a `sql` literal cannot write back unchanged, because
- * reading the literal canonicalizes it into different text.
- */
 type SqlTextOwner =
   | {
       readonly kind: 'index' | 'check' | 'policy';
@@ -632,6 +628,7 @@ function describeSqlTextOwner(owner: SqlTextOwner): {
   };
 }
 
+/** Refuses an index, check, policy or column default whose SQL a `sql` literal cannot write back unchanged, because reading the literal canonicalizes it into different text. */
 export function refuseSqlTextThatDoesNotReadBack(
   input: SqlTextOwner & { readonly texts: readonly (string | undefined)[] },
 ): void {

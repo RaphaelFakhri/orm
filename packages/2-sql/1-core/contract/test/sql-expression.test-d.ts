@@ -20,7 +20,7 @@ test('a string or a number interpolated is a type error', () => {
 });
 
 test('an object with a text is not a SqlExpression', () => {
-  expectTypeOf({ text: 'x' }).not.toMatchTypeOf<SqlExpression>();
+  expectTypeOf({ text: 'x' }).not.toExtend<SqlExpression>();
   // @ts-expect-error the object lacks the marker a SqlExpression carries
   const value: SqlExpression = { text: 'x' };
   expectTypeOf(value).toEqualTypeOf<SqlExpression>();

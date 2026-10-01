@@ -198,7 +198,7 @@ describe('contract infer keeps a default whose text would not read back, with a 
       },
     });
 
-    expect(psl).toContain('label   String @default(sql`');
+    expect(psl).toContain("  label   String @default(sql`\nlower('a\r\nb')\n`)\n");
     expect(psl).toContain(DEFAULT_NOTE('label'));
   });
 
