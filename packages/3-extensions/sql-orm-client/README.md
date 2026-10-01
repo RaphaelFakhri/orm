@@ -66,21 +66,21 @@ An application extends `Collection` with its own query methods and registers the
 
 ```ts
 class PostCollection extends Collection<Contract, 'Post'> {
-  published() { return this.where((p) => p.publishedAt.isNotNull()); }
-  newestFirst() { return this.orderBy((p) => p.publishedAt.desc()); }
+  withTitle(term: string) { return this.where((p) => p.title.ilike(`%${term}%`)); }
+  newestFirst()           { return this.orderBy((p) => p.createdAt.desc()); }
 }
 
-const db = orm({ runtime, context, collections: { Post: PostCollection } });
+const db = orm({ runtime, context, collections: { Post: PostCollection } }).public;
 
-db.Post.where({ userId }).published().newestFirst().limit(10).all();
-db.Post.include('user').published();
+db.Post.where({ userId }).withTitle('orm').newestFirst().limit(10).all();
+db.Post.include('user').withTitle('orm');
 ```
 
-`where`, `orderBy`, `limit`, `offset`, `distinct`, `distinctOn`, `cursor` and `include` return the collection they were called on, so the class's methods stay available. What a chain has established is added to the type: `where` gives `Filtered<Self>`, `orderBy` gives `Ordered<Self>`, and `include` gives `Including<Self, ...>`, whose rows also have the included relation. `select` and `variant` change the row, so they return the shared `Collection` type and the class's methods are gone after them.
+`where`, `orderBy`, `limit`, `offset`, `distinct`, `distinctOn`, `cursor` and `include` return the collection they were called on, so the class's methods stay available. What a chain has established is added to the type as a fact: `where` gives `Filtered<Self>`, `orderBy` gives `Ordered<Self>`, and `include` gives `Including<Self, ...>`, whose rows also have the included relation. Write a filtered collection's type as `Filtered<C>`; it is `C & HasWhere`, and `HasWhere` is the name error messages print. `select` changes the row and `variant` changes the collection's type argument, so both return the base `Collection` type and the class's methods are gone after them.
 
-`pipe(step)` calls `step` with the collection and returns its result. A step has the type `Step<In, Out>`; `db.Post.pipe(published)` has the same type as `db.Post.published()`.
+`pipe(step)` calls `step` with the collection and returns its result. A step has the type `Step<In, Out>`: `db.Post.pipe((posts) => posts.withTitle('orm'))` has the same type as `db.Post.withTitle('orm')`.
 
-The type state is `{ hasWhere, hasOrderBy, hasUniqueFilter }`. A flag that has not been established is `boolean`; a method that establishes it sets it to `true`. `update` and `delete` and their variants need `hasWhere: true`, and `cursor` needs `hasOrderBy: true`. Because `true` is a subtype of `boolean`, a filtered collection is a subtype of an unfiltered one: `search ? db.Post.published() : db.Post` is a `PostCollection` that may have no filter, and `deleteAll()` on it does not compile. Read a collection's state and row with `CollectionStateOf<C>` and `CollectionRowOf<C>`. See [ADR 258](../../../docs/architecture%20docs/adrs/ADR%20258%20-%20A%20collection%20keeps%20its%20class%20through%20the%20chain.md).
+The type state holds the flags `hasWhere` and `hasOrderBy`. A flag that has not been established is `boolean`; a method that establishes it sets it to `true`. `update`, `updateAll`, `updateAndCount`, `delete`, `deleteAll` and `deleteAndCount` need `hasWhere: true`; `cursor` and `distinctOn` need `hasOrderBy: true`. Because `true` is a subtype of `boolean`, a filtered collection is a subtype of an unfiltered one: `search ? db.Post.withTitle(search) : db.Post` is a `PostCollection` that may have no filter, and `deleteAll()` on it does not compile. Read a collection's state and row with `CollectionStateOf<C>` and `CollectionRowOf<C>`. See [ADR 258](../../../docs/architecture%20docs/adrs/ADR%20258%20-%20A%20collection%20keeps%20its%20class%20through%20the%20chain.md).
 
 ## Skipping rows that collide with a unique constraint
 

@@ -1,5 +1,26 @@
 ---
 changes:
+  - id: writes-on-a-conditional-collection-are-refused
+    summary: |
+      A write (`update`, `updateAll`, `updateAndCount`, `delete`, `deleteAll`, `deleteAndCount`) on a collection that is filtered on some code paths and not on others no longer compiles. Filter on every path, or make the write only where the filter was applied.
+    detection:
+      glob: "**/*.{ts,mts,cts,tsx}"
+      matches:
+        - '\.(?:update|updateAll|updateAndCount|delete|deleteAll|deleteAndCount)\s*\('
+  - id: pipe-is-a-collection-member
+    summary: |
+      Every collection now has a `pipe` method. A custom collection class that declares its own `pipe` member with another signature no longer compiles; rename it.
+    detection:
+      glob: "**/*.{ts,mts,cts,tsx}"
+      matches:
+        - '(?:^|\n)[ \t]*(?:(?:public|protected|private|readonly|static|async|override)\s+)*pipe\s*[(<:=?]'
+  - id: overriding-a-chaining-method
+    summary: |
+      In a class that extends `Collection`, an override of `where`, `orderBy`, `limit`, `offset`, `distinct`, `distinctOn`, `cursor` or `include` must use the new signature, which takes a `this` parameter and returns `Filtered<Self>`, `Ordered<Self>`, `Self` or `Including<Self, ...>`.
+    detection:
+      glob: "**/*.{ts,mts,cts,tsx}"
+      matches:
+        - '(?:^|\n)[ \t]*(?:(?:public|protected|override|async)\s+)*(?:where|orderBy|limit|offset|distinct|distinctOn|cursor|include)\s*[(<]'
   - id: collection-state-flags-are-boolean
     summary: |
       In `DefaultCollectionTypeState`, `hasWhere`, `hasOrderBy` and `hasUniqueFilter` are `boolean` (not known) instead of `false`. Code that expects `false` on a collection with no filter or order must expect `boolean`.
@@ -14,10 +35,10 @@ changes:
     detection:
       glob: "**/*.{ts,mts,cts,tsx}"
       matches:
-        - '\bCollection(?:Impl)?<[^;]*?\binfer\b'
+        - '\bCollection<[^;]*?\binfer\b'
   - id: return-type-of-a-chaining-method
     summary: |
-      `ReturnType` of `where`, `orderBy`, `limit`, `offset`, `distinct`, `distinctOn`, `cursor` or `include` no longer gives a collection. Write the type as `Filtered<C>` or `Ordered<C>`, or take `typeof` of a value.
+      `ReturnType` of `where`, `orderBy`, `limit`, `offset`, `distinct`, `distinctOn`, `cursor` or `include` no longer gives a collection. Write `Filtered<C>` after `where`, `Ordered<C>` after `orderBy`, and `C` after the others, or take `typeof` of a value.
     detection:
       glob: "**/*.{ts,mts,cts,tsx}"
       matches:
@@ -25,16 +46,78 @@ changes:
         - '\bReturnType<\s*typeof\s+[\w$.]+\.(?:where|orderBy|limit|offset|distinct|distinctOn|cursor|include)\b'
   - id: include-takes-no-explicit-type-argument
     summary: |
-      `include` with an explicit type argument, such as `include<'posts'>`, now types as `never`. Call it with the relation name as a value.
+      `include` with an explicit type argument no longer works: `posts.include<'user'>('user')` does not compile, and `ReturnType<typeof posts.include<'user'>>` is `never`. Call `include` with the relation name as a value.
     detection:
       glob: "**/*.{ts,mts,cts,tsx}"
       matches:
         - '\.include<'
+  - id: custom-collection-methods-chain
+    summary: |
+      Optional. Custom collection methods now stay available after the built-in chaining methods. Where code repeats a class method's body inline after a chaining call, it can call the method instead.
+    detection:
+      glob: "**/*.{ts,mts,cts,tsx}"
+      matches:
+        - '\bextends\s+Collection<'
 ---
 
 # A collection keeps its class through the chain
 
-`where`, `orderBy`, `limit`, `offset`, `distinct`, `distinctOn`, `cursor` and `include` now return the collection they were called on, with what they establish added to its type. A custom collection class keeps its methods through the chain, so `db.Post.where({ userId }).published()` and `db.Post.include('user').published()` compile. The changes below affect code that reads a collection's type.
+`where`, `orderBy`, `limit`, `offset`, `distinct`, `distinctOn`, `cursor` and `include` now return the collection they were called on, with what they establish added to its type as a fact. A custom collection class keeps its methods through the chain, so `db.Post.where({ userId }).withTitle('orm')` and `db.Post.include('user').withTitle('orm')` compile.
+
+The facts have names. Write a filtered collection's type as `Filtered<C>` and an ordered one as `Ordered<C>`. `Filtered<C>` is `C & HasWhere`, and `HasWhere` is the name error messages print. Import the names from `@internal/sql-orm-client`, or from the `orm-client` entry of the facade your extension depends on.
+
+These changes apply to the SQL ORM client only. The MongoDB ORM client did not change; skip matches in code that uses it.
+
+## Writes on a conditional collection are refused
+
+A write needs a collection that is filtered on every code path. Code that filters only on some paths compiled before and no longer does:
+
+```ts
+const posts = search ? db.Post.withTitle(search) : db.Post;
+await posts.deleteAll(); // error: The 'this' context of type 'PostCollection' is not assignable to method's 'this' of type 'Filtered<PostCollection>'
+```
+
+The same applies to an `if` with an early return, a `switch`, a loop, and a `let` reassigned in an `if`. Make the write only where the filter was applied, or filter on every path:
+
+```diff
+- const posts = search ? db.Post.withTitle(search) : db.Post;
+- await posts.deleteAll();
++ if (search) {
++   await db.Post.withTitle(search).deleteAll();
++ }
+```
+
+If the code relied on deleting or updating every row when there is no filter, that was the unsafe case the check now refuses. State the intent with an explicit filter instead.
+
+## `pipe` is a member of every collection
+
+Collections have a new method, `pipe(step)`, which calls `step` with the collection and returns the result. A custom collection class that declares its own `pipe` with another signature no longer compiles. Rename that member and its call sites:
+
+```diff
+  class PostCollection extends Collection<Contract, 'Post'> {
+-   pipe(limit: number) { return this.limit(limit); }
++   firstPage(limit: number) { return this.limit(limit); }
+  }
+```
+
+An aggregate operation named `pipe` is now refused with `ORM.AGGREGATE_OPERATION_RESERVED` when the client is built; rename the operation.
+
+## Overriding a chaining method
+
+A class that extends `Collection` and overrides one of the chaining methods must declare the override with the new signature: a type parameter for the receiver, a `this` parameter of that type, and the result type the base method returns. Call the base method with `call` and explicit type arguments, so that the receiver type passes through:
+
+```diff
+  class PostCollection extends Collection<Contract, 'Post'> {
+-   override limit(n: number) {
+-     return super.limit(Math.min(n, 100));
+-   }
++   override limit<Self>(this: Self, n: number): Self {
++     return super.limit.call<Self, [number], Self>(this, Math.min(n, 100));
++   }
+  }
+```
+
+Only classes that extend the SQL `Collection` are affected; skip matches in other classes.
 
 ## The flags of a new collection are `boolean`
 
@@ -45,38 +128,60 @@ changes:
 + type Check = Equal<CollectionStateOf<typeof users>['hasOrderBy'], boolean>;
 ```
 
-A type of your own that sets a flag to `false` should set it to `boolean`. Writes (`update`, `delete` and their variants) still need `hasWhere: true`, and `cursor` still needs `hasOrderBy: true`.
+A type of your own that sets a flag to `false` should set it to `boolean`. The writes still need `hasWhere: true`, and `cursor` and `distinctOn` still need `hasOrderBy: true`.
 
 ## Read the state and the row with `CollectionStateOf` and `CollectionRowOf`
 
-`where`, `orderBy` and `include` record what they establish in two declared properties, not in the type arguments of `Collection`. Inferring the third or fourth type argument gives the row and the state the collection started with. Import `CollectionStateOf` and `CollectionRowOf` from `@internal/sql-orm-client`, or from the `orm-client` entry of the facade your extension depends on, and read them instead:
+`where`, `orderBy` and `include` record what they establish in two declared properties, not in the type arguments of `Collection`. Inferring the third or fourth type argument gives the row and the state the collection started with. Read them with `CollectionRowOf` and `CollectionStateOf` instead:
 
 ```diff
 - type RowOf<C> = C extends Collection<infer _C, infer _M, infer Row, infer _S> ? Row : never;
-- type StateOf<C> = C extends Collection<infer _C, infer _M, infer _R, infer State> ? State : never;
-+ import type { CollectionRowOf, CollectionStateOf } from '@internal/sql-orm-client';
-+ type RowOf<C> = CollectionRowOf<C>;
-+ type StateOf<C> = CollectionStateOf<C>;
+- type UsersRow = RowOf<typeof users>;
++ import type { CollectionRowOf } from '@internal/sql-orm-client';
++ type UsersRow = CollectionRowOf<typeof users>;
 ```
 
-## `ReturnType` of a chaining method gives only what the method adds
+To keep a helper of your own, constrain its parameter, because both helpers require one:
 
-The chaining methods are generic in their receiver, and `ReturnType` of a generic method uses the constraint of its type parameter. `ReturnType<PostCollection['where']>` is now `HasWhere`, not a collection. Write the type with `Filtered` or `Ordered`, or take `typeof` of a value:
+```ts
+import type { CollectionRowOf, CollectionStateOf, HasRow, HasState } from '@internal/sql-orm-client';
+
+type RowOf<C extends HasRow> = CollectionRowOf<C>;
+type StateOf<C extends HasState> = CollectionStateOf<C>;
+```
+
+## `ReturnType` of a chaining method does not give a collection
+
+The chaining methods are generic in their receiver, and `ReturnType` of a generic method uses the constraint of its type parameter. `ReturnType<PostCollection['where']>` is now `HasWhere`, and `ReturnType<PostCollection['limit']>` is `unknown`. Write the type with `Filtered` after `where`, `Ordered` after `orderBy`, and the collection type itself after `limit`, `offset`, `distinct`, `distinctOn` and `cursor`. You can also take `typeof` of a value:
 
 ```diff
-- type PublishedPosts = ReturnType<PostCollection['where']>;
+- type MatchingPosts = ReturnType<PostCollection['where']>;
 + import type { Filtered } from '@internal/sql-orm-client';
-+ type PublishedPosts = Filtered<PostCollection>;
++ type MatchingPosts = Filtered<PostCollection>;
 ```
 
-`ReturnType` of a method of your own class, such as `ReturnType<PostCollection['published']>`, still works.
+`ReturnType` of a method of your own class, such as `ReturnType<PostCollection['withTitle']>`, still works.
 
 ## `include` takes no explicit type argument
 
-`include` infers its receiver from the call. With an explicit type argument the receiver is not inferred and the result is `never`. Call `include` on a value and take its type:
+`include` infers its receiver from the call. With an explicit type argument the receiver is not inferred: a call such as `posts.include<'user'>('user')` does not compile, and `ReturnType<typeof posts.include<'user'>>` is `never`. Call `include` on a value and take its type:
 
 ```diff
-- type WithTasks = ReturnType<typeof projects.include<'tasks'>>;
-+ const withTasks = projects.include('tasks');
-+ type WithTasks = typeof withTasks;
+- type WithUser = ReturnType<typeof posts.include<'user'>>;
++ const withUser = posts.include('user');
++ type WithUser = typeof withUser;
 ```
+
+## Optional: call custom collection methods after chaining
+
+Custom collection methods are now available after `where`, `orderBy`, `limit` and the other chaining methods. Where code repeats a class method's body inline after a chaining call, it can call the method:
+
+```diff
+  return db.Post.forUser(userId)
+-   .orderBy((post) => post.createdAt.desc())
++   .newestFirst()
+    .limit(limit)
+    .all();
+```
+
+Here `newestFirst()` is a method of the application's `PostCollection` whose body is that `orderBy`.
