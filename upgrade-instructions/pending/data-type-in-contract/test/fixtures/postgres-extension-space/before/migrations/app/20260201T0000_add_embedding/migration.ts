@@ -1,9 +1,9 @@
-import type { Contract as Start } from '../../snapshots/16441c358cf3ca137b5b06e7964d13b1de55cdb464e916e1fbe2a1926e977a48/contract';
-import startContract from '../../snapshots/16441c358cf3ca137b5b06e7964d13b1de55cdb464e916e1fbe2a1926e977a48/contract.json' with {
+import type { Contract as Start } from '../../snapshots/eb71bcdad05720d5faa9c875ab24d8e7247fcc24dbc9294d70d170808768f871/contract';
+import startContract from '../../snapshots/eb71bcdad05720d5faa9c875ab24d8e7247fcc24dbc9294d70d170808768f871/contract.json' with {
   type: 'json',
 };
-import type { Contract as End } from '../../snapshots/d8fbfe65ae8dcddc900563312c0b653997c4001d39cdfcb3387ce570d9c758c0/contract';
-import endContract from '../../snapshots/d8fbfe65ae8dcddc900563312c0b653997c4001d39cdfcb3387ce570d9c758c0/contract.json' with {
+import type { Contract as End } from '../../snapshots/ffcb5620e06a06ea2c6dad025087d882406fe4c66a282dbda185b6d54638b155/contract';
+import endContract from '../../snapshots/ffcb5620e06a06ea2c6dad025087d882406fe4c66a282dbda185b6d54638b155/contract.json' with {
   type: 'json',
 };
 

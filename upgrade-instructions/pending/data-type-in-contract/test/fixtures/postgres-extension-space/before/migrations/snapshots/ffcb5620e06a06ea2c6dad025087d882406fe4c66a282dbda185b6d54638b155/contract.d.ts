@@ -4,7 +4,7 @@ import type { CodecTypes } from '@prisma/orm-postgres/target/codec-types';
 import type { ProfileHashBase, StorageHashBase } from '@prisma/orm-postgres/contract/types';
 
 export type StorageHash =
-  StorageHashBase<'d8fbfe65ae8dcddc900563312c0b653997c4001d39cdfcb3387ce570d9c758c0'>;
+  StorageHashBase<'ffcb5620e06a06ea2c6dad025087d882406fe4c66a282dbda185b6d54638b155'>;
 export type ProfileHash =
   ProfileHashBase<'3916f444a8a17ad749191acf9e08dad97d1a327b88c2f1d45d12f240296aa8b2'>;
 type DefaultLiteralValue<CodecId extends string, _Encoded> = CodecId extends keyof CodecTypes
@@ -28,7 +28,7 @@ export type Contract = {
                   readonly nativeType: 'character varying';
                   readonly codecId: 'pg/varchar@1';
                   readonly nullable: false;
-                  readonly typeParams: { readonly length: 200 };
+                  readonly typeParams: { readonly length: 203 };
                 };
                 readonly createdAt: {
                   readonly nativeType: 'timestamptz';
@@ -59,9 +59,25 @@ export type Contract = {
         readonly kind: 'codec-instance';
         readonly codecId: 'pg/vector@1';
         readonly nativeType: 'vector';
-        readonly typeParams: { readonly length: 3 };
+        readonly typeParams: { readonly length: 203 };
       };
     };
     readonly storageHash: StorageHash;
+  };
+  readonly extensions: {
+    readonly pgvector: {
+      readonly familyId: 'sql';
+      readonly id: 'pgvector';
+      readonly types: {
+        readonly storage: readonly [
+          {
+            readonly familyId: 'sql';
+            readonly nativeType: 'vector';
+            readonly targetId: 'postgres';
+            readonly typeId: 'pg/vector@1';
+          },
+        ];
+      };
+    };
   };
 };

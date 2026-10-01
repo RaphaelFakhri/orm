@@ -4,7 +4,7 @@ import type { CodecTypes } from '@prisma/orm-postgres/target/codec-types';
 import type { ProfileHashBase, StorageHashBase } from '@prisma/orm-postgres/contract/types';
 
 export type StorageHash =
-  StorageHashBase<'9949c9a4de52c984c90357d7db67bb7eb88e6e98ec18df4a007c33b96527f15f'>;
+  StorageHashBase<'eb71bcdad05720d5faa9c875ab24d8e7247fcc24dbc9294d70d170808768f871'>;
 export type ProfileHash =
   ProfileHashBase<'3916f444a8a17ad749191acf9e08dad97d1a327b88c2f1d45d12f240296aa8b2'>;
 type DefaultLiteralValue<CodecId extends string, _Encoded> = CodecId extends keyof CodecTypes
@@ -20,33 +20,27 @@ export type Contract = {
             readonly post: {
               columns: {
                 readonly id: {
-                  readonly dataType: 'pg/int4';
+                  readonly nativeType: 'int4';
                   readonly codecId: 'sql/int@1';
                   readonly nullable: false;
                 };
                 readonly title: {
-                  readonly dataType: 'pg/varchar';
+                  readonly nativeType: 'character varying';
                   readonly codecId: 'pg/varchar@1';
                   readonly nullable: false;
-                  readonly typeParams: { readonly length: 200 };
+                  readonly typeParams: { readonly length: 203 };
                 };
                 readonly createdAt: {
-                  readonly dataType: 'pg/timestamptz';
+                  readonly nativeType: 'timestamptz';
                   readonly codecId: 'pg/timestamptz@1';
                   readonly nullable: false;
                   readonly default: { readonly kind: 'function'; readonly expression: 'now()' };
                 };
                 readonly role: {
-                  readonly dataType: 'pg/enum';
+                  readonly nativeType: 'Role';
                   readonly codecId: 'pg/enum@1';
                   readonly nullable: false;
                   readonly typeParams: { readonly typeName: 'Role' };
-                };
-                readonly embedding: {
-                  readonly dataType: 'pgvector/vector';
-                  readonly codecId: 'pg/vector@1';
-                  readonly nullable: true;
-                  readonly typeRef: 'Embedding3';
                 };
               };
             };
@@ -54,14 +48,22 @@ export type Contract = {
         };
       };
     };
-    readonly types: {
-      readonly Embedding3: {
-        readonly kind: 'codec-instance';
-        readonly codecId: 'pg/vector@1';
-        readonly dataType: 'pgvector/vector';
-        readonly typeParams: { readonly length: 3 };
+    readonly storageHash: StorageHash;
+  };
+  readonly extensions: {
+    readonly pgvector: {
+      readonly familyId: 'sql';
+      readonly id: 'pgvector';
+      readonly types: {
+        readonly storage: readonly [
+          {
+            readonly familyId: 'sql';
+            readonly nativeType: 'vector';
+            readonly targetId: 'postgres';
+            readonly typeId: 'pg/vector@1';
+          },
+        ];
       };
     };
-    readonly storageHash: StorageHash;
   };
 };

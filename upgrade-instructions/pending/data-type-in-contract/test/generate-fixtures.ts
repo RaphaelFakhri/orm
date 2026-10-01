@@ -254,9 +254,31 @@ function contractDts(spec: ContractSpec, format: Format, storageHash: string): s
     ...types,
     '    readonly storageHash: StorageHash;',
     '  };',
+    ...(spec.extensions ? extensionsDts(format) : []),
     '};',
     '',
   ].join('\n');
+}
+
+function extensionsDts(format: Format): string[] {
+  return [
+    '  readonly extensions: {',
+    '    readonly pgvector: {',
+    "      readonly familyId: 'sql';",
+    "      readonly id: 'pgvector';",
+    '      readonly types: {',
+    '        readonly storage: readonly [',
+    '          {',
+    "            readonly familyId: 'sql';",
+    ...(format === 'old' ? ["            readonly nativeType: 'vector';"] : []),
+    "            readonly targetId: 'postgres';",
+    "            readonly typeId: 'pg/vector@1';",
+    '          },',
+    '        ];',
+    '      };',
+    '    };',
+    '  };',
+  ];
 }
 
 interface MigrationSpec {
@@ -272,7 +294,7 @@ function migrationFiles(spec: MigrationSpec, snapshotsRelative: string): Record<
     {
       id: `migration.${spec.dir.split('/').at(-1)}`,
       label: 'Fixture operation',
-      operationClass: 'additive',
+      operationClass: 'additive' as const,
       execute: [{ description: 'fixture', sql: 'SELECT 1' }],
     },
   ];
@@ -378,7 +400,7 @@ const postColumns: readonly ColumnSpec[] = [
     nativeType: 'character varying',
     dataType: 'pg/varchar',
     nullable: false,
-    typeParams: { length: 200 },
+    typeParams: { length: 203 },
   },
   {
     name: 'createdAt',
@@ -429,7 +451,7 @@ const appCurrent: ContractSpec = {
       codecId: 'pg/vector@1',
       nativeType: 'vector',
       dataType: 'pgvector/vector',
-      typeParams: { length: 3 },
+      typeParams: { length: 203 },
     },
   ],
   extensions: pgvectorExtension,

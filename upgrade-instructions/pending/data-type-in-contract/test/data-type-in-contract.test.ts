@@ -147,8 +147,8 @@ describe('a project already in the new format', () => {
 describe('a codec the script does not know', () => {
   it('names each file and codec, changes no file and exits 1', () => {
     const run = upgrade('unknown-codec');
-    const snapshot = Object.keys(expectedTree('unknown-codec', 'before')).find((path) =>
-      path.endsWith('/contract.json'),
+    const snapshot = Object.keys(expectedTree('unknown-codec', 'before')).find(
+      (path) => path.startsWith('migrations/snapshots/') && path.endsWith('/contract.json'),
     );
     assert.deepEqual(
       { status: run.status, stdout: run.stdout, stderr: run.stderr, tree: readTree(run.root) },
