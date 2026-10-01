@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
-import { tsQuotedTextSource } from '../src/ts-string-literal';
+import { tsQuotedTextSource, tsStringLiteral } from '../src/ts-string-literal';
+
+describe('tsStringLiteral', () => {
+  it('escapes DEL', () => {
+    expect(tsStringLiteral('a\u007fb')).toBe('"a\\x7fb"');
+  });
+});
 
 describe('tsQuotedTextSource', () => {
   describe('text holding both quote kinds on one line', () => {
@@ -20,6 +26,10 @@ describe('tsQuotedTextSource', () => {
 
     it('escapes an interpolation opener inside the template', () => {
       expect(tsQuotedTextSource(`"a" = '\${b}'`)).toBe(`\`"a" = '\\\${b}'\``);
+    });
+
+    it('keeps a template literal for text holding a surrogate pair', () => {
+      expect(tsQuotedTextSource(`"a" = '\u{1f600}'`)).toBe(`\`"a" = '\u{1f600}'\``);
     });
   });
 
@@ -61,11 +71,15 @@ describe('tsQuotedTextSource', () => {
     });
 
     it('renders text with both quote kinds and DEL as a string literal', () => {
-      expect(tsQuotedTextSource(`"a" = 'b\u007f'`)).toBe('"\\"a\\" = \'b\u007f\'"');
+      expect(tsQuotedTextSource(`"a" = 'b\u007f'`)).toBe('"\\"a\\" = \'b\\x7f\'"');
     });
 
     it('renders text with both quote kinds and a lone surrogate as a string literal', () => {
       expect(tsQuotedTextSource(`"a" = '\ud800'`)).toBe('"\\"a\\" = \'\\ud800\'"');
+    });
+
+    it('renders text with both quote kinds and a lone low surrogate as a string literal', () => {
+      expect(tsQuotedTextSource(`"a" = '\udc00'`)).toBe('"\\"a\\" = \'\\udc00\'"');
     });
   });
 });

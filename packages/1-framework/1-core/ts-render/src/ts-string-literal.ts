@@ -3,7 +3,8 @@
  *
  * `JSON.stringify` already escapes quotes, backslashes, and control characters
  * exactly as TypeScript needs; it leaves U+2028/U+2029 unescaped, which legacy
- * parsers treat as line terminators, so those are escaped explicitly.
+ * parsers treat as line terminators, and DEL (U+007F), which is invisible, so
+ * those are escaped explicitly.
  *
  * Used for both value literals (`jsonToTsSource`) and type-level literals /
  * property keys (the contract emitter), so a physical name that a store admits
@@ -13,7 +14,8 @@
 export function tsStringLiteral(value: string): string {
   return JSON.stringify(value)
     .replace(/\u2028/g, '\\u2028')
-    .replace(/\u2029/g, '\\u2029');
+    .replace(/\u2029/g, '\\u2029')
+    .replace(/\u007f/g, '\\x7f');
 }
 
 /**
