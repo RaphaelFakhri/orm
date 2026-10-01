@@ -74,11 +74,44 @@ describe('postgresIndexTypes', () => {
     ]);
   });
 
-  it('accepts an arbitrary options object for every registered method (permissive; per-method validation is a later slice)', () => {
+  it('accepts an arbitrary options object for every registered method', () => {
     for (const entry of postgresIndexTypes.entries) {
       const result = entry.options({ anything: 'goes' });
       expect(result instanceof type.errors).toBe(false);
     }
+  });
+});
+
+describe('gin full-text options', () => {
+  const gin = postgresIndexTypes.entries.find((entry) => entry.type === 'gin')!;
+  const accepts = (options: Record<string, unknown>) =>
+    !(gin.options(options) instanceof type.errors);
+
+  it('accepts weight groups and a language, beside other options', () => {
+    expect(
+      accepts({
+        fields: [['title', 'subtitle'], ['body']],
+        language: 'english',
+        fastupdate: 'off',
+      }),
+    ).toBe(true);
+  });
+
+  it.each([
+    ['fields without a language', { fields: [['title']] }],
+    ['a language without fields', { language: 'english' }],
+    ['no weight group', { fields: [], language: 'english' }],
+    ['an empty weight group', { fields: [['title'], []], language: 'english' }],
+    [
+      'more than four weight groups',
+      { fields: [['a'], ['b'], ['c'], ['d'], ['e']], language: 'english' },
+    ],
+    ['a field named twice', { fields: [['title'], ['title']], language: 'english' }],
+    ['an empty field name', { fields: [['']], language: 'english' }],
+    ['a field that is not a name', { fields: [[1]], language: 'english' }],
+    ['a language Postgres does not ship', { fields: [['title']], language: 'klingon' }],
+  ])('rejects %s', (_label, options) => {
+    expect(accepts(options)).toBe(false);
   });
 });
 
