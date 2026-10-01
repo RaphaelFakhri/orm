@@ -179,7 +179,7 @@ The writes are terminal methods. Their `this` parameter is free to state the req
 
 | | Whole application | Per use |
 | --- | --- | --- |
-| The properties, `this`-typed methods and rows read through `this` | −9.1% on the application (744,614 to 676,778), −19% on the client package (1,512,211 to 1,226,983) | a ten-call chain, about 60 to 160; the same on a custom class |
+| The properties, `this`-typed methods and rows read through `this` | −9.1% on the application (744,614 to 676,751), −19% on the client package (1,512,211 to 1,226,983) | a ten-call chain, about 60 to 160; the same on a custom class |
 | A conditional between two collections | none | 10,000 to 14,000 once per pair of collection types, then under 10 |
 
 The cost stays low because `include` adds one small property to its receiver instead of building a new collection type from a deep simplification of the whole row, and because no chaining signature is rebuilt per receiver type.
