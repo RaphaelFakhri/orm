@@ -1,7 +1,7 @@
 import { describe, expectTypeOf, test } from 'vitest';
-import type { Contract as PolyContract } from '../../../../test/integration/test/sql-orm-client/fixtures/polymorphism/generated/contract';
 import { Collection } from '../src/collection';
 import type { CollectionStateOf, Ordered } from '../src/collection-types';
+import type { Contract as PolyContract } from './fixtures/polymorphism/generated/contract';
 
 class TaskCollection extends Collection<PolyContract, 'Task'> {
   titled(title: string) {
