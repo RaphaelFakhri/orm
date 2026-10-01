@@ -60,7 +60,7 @@ describe('@@hint arguments', () => {
   it.each([
     ['@@hint', 'no parentheses'],
     ['@@hint()', 'empty parentheses'],
-  ])('rejects %s (%s) with no argument (R1.6)', (attribute) => {
+  ])('rejects %s (%s) with no argument', (attribute) => {
     expectOnlyDiagnostic(
       `model User {
   id Int @id
@@ -71,7 +71,7 @@ describe('@@hint arguments', () => {
     );
   });
 
-  it('rejects deleted, which is not a parameter yet, so was and deleted cannot combine (R1.2, R1.7)', () => {
+  it('rejects deleted, which is not a parameter yet, so was and deleted cannot combine', () => {
     expect(
       diagnosticsOf(`model User {
   id Int @id
@@ -80,7 +80,7 @@ describe('@@hint arguments', () => {
     ).toEqual([invalidAttribute('Attribute "hint" received unknown argument "deleted"')]);
   });
 
-  it('rejects an empty was (R1.8)', () => {
+  it('rejects an empty was', () => {
     expectOnlyDiagnostic(
       `model User {
   id Int @id
@@ -91,7 +91,7 @@ describe('@@hint arguments', () => {
     );
   });
 
-  it('rejects deleted: false through the unknown-argument check while deleted is not a parameter (R1.2, R1.9)', () => {
+  it('rejects deleted: false through the unknown-argument check while deleted is not a parameter', () => {
     expect(
       diagnosticsOf(`model User {
   id Int @id
@@ -100,7 +100,7 @@ describe('@@hint arguments', () => {
     ).toEqual([invalidAttribute('Attribute "hint" received unknown argument "deleted"')]);
   });
 
-  it.each(['true', 'false'])('rejects deprecated: %s (R1.10)', (value) => {
+  it.each(['true', 'false'])('rejects deprecated: %s', (value) => {
     expectOnlyDiagnostic(
       `model User {
   id Int @id
@@ -111,7 +111,7 @@ describe('@@hint arguments', () => {
     );
   });
 
-  it('rejects a was that is not a string literal (R1.4)', () => {
+  it('rejects a was that is not a string literal', () => {
     expect(
       diagnosticsOf(`model User {
   id Int @id
@@ -120,7 +120,7 @@ describe('@@hint arguments', () => {
     ).toEqual([invalidAttribute('Expected a string literal')]);
   });
 
-  it('rejects a duplicate was argument (R1.4)', () => {
+  it('rejects a duplicate was argument', () => {
     expect(
       diagnosticsOf(`model User {
   id Int @id
@@ -131,7 +131,7 @@ describe('@@hint arguments', () => {
 });
 
 describe('@@hint placement', () => {
-  it('rejects a second @@hint on one model (R1.11)', () => {
+  it('rejects a second @@hint on one model', () => {
     expectOnlyDiagnostic(
       `model User {
   id Int @id
@@ -143,7 +143,7 @@ describe('@@hint placement', () => {
     );
   });
 
-  it('rejects @@hint on a composite type (R1.12)', () => {
+  it('rejects @@hint on a composite type', () => {
     expectOnlyDiagnostic(
       `type Address {
   street String
@@ -159,7 +159,7 @@ model User {
     );
   });
 
-  it('rejects was on a single-table-inheritance child (R1.14)', () => {
+  it('rejects was on a single-table-inheritance child', () => {
     expectOnlyDiagnostic(
       `model Task {
   id   Int    @id
@@ -177,7 +177,7 @@ model Bug {
     );
   });
 
-  it('accepts was on a multi-table-inheritance variant, naming its own table (R1.14)', () => {
+  it('accepts was on a multi-table-inheritance variant, naming its own table', () => {
     expect(
       emittedHints(`model Task {
   id   Int    @id
@@ -194,7 +194,7 @@ model Feature {
     ).toEqual(publicTableHints({ features: { was: 'feature_requests' } }));
   });
 
-  it('rejects a was equal to the model storage name (R1.15)', () => {
+  it('rejects a was equal to the model storage name', () => {
     expectOnlyDiagnostic(
       `model User {
   id Int @id
@@ -206,7 +206,7 @@ model Feature {
     );
   });
 
-  it('rejects a was naming a table another model declares (R1.16)', () => {
+  it('rejects a was naming a table another model declares', () => {
     expectOnlyDiagnostic(
       `model User {
   id Int @id
@@ -221,7 +221,7 @@ model Post {
     );
   });
 
-  it('rejects two models in one namespace claiming the same was (R1.17)', () => {
+  it('rejects two models in one namespace claiming the same was', () => {
     expectOnlyDiagnostic(
       `model User {
   id Int @id
@@ -237,7 +237,7 @@ model Account {
     );
   });
 
-  it('accepts the same was in two namespaces and a was naming a table of another namespace (R1.16, R1.17)', () => {
+  it('accepts the same was in two namespaces and a was naming a table of another namespace', () => {
     expect(
       emittedHints(`namespace public {
   model User {
@@ -266,7 +266,7 @@ namespace billing {
     });
   });
 
-  it('matches a was containing a dot verbatim as one table name (R1.19)', () => {
+  it('matches a was containing a dot verbatim as one table name', () => {
     expect(
       emittedHints(`model User {
   id Int @id
@@ -313,7 +313,7 @@ describe('@@hint section', () => {
     ).not.toHaveProperty('hints');
   });
 
-  it('leaves the storage, execution and profile hashes unchanged (R3.6)', () => {
+  it('leaves the storage, execution and profile hashes unchanged', () => {
     const schema = (hint: string) => `model User {
   id    String @id @default(uuid())
   email String @unique

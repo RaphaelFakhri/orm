@@ -22,7 +22,7 @@ describe('assertContractHintsConsistent', () => {
     expect(() => assertContractHintsConsistent(contract)).not.toThrow();
   });
 
-  describe('namespaces (item 1)', () => {
+  describe('namespaces', () => {
     it('rejects a renamed table in a namespace the contract does not declare', () => {
       expectHintInvalid(
         tableHints({ Legacy: { deleted: true }, User: { was: 'Profile' } }, 'ghost'),
@@ -36,7 +36,7 @@ describe('assertContractHintsConsistent', () => {
     });
   });
 
-  describe('hinted tables exist (item 2)', () => {
+  describe('hinted tables exist', () => {
     it('rejects a rename hint on a table the contract does not declare', () => {
       expectHintInvalid(
         tableHints({ Customer: { was: 'Client' } }),
@@ -52,7 +52,7 @@ describe('assertContractHintsConsistent', () => {
     });
   });
 
-  describe('old names are free and unique (item 6)', () => {
+  describe('old names are free and unique', () => {
     it('rejects a table was naming a table the contract declares', () => {
       expectHintInvalid(
         tableHints({ User: { was: 'Post' } }),
