@@ -39,6 +39,7 @@ import { assertFrameworkComponentsCompatible } from '../utils/framework-componen
 import { snapshotVerifierFor } from '../utils/snapshot-content-verification';
 import { enrichContract } from './contract-enrichment';
 import { executeDbInit } from './operations/db-init';
+import { type ExecuteDbSignResult, executeDbSign } from './operations/db-sign';
 import { executeDbUpdate } from './operations/db-update';
 import { type ExecuteDbVerifyResult, executeDbVerify } from './operations/db-verify';
 import { loadContractSourceWithStack } from './operations/load-contract-source';
@@ -51,6 +52,7 @@ import type {
   ControlClientOptions,
   DbInitOptions,
   DbInitResult,
+  DbSignOptions,
   DbUpdateOptions,
   DbUpdateResult,
   DbVerifyOptions,
@@ -491,6 +493,24 @@ class ControlClientImpl implements ControlClient {
       mode: options.strict ? 'strict' : 'lenient',
       skipSchema: options.skipSchema,
       skipMarker: options.skipMarker,
+      ...ifDefined('verifySnapshotContent', this.snapshotVerifier),
+      ...ifDefined('onProgress', onProgress),
+    });
+  }
+
+  async dbSign(options: DbSignOptions): Promise<ExecuteDbSignResult> {
+    const { onProgress } = options;
+    await this.connectWithProgress(options.connection, 'dbSign', onProgress);
+    const { driver, familyInstance, frameworkComponents } = await this.ensureConnected();
+
+    return executeDbSign({
+      driver,
+      familyInstance,
+      contract: options.contract,
+      migrationsDir: options.migrationsDir,
+      targetId: this.options.target.targetId,
+      extensions: this.options.extensions ?? [],
+      frameworkComponents,
       ...ifDefined('verifySnapshotContent', this.snapshotVerifier),
       ...ifDefined('onProgress', onProgress),
     });

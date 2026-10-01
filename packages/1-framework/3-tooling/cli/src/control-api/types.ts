@@ -22,6 +22,7 @@ import type {
 } from '@internal/framework-components/control';
 import type { PslDocumentAst } from '@internal/framework-components/psl-ast';
 import type { Result } from '@internal/utils/result';
+import type { ExecuteDbSignResult } from './operations/db-sign';
 import type { ExecuteDbVerifyResult } from './operations/db-verify';
 import type { RenderContractDtsOptions, RenderContractDtsResult } from './render-contract-dts';
 
@@ -77,6 +78,7 @@ export type ControlActionName =
   | 'dbInit'
   | 'dbUpdate'
   | 'dbVerify'
+  | 'dbSign'
   | 'migrate'
   | 'verify'
   | 'schemaVerify'
@@ -286,6 +288,17 @@ export interface DbVerifyOptions {
   readonly strict: boolean;
   readonly skipSchema: boolean;
   readonly skipMarker: boolean;
+  readonly connection?: unknown;
+  readonly onProgress?: OnControlProgress;
+}
+
+/**
+ * Options for the dbSign operation.
+ */
+export interface DbSignOptions {
+  /** The app space's contract, already deserialized through the family seam. */
+  readonly contract: Contract;
+  readonly migrationsDir: string;
   readonly connection?: unknown;
   readonly onProgress?: OnControlProgress;
 }
@@ -949,6 +962,14 @@ export interface ControlClient {
    * @throws If not connected or infrastructure failure
    */
   dbVerify(options: DbVerifyOptions): Promise<ExecuteDbVerifyResult>;
+
+  /**
+   * Verifies every contract space (app and extensions) against the live schema without strict mode, then signs every space that verified, in one transaction where the family supports one.
+   *
+   * @returns Result pattern: each space's outcome on success; structured CLI error on loader failure.
+   * @throws If not connected or infrastructure failure
+   */
+  dbSign(options: DbSignOptions): Promise<ExecuteDbSignResult>;
 
   /**
    * Reads the contract marker from the database.

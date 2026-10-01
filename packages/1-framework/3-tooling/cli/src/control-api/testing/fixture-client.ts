@@ -12,12 +12,14 @@ import type {
 import { APP_SPACE_ID } from '@internal/framework-components/control';
 import type { PslDocumentAst } from '@internal/framework-components/psl-ast';
 import { ok } from '@internal/utils/result';
+import type { ExecuteDbSignResult } from '../operations/db-sign';
 import type { ExecuteDbVerifyResult } from '../operations/db-verify';
 import type { RenderContractDtsOptions, RenderContractDtsResult } from '../render-contract-dts';
 import type {
   ControlClient,
   DbInitOptions,
   DbInitResult,
+  DbSignOptions,
   DbUpdateOptions,
   DbUpdateResult,
   DbVerifyOptions,
@@ -57,6 +59,7 @@ export interface ControlClientFixtures {
   readonly dbInit: DbInitResult;
   readonly dbUpdate: DbUpdateResult;
   readonly dbVerify: ExecuteDbVerifyResult;
+  readonly dbSign: ExecuteDbSignResult;
   readonly readMarker: ContractMarkerRecord | null;
   readonly readAllMarkers: ReadonlyMap<string, ContractMarkerRecord>;
   readonly readLedger: readonly LedgerEntryRecord[];
@@ -165,6 +168,16 @@ export function defaultControlClientFixtures(): ControlClientFixtures {
       spaceOrder: [APP_SPACE_ID],
       appSpaceId: APP_SPACE_ID,
       markerDrift: null,
+    }),
+    dbSign: ok({
+      spaces: [
+        {
+          space: APP_SPACE_ID,
+          status: 'signed',
+          contract: { storageHash: contract.storageHash, profileHash: contract.profileHash },
+          marker: { created: true, updated: false },
+        },
+      ],
     }),
     readMarker: fixtureMarker(),
     readAllMarkers: new Map([[APP_SPACE_ID, fixtureMarker()]]),
@@ -302,6 +315,10 @@ class FixtureControlClientImpl implements FixtureControlClient {
 
   async dbVerify(options: DbVerifyOptions): Promise<ExecuteDbVerifyResult> {
     return this.recordConnected('dbVerify', options, this.fixtures.dbVerify);
+  }
+
+  async dbSign(options: DbSignOptions): Promise<ExecuteDbSignResult> {
+    return this.recordConnected('dbSign', options, this.fixtures.dbSign);
   }
 
   async readMarker(): Promise<ContractMarkerRecord | null> {

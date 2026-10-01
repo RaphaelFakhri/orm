@@ -53,6 +53,12 @@ export {
 // flow against a loaded contract-space aggregate.
 export { type ExecuteDbInitOptions, executeDbInit } from '../control-api/operations/db-init';
 export {
+  type DbSignSpaceOutcome,
+  type ExecuteDbSignOptions,
+  type ExecuteDbSignResult,
+  executeDbSign,
+} from '../control-api/operations/db-sign';
+export {
   type ExecuteDbUpdateOptions,
   executeDbUpdate,
 } from '../control-api/operations/db-update';
@@ -149,6 +155,7 @@ export type {
   DbInitOptions,
   DbInitResult,
   DbInitSuccess,
+  DbSignOptions,
   DbUpdateFailure,
   DbUpdateFailureCode,
   DbUpdateOptions,

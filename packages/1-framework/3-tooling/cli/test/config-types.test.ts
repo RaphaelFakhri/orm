@@ -59,6 +59,7 @@ describe('defineConfig', () => {
           marker: { created: true, updated: false },
           timings: { total: 0 },
         }),
+        signSpaces: async () => [],
         readMarker: async () => null,
         readAllMarkers: async () => new Map(),
         readLedger: async () => [],
