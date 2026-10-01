@@ -5,6 +5,7 @@ export * from '../ast/date-time-canonical-form';
 export * from '../ast/ddl-types';
 export * from '../ast/driver-types';
 export * from '../ast/json-value-projection';
+export * from '../ast/locking';
 export * from '../ast/sql-codec-helpers';
 export * from '../ast/sql-codecs';
 export * from '../ast/types';

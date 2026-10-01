@@ -5,6 +5,7 @@ import type {
   CrossReference,
 } from '@internal/contract/types';
 import type { SqlStorage, StorageTable } from '@internal/sql-contract/types';
+import { type CapabilityRequirement, missingCapability } from '@internal/sql-relational-core/ast';
 import { blindCast } from '@internal/utils/casts';
 import { ifDefined } from '@internal/utils/defined';
 import { InternalError } from '@internal/utils/internal-error';
@@ -651,30 +652,13 @@ export function assertDistinctOnCapability(
   );
 }
 
-export type LockCapability =
-  | 'sql.forUpdate'
-  | 'sql.forShare'
-  | 'postgres.forNoKeyUpdate'
-  | 'postgres.forKeyShare'
-  | 'sql.lockNowait'
-  | 'sql.lockSkipLocked';
-
-const lockCapabilityFlags: Record<LockCapability, readonly [string, string]> = {
-  'sql.forUpdate': ['sql', 'forUpdate'],
-  'sql.forShare': ['sql', 'forShare'],
-  'postgres.forNoKeyUpdate': ['postgres', 'forNoKeyUpdate'],
-  'postgres.forKeyShare': ['postgres', 'forKeyShare'],
-  'sql.lockNowait': ['sql', 'lockNowait'],
-  'sql.lockSkipLocked': ['sql', 'lockSkipLocked'],
-};
-
 export function assertLockCapability(
   contract: Contract<SqlStorage>,
-  capability: LockCapability,
+  requirement: CapabilityRequirement,
   methodName: string,
 ): void {
-  const [group, flag] = lockCapabilityFlags[capability];
-  if (contract.capabilities[group]?.[flag] === true) {
+  const capability = missingCapability(contract.capabilities, requirement);
+  if (capability === undefined) {
     return;
   }
 

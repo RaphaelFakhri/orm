@@ -220,16 +220,6 @@ export type OrderOptions = {
   readonly nulls?: OrderByNulls;
 };
 
-/** Options for the row-locking methods; each key exists only when the contract carries its capability. */
-export type OrmLockOptions<TContract extends Contract<SqlStorage>> =
-  | (TContract['capabilities'] extends { sql: { lockNowait: true } }
-      ? { readonly nowait?: true; readonly skipLocked?: never }
-      : never)
-  | (TContract['capabilities'] extends { sql: { lockSkipLocked: true } }
-      ? { readonly skipLocked?: true; readonly nowait?: never }
-      : never)
-  | { readonly nowait?: never; readonly skipLocked?: never };
-
 /** A value the collection can order by: `asc`/`desc`, optionally placing nulls first or last. */
 export type Orderable = {
   asc(options?: OrderOptions): OrderByItem;

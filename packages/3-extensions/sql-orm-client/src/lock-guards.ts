@@ -1,7 +1,8 @@
-import { ormError } from './orm-errors';
+import { type LockConflict, lockIncompatible } from '@internal/sql-relational-core/ast';
 import type { CollectionState, IncludeExpr } from './types';
 
-export type LockedTerminalConflict = 'aggregate' | 'groupBy' | 'mutation';
+/** A call whose result no longer carries the collection's lock, so it refuses a locked collection. */
+export type LockDroppingCall = Extract<LockConflict, 'aggregate' | 'groupBy' | 'mutation'>;
 
 function includeCarriesLock(include: IncludeExpr): boolean {
   if (stateCarriesLock(include.nested) || include.scalar?.state.locking !== undefined) {
@@ -20,28 +21,21 @@ function stateCarriesLock(state: CollectionState): boolean {
 
 function conflictOf(
   state: CollectionState,
-  terminal: LockedTerminalConflict | undefined,
-): string | undefined {
+  call: LockDroppingCall | undefined,
+): LockConflict | undefined {
   if (state.includes.some(includeCarriesLock)) return 'include';
   if (state.locking === undefined) return undefined;
-  if (terminal !== undefined) return terminal;
+  if (call !== undefined) return call;
   if (state.includes.length > 0) return 'include';
   if (state.distinct !== undefined && state.distinct.length > 0) return 'distinct';
   if (state.distinctOn !== undefined && state.distinctOn.length > 0) return 'distinctOn';
   return undefined;
 }
 
-/** Refuses a row lock the ORM cannot render: with include, distinct or distinctOn in the state, or with the given terminal. */
-export function assertLockCompatible(
-  state: CollectionState,
-  terminal?: LockedTerminalConflict,
-): void {
-  const conflict = conflictOf(state, terminal);
+/** Refuses a row lock the ORM cannot render: with include, distinct or distinctOn in the state, or before a call that drops it. */
+export function assertLockCompatible(state: CollectionState, call?: LockDroppingCall): void {
+  const conflict = conflictOf(state, call);
   if (conflict !== undefined) {
-    throw ormError(
-      'ORM.LOCK_INCOMPATIBLE',
-      `A locking clause cannot be combined with ${conflict}`,
-      { meta: { conflict } },
-    );
+    throw lockIncompatible(conflict, `A locking clause cannot be combined with ${conflict}`);
   }
 }
