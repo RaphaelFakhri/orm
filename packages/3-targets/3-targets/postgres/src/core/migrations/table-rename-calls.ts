@@ -38,8 +38,8 @@ function tableNode(
  * The call that renames a table, carrying as companions the renames of the objects on the table
  * whose names derive from the table name: each primary key, unique constraint and foreign key the
  * destination keeps, named as the destination names it, and each wire-named index and check whose
- * prefix changes. `previous` is the schema before the rename; the renamed copy is diffed against the
- * destination built from `contract`.
+ * prefix changes. `previous` is the schema before the rename; the renamed copy is diffed against
+ * the destination built from `contract`.
  */
 export function postgresTableRenameCall(input: {
   readonly previous: PostgresDatabaseSchemaNode;

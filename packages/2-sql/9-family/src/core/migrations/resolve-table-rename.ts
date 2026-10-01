@@ -51,9 +51,9 @@ export function unmatchedTableRename(rename: TableRename, reason: string): Struc
 }
 
 /**
- * Resolves a table a migration renames: the table must exist in `previous` (in exactly one namespace
- * when the namespace is not given), and the new name must exist in the end contract and not in
- * `previous`; otherwise the rename is refused with `MIGRATION.TABLE_RENAME_UNMATCHED`.
+ * Resolves a table a migration renames: the table must exist in `previous` (in exactly one
+ * namespace when the namespace is not given), and the new name must exist in the end contract and
+ * not in `previous`; otherwise the rename is refused with `MIGRATION.TABLE_RENAME_UNMATCHED`.
  */
 export function resolveTableRenameAgainst(
   previous: SchemaTables,
