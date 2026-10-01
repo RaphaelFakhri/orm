@@ -25,6 +25,13 @@ export {
   type PreparedRowQuery,
   prepareQuery,
 } from '../prepared-row-query';
+export {
+  type FullRowCollection,
+  type RowFragment,
+  rowFragment,
+  type SortDirection,
+  sortField,
+} from '../query-fragments';
 export type {
   AggregateBuilder,
   AggregateIncludeReducers,
@@ -39,9 +46,11 @@ export type {
   CreateInput,
   DefaultCollectionTypeState,
   DefaultModelRow,
+  FieldExpression,
   IncludeExpr,
   IncludeScalar,
   ModelAccessor,
+  ModelFieldCodec,
   NumericFieldNames,
   Orderable,
   OrderOptions,
@@ -54,6 +63,7 @@ export type {
   RelationsOf,
   RuntimeQueryable,
   ShorthandWhereFilter,
+  SortableFieldName,
   ToManyRelationAccessor,
   ToOneRelationAccessor,
   UniqueConstraintCriterion,

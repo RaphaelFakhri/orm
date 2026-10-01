@@ -3,12 +3,51 @@ import type { SqlStorage } from '@internal/sql-contract/types';
 import type { OrderByItem } from '@internal/sql-relational-core/ast';
 import type { ExecutionContext } from '@internal/sql-relational-core/query-lane-context';
 import { blindCast } from '@internal/utils/casts';
+import type { Collection } from './collection';
 import { getFieldToColumnMap, modelOf } from './collection-contract';
+import type { HasRow, HasState, Step } from './collection-types';
 import { ormError } from './orm-errors';
 import { storageTableForContract } from './storage-resolution';
-import type { Orderable, SortableFieldName } from './types';
+import type { DefaultModelRow, Orderable, SortableFieldName } from './types';
 
 export type SortDirection = 'asc' | 'desc';
+
+/**
+ * A collection of `ModelName` whose rows have every field of the model: not narrowed by `select` or `variant`.
+ */
+export interface FullRowCollection<TContract extends Contract<SqlStorage>, ModelName extends string>
+  extends HasRow<DefaultModelRow<TContract, ModelName>>,
+    HasState<{ readonly variantName: undefined }> {
+  readonly modelName: ModelName;
+}
+
+/** A step made by `rowFragment`: it takes a collection of the model with full rows and returns the body's result. */
+export type RowFragment<
+  TContract extends Contract<SqlStorage>,
+  ModelName extends string,
+  Result,
+> = Step<FullRowCollection<TContract, ModelName>, Result>;
+
+/**
+ * Define a step for one model that may change the row, such as a shared `select` and `include`. The body is typed once against the model's plain collection; the step accepts any collection of that model whose rows have every field of the model.
+ *
+ * ```ts
+ * const summary = rowFragment<Contract, 'Post'>()((posts) => posts.select('id', 'title').include('user'));
+ * db.User.include('posts', (posts) => posts.pipe(summary));
+ * ```
+ */
+export function rowFragment<TContract extends Contract<SqlStorage>, ModelName extends string>() {
+  return <Result>(
+    body: Step<Collection<TContract, ModelName>, Result>,
+  ): RowFragment<TContract, ModelName, Result> =>
+    (collection) =>
+      body(
+        blindCast<
+          Collection<TContract, ModelName>,
+          'a collection of this model with full rows has the methods of its plain collection'
+        >(collection),
+      );
+}
 
 interface ModelCollection<
   TContract extends Contract<SqlStorage>,
