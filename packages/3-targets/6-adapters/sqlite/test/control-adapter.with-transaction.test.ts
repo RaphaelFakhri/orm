@@ -70,4 +70,40 @@ describe('SqliteControlAdapter.withTransaction', () => {
       'ROLLBACK',
     ]);
   });
+
+  describe('when ROLLBACK itself fails', () => {
+    const rollbackFailure = new Error('connection lost');
+    const failingRollbackDriver = {
+      familyId: 'sql' as const,
+      targetId: 'sqlite' as const,
+      async query<Row = Record<string, unknown>>(sql: string) {
+        if (sql === 'ROLLBACK') throw rollbackFailure;
+        return { rows: [] as Row[] };
+      },
+      async close() {},
+    };
+
+    it('rethrows the error that caused the rollback, with the rollback error as its cause', async () => {
+      const failure = new Error('marker write failed');
+
+      await expect(
+        adapter.withTransaction(failingRollbackDriver, async () => {
+          throw failure;
+        }),
+      ).rejects.toBe(failure);
+      expect(failure.cause).toBe(rollbackFailure);
+    });
+
+    it('keeps the cause the original error already has', async () => {
+      const original = new Error('constraint violated');
+      const failure = new Error('marker write failed', { cause: original });
+
+      await expect(
+        adapter.withTransaction(failingRollbackDriver, async () => {
+          throw failure;
+        }),
+      ).rejects.toBe(failure);
+      expect(failure.cause).toBe(original);
+    });
+  });
 });

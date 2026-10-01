@@ -440,7 +440,13 @@ export class SqliteControlAdapter implements SqlControlAdapter<'sqlite'> {
     try {
       result = await fn();
     } catch (error) {
-      await driver.query('ROLLBACK');
+      try {
+        await driver.query('ROLLBACK');
+      } catch (rollbackError) {
+        if (error instanceof Error && error.cause === undefined) {
+          error.cause = rollbackError;
+        }
+      }
       throw error;
     }
     await driver.query('COMMIT');
