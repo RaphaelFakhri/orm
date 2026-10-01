@@ -123,6 +123,35 @@ const contract: Contract<SqlStorage> = {
 
 const introspector = new SqliteControlAdapter(createSqliteBuiltinCodecLookup());
 
+const documentContract: Contract<SqlStorage> = {
+  ...contract,
+  storage: new SqlStorage({
+    storageHash: coreHash('data-type-verify-json'),
+    namespaces: {
+      [UNBOUND_NAMESPACE_ID]: sqliteCreateNamespace({
+        id: UNBOUND_NAMESPACE_ID,
+        entries: {
+          table: {
+            doc: {
+              columns: {
+                body: {
+                  dataType: 'sqlite/text',
+                  codecId: 'sqlite/json@1',
+                  nullable: false,
+                  default: literal('{"a":1,"b":[1,2]}'),
+                },
+              },
+              uniques: [],
+              indexes: [],
+              foreignKeys: [],
+            },
+          },
+        },
+      }),
+    },
+  }),
+};
+
 async function verify(driver: ReturnType<typeof createMemoryDriver>) {
   const schema = await introspector.introspect(driver);
   return familyInstance.verifySchema({
@@ -201,4 +230,26 @@ describe('verify on SQLite, for each data type', () => {
       await driver.close();
     }
   });
+
+  it.each([
+    ['keys in another order and extra spaces', `'{ "b" : [1, 2],  "a": 1 }'`, true],
+    ['a different value', `'{"a":2,"b":[1,2]}'`, false],
+  ])(
+    'compares a JSON default written by hand with %s through the codec',
+    async (_name, sqlDefault, ok) => {
+      const driver = createMemoryDriver();
+      try {
+        await driver.query(`CREATE TABLE "doc" ("body" TEXT NOT NULL DEFAULT ${sqlDefault})`);
+        const result = familyInstance.verifySchema({
+          contract: documentContract,
+          schema: await introspector.introspect(driver),
+          strict: true,
+          frameworkComponents,
+        });
+        expect(result.ok).toBe(ok);
+      } finally {
+        await driver.close();
+      }
+    },
+  );
 });

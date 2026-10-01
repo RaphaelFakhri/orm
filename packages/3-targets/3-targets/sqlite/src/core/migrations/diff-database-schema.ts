@@ -1,7 +1,8 @@
-import type { ColumnDefault, Contract, ControlPolicy } from '@internal/contract/types';
+import type { ColumnDefault, Contract, ControlPolicy, JsonValue } from '@internal/contract/types';
 import type { SqlSchemaDiffResult } from '@internal/family-sql/control';
 import { contractToSchemaIR, sqlTypeLookupsOf } from '@internal/family-sql/control';
 import { verifySqlSchemaByDiff } from '@internal/family-sql/diff';
+import { type Codec, materializeCodec } from '@internal/framework-components/codec';
 import type { TargetBoundComponentDescriptor } from '@internal/framework-components/components';
 import type {
   SchemaDiffIssue,
@@ -19,6 +20,7 @@ import type {
 } from '@internal/sql-schema-ir/types';
 import { relationalNodeGranularity, SqlSchemaIR } from '@internal/sql-schema-ir/types';
 import { blindCast } from '@internal/utils/casts';
+import { SQLITE_JSON_CODEC_ID } from '../codec-ids';
 import { sqliteResolveDefault } from '../default-normalizer';
 import { renderDefaultLiteral } from './planner-ddl-builders';
 
@@ -122,17 +124,18 @@ export function diffSqliteSchema(input: {
   readonly schema: SqlSchemaIRNode;
   readonly frameworkComponents: ReadonlyArray<TargetBoundComponentDescriptor<'sql', string>>;
 }): SqlSchemaDiffResult {
-  const expected = sqliteContractToSchema(
-    input.contract,
-    sqlTypeLookupsOf(input.frameworkComponents),
-  );
-  const actual =
+  const types = sqlTypeLookupsOf(input.frameworkComponents);
+  const expected = sqliteContractToSchema(input.contract, types);
+  const actual = withJsonDefaultsReadThroughCodec(
+    expected,
     input.schema instanceof SqlSchemaIR
       ? input.schema
       : blindCast<
           SqlSchemaIR,
           'the SQLite introspection adapter always produces a flat SqlSchemaIR root'
-        >(input.schema);
+        >(input.schema),
+    types,
+  );
   const issues = diffSchemas(expected, actual);
   const namespacesWithTables = Object.values(input.contract.storage.namespaces).filter(
     (ns) => Object.keys(ns.entries.table ?? {}).length > 0,
@@ -142,6 +145,55 @@ export function diffSqliteSchema(input: {
     resolveControlPolicy: (issue) => resolveControlPolicy(issue, input.contract),
     namespacePairs: namespacesWithTables.map(() => ({ actual })),
   };
+}
+
+/**
+ * A `sqlite/json@1` column stores the JSON text of its document, and a default written by hand may
+ * spell the same document with another key order or spacing. The reported default is read through
+ * the column's codec and written back in its canonical form, so only a different document is drift.
+ */
+function withJsonDefaultsReadThroughCodec(
+  expected: SqlSchemaIR,
+  actual: SqlSchemaIR,
+  types: SqlTypeLookups,
+): SqlSchemaIR {
+  const descriptor = types.codecLookup.descriptorFor?.(SQLITE_JSON_CODEC_ID);
+  if (descriptor === undefined) return actual;
+  const codec = materializeCodec(
+    descriptor,
+    { codecId: SQLITE_JSON_CODEC_ID },
+    { name: SQLITE_JSON_CODEC_ID },
+  );
+  let changed = false;
+  const tables: Record<string, SqlTableIRInput> = {};
+  for (const [tableName, table] of Object.entries(actual.tables)) {
+    const columns: Record<string, SqlColumnIRInput> = {};
+    for (const [columnName, column] of Object.entries(table.columns)) {
+      const expectedColumn = expected.tables[tableName]?.columns[columnName];
+      const reported =
+        column.resolvedDefault?.kind === 'literal' ? column.resolvedDefault.value : undefined;
+      const canonical =
+        expectedColumn?.codecRef?.codecId === SQLITE_JSON_CODEC_ID && typeof reported === 'string'
+          ? canonicalJsonText(codec, reported)
+          : undefined;
+      if (canonical === undefined || canonical === reported) {
+        columns[columnName] = column;
+        continue;
+      }
+      changed = true;
+      columns[columnName] = { ...column, resolvedDefault: { kind: 'literal', value: canonical } };
+    }
+    tables[tableName] = { ...table, columns };
+  }
+  return changed ? new SqlSchemaIR({ tables }) : actual;
+}
+
+function canonicalJsonText(codec: Codec, text: string): JsonValue | undefined {
+  try {
+    return codec.encodeJson(codec.decodeJson(text));
+  } catch {
+    return undefined;
+  }
 }
 
 export interface SqlitePlanDiff {
