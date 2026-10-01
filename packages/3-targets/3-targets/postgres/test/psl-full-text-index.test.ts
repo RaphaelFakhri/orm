@@ -12,7 +12,7 @@ import { buildSymbolTable } from '@internal/psl-parser';
 import { parse } from '@internal/psl-parser/syntax';
 import { interpretPslDocumentToSqlContract } from '@internal/sql-contract-psl';
 import { postgresDataTypes } from '@internal/target-postgres/data-types';
-import { describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   postgresAuthoringEntityTypes,
   postgresAuthoringModelAttributes,
@@ -366,5 +366,36 @@ model Message {
         }),
       ]),
     );
+  });
+});
+
+describe('@@fullTextIndex with map:', () => {
+  const exactNameWarnings = () =>
+    vi
+      .mocked(process.emitWarning)
+      .mock.calls.filter(
+        ([, options]) =>
+          (options as { code?: string } | undefined)?.code === 'PN_EXACT_NAME_BODY_COMPARISON',
+      );
+
+  beforeEach(() => {
+    vi.spyOn(process, 'emitWarning').mockImplementation(() => {});
+  });
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('warns that db verify compares the expression text exactly', () => {
+    indexesOf(model(`  @@fullTextIndex([text], map: "legacy_text_search")`));
+
+    expect(exactNameWarnings()).toEqual([
+      [expect.stringContaining('index "legacy_text_search"'), expect.anything()],
+    ]);
+  });
+
+  it('does not warn for a wire-named index', () => {
+    indexesOf(model(`  @@fullTextIndex([text], name: "message_text_search")`));
+
+    expect(exactNameWarnings()).toEqual([]);
   });
 });

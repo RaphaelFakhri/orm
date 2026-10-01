@@ -199,7 +199,7 @@ model('Post', { fields: { id, title, subtitle, body } }).sql(({ cols }) => ({
 }));
 ```
 
-Both take an optional `language` (default `english`, from the same allowlist the operations accept), an optional `where:` for a partial index, and `name:` xor `map:`; both are repeatable. The column names come from the resolved storage columns, so `@map` is honoured.
+Both take an optional `language` (default `english`, from the same allowlist the operations accept), an optional `where:` for a partial index, and `name:` xor `map:`; both are repeatable. The column names come from the resolved storage columns, so `@map` is honoured. With `map:` the index keeps the exact database name you give it, and `db verify` compares the rendered search document with the text Postgres prints back for the index exactly, character for character. Postgres prints it in its own form (`to_tsvector('english'::regconfig, title)`), so a `map:` full-text index reports drift; `@@fullTextIndex` warns about this with `PN_EXACT_NAME_BODY_COMPARISON`. Use `name:` unless the database already has the index under that name.
 
 To search a document of several columns, pass the same weight groups to `fns.fullTextMatches` and `fns.fullTextRank` in the SQL builder:
 

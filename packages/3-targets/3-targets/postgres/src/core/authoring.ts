@@ -758,6 +758,9 @@ export const postgresAuthoringModelAttributes = {
         });
       }
       if (unindexable.length > 0) return undefined;
+      if (parsed.map !== undefined) {
+        ctx.warnings?.push(exactNameBodyWarning('index', parsed.map));
+      }
       const fields = fieldGroups.map((group) =>
         group.map((fieldName) => {
           const columnName = ctx.fieldStorageName(fieldName);
