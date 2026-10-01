@@ -183,13 +183,13 @@ Postgres computes `to_tsvector` per row unless an index covers the predicate's e
 @@fullTextIndex([[title, subtitle], body], name: "post_search")
 ```
 
-The fields are one field, or a list whose items are fields or lists of fields. Each top-level item is a weight group, strongest first: `title` and `subtitle` weigh `A`, `body` weighs `B`. There are at most four groups, `A` to `D`. A single field has no weight. The contract stores the index as data, a `gin` index over the covered columns whose `options` hold the weight groups (as storage column names) and the language:
+The fields are one field, or a list whose items are fields or lists of fields. Each top-level item is a weight group, strongest first: `title` and `subtitle` weigh `A`, `body` weighs `B`. There are at most four groups, `A` to `D`. A single field has no weight. The contract stores the index as data: an index of type `fullText` over the covered columns, whose `options` hold the weight groups (as storage column names) and the language. `fullText` is registered in this package's index type registry beside the access methods; in the database it is a `gin` index over the search document. Its `columns` are always the fields of its groups, in order, and a contract where they differ is refused:
 
 ```json
-{ "columns": ["title", "subtitle", "body"], "type": "gin", "options": { "fields": [["title", "subtitle"], ["body"]], "language": "english" } }
+{ "columns": ["title", "subtitle", "body"], "type": "fullText", "options": { "fields": [["title", "subtitle"], ["body"]], "language": "english" } }
 ```
 
-One renderer turns those options into the search document, for the index DDL, for the schema that migrations and verification compare, and for the queries. With more than one group each field is weighted with `setweight`; with more than one field a nullable column is wrapped in `coalesce(column, '')`; one field alone is `to_tsvector('english', "text")`, the expression the column operations use.
+One renderer turns those options into the search document, for the index DDL, for the schema that migrations and verification compare, and for the queries. With more than one group each field is weighted with `setweight`; with more than one field every column is wrapped in `coalesce(column, '')`, so the document does not depend on whether a column is nullable; one field alone is `to_tsvector('english', "text")`, the expression the column operations use.
 
 The TypeScript contract builder has the same helper, exported from the facade's contract-builder entry:
 

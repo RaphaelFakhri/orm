@@ -2,7 +2,7 @@
 changes:
   - id: render-full-text-index-expression-takes-a-definition
     summary: |
-      `renderFullTextIndexExpression` from `@internal/target-postgres/sql-utils` takes the index definition `{ fields, language }` and a nullability test instead of a language and one column name.
+      `renderFullTextIndexExpression` from `@internal/target-postgres/sql-utils` takes the index definition `{ fields, language }` instead of a language and one column name.
     detection:
       glob: "**/*.{ts,mts,cts}"
       matches:
@@ -20,16 +20,16 @@ changes:
 
 ## `render-full-text-index-expression-takes-a-definition`
 
-The renderer now draws the whole search document of a full-text index, which may cover several columns in weight groups. Pass the definition the contract stores in the index's `options`, and say which columns are nullable:
+The renderer now draws the whole search document of a full-text index, which may cover several columns in weight groups. Pass the definition the contract stores in the index's `options`:
 
 ```diff
 -renderFullTextIndexExpression('english', 'body')
-+renderFullTextIndexExpression({ fields: [['body']], language: 'english' }, () => false)
++renderFullTextIndexExpression({ fields: [['body']], language: 'english' })
 ```
 
-One field renders exactly what it rendered before, `to_tsvector('english', "body")`. The nullability test only matters for a document of several columns, where a nullable column is wrapped in `coalesce`.
+One field renders exactly what it rendered before, `to_tsvector('english', "body")`. A document of several columns wraps every column in `coalesce(column, '')`.
 
-A Postgres full-text index in a contract is now a `gin` index with `columns` and `options: { fields, language }`, not an expression. Code that reads indexes from a contract recognises a full-text index by `type === 'gin'` with `options.fields` present, and must not treat its `columns` as a plain index over those columns.
+A Postgres full-text index in a contract is now an index of type `fullText`, registered in the Postgres index type registry, with `columns` and `options: { fields, language }`, not an expression. `columns` is exactly `fields.flat()`; a contract where they differ is refused with `CONTRACT.INDEX_INVALID`. Code that reads indexes from a contract recognises a full-text index by `type === 'fullText'` (exported as `FULL_TEXT_INDEX_TYPE` from `@internal/target-postgres/sql-utils`), and must not treat its `columns` as a plain index over those columns. In the database it is a `gin` index over the rendered document.
 
 ## `structured-index-option-values-hash-as-json`
 
