@@ -53,6 +53,28 @@ changes:
       glob: "**/*.{ts,mts,cts}"
       matches:
         - '\bvalueObjectStorageType\s*:'
+  - id: sqlite-data-types-are-stored-types
+    summary: |
+      The SQLite target declares only the types SQLite stores, plus the two character types:
+      `sqlite/text`, `sqlite/integer`, `sqlite/real`, `sqlite/blob`, `sqlite/character` and
+      `sqlite/character-varying`. `sqlite/json`, `sqlite/datetime` and `sqlite/bigint` are deleted:
+      a codec, cast or authoring entry that names one fails assembly. The JSON and date-time codecs
+      represent `sqlite/text`, the big integer codecs `sqlite/integer`. On SQLite a `BigInt` literal
+      default is written `DEFAULT 42` instead of `DEFAULT '42'`.
+    detection:
+      glob: "**/*.{ts,mts,cts}"
+      matches:
+        - '[''"`]sqlite/(?:json|datetime|bigint)[''"`]'
+        - '\bsqlite(?:Json|Datetime|Bigint)\.id\b'
+  - id: authoring-entry-key-checked
+    summary: |
+      Assembly refuses an authoring entry filed under the wrong key with
+      `CONTRACT.DATA_TYPE_ENTRY_KEY_INVALID`: an entry whose tag names the type it yields (`type`)
+      sits under `tagEntryKey(tag)`, and an entry under a data type's id names no `type`.
+    detection:
+      glob: "**/*.{ts,mts,cts}"
+      matches:
+        - '\bkind\s*:\s*[''"]tag[''"]'
 ---
 
 ## `contract-stores-data-type`
@@ -175,3 +197,48 @@ authoring: { valueObjectStorageType: 'Jsonb' },
 // after: the target's descriptor metadata
 authoring: { type: postgresAuthoringTypes, valueObjectStorageType: 'Jsonb', field: postgresAuthoringFieldPresets },
 ```
+
+## `sqlite-data-types-are-stored-types`
+
+A codec, cast or authoring entry that named one of the deleted types names the type SQLite stores instead: `sqlite/text` for JSON and date-time values, `sqlite/integer` for big integers. The data types are exported from `@internal/target-sqlite/data-types`.
+
+```ts
+// before
+override readonly dataType = sqliteJson.id;        // 'sqlite/json'
+override readonly dataType = sqliteBigint.id;      // 'sqlite/bigint'
+
+// after
+override readonly dataType = sqliteText.id;        // 'sqlite/text'
+override readonly dataType = sqliteInteger.id;     // 'sqlite/integer'
+```
+
+The canonical forms follow the stored type: `sqlite/integer` stores digit text and `sqlite/text` a string. A JSON codec on SQLite stores the JSON text of the document, and a date-time codec its text. Because both big integer codecs store digit text, a migration planned for a SQLite `BigInt` column with a literal default writes `DEFAULT 42` instead of `DEFAULT '42'`; tests that assert planned SQLite SQL change to match. A database created with `DEFAULT '42'` still verifies.
+
+## `authoring-entry-key-checked`
+
+An entry whose tag yields a type that another entry already holds under that type's id, as SQLite's `json` tag yields `sqlite/text`, moves under its tag's key and names the type it yields:
+
+```ts
+import { tagEntryKey } from '@internal/framework-components/authoring';
+
+// before
+[sqliteJson.id]: {
+  written: { kind: 'tag', tag: 'json', parse: parseJsonBody },
+  print: printJsonBody,
+  documentation: 'Reads the body as a JSON document and stores it as the default value.',
+},
+
+// after
+[tagEntryKey('json')]: {
+  written: {
+    kind: 'tag',
+    tag: 'json',
+    type: sqliteText.id,
+    parse: (text) => canonicalizeJson(parseJsonBody(text)),
+  },
+  print: (value) => String(value),
+  documentation: 'Reads the body as a JSON document and stores its JSON text as the default value.',
+},
+```
+
+An entry under a data type's id keeps naming no `type`. Any other combination fails assembly with `CONTRACT.DATA_TYPE_ENTRY_KEY_INVALID`.
