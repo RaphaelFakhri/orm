@@ -278,6 +278,10 @@ Logs in the gitignored `wip/3/`.
 
 Built in the linked worktree `wip/wt-1` from `main`, since it depends on no other slice. Briefs: `dispatches/1-implementer-brief.md`, `dispatches/1-review-fixes-brief.md`. Reviews: `slice-reviews/1/` and `slice-reviews/1-round-2/`. Round 1 found a real bug: the SQLite migration-file renderer passed the `OpaqueSql` object to the JSON printer. Round 2 corrected the app fragment: only the wire name changes, not a policy's stored body, and the plan drops and recreates the object. PR https://github.com/prisma/orm/pull/30546.
 
+## Slice 4, 2026-10-01
+
+Built in the linked worktree `wip/wt-1`, stacked on slice 1. Briefs: `dispatches/4-implementer-brief.md`, `4-review-fixes-brief.md`, `4-round-2-fixes-brief.md`. Reviews: `slice-reviews/4/` and `4-round-2/`. Round 1 found three column-default render sites the design missed (`setDefault`, SQLite `addColumn` and `recreateTable`); round 2 made every hand-listed renderer typed over its input's keys. PR https://github.com/prisma/orm/pull/30554.
+
 ## Slice order and tickets
 
 | Order | Plan slice | Ticket | State |
@@ -287,7 +291,7 @@ Built in the linked worktree `wip/wt-1` from `main`, since it depends on no othe
 | 3 | 2b: the six places take `sql` literals | TML-3288 | PR #30550 open against the 2t branch (2026-09-30); two review rounds done, all findings fixed; retarget to `main` when #30539 merges |
 | 4 | 3: the TypeScript builder takes `sql` values | TML-3289 | Built on `tml-3289-sql-expression-ts` (2026-10-01); review next |
 | On the side | 1: line comments in raw SQL | TML-3287 | PR #30546 open against `main` (2026-09-30); two review rounds done, all findings fixed; awaits Will's approval |
-| Last | 4: migration files write template literals | TML-3290 | Waiting for 1 |
+| Last | 4: migration files write template literals | TML-3290 | PR #30554 open against the slice 1 branch (2026-10-01); two review rounds done, all findings fixed; retarget to `main` when #30546 merges |
 | Stretch | 5: migration files write `sql` values | TML-3297 | Waiting for 3 and 4 |
 
 TML-3282 was the decision ticket and is done.
