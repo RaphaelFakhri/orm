@@ -3,6 +3,8 @@
 **Spec:** `projects/nullable-scalar-lists/spec.md`
 **Linear Project:** _none (operator direction: no ticket)_
 
+**Final status:** All four planned slices shipped together in merged #30051. Mongo container-null QA was resolved by merged #30568. Both PRs passed all 27 checks; [closeout.md](closeout.md) records the authoritative final evidence and decision mapping. The sequencing below is historical: strict-list JSON/hash byte-stability was superseded by the intentional nested wire migration, strict-list DDL remains unchanged, and the list ADR's final number is 258.
+
 ## At a glance
 
 Four slices: a shared representation foundation, then a two-deep SQL stack (storage/enforcement → typing/authoring), with a parallel Mongo slice hanging off the foundation. Mostly stacked (the SQL thread) with one parallel group (Mongo).

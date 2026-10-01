@@ -34,13 +34,15 @@ QualifiedName (argList)? (?)? ([])? (?)?
 
 ## Slice Definition of Done
 
+Final verification: delivered in merged #30051; all 27 PR checks passed, including parser/package tests, Type Check and Fixtures. Historical package names in the commands below describe the planned gates, not new close-out runs. The token formatter is the supported printing scope; semantic-printer work was excluded.
+
 Beyond the inherited team-DoD floor and the project-DoD:
 
-- [ ] All four spellings (`Foo`, `Foo?`, `Foo[]`, `Foo?[]`, `Foo[]?`, `Foo?[]?`) parse; the AST/`FieldSymbol` expose element vs list optionality distinctly; `Foo??` (and any other malformed `?`/`[]` combo) produces a clear diagnostic. Parser tests cover each.
+- [x] All six spellings (`Foo`, `Foo?`, `Foo[]`, `Foo?[]`, `Foo[]?`, `Foo?[]?`) parse; the AST/`FieldSymbol` expose element vs list optionality distinctly; `Foo??` (and any other malformed `?`/`[]` combo) produces a clear diagnostic. Parser tests cover each.
 - [x] `ContractField.many` optionally carries `false | { elementNullable: boolean }`; deserialization accepts omitted domain `many` as scalar and normalizes it to `false`, while validation rejects malformed explicit values and legacy parallel shapes. Canonicalization omits `many: false` and preserves list descriptors, including nested `elementNullable: false`.
 - [x] The parser's token formatter round-trips all six spellings above verbatim, covered by formatter round-trip tests; the semantic printer remains unchanged.
 - [x] The representation work is confined to the framework contract and parser/token-formatter surfaces; family interpreter, storage, typing, and enforcement changes are downstream.
-- [ ] Validation gates green: `pnpm --filter @prisma-next/psl-parser test` + typecheck, `pnpm --filter @prisma-next/psl-printer test` + typecheck, `pnpm --filter @prisma-next/contract test` + typecheck, `pnpm fixtures:check`.
+- [x] Validation gates covered by merged CI (earlier local blockers are historical): `pnpm --filter @prisma-next/psl-parser test` + typecheck, `pnpm --filter @prisma-next/psl-printer test` + typecheck, `pnpm --filter @prisma-next/contract test` + typecheck, `pnpm fixtures:check`.
 
 ## Pre-investigated edge cases
 

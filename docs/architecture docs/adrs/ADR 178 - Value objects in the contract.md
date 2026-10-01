@@ -1,5 +1,7 @@
 # ADR 178 — Value objects in the contract
 
+**Partially superseded by [ADR 258](<./ADR 258 - List cardinality has independent container and element nullability.md>):** the `many: true` representation in this ADR's historical examples is replaced by `many: { elementNullable: false | true }`, separating container and element nullability. The model/value-object distinction and relation cardinality decisions remain unchanged.
+
 ## At a glance
 
 A User model with scalar fields and value object fields. Value objects are defined in a separate `valueObjects` section — they share the same field descriptor shape (`{ nullable, codecId }`) as models, but the framework makes fundamentally different promises about them.

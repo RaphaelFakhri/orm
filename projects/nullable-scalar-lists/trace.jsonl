@@ -1,0 +1,1 @@
+{"event_id":"3f05ee2c-e7c6-4562-90cc-ed6fe3c0edba","schema_version":"1","ts":"2026-10-01T15:46:19.135Z","project_run_id":"nullable-scalar-lists","orchestrator_agent_id":null,"event_type":"retro-landed","trigger_class":"mandatory-final","landing_surfaces":["project-context-readme"],"is_mandatory_final":true}

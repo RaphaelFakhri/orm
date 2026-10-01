@@ -1,5 +1,7 @@
 # nullable-scalar-lists
 
+**Final status (2026-10-01):** All four planned slices merged in #30051 (`982bca13644e9d7cdd9702c97a10d9d20482efeb`); the QA-discovered Mongo container fix merged in #30568 (`84b3bb693c395ec21ccf2de97d5db4787c805d03`). Both PRs passed all 27 checks. [Close-out verification](closeout.md) records acceptance evidence, the explicit historical-artifact compatibility exception, and superseded shaping assumptions. No fresh database suites were run during this documentation close-out.
+
 ## Purpose
 
 Let authors express the full nullability matrix of a scalar list — separating _"the list itself is absent"_ from _"an element inside the list is absent"_ — so the type system and the storage constraints reflect exactly what the data may hold. Today a scalar list's elements are **always** non-null; there is no way to say an element may be `null`.
@@ -33,7 +35,7 @@ model Post {
 
 ## Non-goals
 
-- **The three shipped cases.** `Foo[]`, `Foo[]?`, and whole-list `nullable` already work — including the element-non-null CHECK for `Foo[]` — and are not redesigned. `Foo[]`'s emitted contract, hashes, and DDL must stay byte-identical.
+- **The three shipped cases.** `Foo[]`, `Foo[]?`, and whole-list `nullable` already work — including the element-non-null CHECK for `Foo[]` — and are not redesigned. `Foo[]`'s DDL stays unchanged. The original emitted-contract/hash byte-stability requirement was superseded by the operator-ordered nested wire representation; strict-list JSON and affected hashes intentionally change.
 - **The enforcement mechanism.** `CheckExpressionConstraint`, `elementNonNullCheckExpression`, and the Postgres DDL rendering already exist and work; this project makes their emission conditional, it does not touch the mechanism.
 - **Non-Postgres SQL targets.** SQLite does not support scalar lists at all (`SQLite adapter does not report sql.scalarList capability`; the `PSL_SCALAR_LIST_UNSUPPORTED_TARGET` gate rejects them). There is nothing to do there — scalar lists, and therefore the element axis, are Postgres-only on the SQL side.
 - **Nested lists** (`Foo[][]`), fixed-length/tuple lists — out of scope.
@@ -69,26 +71,26 @@ The element axis threads through the same pipeline scalar lists already travel. 
 
 - Every merged slice keeps CI green on `main` and leaves the four-cell matrix consistent — a slice never ships a parser that accepts `Foo?[]` without the IR able to represent it, nor an IR marker the planner/type-gen ignores.
 - The element-nullability marker is captured by `storageHash`, so the Postgres planner and `db verify` always agree on whether a column's CHECK should exist — no slice may leave them out of step.
-- No slice changes the emitted contract, hashes, or DDL for a schema that does not use the element axis (holds at every intermediate commit, not just at close).
+- The original no-contract/hash-change constraint for existing lists is superseded by the intentional nested wire migration. Scalar-domain JSON and strict-list DDL remain unchanged; legacy list-bearing artifacts are not promised unchanged-load compatibility.
 
 ## Project Definition of Done
 
-- [ ] Team-DoD floor items (inherited; see [`drive/calibration/dod.md`](../../drive/calibration/dod.md) — not restated here).
+- [x] Team-DoD verification recorded in [closeout.md](closeout.md): merged CI and scoped QA evidence accepted; artifact-format compatibility explicitly excepted for this project, not falsely marked compatible. Linear is not applicable by operator direction. Deletion and PR opening are the remaining close-out execution steps.
 - [x] All four PSL spellings parse, interpret in SQL and Mongo, emit, and token-format round-trip, with tests covering each cell; the semantic printer remains unchanged by explicit scope decision.
-- [x] `ContractField.many` represents cardinality and element nullability as one nested descriptor; SQL native-list storage lowers nullable elements to `many: { elementNullable: true }` with no automatic `noCheck`, while value-object JSONB storage carries no storage marker or waiver; existing strict-list canonicalization and storage hashes remain stable in focused tests. `pnpm fixtures:check` could not reach comparison because examples could not load the built local CLI.
+- [x] `ContractField.many` represents cardinality and element nullability as one nested descriptor; SQL native-list storage lowers nullable elements to `many: { elementNullable: true }` with no automatic `noCheck`, while value-object JSONB storage carries no storage marker or waiver; existing strict-list DDL remains stable, but legacy list JSON and affected hashes intentionally change. Earlier local fixture blockers are historical; the merged PRs' Fixtures checks passed. The historical-artifact compatibility exception is explicit in ADR 258.
 - [x] Generated TS matches the matrix on both emit and `typeof contract` paths, proven by `*.test-d.ts`.
 - [x] The SQL and Mongo field builders can author every matrix cell through a structurally coupled `many` option and type-state; value and type tests prove the resulting IR and literal-only option contract.
 - [x] Postgres: `Foo[]` / `Foo[]?` keep the element-non-null check; `Foo?[]` / `Foo?[]?` omit it; lifecycle integration tests cover catalog state, add/drop transitions, inserts, and verification.
 - [x] Postgres runtime reads and writes `NULL` array elements correctly for element-nullable columns.
 - [x] Mongo BSON validators and contract-derived result shapes preserve array-item nullability per the element axis; runtime and ORM tests cover read/write null bypass.
-- [x] Element-nullability semantics are documented in ADR 248, including the domain/storage marker distinction, explicit waiver semantics, TS authoring surface, and target behavior.
+- [x] Element-nullability semantics are documented in ADR 258, including the domain/storage marker distinction, explicit waiver semantics, TS authoring surface, and target behavior.
 
 ## Resolved decisions
 
 All shaping questions are settled (operator-confirmed):
 
 1. **Operator-ordered nested IR.** `ContractField.many` and `StorageColumn.many` are `false | { elementNullable: boolean }`, coupling cardinality to element semantics so invalid parallel states are unrepresentable. Native nullable-element lists carry `many: { elementNullable: true }` and directly suppress `elementNotNull` candidate generation; they do not carry an automatic `noCheck`. Explicit `Foo[] @noCheck(elementNotNull)` retains `many: { elementNullable: false }`, and the same waiver on `Foo?[]` is rejected as inapplicable. Value-object lists remain JSONB with neither storage marker nor waiver, while retaining the domain marker.
-2. **Verify signal.** Element nullability is observed via the element-non-null CHECK: introspection reads whether the `…_elem_not_null` CHECK exists on an array column; absence ⇒ element-nullable. No separate introspection probe.
+2. **Verify signal (reconciled with explicit waiver semantics).** Migration comparison observes the derived element-non-null CHECK. Its absence does not imply semantic element nullability: `contract infer` emits a strict list plus `@noCheck(elementNotNull)` when the derived check is absent. Authors explicitly declare nullable elements; no separate schema-IR marker or direct marker drift comparison is introduced. The original absence ⇒ element-nullable assumption is superseded.
 3. **TS authoring.** In scope and DoD-gated. SQL builder API: `.many({ elementsNullable: true })`; omitted or false means non-null elements and emits `many: { elementNullable: false }`. The option is structurally coupled to list cardinality.
 4. **Value-object lists.** Element nullability on value-object lists (`Address?[]`) comes along where the framework IR field and type-gen are shared, but **scalar lists are the DoD-gated target** — VO-list element nullability is not a close-out gate.
 
@@ -96,7 +98,7 @@ All shaping questions are settled (operator-confirmed):
 
 - Linear Project: none (operator direction: no ticket).
 - [ADR 178 — Value objects in the contract](../../docs/architecture%20docs/adrs/ADR%20178%20-%20Value%20objects%20in%20the%20contract.md) § Cardinality — defines the `nullable` (list) / `many` axes this project extends.
-- [ADR 248 — List cardinality has independent container and element nullability](../../docs/architecture%20docs/adrs/ADR%20248%20-%20List%20cardinality%20has%20independent%20container%20and%20element%20nullability.md) — records the third field-shape axis and the distinction between semantic nullability and enforcement waivers.
+- [ADR 258 — List cardinality has independent container and element nullability](../../docs/architecture%20docs/adrs/ADR%20258%20-%20List%20cardinality%20has%20independent%20container%20and%20element%20nullability.md) — records the third field-shape axis and the distinction between semantic nullability and enforcement waivers.
 - `packages/3-targets/3-targets/postgres/src/core/migrations/issue-planner.ts` — `elementNonNullCheckExpression` + `buildCreateTableCallsFromNode`, the currently-unconditional CHECK this project makes conditional.
 - v0.15.0 release notes — [native scalar lists](../../docs/releases/v0.15.0.md) (PR #870, #846) and the "array columns verify cleanly" fix (PR #960) this project's verify requirement extends.
 - Spec-authoring context: [`drive/spec/README.md`](../../drive/spec/README.md) — **contract-impact** (satisfied by _Place in the larger world_ + _Cross-cutting requirements_), **adapter-impact** (Postgres; SQLite/Mongo called out under _Non-goals_ / _Place in the larger world_), **ADR pointer** (ADR 178 / new ADR, in Project-DoD).

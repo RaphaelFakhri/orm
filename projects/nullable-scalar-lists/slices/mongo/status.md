@@ -1,6 +1,6 @@
 # Mongo slice status
 
-**Status:** Remaining Mongo review gaps closed; tests and validation gates recorded below.
+**Final status:** Mongo shipped in #30051; the subsequent consumer-QA container-null defect was fixed in merged #30568. Both PRs passed all 27 checks. See [close-out verification](../../closeout.md) and [the preserved manual-QA report](../../manual-qa-run.md) for final disposition. The validation counts and local fixture blocker below are historical implementation notes, not pending gates or new close-out runs.
 
 ## Delivered
 

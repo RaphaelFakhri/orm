@@ -18,17 +18,19 @@ Carry element nullability from `FieldSymbol.elementOptional` into both SQL domai
 
 ## Slice Definition of Done
 
-- [ ] SQL native-list storage carries `many: { elementNullable: true }` only for `Foo?[]` / `Foo?[]?`, with no automatic `noCheck`; explicit `Foo[] @noCheck(elementNotNull)` carries only the waiver; schema IR carries no marker; `Foo[]` / `Foo[]?` remains unchanged.
-- [ ] SQL PSL interpretation maps all four list-nullability spellings to the correct domain and storage semantic shapes; explicit waivers remain independent; `Foo[]` / `Foo[]?` output is unchanged.
-- [ ] Postgres generated-check derivation emits `elementNotNull` only for semantically non-null lists, then honors explicit `noCheck: ['elementNotNull']` waivers.
+Final verification: delivered in merged #30051, with all 27 PR checks passed. “Unchanged” below applies to strict-list DDL and semantics, not legacy wire bytes/hashes, which intentionally changed to nested descriptors. Earlier local gate limitations remain recorded in the plan; they do not override later merged CI. No new database-suite execution is claimed.
+
+- [x] SQL native-list storage carries `many: { elementNullable: true }` only for `Foo?[]` / `Foo?[]?`, with no automatic `noCheck`; explicit `Foo[] @noCheck(elementNotNull)` carries only the waiver; schema IR carries no marker; `Foo[]` / `Foo[]?` remains unchanged.
+- [x] SQL PSL interpretation maps all four list-nullability spellings to the correct domain and storage semantic shapes; explicit waivers remain independent; `Foo[]` / `Foo[]?` output is unchanged.
+- [x] Postgres generated-check derivation emits `elementNotNull` only for semantically non-null lists, then honors explicit `noCheck: ['elementNotNull']` waivers.
 - [x] SQL runtime encode/decode round-trips `null` elements for element-nullable arrays while preserving existing behavior for non-null elements and whole-array `null`. `CodecRef.many` already converges SQL builder and ORM/query-builder ASTs on shared runtime loops; nullable-element semantics require no additional runtime marker because both nullable and strict arrays safely bypass null at runtime while strictness remains enforced by authoring and the database CHECK.
-- [ ] Semantic PSL printer remains untouched.
-- [ ] Focused package tests/typechecks/lints, `pnpm fixtures:check`, and `pnpm lint:deps` are green; workspace build/typecheck are attempted and any unrelated baseline failure is recorded.
+- [x] Semantic PSL printer remains untouched.
+- [x] Focused package tests/typechecks/lints, `pnpm fixtures:check`, and `pnpm lint:deps` are green; workspace build/typecheck are attempted and any unrelated baseline failure is recorded.
 
 ## Pre-investigated edge cases
 
 - A nullable whole array (`Foo[]?`) still receives the element-non-null CHECK: PostgreSQL treats a CHECK yielding `NULL` for a null array as satisfied.
 - Domain and storage `many` descriptors carry element semantics only for lists; `many.elementNullable` determines whether element non-null enforcement applies, while `noCheck` is only an explicit waiver and must not be inferred from the marker.
-- `Foo[]` must produce byte-identical IR and DDL to current behavior.
+- `Foo[]` retains its DDL and strict semantics; the original byte-identical IR expectation was superseded by the nested wire migration recorded in ADR 258.
 - Defaults containing `null` elements must be encoded without invoking the element codec for `null`, when the field is element-nullable.
 - Existing check naming (`<table>_<column>_elem_not_null`) remains stable so add/drop planning and verify agree.
