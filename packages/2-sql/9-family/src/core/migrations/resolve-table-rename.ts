@@ -4,7 +4,7 @@ import type { SqlStorage } from '@internal/sql-contract/types';
 import { notOk, ok, type Result } from '@internal/utils/result';
 import type { StructuredError } from '@internal/utils/structured-error';
 import { sqlFamilyError } from '../errors';
-import type { SchemaTables } from './hints';
+import type { SchemaTables } from './schema-tables';
 
 export const TABLE_RENAME_UNMATCHED_CODE = 'MIGRATION.TABLE_RENAME_UNMATCHED';
 

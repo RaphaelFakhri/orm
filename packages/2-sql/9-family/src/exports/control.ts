@@ -47,7 +47,6 @@ export type {
   ResolvedColumnRename,
   ResolvedHints,
   ResolveHintsInput,
-  SchemaTables,
   StatedColumnDrop,
   StatedTableDrop,
 } from '../core/migrations/hints';
@@ -78,6 +77,7 @@ export type {
   SqlSchemaDiffInput,
   SqlSchemaDiffResult,
 } from '../core/migrations/schema-differ';
+export type { SchemaTables } from '../core/migrations/schema-tables';
 export type {
   TableNameCaseGuardTable,
   TableRenameByHand,

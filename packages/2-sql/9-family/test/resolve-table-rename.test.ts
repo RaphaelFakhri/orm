@@ -9,12 +9,12 @@ import {
 import { applicationDomainOf } from '@repo/test-utils';
 import { describe, expect, it } from 'vitest';
 import { createTestSqlNamespace } from '../../1-core/contract/test/test-support';
-import type { SchemaTables } from '../src/core/migrations/hints';
 import {
   resolveTableRenameAgainst,
   TABLE_RENAME_UNMATCHED_CODE,
   type TableRename,
 } from '../src/core/migrations/resolve-table-rename';
+import type { SchemaTables } from '../src/core/migrations/schema-tables';
 
 const idColumn = { nativeType: 'int4', codecId: 'pg/int4@1', nullable: false };
 

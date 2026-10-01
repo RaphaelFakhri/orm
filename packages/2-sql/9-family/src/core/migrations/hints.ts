@@ -11,22 +11,13 @@ import {
 import type { SqlStorage } from '@internal/sql-contract/types';
 import { isStructuredError } from '@internal/utils/structured-error';
 import type { ResolvedTableRename } from './resolve-table-rename';
+import type { SchemaTables } from './schema-tables';
 import type { SqlPlannerConflict } from './types';
 
 export const HINT_CONTRADICTED_CODE = 'MIGRATION.HINT_CONTRADICTED';
 export const HINT_FOREIGN_TABLE_CODE = 'MIGRATION.HINT_FOREIGN_TABLE';
 
 const HINT_INVALID_CODE = 'CONTRACT.HINT_INVALID';
-
-/**
- * The tables a schema has, addressed by the contract's namespace ids: the schema a plan starts
- * from, or the schema a migration's earlier renames leave behind.
- */
-export interface SchemaTables {
-  hasTable(namespaceId: string, table: string): boolean;
-  hasColumn(namespaceId: string, table: string, column: string): boolean;
-  namespacesWithTable(table: string): readonly string[];
-}
 
 export interface ResolvedColumnRename {
   readonly namespaceId: string;

@@ -11,8 +11,8 @@ import {
   HINT_CONTRADICTED_CODE,
   HINT_FOREIGN_TABLE_CODE,
   resolveHints,
-  type SchemaTables,
 } from '../src/core/migrations/hints';
+import type { SchemaTables } from '../src/core/migrations/schema-tables';
 import { TestSqlContractSerializer } from './test-sql-contract-serializer';
 
 const column = { nativeType: 'int4', codecId: 'pg/int4@1', nullable: false };
