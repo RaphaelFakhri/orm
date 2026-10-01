@@ -5,7 +5,7 @@ import {
   entryForTag,
   type WrittenValue,
 } from '@internal/framework-components/authoring';
-import type { CodecLookup } from '@internal/framework-components/codec';
+import type { CodecLookupWithDescriptors } from '@internal/framework-components/codec';
 import type { ControlMutationDefaults } from '@internal/framework-components/control';
 import type { FieldSymbol, PslSpan, ResolvedAttribute } from '@internal/psl-parser';
 import type { ExpressionAst } from '@internal/psl-parser/syntax';
@@ -38,7 +38,7 @@ export interface LowerPrisma7DefaultInput {
   readonly modelName: string;
   readonly codecId: string;
   readonly typeParams: Readonly<Record<string, unknown>> | undefined;
-  readonly codecLookup: CodecLookup;
+  readonly codecLookup: CodecLookupWithDescriptors;
   readonly literalForm: Prisma7LiteralDefaultForm | undefined;
   /** Storage value per member name when the field is typed by a Prisma 7 enum. */
   readonly enumMembers: ReadonlyMap<string, string> | undefined;
@@ -325,7 +325,7 @@ function refusalReason(refusal: DefaultRefusal): string {
       return `holds a list, which ${refusal.receivingType} has no cast from; ${describeCasts(refusal.casts)}.`;
     case 'no-element-cast':
       return `holds a ${refusal.valueType} value${at}, which the list cast of ${refusal.receivingType} does not take; it takes ${refusal.elementTypes.join(', ')}.`;
-    case 'undecodable':
+    case 'refused-by-codec':
       return `holds a value${at} that ${refusal.codecId} does not read: ${refusal.message}`;
   }
 }

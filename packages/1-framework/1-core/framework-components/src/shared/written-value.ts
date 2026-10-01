@@ -5,6 +5,7 @@
  */
 
 import type { JsonValue } from '@internal/contract/types';
+import { isInternalError } from '@internal/utils/internal-error';
 import { notOk, ok, type Result } from '@internal/utils/result';
 import { type DataTypeId, type DataTypeLookup, dataTypeId } from './data-type';
 import type { DataTypeAuthoringEntry } from './framework-authoring';
@@ -151,6 +152,7 @@ export function readWrittenValue(
   try {
     return ok({ type: found.key, value: form.parse(text) });
   } catch (error) {
+    if (isInternalError(error)) throw error;
     return notOk({ kind: 'unreadable', message: messageOf(error) });
   }
 }
@@ -175,6 +177,7 @@ export function castTypedValue(
   try {
     return ok({ type: receivingType, value: cast(typed.value) });
   } catch (error) {
+    if (isInternalError(error)) throw error;
     return notOk({ kind: 'unreadable', message: messageOf(error) });
   }
 }
