@@ -1229,6 +1229,7 @@ export function buildContractDefinition(definition: LoweringInput): ContractDefi
       : {}),
     ...(definition.namespaces ? { namespaces: definition.namespaces } : {}),
     warnings: undefined,
+    hints: [],
     createNamespace: definition.createNamespace,
     ...(definition.enums && Object.keys(definition.enums).length > 0
       ? { enums: definition.enums }

@@ -82,11 +82,13 @@ import { canonicalStringify } from '@internal/utils/canonical-stringify';
 import { blindCast } from '@internal/utils/casts';
 import { ifDefined } from '@internal/utils/defined';
 import { InternalError } from '@internal/utils/internal-error';
+import type { JsonObject } from '@internal/utils/json';
 import { isStructuredError, type StructuredError } from '@internal/utils/structured-error';
 import {
   type AuthoredColumnDefault,
   type ContractDefinition,
   type FieldNode,
+  type HintEntry,
   isValueObjectMember,
   type ModelNode,
   type RelationNode,
@@ -1164,6 +1166,27 @@ function columnsProducingCheckPrefix(
   );
 }
 
+function buildContractHints(
+  entries: readonly HintEntry[],
+  defaultNamespaceId: string,
+): JsonObject | undefined {
+  if (entries.length === 0) {
+    return undefined;
+  }
+  const tablesByNamespace: Record<string, Record<string, JsonObject>> = {};
+  for (const entry of entries) {
+    const namespaceId = entry.namespaceId ?? defaultNamespaceId;
+    const tables = tablesByNamespace[namespaceId] ?? {};
+    tablesByNamespace[namespaceId] = tables;
+    tables[entry.table] = { was: entry.hint.was };
+  }
+  return {
+    namespaces: Object.fromEntries(
+      Object.entries(tablesByNamespace).map(([namespaceId, tables]) => [namespaceId, { tables }]),
+    ),
+  };
+}
+
 export function buildSqlContractFromDefinition(
   definition: ContractDefinition,
   codecLookup?: CodecLookupWithDescriptors,
@@ -1867,6 +1890,7 @@ export function buildSqlContractFromDefinition(
     target,
     targetFamily,
     ...ifDefined('defaultControlPolicy', definition.defaultControlPolicy),
+    ...ifDefined('hints', buildContractHints(definition.hints, defaultNamespaceId)),
     domain: { namespaces: domainNamespaces },
     roots,
     storage,
