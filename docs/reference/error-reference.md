@@ -1436,6 +1436,14 @@ A migration package on disk is corrupt: the `migrationHash` stored in `migration
 
 A contract hash the user supplied (or that a ref resolved to) is not a node in the on-disk migration graph, raised during plan resolution (`migration plan --from`), `migration ref set`, and `migration new --from` (including `--from` on an empty migrations directory, where there is no migration target it could name). The envelope lists the reachable hashes and suggests a valid one or running `migration plan` to introduce it. Payload: `hash`/`resolvedHash`, `reachableHashes` or `reachableRefs`; none at the `migration new` sites.
 
+### MIGRATION.HINT_CONTRADICTED
+
+A table rename hint (`@@hint(was: "<old>")`) cannot apply because the schema the plan starts from already has both the old table and the new one. A rename applies only while the old name exists and the new one does not. Raised by the planner before it diffs anything, as a `hintRejected` conflict that fails the plan. Remove the hint if the old table was already renamed; if the old table should stay, remove the hint and give the model another table name; if it should be dropped, remove the hint and state the drop instead. Payload: `reason: 'contradicted'`, `from`, `to`.
+
+### MIGRATION.HINT_FOREIGN_TABLE
+
+A table rename hint names, as the old table, a table another contract space declares. A hint may rename only tables of the contract space being planned. Raised by the planner before it diffs anything, as a `hintRejected` conflict that fails the plan. Remove the hint, or move the table into this space first. Payload: `reason: 'foreign'`, `from`, `to`.
+
 ### MIGRATION.INVALID_DEFAULT_EXPORT
 
 The `migration.ts` in a package directory does not default-export a valid migration: it must export a `Migration` subclass or a factory function returning a plan-shaped object (`operations` array plus `targetId` and `destination`). Payload: `dir`, `actualExport` (when known).

@@ -51,6 +51,19 @@ export type { DataTypeResolver } from '../core/migrations/data-type-resolver';
 export { buildDataTypeResolver } from '../core/migrations/data-type-resolver';
 export type { PlanFieldEventOperationsOptions } from '../core/migrations/field-event-planner';
 export { planFieldEventOperations } from '../core/migrations/field-event-planner';
+export type {
+  HintOrigin,
+  ResolvedColumnRename,
+  ResolvedHints,
+  ResolveHintsInput,
+  StatedColumnDrop,
+  StatedTableDrop,
+} from '../core/migrations/hints';
+export {
+  HINT_CONTRADICTED_CODE,
+  HINT_FOREIGN_TABLE_CODE,
+  resolveHints,
+} from '../core/migrations/hints';
 export { buildNativeTypeExpander } from '../core/migrations/native-type-expander';
 export {
   createMigrationPlan,
