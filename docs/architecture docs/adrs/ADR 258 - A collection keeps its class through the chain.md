@@ -160,7 +160,7 @@ A conditional makes TypeScript compare the two branch types. It caches the compa
 
 **The class of a related model inside an include refinement.** In `db.User.include('posts', (posts) => posts.published())`, the collection given to the callback is the shared `Collection` type, not `PostCollection`. Giving it the class needs the parent's type to know which class is registered for `Post`. That is known once, at `orm({ collections })`, and would have to reach every collection type: as a type argument threaded through `Collection` and the refinement types, or as a declared property the client attaches to each root collection and the `this`-typed methods pass on. It cannot work inside a class body, because a class cannot name a registry that contains itself. It changes the shared collection interface for every family and is a decision of its own.
 
-**A run-time guard on `deleteAll` and `updateAll`.** The type guard has no run-time counterpart.
+**A run-time guard on `deleteAll` and `updateAll`.** The type guard has no run-time counterpart. A JavaScript caller, or a TypeScript caller that casts, can call them on a collection with no filter; the statement then has no `WHERE` and affects every row. Whether to refuse that at run time is a separate decision.
 
 ## Alternatives considered
 
