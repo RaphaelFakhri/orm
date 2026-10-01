@@ -319,6 +319,19 @@ type OpMatchesField<Op, CodecId extends string, CT extends Record<string, unknow
       : false
   : false;
 
+type CodecOperations<TContract extends Contract<SqlStorage>, CodecId extends string> =
+  ExtractQueryOperationTypes<TContract> extends infer AllOps
+    ? {
+        [OpName in keyof AllOps & string as OpMatchesField<
+          AllOps[OpName],
+          CodecId,
+          ExtractCodecTypes<TContract>
+        > extends true
+          ? OpName
+          : never]: QueryOperationMethod<AllOps[OpName], ExtractCodecTypes<TContract>>;
+      }
+    : unknown;
+
 type FieldOperations<
   TContract extends Contract<SqlStorage>,
   NsId extends string,
@@ -326,18 +339,41 @@ type FieldOperations<
   FieldName extends string,
 > =
   FieldCodecId<TContract, ModelName, FieldName, NsId> extends infer CodecId extends string
-    ? ExtractQueryOperationTypes<TContract> extends infer AllOps
-      ? {
-          [OpName in keyof AllOps & string as OpMatchesField<
-            AllOps[OpName],
-            CodecId,
-            ExtractCodecTypes<TContract>
-          > extends true
-            ? OpName
-            : never]: QueryOperationMethod<AllOps[OpName], ExtractCodecTypes<TContract>>;
-        }
-      : unknown
+    ? CodecOperations<TContract, CodecId>
     : unknown;
+
+type CodecTraits<
+  TContract extends Contract<SqlStorage>,
+  CodecId extends string,
+> = CodecId extends keyof ExtractCodecTypes<TContract>
+  ? ExtractCodecTypes<TContract>[CodecId] extends { readonly traits: infer T }
+    ? T
+    : never
+  : never;
+
+type CodecOutput<
+  TContract extends Contract<SqlStorage>,
+  CodecId extends string,
+> = CodecId extends keyof ExtractCodecTypes<TContract>
+  ? ExtractCodecTypes<TContract>[CodecId] extends { readonly output: infer O }
+    ? O
+    : unknown
+  : unknown;
+
+/**
+ * The row accessor's type for any field with the codec `CodecId` and the given nullability. A function of `{ deletedAt: FieldExpression<Contract, 'pg/timestamptz-temporal@1', true> }` is a `where` callback for every model with such a field.
+ */
+export type FieldExpression<
+  TContract extends Contract<SqlStorage>,
+  CodecId extends keyof ExtractCodecTypes<TContract> & string,
+  Nullable extends boolean = false,
+> = Expression<{ codecId: CodecId; nullable: Nullable }> &
+  ComparisonMethods<
+    CodecOutput<TContract, CodecId> | (Nullable extends true ? null : never),
+    CodecTraits<TContract, CodecId>,
+    CodecId
+  > &
+  CodecOperations<TContract, CodecId>;
 
 function param(codec: CodecRef | undefined, value: unknown): AnyExpression {
   const expression = predicateExpression(value);
@@ -1293,11 +1329,7 @@ type FieldTraits<
   NsId extends string = never,
 > =
   FieldCodecId<TContract, ModelName, FieldName, NsId> extends infer Id extends string
-    ? Id extends keyof ExtractCodecTypes<TContract>
-      ? ExtractCodecTypes<TContract>[Id] extends { readonly traits: infer T }
-        ? T
-        : never
-      : never
+    ? CodecTraits<TContract, Id>
     : never;
 
 export type NumericFieldNames<
