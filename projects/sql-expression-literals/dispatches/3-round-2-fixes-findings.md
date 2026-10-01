@@ -9,4 +9,6 @@ Two ways to make it work, for Will to choose:
 1. Name the field instead, as both reviewers suggested: `Full-text index on "<field>" where`. One-line change in the helper; it differs from `Index on "<Model>" where` in what it names. Recommended: it is the smallest change and still names the index's column.
 2. Leave `where` unchecked in the helper when neither `name` nor `map` is given, so lowering checks it with its own owner string. The message then reads `Index on "<Model>" where`, without the words "Full-text".
 
-I did not change B04. The other findings are fixed.
+I did not change B04 in the first pass. The other findings are fixed.
+
+**Decision (coordinator, 2026-10-01): option 1.** A full-text index with neither `name` nor `map` reports `Full-text index on "<field>" where`, using the column's field name. Implemented with a test of an untyped call with a string `where` and no name or map; recorded in design section 15.3 and the error reference.

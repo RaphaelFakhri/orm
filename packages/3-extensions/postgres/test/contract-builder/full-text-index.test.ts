@@ -178,6 +178,29 @@ describe('fullTextIndex, the TypeScript twin of @@fullTextIndex', () => {
     );
   });
 
+  it('refuses a string where from an untyped caller with no name or map, naming the field', () => {
+    const untypedFullTextIndex = fullTextIndex as (column: unknown, options: unknown) => never;
+    const what = 'Full-text index on "text" where';
+    expect(() =>
+      defineContract({
+        models: {
+          Message: model('Message', {
+            fields: { id: field.column(intColumn).id(), text: field.column(textColumn) },
+          }).sql(({ cols }) => ({
+            table: 'message',
+            indexes: [untypedFullTextIndex(cols.text, { where: 'id > 0' })],
+          })),
+        },
+      }),
+    ).toThrow(
+      expect.objectContaining({
+        code: 'CONTRACT.ARGUMENT_INVALID',
+        message: `${what} must be a sql\`...\` value.`,
+        meta: { what },
+      }),
+    );
+  });
+
   it('refuses a column that is not stored through a textual codec', () => {
     expect(() =>
       defineContract({

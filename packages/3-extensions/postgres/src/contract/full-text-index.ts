@@ -90,11 +90,18 @@ export function fullTextIndex(
       ? {
           where: requireSqlExpression(
             options.where,
-            `Full-text index "${options.name ?? options.map}" where`,
+            `${fullTextIndexOwner(column, options)} where`,
           ),
         }
       : {}),
     ...(options.name !== undefined ? { name: options.name } : {}),
     ...(options.map !== undefined ? { map: options.map } : {}),
   };
+}
+
+function fullTextIndexOwner(column: ColumnRef, options: FullTextIndexOptions): string {
+  const name = options.name ?? options.map;
+  return name === undefined
+    ? `Full-text index on "${column.fieldName}"`
+    : `Full-text index "${name}"`;
 }

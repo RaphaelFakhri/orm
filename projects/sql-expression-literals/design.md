@@ -591,7 +591,7 @@ In `contract-ts/src/contract-lowering.ts`, `resolveModelNode`:
 - Index `expression`, in this order: `isSqlExpression(e)` → `e.text`; `typeof e === 'object' && e !== null && 'render' in e` → `new SqlExpression(e.render(...)).text`, so rendered text is canonicalized like every other raw-SQL text; a refusal is rethrown as `CONTRACT.SQL_EXPRESSION_INVALID` with the message prefixed by `` `${owner} expression: ` `` and `what` added to `meta`; otherwise `requireSqlExpression(e, \`${owner} expression\`)`, which throws. Testing `'render' in e` on a string would throw a `TypeError`, so the order matters.
 - Check: `expression: requireSqlExpression(check.expression, \`${owner} expression\`).text`, for example `Check "post_email_no_space" expression`.
 
-In `packages/3-extensions/postgres/src/contract/full-text-index.ts`: `FullTextIndexOptionsBase.where?: SqlExpression`. `fullTextIndex` checks it with `requireSqlExpression(where, 'Full-text index "<name>" where')`, `<name>` being its `name` or `map`, because lowering sees only an index and cannot tell the author used `fullTextIndex`.
+In `packages/3-extensions/postgres/src/contract/full-text-index.ts`: `FullTextIndexOptionsBase.where?: SqlExpression`. `fullTextIndex` checks it with `requireSqlExpression(where, 'Full-text index "<name>" where')`, `<name>` being its `name` or `map`; with neither (only an untyped caller can omit both), it is `Full-text index on "<field>" where`, `<field>` being the indexed column's field name, because the helper does not know the model. It checks `where` itself because lowering sees only an index and cannot tell the author used `fullTextIndex`.
 
 ### 15.4 Policies
 
