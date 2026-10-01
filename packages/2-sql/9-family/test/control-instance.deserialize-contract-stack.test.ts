@@ -116,6 +116,13 @@ describe('deserializeContract checks each column against the stack', () => {
     );
   });
 
+  it('accepts a column whose codec the stack does not know', () => {
+    const contract = contractWith({
+      user: table({ id: col('t/int4', 't/int4@1'), tags: col('ext/tags', 'ext/tags@1') }),
+    });
+    expect(() => familyInstance('Jsonb').deserializeContract(contract)).not.toThrow();
+  });
+
   it('refuses a storage type whose codec represents another data type', () => {
     const contract = contractWith(
       { user: table({ id: col('t/int4', 't/int4@1') }) },
