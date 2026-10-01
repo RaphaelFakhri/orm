@@ -174,7 +174,7 @@ The chaining methods are generic in their receiver, and `ReturnType` of a generi
 
 ## Optional: call custom collection methods after chaining
 
-Custom collection methods are now available after `where`, `orderBy`, `limit` and the other chaining methods. Where code repeats a class method's body inline after a chaining call, it can call the method:
+Custom collection methods are now available after `where`, `orderBy`, `limit` and the other chaining methods. Where code on a client built with `orm({ collections })` repeats a class method's body inline after a chaining call on that class, it can call the method. A client without custom classes, such as `db.orm`, has no such methods.
 
 ```diff
   return db.Post.forUser(userId)
