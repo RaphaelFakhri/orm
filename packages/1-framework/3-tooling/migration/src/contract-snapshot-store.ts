@@ -1,5 +1,6 @@
 import { randomBytes } from 'node:crypto';
 import { mkdir, readFile, rename, rm, stat, writeFile } from 'node:fs/promises';
+import { stripContractHints } from '@internal/contract/strip-hints';
 import { CONTRACT_SNAPSHOTS_DIRNAME, storageHashHex } from '@internal/framework-components/control';
 import { canonicalizeJson } from '@internal/framework-components/utils';
 import { blindCast } from '@internal/utils/casts';
@@ -84,18 +85,6 @@ export function createSnapshotContentVerifier(
       }
     },
   };
-}
-
-/**
- * Removes the contract's planner hints. Hints describe how to reach the emitted contract from an
- * earlier one, so no stored copy of a contract carries them.
- */
-export function stripContractHints(contractJson: unknown): unknown {
-  if (typeof contractJson !== 'object' || contractJson === null || !('hints' in contractJson)) {
-    return contractJson;
-  }
-  const { hints: _hints, ...rest } = contractJson;
-  return rest;
 }
 
 export interface ContractSnapshotInput {

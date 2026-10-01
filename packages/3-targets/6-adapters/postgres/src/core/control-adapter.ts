@@ -1,3 +1,4 @@
+import { stripContractHints } from '@internal/contract/strip-hints';
 import type {
   ColumnDefault,
   ColumnDefaultLiteralInputValue,
@@ -15,7 +16,6 @@ import { parseContractMarkerRow } from '@internal/family-sql/verify';
 import type { CodecLookupWithDescriptors } from '@internal/framework-components/codec';
 import { APP_SPACE_ID, type SchemaNodeRef } from '@internal/framework-components/control';
 import { UNBOUND_NAMESPACE_ID } from '@internal/framework-components/ir';
-import { stripContractHints } from '@internal/migration-tools/contract-snapshot-store';
 import { ledgerOriginFromStored } from '@internal/migration-tools/ledger-origin';
 import { REFERENTIAL_ACTION_SQL } from '@internal/sql-contract/referential-action-sql';
 import type { SqlControlDriverInstance } from '@internal/sql-contract/types';

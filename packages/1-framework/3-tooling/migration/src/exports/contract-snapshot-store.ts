@@ -7,6 +7,5 @@ export {
   type SnapshotCanonicalizationHooks,
   type SnapshotContentVerifier,
   snapshotsImportPathFrom,
-  stripContractHints,
   writeContractSnapshot,
 } from '../contract-snapshot-store';
