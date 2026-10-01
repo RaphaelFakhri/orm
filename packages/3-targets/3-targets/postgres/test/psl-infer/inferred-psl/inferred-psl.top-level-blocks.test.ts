@@ -286,7 +286,7 @@ describe('buildPslDocumentAst and the top-level bucket', () => {
     typeMap: createPostgresTypeMap(new Set()),
     defaultMapping: createPostgresDefaultMapping(),
     parseRawDefault: parsePostgresDefault,
-    backsForeignKey: inferBuildContext.indexTypes.backsForeignKey,
+    backsForeignKey: (indexType) => inferBuildContext.indexTypes.backsForeignKey(indexType),
   };
 
   const foreignKeyExtras = {
