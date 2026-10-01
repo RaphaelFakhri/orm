@@ -1,24 +1,32 @@
 /**
  * Plans every committed SQL contract from an empty database and compares the
- * planner's operations with the golden file recorded for it. A change in the
- * DDL either planner writes shows up here as a diff against the golden.
+ * planner's output with the output recorded for it. A change in the DDL
+ * either planner writes fails here.
  *
  * A contract is any tracked JSON file whose top level names the SQL family and
  * the Postgres or SQLite target, whatever the file is called.
  *
  * A contract in a format today's validator refuses (old migration snapshots),
  * or one the planner refuses with a structured error, cannot be planned; its
- * golden records the refusal instead, so the set of contracts left out is
- * committed and reviewed like the rest. The same holds for extension packs
- * that live inside an example and cannot be imported here: the golden lists
- * them under `extensionsNotLoaded`.
+ * recording holds the refusal instead. Extension packs that live inside an
+ * example and cannot be imported here are listed under `extensionsNotLoaded`.
  *
- * Record the goldens again with `UPDATE_PLANNER_GOLDENS=1 pnpm --filter
- * integration-tests test test/planner-golden`.
+ * `manifest.json` holds, for each contract, the SHA-256 of its recording: the
+ * exact text `JSON.stringify(recording, null, 2)` plus a newline. The two
+ * fixture contracts also keep their full recording in
+ * `fixtures/<target>/planned.golden.json`.
+ *
+ * On a mismatch the test names the contract, prints the output it computed and
+ * writes it to `wip/planner-golden/` at the repository root. To see the output
+ * of the base commit, check out that commit and run
+ * `PLANNER_GOLDEN_WRITE=1 pnpm --filter integration-tests test test/planner-golden`:
+ * it rewrites the manifest and the two fixture recordings, and writes every
+ * contract's full recording to `wip/planner-golden/` for diffing.
  */
 
 import { execFileSync } from 'node:child_process';
-import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import postgresAdapterControl from '@internal/adapter-postgres/control';
 import sqliteAdapterControl from '@internal/adapter-sqlite/control';
 import { ContractValidationError } from '@internal/contract/contract-validation-error';
@@ -37,12 +45,20 @@ import postgresTargetControl from '@internal/target-postgres/control';
 import { PostgresDatabaseSchemaNode } from '@internal/target-postgres/types';
 import sqliteTargetControl from '@internal/target-sqlite/control';
 import { isStructuredError } from '@internal/utils/structured-error';
-import { join, resolve } from 'pathe';
-import { describe, expect, it } from 'vitest';
+import { join, relative, resolve } from 'pathe';
+import { afterAll, describe, expect, it } from 'vitest';
 
-const writeGoldens = process.env['UPDATE_PLANNER_GOLDENS'] === '1';
+const writeRecordings = process.env['PLANNER_GOLDEN_WRITE'] === '1';
 const repoRoot = resolve(import.meta.dirname, '../../../..');
-const goldenDir = join(import.meta.dirname, 'golden');
+const manifestPath = join(import.meta.dirname, 'manifest.json');
+const recordedDir = join(repoRoot, 'wip/planner-golden');
+
+const fixtureRecordings: ReadonlyMap<string, string> = new Map(
+  (['postgres', 'sqlite'] as const).map((target) => [
+    relative(repoRoot, join(import.meta.dirname, 'fixtures', target, 'generated/contract.json')),
+    join(import.meta.dirname, 'fixtures', target, 'planned.golden.json'),
+  ]),
+);
 
 type SqlExtension = ControlExtensionDescriptor<'sql', 'postgres'>;
 
@@ -98,8 +114,25 @@ function listCommittedSqlContracts(): readonly CommittedContract[] {
   return contracts;
 }
 
-function goldenNameOf(path: string): string {
+function recordedNameOf(path: string): string {
   return `${path.replaceAll('/', '__')}.golden.json`;
+}
+
+function sha256(text: string): string {
+  return createHash('sha256').update(text).digest('hex');
+}
+
+function readManifest(): Readonly<Record<string, string>> {
+  return existsSync(manifestPath)
+    ? (JSON.parse(readFileSync(manifestPath, 'utf8')) as Record<string, string>)
+    : {};
+}
+
+function writeRecorded(path: string, rendered: string): string {
+  mkdirSync(recordedDir, { recursive: true });
+  const recordedPath = join(recordedDir, recordedNameOf(path));
+  writeFileSync(recordedPath, rendered);
+  return recordedPath;
 }
 
 const emptyPostgresSchema = new PostgresDatabaseSchemaNode({
@@ -219,22 +252,40 @@ async function planFromEmpty(
 }
 
 const contracts = listCommittedSqlContracts();
+const manifest = readManifest();
+const computedHashes = new Map<string, string>();
 
 describe('planner DDL goldens', () => {
+  afterAll(() => {
+    if (!writeRecordings) return;
+    const paths = contracts.map((contract) => contract.path).sort();
+    const written = Object.fromEntries(
+      paths.flatMap((path) => {
+        const hash = computedHashes.get(path) ?? manifest[path];
+        return hash === undefined ? [] : [[path, hash]];
+      }),
+    );
+    writeFileSync(manifestPath, `${JSON.stringify(written, null, 2)}\n`);
+  });
+
   it('covers at least one Postgres and one SQLite contract', () => {
     expect(contracts.some((contract) => contract.target === 'postgres')).toBe(true);
     expect(contracts.some((contract) => contract.target === 'sqlite')).toBe(true);
   });
 
-  it('has no golden file for a contract that no longer exists', () => {
-    const expected = new Set(contracts.map((contract) => goldenNameOf(contract.path)));
-    const stale = readdirSync(goldenDir).filter((name) => !expected.has(name));
-    expect(stale).toEqual([]);
+  it('records exactly the committed contracts in the manifest', () => {
+    if (writeRecordings) return;
+    expect(Object.keys(manifest)).toEqual(contracts.map((contract) => contract.path).sort());
+  });
+
+  it('has a full recording for each fixture contract', () => {
+    const paths = new Set(contracts.map((contract) => contract.path));
+    expect([...fixtureRecordings.keys()].filter((path) => !paths.has(path))).toEqual([]);
   });
 
   it.each(contracts.map((contract) => [contract.path, contract] as const))(
     'plans %s from an empty database as recorded',
-    async (_path, contract) => {
+    async (path, contract) => {
       const { loaded, notLoaded } = extensionsOf(contract);
       const planned = await planFromEmpty(contract, loaded);
       const rendered = `${JSON.stringify(
@@ -248,14 +299,23 @@ describe('planner DDL goldens', () => {
         null,
         2,
       )}\n`;
-      const goldenPath = join(goldenDir, goldenNameOf(contract.path));
-      if (writeGoldens) {
-        mkdirSync(goldenDir, { recursive: true });
-        writeFileSync(goldenPath, rendered);
+      const hash = sha256(rendered);
+      const fixtureRecording = fixtureRecordings.get(path);
+      if (writeRecordings) {
+        computedHashes.set(path, hash);
+        writeRecorded(path, rendered);
+        if (fixtureRecording !== undefined) writeFileSync(fixtureRecording, rendered);
         return;
       }
-      expect(existsSync(goldenPath), `no golden recorded at ${goldenPath}`).toBe(true);
-      expect(rendered).toBe(readFileSync(goldenPath, 'utf8'));
+      if (fixtureRecording !== undefined) {
+        expect(rendered).toBe(readFileSync(fixtureRecording, 'utf8'));
+      }
+      if (hash !== manifest[path]) {
+        const recordedPath = writeRecorded(path, rendered);
+        expect.fail(
+          `The planner output for ${path} does not match manifest.json. It is written to ${recordedPath}:\n${rendered}`,
+        );
+      }
     },
   );
 });

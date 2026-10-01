@@ -1,9 +1,0 @@
-{
-  "contract": "packages/3-extensions/paradedb/src/contract.json",
-  "target": "postgres",
-  "extensions": [],
-  "planned": {
-    "kind": "success",
-    "operations": []
-  }
-}
