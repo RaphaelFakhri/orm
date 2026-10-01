@@ -31,7 +31,7 @@ A **query fragment** is a function. A fragment of a row is a function from the r
 1. **A collection fragment is a step, applied with `pipe`** (ADR 258). The step receives the caller's exact type, including a custom collection class, and the result is whatever the step returns.
 2. **The query API has no control-flow methods.** Whatever the application would write in a function body, it writes inside the step. The type stays sound because a filtered collection is a subtype of an unfiltered one, so a step that may or may not filter yields the unfiltered type (ADR 258).
 3. **A field type is named by its codec.** `FieldExpression<Contract, CodecId, Nullable>` is the type of any row field with that codec and nullability, with the same comparison methods and operations as the field on a model. A row fragment typed with it fits every model that has such a field.
-4. **A step that changes the row is defined once per model.** `rowFragment<Contract, Model>()(body)` types the body against the plain collection of that model and returns a step that takes that model's collection in any state. `RowOf<Step>` names the row the step produces.
+4. **A step that changes the row is defined once per model.** `rowFragment<Contract, Model>()(body)` types the body against the plain collection of that model and returns a step that takes that model's collection in any state. `CollectionRowOf` (ADR 258) names the row the step produces.
 5. **A sort field from a string is checked at run time.** `sortField(collection, name, direction, allowed)` returns an `orderBy` selector. The allowed list may name only fields whose codec can be ordered. A name outside it throws before the query runs.
 
 ## Why a fragment is a function
@@ -88,7 +88,7 @@ db.Tag.where(notDeleted); // error: Tag has no deletedAt
 
 ```ts
 const summary = rowFragment<Contract, 'Post'>()((posts) => posts.select('id', 'title').include('user'));
-type PostSummary = RowOf<ReturnType<typeof summary>>;
+type PostSummary = CollectionRowOf<ReturnType<typeof summary>>;
 
 db.Post.pipe(summary);
 db.Post.where({ userId }).pipe(summary);
@@ -96,7 +96,7 @@ db.User.include('posts', (posts) => posts.pipe(summary));
 db.Comment.pipe(summary); // error: not a Post collection
 ```
 
-A step that calls `select` produces a new row, so its type cannot be the caller's type. `rowFragment` types the body once, against the plain collection of the model, and returns a step that accepts a collection of that model in any state, including an include refinement and a collection after an earlier `select`. `RowOf` reads the row type off the result, so the application can name it.
+A step that calls `select` produces a new row, so its type cannot be the caller's type. `rowFragment` types the body once, against the plain collection of the model, and returns a step that accepts a collection of that model in any state, including an include refinement and a collection after an earlier `select`. `CollectionRowOf` reads the row type off the result, so the application can name it.
 
 The step's result has the default state. A filter or order applied before the step is not recorded after it, so `update` is refused after `pipe(summary)` even when a `where` came first. Row-changing steps are for reading.
 
