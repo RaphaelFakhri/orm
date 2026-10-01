@@ -591,8 +591,6 @@ export function createSqlFamilyInstance<TTargetId extends string>(
     SqlControlTargetDescriptor<TTargetId, unknown>,
     'reading the optional target-descriptor inferPslContract hook'
   >(target).inferPslContract;
-  // The stack parts `contract emit` reads a PSL document with, which `contract infer` and
-  // `contract print` write one with.
   // Built on first use, so a pack's malformed index type registration is refused by the commands
   // that read it rather than by every command that creates a family instance.
   let indexTypeRegistry: IndexTypeRegistry | undefined;
@@ -600,6 +598,8 @@ export function createSqlFamilyInstance<TTargetId extends string>(
     indexTypeRegistry ??= indexTypeRegistryOf([target, ...extensions]);
     return indexTypeRegistry;
   };
+  // The stack parts `contract emit` reads a PSL document with, which `contract infer` and
+  // `contract print` write one with.
   const pslBuildContext: SqlPslBuildContext = {
     authoringContributions: stack.authoringContributions,
     codecLookup: stack.codecLookup,
