@@ -225,7 +225,7 @@ Outcome: `contract.json` stores `dataType` instead of `nativeType`; SQLite's dat
 
 ## 8. `db sign` and `migrate`
 
-1. `db sign` loads the aggregate with `contract-space-aggregate-loader.ts`, as `migrate` does. It verifies each space with `strict: false`. It then opens a transaction through a new `SqlControlAdapter.withTransaction(driver, fn)` (Postgres and SQLite `BEGIN`, `COMMIT`, `ROLLBACK`), writes the marker of every space that verified, commits, and then advances each signed space's `db` ref and writes its snapshot. A space that failed verification is not signed and is reported with its drift; the command then exits with code 4.
+1. `db sign` loads the aggregate with `contract-space-aggregate-loader.ts`, as `migrate` does. It verifies each space with `strict: false`. It then opens a transaction through a new `SqlControlAdapter.withTransaction(driver, fn)` (Postgres and SQLite `BEGIN`, `COMMIT`, `ROLLBACK`), writes the marker of every space that verified, commits, and then advances each signed space's `db` ref and writes its snapshot. A space that failed verification is not signed and is reported with its drift; the command then exits with code 4. Mongo implements the same family method and signs its spaces one by one, without a transaction; the transaction is required on Postgres and SQLite only. An unchanged space advances its ref too, so the command is idempotent, and `--advance-ref` names the ref for every space.
 2. The `MIGRATION.MARKER_MISMATCH` refusal of `migrate` (`packages/1-framework/3-tooling/cli/src/utils/cli-errors.ts:486-519`) adds the fix line that `migration status` already uses for `db sign`.
 
 ## 9. SQLite's data types
