@@ -118,8 +118,13 @@ export interface HasState<State = CollectionTypeState> {
 export interface HasWhere extends HasState<{ readonly hasWhere: true }> {}
 export interface HasOrderBy extends HasState<{ readonly hasOrderBy: true }> {}
 
-export type CollectionStateOf<C extends HasState> = C[typeof StateType];
-export type CollectionRowOf<C extends HasRow> = Simplify<C[typeof RowType]>;
+export type CollectionStateOf<C extends HasState> = {
+  [K in keyof C[typeof StateType]]: C[typeof StateType][K];
+};
+
+export type CollectionRowOf<C extends HasRow> = C[typeof RowType] extends infer Row
+  ? { [K in keyof Row]: Row[K] }
+  : never;
 ```
 
 The base class declares both properties. This outline of its signatures is abridged: parameter lists and the long relation-value type are cut, every name in it is real.
@@ -144,34 +149,24 @@ class CollectionBase<TContract, ModelName, Row, State> {
   ): Collection<TContract, ModelName, SimplifyDeep<Pick<...> & IncludedRelationsForRow<TContract, ModelName, R>>, S>;
 
   all(): AsyncIterableResult<CollectionRowOf<this>>;
-  update(this: Filtered<this>, data: MutationUpdateInput<...>): Promise<CollectionRowOf<this> | null>;
-  deleteAll(this: Filtered<this>): AsyncIterableResult<CollectionRowOf<this>>;
-  cursor<Self extends HasState>(
-    this: Self,
-    cursorValues: CollectionStateOf<Self>['hasOrderBy'] extends true ? Partial<...> : never,
-  ): Self;
+  update<Self extends HasWhere>(this: Self, data: MutationUpdateInput<...>): Promise<CollectionRowOf<this> | null>;
+  deleteAll<Self extends HasWhere>(this: Self): AsyncIterableResult<CollectionRowOf<this>>;
+  cursor<Self extends HasOrderBy>(this: Self, cursorValues: Partial<...>): Self;
 }
 ```
 
-The public `Collection` type is `CollectionBase` intersected with one reducer member per aggregate operation the contract declares. `CollectionBase` is internal to the package; error messages and declaration output name `Collection<...>`, `Filtered<...>` and `Ordered<...>` instead.
+The public `Collection` type is `CollectionBase` intersected with one reducer member per aggregate operation the contract declares. `CollectionBase` is internal to the package. Hovers, declaration output and the headline type of an error message use the alias forms: `Collection<...>`, `Filtered<...>`, `Ordered<...>`, `CollectionRowOf<...>`. An elaboration line under an error message can still name `CollectionBase`, when TypeScript explains a mismatch by comparing the class itself, for example when a plain chain is assigned to an annotation it does not match.
 
 - `HasWhere` and `HasOrderBy` are named interfaces rather than inline object types, so that every `where` produces the same type, duplicates collapse, and error messages print the name.
 - `Including` takes the fields it adds, not a relation name, so that it does not have to look up the model behind its receiver. `include` passes `{ [K in RelName]: IncludeRelationValue<...> }`, the included relation's row.
 - The `= never` default on `include`'s `Self` is what an explicit type argument meets: with `include<'user'>` the type parameter `Self` is not inferred, so it is `never`. In a call that is an error, because the receiver is not assignable to `never`; in `ReturnType<typeof posts.include<'user'>>` the result is `never`.
-- `CollectionStateOf` is a named alias because a consumer's declaration output cannot spell `this[typeof StateType]` when `StateType` is a unique symbol.
-- Every method that returns rows reads them as `CollectionRowOf<this>`, and `combine` reads each branch's rows with `CollectionRowOf`. The row property after two includes is an intersection, `Row & { author } & { comments }`; `Simplify` turns it into one object when it is read, so rows print and compare as plain objects. The pieces share no keys, so the flatten is shallow and changes no property type. `Simplify` maps over its type parameter, so a row that is a union of variants is flattened member by member.
+- `CollectionStateOf` and `CollectionRowOf` are mapped types of their own, not indexed accesses or aliases of another helper. Inside a custom class, `this.all()` has the type `AsyncIterableResult<CollectionRowOf<this>>`, and TypeScript writes that into the class's declaration output by the alias name. Written as `this[typeof RowType]`, the declaration would have to name the `RowType` symbol, which a consumer of the published facade cannot reach, and declaration emit fails with TS2527 ("references an inaccessible 'unique symbol' type"). A test in `examples/prisma-8-demo` runs declaration emit on a library of such classes through the facade.
+- Every method that returns rows reads them as `CollectionRowOf<this>`; `combine` and include refinements read rows with `CollectionRowOf` too. The row property after two includes is an intersection, `Row & { author } & { comments }`; `CollectionRowOf` turns it into one object when it is read, so rows print and compare as plain objects. The pieces share no keys, so the flatten is shallow and changes no property type. `CollectionRowOf` maps over a type it infers, so a row that is a union of variants is flattened member by member.
 - At run time each chained collection is built with `this.constructor`, so the object is an instance of the receiver's class, as its type says.
 
-**Guards.** The code has two forms.
+**Guards.** All eight guarded methods use one form: a `this` parameter whose type parameter is constrained to the fact. `update`, `updateAll`, `updateAndCount`, `delete`, `deleteAll` and `deleteAndCount` take `this: Self` with `Self extends HasWhere`; `cursor` and `distinctOn` take `this: Self` with `Self extends HasOrderBy`. When the fact is missing, the error is on the receiver and names the fact: "The 'this' context of type 'PostCollection' is not assignable to method's 'this' of type 'HasWhere'".
 
-| Form | Methods | Error when the fact is missing |
-| --- | --- | --- |
-| A `this` parameter, `this: Filtered<this>` | `update`, `updateAll`, `updateAndCount`, `delete`, `deleteAll`, `deleteAndCount` | "The 'this' context of type 'PostCollection' is not assignable to method's 'this' of type 'Filtered<PostCollection>'" |
-| A conditional on the argument, `CollectionStateOf<Self>['hasOrderBy'] extends true ? ... : never` | `cursor`, `distinctOn` | "Argument of type '{ id: number; }' is not assignable to parameter of type 'never'" |
-
-The writes are terminal methods. Their `this` parameter is free to state the requirement, and the error names the missing fact. They read the polymorphic `this` because they return its row, and they are not available inside an include refinement, so the `Omit` problem does not reach them.
-
-`cursor` and `distinctOn` are chaining methods. Their `this` parameter is already the inferred `Self` they return, as for every chaining method, so the requirement goes on the argument, as a conditional on `CollectionStateOf<Self>`.
+The requirement is about the receiver, so the receiver is where it is checked: no argument type changes with the state, and a cast on an argument cannot bypass it. The constraint keeps `Self` inferred as the whole receiver type, so `cursor` and `distinctOn` return the receiver with every fact it has. The writes return `CollectionRowOf<this>`, the receiver's row.
 
 **Methods that narrow the row.** A signature that mentions the polymorphic `this` is instantiated again for every receiver type, and `select` and `variant` have large signatures. `select` infers the state and the row from its `this` parameter, which is instantiated once per receiver type, so `select` after `include` keeps the included relations. `variant` infers the state the same way. Each also carries an overload without the `this` parameter, for a receiver whose state is not one type, such as a union of differently flagged collections. That overload returns the root state, which refuses writes and `cursor`, so it is sound. It also uses the model's own row, so on such a receiver the included relations are missing from the type after `select`, although the rows still have them.
 
@@ -192,7 +187,7 @@ A conditional makes TypeScript compare the two branch types. It caches the compa
 - **A built-in method, a class method and a step are one typed thing.** A query shared between places is written once as a step and applied with `pipe`, or wrapped in a class method; both give the same type. A package can supply steps without any knowledge of the application's classes.
 - **Conditional queries are sound.** A ternary, an `if`, a loop or a reassigned `let` never unlocks a write or `cursor` on a collection that may lack the filter or order.
 - **After `select` or `variant`, class methods are gone.** After `select` the rows are no longer the model's; after `variant` the type argument is a different one.
-- **A conditional between two differently flagged collections keeps a union.** `flag ? db.Post.withTitle('orm') : db.Post.newestFirst()` is `Filtered<PostCollection> | Ordered<PostCollection>`. Reads, `select`, `include` and class methods work on it; writes and `cursor` are refused, and `select` on it drops included relations from the type. Annotating the result as `PostCollection` reduces it.
+- **A conditional between two differently flagged collections keeps a union.** `flag ? db.Post.withTitle('orm') : db.Post.newestFirst()` is `Filtered<PostCollection> | Ordered<PostCollection>`. Reads, `select`, `include` and class methods work on it; writes and `cursor` are refused, and `select` on it drops included relations from the type. A write on it fails with "The 'this' context of type 'Ordered<PostCollection> | Filtered<PostCollection>' is not assignable to method's 'this' of type 'HasWhere'", because one branch has no filter; filter both branches, or annotate the result as `PostCollection`, which reduces the union and states that the filter is not known.
 - **Chains print with the fact names.** A chain on the base type prints as `Ordered<Filtered<Collection<Contract, "Post", ...>>>`, and one on a custom class as `Ordered<Filtered<PostCollection>>`.
 - **These names are part of the public surface**, because step authors write them and declaration output needs them for any library that exports a collection class: `Step`, `Filtered`, `Ordered`, `Including`, `HasWhere`, `HasOrderBy`, `HasRow`, `HasState`, `StateType`, `RowType`, `CollectionStateOf`, `CollectionRowOf`, `AggregateIncludeReducers` and `IncludeScalar`.
 - **The state and the row are read with `CollectionStateOf<C>` and `CollectionRowOf<C>`**, not by extracting a type argument of `Collection`. The type arguments hold what the collection started with; the facts are in the intersection.

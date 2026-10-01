@@ -2,11 +2,20 @@
 changes:
   - id: writes-on-a-conditional-collection-are-refused
     summary: |
-      A write (`update`, `updateAll`, `updateAndCount`, `delete`, `deleteAll`, `deleteAndCount`) on a collection that is filtered on some code paths and not on others no longer compiles. Filter on every path, or make the write only where the filter was applied.
+      A write (`update`, `updateAll`, `updateAndCount`, `delete`, `deleteAll`, `deleteAndCount`) on a collection that is filtered on some code paths and not on others no longer compiles. A pattern cannot tell which collections those are: act only where the compiler reports "The 'this' context of type '...' is not assignable to method's 'this' of type 'HasWhere'". Filter on every path, or make the write only where the filter was applied.
     detection:
       glob: "**/*.{ts,mts,cts,tsx}"
       matches:
-        - '\.(?:update|updateAll|updateAndCount|delete|deleteAll|deleteAndCount)\s*\('
+        - '\.(?:updateAll|updateAndCount|deleteAll|deleteAndCount)\s*\('
+        - '\.update\s*\(\s*\{'
+        - '\.delete\s*\(\s*(?:\)|\()'
+  - id: cursor-and-distinct-on-check-the-receiver
+    summary: |
+      `cursor` and `distinctOn` now require an order on the collection they are called on, checked on the receiver. A cast on the argument, such as `cursor({ id } as never)`, no longer bypasses the check; add the `orderBy`, or cast the collection to `Ordered<C>` where the query is meant to have no order.
+    detection:
+      glob: "**/*.{ts,mts,cts,tsx}"
+      matches:
+        - '\.(?:cursor|distinctOn)\s*\([^)]*\bas\s+never\b'
   - id: pipe-is-a-collection-member
     summary: |
       Every collection now has a `pipe` method. A custom collection class that declares its own `pipe` member with another signature no longer compiles; rename it.
@@ -74,7 +83,7 @@ A write needs a collection that is filtered on every code path. Code that filter
 
 ```ts
 const posts = search ? db.Post.withTitle(search) : db.Post;
-await posts.deleteAll(); // error: The 'this' context of type 'PostCollection' is not assignable to method's 'this' of type 'Filtered<PostCollection>'
+await posts.deleteAll(); // error: The 'this' context of type 'PostCollection' is not assignable to method's 'this' of type 'HasWhere'
 ```
 
 The same applies to an `if` with an early return, a `switch`, a loop, and a `let` reassigned in an `if`. Make the write only where the filter was applied, or filter on every path:
@@ -88,6 +97,30 @@ The same applies to an `if` with an early return, a `switch`, a loop, and a `let
 ```
 
 If the code relied on deleting or updating every row when there is no filter, that was the unsafe case the check now refuses. State the intent with an explicit filter instead.
+
+## `cursor` and `distinctOn` check the receiver
+
+`cursor` and `distinctOn` need an order on the collection they are called on. The check is on the receiver, so a cast on the argument no longer bypasses it:
+
+```ts
+await db.Post.cursor({ id } as never).all(); // error: The 'this' context of type 'PostCollection' is not assignable to method's 'this' of type 'HasOrderBy'
+```
+
+Add the order the query needs:
+
+```diff
+- await db.Post.cursor({ id } as never).all();
++ await db.Post.orderBy((post) => post.id.asc()).cursor({ id }).all();
+```
+
+Where the query is meant to run without an order, cast the collection instead of the argument:
+
+```ts
+import type { Ordered } from '@prisma/orm-postgres/orm-client';
+
+const unordered = db.Post as Ordered<typeof db.Post>;
+await unordered.cursor({ id }).all();
+```
 
 ## `pipe` is a member of every collection
 
