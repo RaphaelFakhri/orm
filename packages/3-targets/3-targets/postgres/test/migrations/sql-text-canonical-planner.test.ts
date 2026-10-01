@@ -37,6 +37,7 @@ const CANONICAL = 'owner_id = 1\n  AND id > 0';
 const stubLowerer: ExecuteRequestLowerer = {
   lower: () => ({ sql: 'stub', params: [] }),
   lowerToExecuteRequest: async () => ({ sql: 'stub', params: [] }),
+  renderColumnDefault: async () => '',
 };
 
 type Naming = 'wire' | 'exact';

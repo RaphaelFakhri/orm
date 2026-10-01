@@ -21,6 +21,7 @@ import { PostgresDatabaseSchemaNode } from '../../src/core/schema-ir/postgres-da
 import { PostgresNamespaceSchemaNode } from '../../src/core/schema-ir/postgres-namespace-schema-node';
 import { PostgresPolicySchemaNode } from '../../src/core/schema-ir/postgres-policy-schema-node';
 import { PostgresTableSchemaNode } from '../../src/core/schema-ir/postgres-table-schema-node';
+import { inferBuildContext } from './fixtures';
 
 function index(name: string, parts: Partial<SqlIndexIRInput>): SqlIndexIRInput {
   return {
@@ -84,7 +85,7 @@ function infer(input: {
     existingSchemas: ['public'],
     pgVersion: '',
   });
-  return printPsl(inferPostgresPslContract(tree), {
+  return printPsl(inferPostgresPslContract(tree, inferBuildContext), {
     pslBlockDescriptors: postgresAuthoringPslBlockDescriptors,
   });
 }

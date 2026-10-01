@@ -58,7 +58,7 @@ function mongoContext(seen: BlockSpecContext[]): ContractSourceContext {
       attributeSpecs: { model: {}, field: {} },
     },
     dataTypes: { entries: {}, lookup: createDataTypeLookup([]) },
-    codecLookup: emptyCodecLookup,
+    codecLookup: { ...emptyCodecLookup, descriptorFor: () => undefined },
     controlMutationDefaults: { defaultFunctionRegistry: new Map(), generatorDescriptors: [] },
     resolvedInputs: [],
     capabilities: {},

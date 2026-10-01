@@ -41,6 +41,7 @@ const REPRESENTATIVE_SCHEMA = `model sample {
 const BSON_SCALARS_SCHEMA = `model post {
   id        ObjectId   @id @map("_id")
   views     Int64
+  hits      Int64Number
   price     Decimal128
   thumbnail Binary
   meta      Json
@@ -84,6 +85,7 @@ describe('mongo scalar types derived from the unified namespace', () => {
       ObjectId: { codecId: 'mongo/objectId@1', nativeType: 'objectId' },
       Double: { codecId: 'mongo/double@1', nativeType: 'double' },
       Int64: { codecId: 'mongo/int64@1', nativeType: 'long' },
+      Int64Number: { codecId: 'mongo/int64Number@1', nativeType: 'long' },
       Decimal128: { codecId: 'mongo/decimal128@1', nativeType: 'decimal' },
       Binary: { codecId: 'mongo/binary@1', nativeType: 'binData' },
       Json: { codecId: 'mongo/json@1', nativeType: 'json' },
@@ -109,6 +111,7 @@ describe('mongo scalar types derived from the unified namespace', () => {
       'Int',
       'Int32',
       'Int64',
+      'Int64Number',
       'Json',
       'ObjectId',
       'String',
@@ -138,7 +141,7 @@ describe('mongo scalar types derived from the unified namespace', () => {
     });
   });
 
-  it('resolves Int64, Decimal128, Binary, Json and Bson to their codecs and BSON validator types', () => {
+  it('resolves Int64, Int64Number, Decimal128, Binary, Json and Bson to their codecs and BSON validator types', () => {
     const result = emit(namespaceScalarTypeCodecIds(), BSON_SCALARS_SCHEMA);
 
     expect(result.ok).toBe(true);
@@ -151,6 +154,7 @@ describe('mongo scalar types derived from the unified namespace', () => {
               post: {
                 fields: {
                   views: { type: { kind: 'scalar', codecId: 'mongo/int64@1' } },
+                  hits: { type: { kind: 'scalar', codecId: 'mongo/int64Number@1' } },
                   price: { type: { kind: 'scalar', codecId: 'mongo/decimal128@1' } },
                   thumbnail: { type: { kind: 'scalar', codecId: 'mongo/binary@1' } },
                   meta: { type: { kind: 'scalar', codecId: 'mongo/json@1' } },
@@ -171,6 +175,7 @@ describe('mongo scalar types derived from the unified namespace', () => {
                     jsonSchema: {
                       properties: {
                         views: { bsonType: 'long' },
+                        hits: { bsonType: 'long' },
                         price: { bsonType: 'decimal' },
                         thumbnail: { bsonType: 'binData' },
                         meta: {
