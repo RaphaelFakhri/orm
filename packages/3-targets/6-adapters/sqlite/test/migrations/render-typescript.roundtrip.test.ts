@@ -169,6 +169,12 @@ describe('TypeScriptRenderableSqliteMigration round-trip', () => {
         defaultSql: '',
         nullable: true,
       }),
+      new AddColumnCall('user', {
+        name: 'meta',
+        typeSql: 'TEXT',
+        defaultSql: `DEFAULT '{"a": 1}'`,
+        nullable: true,
+      }),
       new CreateIndexCall('user', 'user_email_idx', ['email']),
       new DropTableCall('stale'),
     ];
@@ -181,6 +187,7 @@ describe('TypeScriptRenderableSqliteMigration round-trip', () => {
 
     const tsSource = rewriteImports(migration.renderTypeScript(keepInternalSpecifiers));
     expect(tsSource).toContain('default: fn(`printf("%s", \'user\')`)');
+    expect(tsSource).toContain('defaultSql: `DEFAULT \'{"a": 1}\'`');
     await writeFile(join(tmpDir, 'migration.ts'), tsSource);
 
     const { stdout, stderr } = await execFileAsync(tsxPath, [join(tmpDir, 'migration.ts')], {
@@ -263,6 +270,7 @@ describe('TypeScriptRenderableSqliteMigration round-trip', () => {
           columns: [
             { name: 'id', typeSql: 'INTEGER', defaultSql: '', nullable: false },
             { name: 'email', typeSql: 'TEXT', defaultSql: '', nullable: true },
+            { name: 'meta', typeSql: 'TEXT', defaultSql: `DEFAULT '{"a": 1}'`, nullable: true },
           ],
           primaryKey: { columns: ['id'] },
           uniques: [],
@@ -288,6 +296,10 @@ describe('TypeScriptRenderableSqliteMigration round-trip', () => {
     );
 
     const tsSource = rewriteImports(migration.renderTypeScript(keepInternalSpecifiers));
+    expect(tsSource).toContain('defaultSql: `DEFAULT \'{"a": 1}\'`');
+    expect(tsSource).toContain(
+      "sql: `SELECT COUNT(*) > 0 FROM pragma_table_info('user') WHERE name = 'email' AND \"notnull\" = 0`",
+    );
     await writeFile(join(tmpDir, 'migration.ts'), tsSource);
 
     await execFileAsync(tsxPath, [join(tmpDir, 'migration.ts')], { cwd: tmpDir });

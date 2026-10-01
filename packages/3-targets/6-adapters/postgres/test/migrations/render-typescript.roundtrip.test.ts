@@ -34,6 +34,7 @@ import {
   RawSqlCall,
   RenameIndexCall,
   RenamePostgresRlsPolicyCall,
+  SetDefaultCall,
 } from '@internal/target-postgres/op-factory-call';
 import { TypeScriptRenderablePostgresMigration } from '@internal/target-postgres/planner-produced-postgres-migration';
 import { renderOps } from '@internal/target-postgres/render-ops';
@@ -229,9 +230,15 @@ describe('TypeScriptRenderablePostgresMigration round-trip', () => {
         'public',
         'user',
         [col('id', 'text', { notNull: true }), col('email', 'text', { notNull: true })],
-        [primaryKey(['id']), checkExpression('user_email_check', `"email" <> ''`)],
+        [
+          primaryKey(['id']),
+          checkExpression('user_email_check', `"email" <> ''`),
+          checkExpression('user_email_escapes', '"email" !~ \'\\d\' AND "email" <> \'`${x}\''),
+        ],
       ),
       new AddColumnCall('public', 'user', col('nickname', 'text')),
+      new AddColumnCall('public', 'user', col('meta', 'jsonb')),
+      new SetDefaultCall('public', 'user', 'meta', `DEFAULT '{"a": 1}'::jsonb`),
       new CreateIndexCall('public', 'user', 'user_email_idx', { columns: ['email'] }),
       new CreateIndexCall(
         'public',
@@ -273,6 +280,8 @@ describe('TypeScriptRenderablePostgresMigration round-trip', () => {
     expect(tsSource).toContain('checkExpression("user_email_check", `"email" <> \'\'`)');
     expect(tsSource).toContain('where: `"nickname" <> \'anonymous\'`');
     expect(tsSource).toContain('using: `("id" = auth.uid() AND "email" <> \'\')`');
+    expect(tsSource).toContain('`"email" !~ \'\\\\d\' AND "email" <> \'\\`\\${x}\'`');
+    expect(tsSource).toContain('defaultSql: `DEFAULT \'{"a": 1}\'::jsonb`');
     await writeFile(join(tmpDir, 'migration.ts'), tsSource);
 
     const { stdout, stderr } = await execFileAsync(tsxPath, [join(tmpDir, 'migration.ts')], {
