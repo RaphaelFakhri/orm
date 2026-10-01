@@ -27,7 +27,7 @@ import {
   type SqlSchemaIR,
   SqlTableIR,
 } from '@internal/sql-schema-ir/types';
-import { buildSqlitePlanDiff, sqlitePlanOrigin } from './diff-database-schema';
+import { buildSqlitePlanDiff, sqliteSchemaIRFromNode } from './diff-database-schema';
 import { type HintRenames, planHintRenames } from './hint-renames';
 import { indexNameCaseChange, pairIndexReplacements } from './index-replacements';
 import {
@@ -139,7 +139,7 @@ export class SqliteMigrationPlanner
     const policyResult = this.ensureAdditivePolicy(options.policy);
     if (policyResult) return policyResult;
 
-    const origin = sqlitePlanOrigin(options.schema);
+    const origin = sqliteSchemaIRFromNode(options.schema);
     const hints = resolveHints({
       contract: options.contract,
       origin: sqliteSchemaTables(origin),

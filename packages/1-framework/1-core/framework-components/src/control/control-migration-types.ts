@@ -448,7 +448,8 @@ export interface SchemaOwnership {
   declaresEntity(coordinate: SchemaEntityCoordinate): boolean;
   /**
    * The id of the contract space that declares a storage entity at this coordinate, or
-   * `undefined` when none does.
+   * `undefined` when none does. When several spaces declare it, the first in aggregate order, which
+   * puts the app space first and then the extension spaces by id.
    */
   ownerOf(coordinate: SchemaEntityCoordinate): string | undefined;
 }

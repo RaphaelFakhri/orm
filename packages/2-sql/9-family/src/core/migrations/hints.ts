@@ -90,24 +90,23 @@ function inconsistentHints(input: ResolveHintsInput): SqlPlannerConflict | undef
 
 function tableRenameConflict(input: {
   readonly code: string;
-  readonly reason: 'contradicted' | 'foreign';
   readonly namespaceId: string;
   readonly from: string;
   readonly to: string;
   readonly problem: string;
   readonly why: string;
 }): SqlPlannerConflict {
-  const { code, reason, namespaceId, from, to } = input;
+  const { code, namespaceId, from, to } = input;
   return {
     kind: 'hintRejected',
     summary: `${code}: the rename hint on table "${to}" (was "${from}") ${input.problem}.`,
     why: input.why,
     location: { namespaceId, entityKind: 'table', entityName: to },
-    meta: { code, reason, from, to },
+    meta: { code, from, to },
   };
 }
 
-function resolveTableRename(
+function resolveTableHint(
   input: ResolveHintsInput,
   namespaceId: string,
   table: string,
@@ -118,7 +117,6 @@ function resolveTableRename(
     return {
       conflict: tableRenameConflict({
         code: HINT_FOREIGN_TABLE_CODE,
-        reason: 'foreign',
         namespaceId,
         from: was,
         to: table,
@@ -133,7 +131,6 @@ function resolveTableRename(
     return {
       conflict: tableRenameConflict({
         code: HINT_CONTRADICTED_CODE,
-        reason: 'contradicted',
         namespaceId,
         from: was,
         to: table,
@@ -165,7 +162,7 @@ export function resolveHints(input: ResolveHintsInput): ResolvedHints {
   const hints = sqlContractHints(input.contract);
   for (const [namespaceId, namespaceHints] of sortedEntries(hints?.namespaces ?? {})) {
     for (const [table, entry] of sortedEntries<SqlTableHints>(namespaceHints.tables)) {
-      const { rename, conflict } = resolveTableRename(input, namespaceId, table, entry.was);
+      const { rename, conflict } = resolveTableHint(input, namespaceId, table, entry.was);
       if (rename !== undefined) tableRenames.push(rename);
       if (conflict !== undefined) conflicts.push(conflict);
     }

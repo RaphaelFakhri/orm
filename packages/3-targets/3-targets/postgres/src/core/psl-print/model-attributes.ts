@@ -121,7 +121,7 @@ export function buildModelAttributes(input: {
   readonly singleTableVariants: readonly ModelWithTable[];
   readonly derivedChecksByName: ReadonlyMap<string, DerivedCheck>;
   readonly rlsEnabled: boolean;
-  readonly renamedFrom: string | undefined;
+  readonly was: string | undefined;
 }): readonly PslModelAttribute[] {
   const { entry, variant, singleTableVariants, derivedChecksByName } = input;
   const attributes: PslModelAttribute[] = [];
@@ -201,9 +201,9 @@ export function buildModelAttributes(input: {
   if (mapName !== undefined && variant?.singleTable !== true) {
     attributes.push(buildMapAttribute('model', mapName));
   }
-  if (input.renamedFrom !== undefined) {
+  if (input.was !== undefined) {
     attributes.push(
-      buildAttribute('model', 'hint', [namedArg('was', `"${escapePslString(input.renamedFrom)}"`)]),
+      buildAttribute('model', 'hint', [namedArg('was', `"${escapePslString(input.was)}"`)]),
     );
   }
   return attributes;

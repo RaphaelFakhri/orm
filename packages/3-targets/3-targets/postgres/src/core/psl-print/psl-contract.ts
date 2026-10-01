@@ -194,7 +194,7 @@ function buildModel(
       singleTableVariants,
       derivedChecksByName: checks,
       rlsEnabled: rlsTables.has(entry.tableName),
-      renamedFrom:
+      was:
         variant?.singleTable === true
           ? undefined
           : sqlContractHints(all.contract)?.namespaces[entry.namespaceId]?.tables[entry.tableName]

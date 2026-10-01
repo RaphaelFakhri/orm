@@ -122,7 +122,6 @@ describe('resolveHints for a table rename', () => {
           location: { namespaceId: 'public', entityKind: 'table', entityName: 'User' },
           meta: {
             code: HINT_CONTRADICTED_CODE,
-            reason: 'contradicted',
             from: 'Profile',
             to: 'User',
           },
@@ -148,7 +147,7 @@ describe('resolveHints and contract space ownership', () => {
             'MIGRATION.HINT_FOREIGN_TABLE: the rename hint on table "User" (was "Profile") names a table that contract space "audit" owns.',
           why: 'A hint may rename only tables this contract space declares. Remove the hint, or move the table into this space first.',
           location: { namespaceId: 'public', entityKind: 'table', entityName: 'User' },
-          meta: { code: HINT_FOREIGN_TABLE_CODE, reason: 'foreign', from: 'Profile', to: 'User' },
+          meta: { code: HINT_FOREIGN_TABLE_CODE, from: 'Profile', to: 'User' },
         },
       ],
     });
