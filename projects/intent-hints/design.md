@@ -96,7 +96,7 @@ Package: `packages/2-sql/2-authoring/contract-ts`.
     | { readonly namespaceId: string | undefined; readonly table: string; readonly column: string; readonly hint: ColumnHint };
   ```
 
-  `namespaceId` resolves like `ModelNode.namespaceId` (`undefined` is the target's default namespace). `buildSqlContractFromDefinition` (`build-contract.ts`) groups the entries into the section of section 3, creating a `tables` or `columns` container only when it has at least one entry. A definition with no entries produces a contract with no `hints` key.
+  `namespaceId` resolves like `ModelNode.namespaceId` (`undefined` is the target's default namespace). `buildSqlContractFromDefinition` (`build-contract.ts`) groups the entries into the section of section 3 as a plain `JsonObject` (R3.2), creating a `tables` or `columns` container only when it has at least one entry. A definition with no entries produces a contract with no `hints` key.
 - **R2.8** Type-level derivation (`contract-ts/src/contract-types.ts`, the `SqlContractResult` mapped types): a model whose `SqlSpec['hint']` extends `{ deleted: true }` is omitted from the inferred domain and storage types, and a field whose state `Hint` extends `{ deleted: true }` is omitted from its model's inferred fields. A `.test-d.ts` asserts both omissions and that `{ deprecated: true }` and `{ was: 'x', deleted: true }` are compile errors.
 
 ## 3. The contract section
@@ -117,7 +117,7 @@ Package: `packages/2-sql/2-authoring/contract-ts`.
   export function sqlContractHints(contract: Contract<SqlStorage>): SqlContractHints | undefined;
   ```
 
-  `sqlContractHints` returns `contract.hints` narrowed with `castAs<SqlContractHints>` after the validator of R3.9 has run, which is the only path by which a `Contract<SqlStorage>` exists.
+  `sqlContractHints` returns `contract.hints` narrowed with `blindCast<SqlContractHints, '...'>` whose reason cites the R3.9 validator, which has run on every path by which a `Contract<SqlStorage>` exists (`castAs` cannot narrow `JsonObject`). The SQL types are a reader's view: the `?: undefined` arms discriminate for readers and are not JSON, so writers (R2.7) build the section as a plain `JsonObject` literal and never assign the typed shape to `Contract.hints`.
 - **R3.3** Keys: `namespaces` by contract namespace id, exactly as `storage.namespaces`; `tables` by the table's storage name in the destination contract for `was` and column-only entries, and by the tombstone's storage name for `deleted` entries; `columns` likewise for columns. A `columns` container is present only when non-empty; `tables` likewise.
 - **R3.4** Example for the schema in `spec.md`, in canonical key order (keys are sorted, so `columns` precedes `was`):
 
