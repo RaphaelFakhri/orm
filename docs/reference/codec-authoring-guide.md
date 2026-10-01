@@ -16,7 +16,7 @@ The framework imports live at `@internal/framework-components/codec`:
 - `CodecDescriptorImpl<P>` — abstract descriptor base class; `CodecDescriptorTemplateImpl<P>` is the same shape for a codec whose data type the adapting target names.
 - `dataType(id, spec)` — declares a data type with its casts; `DataType`, `DataTypeId`, `Cast`. A SQL data type is declared with `sqlDataType(id, spec)` from `@internal/sql-contract/data-type` instead, which adds how the type is written — see [Declaring a data type](#declaring-a-data-type).
 - `ColumnHelperFor<D>` / `ColumnHelperForStrict<D>` — `satisfies` shapes for per-codec helpers.
-- `column(codecFactory, codecId, typeParams, nativeType)` — column-spec packager. `nativeType` is ignored: the contract names the column's database type from the data type the codec represents.
+- `column(codecFactory, codecId, typeParams)` — column-spec packager. The contract takes the column's data type from the codec.
 - `Codec<...>`, `CodecDescriptor<P>`, `AnyCodecDescriptor` — consumer-facing interfaces (consumers depend on these; target-neutral authors extend the `*Impl` classes, while target-bound SQL authors use target-owned bases).
 
 SQL codecs use the same framework `CodecImpl` base. Their `encodeJson` and `decodeJson` methods define the codec's JSON-safe contract representation; `decode` remains responsible for the driver's ordinary column wire value. Keep that representation stable and mutually consistent, and keep `decodeJson` compatible with the values the current SQL JSON renderer returns for the codec. This distinction matters for types such as PostgreSQL `bytea` and extension-defined types whose values inside database-produced JSON may differ from their normal driver representation.

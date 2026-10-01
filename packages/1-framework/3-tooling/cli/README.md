@@ -654,15 +654,18 @@ The SQL family provides this via `@internal/family-sql/control`. The `introspect
 
 ### `prisma db sign`
 
-Mark the database as matching the emitted contract by writing or updating the contract marker. This command verifies that the database schema satisfies the contract before signing, ensuring the marker is only written when the database is fully aligned.
+Verify that the database satisfies the contract of every contract space (the application's and each extension's that ships one), then write or update the signature (contract marker) of each space that does. A signature records that this database is aligned with a specific contract version; `migrate` and the runtime compare it with the contract they are given.
 
 **Command:**
 ```bash
-prisma db sign [--db <url>] [--config <path>] [--json] [-v] [-q] [--color/--no-color]
+prisma db sign [<contract> | --contract <contract>] [--db <url>] [--advance-ref <name> | --no-advance-ref] [--config <path>] [--json] [-v] [-q] [--color/--no-color]
 ```
 
 Options:
+- `<contract>` / `--contract <contract>`: Optional. The application contract to sign with: a hash, hash prefix, ref name, migration directory name, `<dir>^`, or `./path`. Defaults to the emitted `contract.json`
 - `--db <url>`: Database connection string (optional; defaults to `config.db.connection` if set)
+- `--advance-ref <name>`: Advance the named ref of every signed space instead of `db`
+- `--no-advance-ref`: Sign without writing any ref or snapshot
 - `--config <path>`: Optional. Path to `prisma.config.ts` (defaults to `./prisma.config.ts` if present)
 - `--json`: Output as JSON object
 - `-q, --quiet`: Quiet mode (errors only)
@@ -672,91 +675,34 @@ Options:
 
 Examples:
 ```bash
-# Use config defaults
 prisma db sign
-
-# Specify database URL
-prisma db sign --db postgresql://user:pass@localhost/db
-
-# JSON output
-prisma db sign --json
-
-# Verbose output
-prisma db sign -v
+prisma db sign --db $DATABASE_URL
+prisma db sign production --db $DATABASE_URL
+prisma db sign --db $DATABASE_URL --advance-ref production
+prisma db sign --db $DATABASE_URL --no-advance-ref
 ```
 
-**Config File Requirements:**
-
-The `db sign` command requires a `driver` in the config to connect to the database and a `contract.output` path to locate the emitted contract:
-
-```typescript
-import { defineConfig } from '@internal/cli/config-types';
-import postgresAdapter from '@internal/adapter-postgres/control';
-import postgresDriver from '@internal/driver-postgres/control';
-import postgres from '@internal/target-postgres/control';
-import sql from '@internal/family-sql/control';
-import { contract } from './prisma/contract';
-
-export default defineConfig({
-  family: sql,
-  target: postgres,
-  adapter: postgresAdapter,
-  driver: postgresDriver,
-  extensions: [],
-  contract: typescriptContract(contract, 'src/prisma/contract.json'),
-  db: {
-    connection: process.env.DATABASE_URL, // Optional: can also use --db flag
-  },
-});
-```
+The command needs a `driver` in the config, as `db verify` does.
 
 **Signing Process:**
 
-1. **Load Contract**: Reads the emitted `contract.json` from `config.contract.output`
-2. **Connect to Database**: Uses `config.driver.create(url)` to create a driver
-3. **Create Family Instance**: Creates a `ControlStack` via `createControlStack()` and passes it to `config.family.create(stack)` to create a family instance
-4. **Schema Verification (Precondition)**: Calls `familyInstance.schemaVerify()` to verify the database schema matches the contract:
-   - If verification fails: Prints schema verification output and exits with code 1 (marker is not written)
-   - If verification passes: Proceeds to marker signing
-5. **Sign**: Calls `familyInstance.sign()` which:
-   - Ensures the marker schema and table exist
-   - Reads any existing marker from the database
-   - Compares contract hashes with existing marker:
-     - If marker is missing: Inserts a new marker row
-     - If hashes differ: Updates the existing marker row
-     - If hashes match: No-op (idempotent)
+1. **Load the contract spaces**: the application contract (emitted, or the one the contract reference names) and the contract space of every extension in `config.extensions`, as `migrate` loads them.
+2. **Verify each space**: each space's contract is checked against the live schema without strict mode.
+3. **Sign**: the family's `signSpaces` writes the marker of every space that verified. On PostgreSQL and SQLite all markers are written in one transaction, so a failed write leaves every marker as it was. A marker that already holds the contract's hashes is left unchanged.
+4. **Advance refs**: each signed or unchanged space's `db` ref (or the `--advance-ref` name) is advanced to its contract hash, and the contract is written into that space's snapshot store. `--no-advance-ref` skips this step.
+
+A space that fails verification is not signed. Its differences are reported, the other spaces are still signed, and the command exits with code 4.
 
 **Output Format (TTY):**
 
-Success (new marker):
 ```
-✔ Database signed (marker created)
-  storageHash: abc123...
-  profileHash: def456...
-  Total time: 42ms
-```
-
-Success (updated marker):
-```
-✔ Database signed (marker updated from old-hash)
-  storageHash: abc123...
-  profileHash: def456...
-  previous storageHash: old-hash
-  Total time: 42ms
-```
-
-Success (already up-to-date):
-```
-✔ Database already signed with this contract
-  storageHash: abc123...
-  profileHash: def456...
-  Total time: 42ms
-```
-
-Failure (schema mismatch):
-```
-✖ Schema verification failed
-  [Schema verification tree output]
+contract  output/contract.json
+database  postgresql://localhost/app
+✔ app: signed 6b4636f8… (was 93be6c20…)
+✔ pgvector: unchanged, already signed with 0b8e2c5a…
+✔ Database signed
+✔ Advanced ref "db" → 6b4636f8… (was 93be6c20…)
+✔ Advanced ref "db" of space "pgvector" → 0b8e2c5a…
 ```
 
 **Output Format (JSON):**
@@ -764,76 +710,48 @@ Failure (schema mismatch):
 ```json
 {
   "ok": true,
-  "summary": "Database signed (marker created)",
-  "contract": {
-    "storageHash": "abc123...",
-    "profileHash": "def456..."
-  },
-  "target": {
-    "expected": "postgres",
-    "actual": "postgres"
-  },
-  "marker": {
-    "created": true,
-    "updated": false
-  },
-  "meta": {
-    "configPath": "/path/to/prisma.config.ts",
-    "contractPath": "/path/to/src/prisma/contract.json"
-  },
-  "timings": {
-    "total": 42
-  }
-}
-```
-
-For updated markers:
-```json
-{
-  "ok": true,
-  "summary": "Database signed (marker updated from old-hash)",
-  "contract": {
-    "storageHash": "abc123...",
-    "profileHash": "def456..."
-  },
-  "target": {
-    "expected": "postgres",
-    "actual": "postgres"
-  },
-  "marker": {
-    "created": false,
-    "updated": true,
-    "previous": {
-      "storageHash": "old-hash",
-      "profileHash": "old-profile-hash"
+  "summary": "Database signed",
+  "spaces": [
+    {
+      "space": "app",
+      "status": "signed",
+      "contract": { "storageHash": "6b4636f8…", "profileHash": "c1d2…" },
+      "marker": {
+        "created": false,
+        "updated": true,
+        "previous": { "storageHash": "93be6c20…", "profileHash": "c1d2…" }
+      }
+    },
+    {
+      "space": "pgvector",
+      "status": "unchanged",
+      "contract": { "storageHash": "0b8e2c5a…", "profileHash": "c1d2…" },
+      "marker": { "created": false, "updated": false }
     }
-  },
-  "meta": {
-    "configPath": "/path/to/prisma.config.ts",
-    "contractPath": "/path/to/src/prisma/contract.json"
-  },
-  "timings": {
-    "total": 42
-  }
+  ],
+  "advancedRefs": [
+    { "space": "app", "name": "db", "hash": "6b4636f8…" },
+    { "space": "pgvector", "name": "db", "hash": "0b8e2c5a…" }
+  ]
 }
 ```
 
-**Error Codes:**
-- `PN-CLI-4010`: Missing driver in config — provide a driver descriptor
-- `PN-CLI-4005`: Missing database connection — provide `--db <url>` or set `db.connection` in config
-- Exit code 1: Schema verification failed — database schema does not match contract (marker is not written)
+`status` is `signed`, `unchanged` or `failed`. A failed space carries `contract: { storageHash }` and `schema`, the schema verification result, in place of `marker`; `ok` is then `false` and `summary` names the failed and the signed spaces, for example `Database schema does not satisfy contract for space "app"; signed "pgvector"`. Each failed space also produces one `CONTRACT.SCHEMA_VERIFICATION_FAILED` diagnostic with `space` in its meta.
+
+**Exit codes:**
+- `0`: every space signed or already signed
+- `2`: the command could not run (unresolvable contract reference, no emitted contract, unreachable database, missing driver or connection)
+- `4`: schema verification failed for at least one space, whose signature was not written
 
 **Relationship to Other Commands:**
-- **`db verify`**: `db verify` checks that the marker exists and matches the contract, then runs schema verification by default. `db sign` writes the marker that `db verify` checks. Use `db verify --marker-only` for marker-only verification and `db verify --schema-only` to inspect only the live schema.
+- **`db verify`**: checks that the marker exists and matches the contract, then runs schema verification by default. `db sign` writes the marker that `db verify` checks.
+- **`migrate`**: refuses with `MIGRATION.MARKER_MISMATCH` when the marker names a hash the migration history does not contain, for example after an upgrade that changed every contract's storage hash. `db sign` brings the marker back in step when the database already satisfies the contract.
 
 **Idempotency:**
-The `db sign` command is idempotent and safe to run multiple times:
-- If the marker already matches the contract (same hashes), no database changes are made
-- The command reports success in all cases (new marker, updated marker, or already up-to-date)
-- Safe to run in CI/deployment pipelines
+Running `db sign` again changes nothing: every marker already holds its contract's hashes and each ref already points at it. It is safe to run in CI and deployment pipelines.
 
 **Family Requirements:**
-The family must provide a `create()` method in the family descriptor that returns a `ControlFamilyInstance` with `schemaVerify()` and `sign()` methods:
+The family instance implements `schemaVerify()` and `signSpaces()`:
 
 ```typescript
 interface ControlFamilyInstance {
@@ -845,16 +763,14 @@ interface ControlFamilyInstance {
     configPath?: string;
   }): Promise<VerifyDatabaseSchemaResult>;
 
-  sign(options: {
+  signSpaces(options: {
     driver: ControlDriverInstance;
-    contract: Contract;
-    contractPath: string;
-    configPath?: string;
-  }): Promise<SignDatabaseResult>;
+    spaces: readonly { space: string; contract: Contract }[];
+  }): Promise<readonly SpaceSignature[]>;
 }
 ```
 
-The SQL family provides this via `@internal/family-sql/control`. The `sign()` method handles ensuring the marker schema/table exist, reading existing markers, comparing hashes, and writing/updating markers internally.
+`signSpaces` writes the marker of each space it is given with its contract's hashes and returns one `{ space, contract, marker }` per space. It does not verify; the command verifies every space first. The SQL family implements it through `SqlControlAdapter.withTransaction`; the Mongo family writes each marker on its own.
 
 ### `prisma db init`
 
@@ -1372,7 +1288,7 @@ See `.cursor/rules/config-validation-and-normalization.mdc` for detailed pattern
     - **`types`**: Type import specs and type IDs contributed by the component. Common examples:
       - `types.codecTypes.import`: Where to import codec type mappings for `contract.d.ts`.
       - `types.queryOperationTypes.import`: Where to import flat query-builder operation type signatures for `contract.d.ts` (adapters/extensions).
-      - `types.storage`: Storage type bindings (`typeId`, `nativeType`, etc.) used in authoring/emission.
+      - `types.storage`: Storage type bindings (`typeId`, `familyId`, `targetId`) used in authoring/emission.
     - **`operations`**: Operation signatures the component contributes (extensions), used for type generation and (optionally) validation/lowering.
     - **Component-specific metadata**:
       - Extensions may also include control-plane-only metadata like `contractSpace` (used by verify, planning, and migration flows and not required at runtime).

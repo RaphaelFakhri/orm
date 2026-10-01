@@ -294,7 +294,7 @@ A model declares an empty unique constraint (a unique with no fields), raised du
 `contract print` cannot write the loaded contract as Prisma 8 PSL that reads back as the same contract, so it writes nothing. The message names what it stopped on. Raised when the configured family cannot print a contract (no meta), or when the target's descriptor has no `buildPslContract` hook (meta: `targetId`). The Postgres printer raises it in each case below; each case is one function in its `psl-print/refusals.ts`, in this order. Every case is a contract that passes validation. The printer takes a validated contract and does not check its structure again.
 
 - Column types and defaults:
-  - no PSL type in the configured stack produces a column's codec, native type and type parameters, including a column that has no value for an argument its type constructor requires. Add the extension that contributes the type to the config (meta: `coordinate`, `nativeType`, `codecId`);
+  - no PSL type in the configured stack produces a column's codec, data type and type parameters, including a column that has no value for an argument its type constructor requires. Add the extension that contributes the type to the config (meta: `coordinate`, `dataType`, `codecId`);
   - a string type argument holds a quote, backslash or line break, which the PSL source reads back differently (meta: `coordinate`, `argument`);
   - a domain enum column defaults to a value that is not a member of the enum (meta: `coordinate`, `pslTypeName`);
   - a column's literal default has no PSL literal that reads back as the stored value, including when the column's codec has no data type in the stack (meta: `coordinate`, `pslTypeName`).
