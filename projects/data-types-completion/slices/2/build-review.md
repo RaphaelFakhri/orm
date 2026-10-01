@@ -12,6 +12,7 @@ Reviewer-maintained. Contract: `projects/data-types-completion/design.md` sectio
 | Dispatch | Round | Verdict |
 | --- | --- | --- |
 | a | 1 (`fa4cbba1ee`, `c8e638387f`, `8e7eb4f82f`, `e8bd655435`, merge `75b971783e`) | ANOTHER ROUND NEEDED: 1 must-fix, 1 should-fix, 4 low |
+| a | 2 (`a99f5b13cd..dc527c4502`) | ANOTHER ROUND NEEDED: S2-a-R1-1 to S2-a-R1-6 closed; 1 new must-fix, 1 new low |
 
 ## Findings log
 
@@ -50,7 +51,38 @@ Reviewer-maintained. Contract: `projects/data-types-completion/design.md` sectio
 - Where: `packages/3-targets/6-adapters/postgres/src/exports/column-types.ts:4` ("provide both codecId and nativeType"); `packages/3-targets/3-targets/postgres/src/core/codec-helpers.ts:29,51` (`typeName: typeName`, which can be the shorthand `typeName`).
 - Change: rewrite the comment to say the descriptors provide the codec id; use the shorthand. `test/utils/README.md:130` still shows `nativeType`; dispatch f's README pass covers it.
 
+### Dispatch a round 2 status of the round 1 findings
+
+- S2-a-R1-1: closed (`a99f5b13cd`, `isPlainRecord`).
+- S2-a-R1-2: closed (`c92fb6560f`).
+- S2-a-R1-3: closed by ruling (`slices/2/plan.md`: the `type.*` helper is the one validation point).
+- S2-a-R1-4: closed (`95dc5e74c4`).
+- S2-a-R1-5: closed (`74bd975257`), except the file named in S2-a-R2-2.
+- S2-a-R1-6: closed (`dc527c4502`).
+
+### S2-a-R2-1 (must-fix): two new tests do not typecheck
+
+- Where: `packages/3-targets/6-adapters/sqlite/test/descriptor-meta.test.ts:36` (TS18048, `sqliteTargetDescriptor.authoring` is possibly undefined); `packages/3-extensions/sqlite/test/contract-builder/value-object-storage.test.ts:55` (TS2559, the SQLite pack has no properties in common with `CodecContributor` in the call to `assembleSqliteCodecRegistry`).
+- What is wrong: both tests pass under vitest, which does not typecheck them, but `@internal/adapter-sqlite#typecheck` and `@internal/sqlite#typecheck` now fail. Neither failure comes from a committed `contract.d.ts`, so the branch tip does not meet the dispatch's typecheck requirement.
+- Change: use `authoring?.` in the first test. In the second, pass the target descriptor that `assembleSqliteCodecRegistry` expects, as the Postgres version of the test does. Then run both packages' `typecheck`.
+
+### S2-a-R2-2 (low): one explicit map disagrees with its own test lookup
+
+- Where: `packages/2-sql/9-family/test/contract-to-schema-ir.test.ts:44-53`.
+- What is wrong: the file's codec lookup (lines 96-103) says `sql/char@1` represents `test/character`, `pg/text@1` represents `test/text`, and so on. The new map says `pg/char`, `pg/text`, `pgvector/vector`. So every test column pairs a codec with a data type that the test's own stack says it does not represent. No assertion depends on it, because `contractToSchemaIR` takes the data type from the codec.
+- Change: delete the map and take `dataType` from `dataTypeOfCodec[codecId].id`.
+
 ## Round notes
+
+### Dispatch a, round 2
+
+The machine was heavily loaded. I rebuilt only the touched packages (sql-contract, sql-contract-ts, target-postgres, target-sqlite, family-sql, both adapters; exit 0).
+
+Value-object storage type: moving `valueObjectStorageType` from the adapters' `control.ts` to the targets' `descriptor-meta.ts` matches design 3.1, which gives the targets the type constructors and the other PSL authoring contributions; `Jsonb` and `Json` are target constructors. The stack still reads it from every descriptor and refuses a second declaration (`control-stack.ts:228-244`). The PSL value-object tests (10), the SQLite adapter descriptor test (8) and the Postgres adapter `control-mutation-defaults` test (19) pass. The builder reads the constructor's codec from `definition.target.authoring`, and `deserializeContract` uses the same refusal text, from `valueObjectStorageTypeMissingMessage` in `validators.ts`.
+
+Explicit maps: the maps are per file, not shared. The only `sql/char@1` and `sql/varchar@1` entries are in Postgres-only files (`contract-to-schema-ir.test.ts`, the runtime `same-bare-table-name.test.ts`), and the one SQLite file (`planner.codec-field-event.test.ts`) maps only `sqlite/text@1` and a test codec. `pg/vector@1` maps to `pgvector/vector`, which is right. The one wrong file is S2-a-R2-2.
+
+Checks: `turbo run typecheck --continue`: 22 tasks fail. 20 are the round 1 list, all committed `contract.d.ts`; `adapter-sqlite` and `sqlite` are new and are S2-a-R2-1. Each touched test file run alone: 20 pass; the two `sql-orm-client` files fail only on the committed fixture contract (expected until dispatch e), and the round-trip integration test was not run (it reads committed contracts). `lint:deps` and `lint:agent` pass.
 
 ### Dispatch a, round 1
 
