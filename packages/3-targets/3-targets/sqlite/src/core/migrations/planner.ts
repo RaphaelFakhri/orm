@@ -158,7 +158,8 @@ export class SqliteMigrationPlanner
       namespaceIdOf: () => UNBOUND_NAMESPACE_ID,
       renameByHandStatements: (rename) =>
         renameTableSteps(rename.from, rename.to).map((renameStep) => renameStep.sql),
-      renameTableCall: (rename) => new RenameTableCall(rename.from, rename.to).renderTypeScript(),
+      renameTableCall: (rename) =>
+        new RenameTableCall(rename.from, rename.to, []).renderTypeScript(),
       contract: options.contract,
       defaultNamespaceId: UNBOUND_NAMESPACE_ID,
     });

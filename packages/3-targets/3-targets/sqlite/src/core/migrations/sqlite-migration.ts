@@ -1,18 +1,24 @@
 import type { Contract } from '@internal/contract/types';
-import type {
-  MigrationOperationClass,
-  SqlMigrationPlanOperation,
+import {
+  type MigrationOperationClass,
+  resolveTableRenameAgainst,
+  type SqlMigrationPlanOperation,
+  type TableLookup,
+  type TableRename,
+  unmatchedTableRename,
 } from '@internal/family-sql/control';
 import type { SqlControlAdapter } from '@internal/family-sql/control-adapter';
 import { Migration as SqlMigration } from '@internal/family-sql/migration';
 import type { TargetBoundComponentDescriptor } from '@internal/framework-components/components';
 import type { ControlStack } from '@internal/framework-components/control';
+import { UNBOUND_NAMESPACE_ID } from '@internal/framework-components/ir';
 import { MigrationContractViews } from '@internal/migration-tools/migration';
 import type { SqlStorage } from '@internal/sql-contract/types';
 import type { DdlColumn, DdlTableConstraint } from '@internal/sql-relational-core/ast';
 import { blindCast } from '@internal/utils/casts';
 import { errorSqliteMigrationStackMissing } from '../errors';
 import { SqliteContractView } from '../sqlite-contract-view';
+import { sqliteContractToSchema } from './diff-database-schema';
 import {
   AddColumnCall,
   CreateIndexCall,
@@ -25,7 +31,8 @@ import {
 import type { SqliteColumnSpec, SqliteIndexSpec, SqliteTableSpec } from './operations/shared';
 import type { RecreatePostcheck } from './operations/tables';
 import type { SqlitePlanTargetDetails } from './planner-target-details';
-import { sqliteTableRenameCalls } from './table-rename-calls';
+import { WorkingSchema } from './schema-working-state';
+import { sqliteTableRenameCall } from './table-rename-calls';
 
 type Op = SqlMigrationPlanOperation<SqlitePlanTargetDetails>;
 
@@ -68,6 +75,8 @@ export abstract class SqliteMigration<
   #endView = new MigrationContractViews<SqliteContractView<End>>(this, 'SqliteMigration', (json) =>
     SqliteContractView.fromJson<End>(json),
   );
+  #workingSchema: WorkingSchema | undefined;
+
   #startView = new MigrationContractViews<SqliteContractView<Start>>(
     this,
     'SqliteMigration',
@@ -139,19 +148,47 @@ export abstract class SqliteMigration<
   }
 
   /**
-   * Emit the operations that rename a table: the table rename, then a drop and a create under the new name of each index whose name was derived from the old table name, read from this migration's start and end contracts. Spread the result into `operations`: `...this.renameTable({ table: 'userProfile', to: 'UserProfile' })`. Throws `MIGRATION.TABLE_RENAME_UNMATCHED` when the start contract lacks the table or the end contract lacks the new name.
+   * Emit the operations that rename a table: the table rename, then a drop and a create under the
+   * new name of each index whose name was derived from the old table name. The old name is resolved
+   * against the schema as this migration's earlier `renameTable` calls leave it, and the new name
+   * against the end contract. Spread the result into `operations`:
+   * `...this.renameTable({ table: 'userProfile', to: 'UserProfile' })`. Throws
+   * `MIGRATION.TABLE_RENAME_UNMATCHED` when the table does not exist at that point of the migration
+   * or the end contract lacks the new name.
    */
   protected renameTable(options: {
     readonly table: string;
     readonly to: string;
   }): readonly Promise<Op>[] {
     const adapter = this.controlAdapterFor('renameTable');
-    return sqliteTableRenameCalls({
-      startContract: this.startContract,
-      endContract: this.endContract,
-      rename: { namespaceId: undefined, from: options.table, to: options.to },
+    const rename: TableRename = { namespaceId: undefined, from: options.table, to: options.to };
+    const startContract = this.startContract;
+    if (startContract === null) {
+      throw unmatchedTableRename(rename, 'the migration has no start contract');
+    }
+    const working = this.workingSchemaFrom(startContract);
+    const endContract = this.endContract;
+    const resolved = resolveTableRenameAgainst(workingTableLookup(working), endContract, rename);
+    if (!resolved.ok) {
+      throw resolved.failure;
+    }
+    const call = sqliteTableRenameCall({
+      previous: working.current,
+      contract: endContract,
+      rename: resolved.value,
       frameworkComponents: this.frameworkComponents(),
-    }).map(async (call) => call.toOp(adapter));
+    });
+    working.apply(call);
+    return call.toOps(adapter);
+  }
+
+  private workingSchemaFrom(startContract: Contract<SqlStorage>): WorkingSchema {
+    this.#workingSchema ??= new WorkingSchema(sqliteContractToSchema(startContract));
+    return this.#workingSchema;
+  }
+
+  protected override resetAuthoringState(): void {
+    this.#workingSchema = undefined;
   }
 
   protected addColumn(options: {
@@ -196,4 +233,14 @@ export abstract class SqliteMigration<
   }): Promise<Op> {
     return new RecreateTableCall(options).toOp(this.controlAdapterFor('recreateTable'));
   }
+}
+
+/** The tables a migration's working schema holds. SQLite has one namespace, the unbound one. */
+function workingTableLookup(working: WorkingSchema): TableLookup {
+  const declares = (tableName: string): boolean => Object.hasOwn(working.current.tables, tableName);
+  return {
+    where: 'at this point of the migration',
+    declares: (_namespaceId, tableName) => declares(tableName),
+    namespacesDeclaring: (tableName) => (declares(tableName) ? [UNBOUND_NAMESPACE_ID] : []),
+  };
 }
