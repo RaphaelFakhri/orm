@@ -106,6 +106,46 @@ describe('constraintRenamesForTableRename', () => {
     ]);
   });
 
+  it('pairs each foreign key with the destination key to its own table, whatever their order', () => {
+    const previous = tableWith({
+      foreignKeys: [
+        {
+          columns: ['accountId'],
+          referencedTable: 'account',
+          referencedColumns: ['id'],
+          name: 'fk_a',
+        },
+        {
+          columns: ['accountId'],
+          referencedTable: 'member',
+          referencedColumns: ['id'],
+          name: 'fk_b',
+        },
+      ],
+    });
+    const next = tableWith({
+      foreignKeys: [
+        {
+          columns: ['accountId'],
+          referencedTable: 'member',
+          referencedColumns: ['id'],
+          name: 'profile_member_fk',
+        },
+        {
+          columns: ['accountId'],
+          referencedTable: 'account',
+          referencedColumns: ['id'],
+          name: 'profile_account_fk',
+        },
+      ],
+    });
+
+    expect(labels(previous, next)).toEqual([
+      'Rename foreign key "fk_a" to "profile_account_fk" on "UserProfile"',
+      'Rename foreign key "fk_b" to "profile_member_fk" on "UserProfile"',
+    ]);
+  });
+
   it('pairs a destination unique constraint with one of two duplicate uniques only', () => {
     const previous = tableWith({
       uniques: [
