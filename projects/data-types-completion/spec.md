@@ -55,7 +55,7 @@ embedding pgvector.Vector(1536)
 ## Cross-cutting requirements
 
 1. **One source per fact.** After the project no production code holds a table of database type names, and no type name is written in two places. The grep checks in each slice enforce this.
-2. **Migration SQL does not change** for any existing column. A data type's written name is the name contracts store today. The one exception is a fix: a `typeRef` column whose type has no parameters is no longer written as a quoted name (design 3.6).
+2. **Migration SQL does not change** for any existing column. A data type's written name is the name contracts store today. Two exceptions, both fixes: a `typeRef` column whose type has no parameters is no longer written as a quoted name (design 3.6); and on SQLite a `BigInt` column's literal default is written as bare digits (`DEFAULT 42`), like an `Int` column's, because both codecs store digit text after slice 2 (design 9.3).
 3. **Exact comparison.** `db verify` compares a data type id and normalised parameters by equality. Other names are used only while reading a database.
 4. **Extensible by declaration.** An extension's data type is recognised by introspection, verify and infer with no change outside the extension. No production code names a type it does not own.
 5. **No SQL words in the framework layer.** Names, texts and rendering live in the SQL family's data type; the framework `DataType` gains only the parameter schema. `pnpm lint:framework-vocabulary` must not rise.
