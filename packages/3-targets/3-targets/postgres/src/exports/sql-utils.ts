@@ -3,11 +3,11 @@ export {
   FULL_TEXT_INDEX_TYPE,
   type FullTextFieldsInput,
   type FullTextIndexDefinition,
-  isFullTextIndexableCodec,
   renderFullTextIndexExpression,
   weightGroupProblems,
   weightGroupsOf,
 } from '../core/full-text-index-expression';
+export { isFullTextIndexableCodec } from '../core/full-text-indexable-codecs';
 export {
   escapeLiteral,
   qualifyName,

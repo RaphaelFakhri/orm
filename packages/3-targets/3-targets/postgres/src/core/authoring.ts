@@ -63,10 +63,10 @@ import {
   FULL_TEXT_INDEX_TYPE,
   type FullTextFieldsInput,
   type FullTextWeightGroupProblem,
-  isFullTextIndexableCodec,
   weightGroupProblems,
   weightGroupsOf,
 } from './full-text-index-expression';
+import { isFullTextIndexableCodec } from './full-text-indexable-codecs';
 import { postgresNowGeneratorIds } from './now-generators';
 import { PostgresNativeEnum } from './postgres-native-enum';
 import { PostgresRlsEnablement, type PostgresRlsEnablementInput } from './postgres-rls-enablement';
