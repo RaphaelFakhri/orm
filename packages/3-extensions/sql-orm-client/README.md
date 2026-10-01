@@ -86,12 +86,12 @@ The type state holds the flags `hasWhere` and `hasOrderBy`. A flag that has not 
 
 ## Query fragments
 
-A piece of a query shared between places is a function: a function of the row for `where` and `orderBy`, or a step for `pipe`. Three helpers cover the common cases. See [ADR 259](../../../docs/architecture%20docs/adrs/ADR%20259%20-%20Query%20fragments%20are%20functions.md).
+A piece of a query shared between places is a function. A row fragment is a function of the model accessor, and `where` and `orderBy` take it. A step is a function of a collection, and `pipe` applies it. Three helpers cover the common cases. See [ADR 259](../../../docs/architecture%20docs/adrs/ADR%20259%20-%20Query%20fragments%20are%20functions.md).
 
-**A filter for every model with a field.** `FieldExpression<Contract, CodecId, Nullable>` is the row accessor's type for any field with that codec and nullability. A `where` callback whose parameter asks for that one field fits every model that has it:
+**A filter for every model with a field.** `CodecField<Contract, CodecId, Nullable>` is the model accessor's type for any field with that codec and nullability. A row fragment whose parameter asks for that one field fits every model that has it:
 
 ```ts
-type DeletedAt = FieldExpression<Contract, 'pg/timestamptz-temporal@1', true>;
+type DeletedAt = CodecField<Contract, 'pg/timestamptz-temporal@1', true>;
 const notDeleted = (row: { deletedAt: DeletedAt }) => row.deletedAt.isNull();
 
 db.Post.where(notDeleted);
@@ -99,12 +99,14 @@ db.Comment.where((c) => and(notDeleted(c), c.postId.eq(postId)));
 db.Tag.where(notDeleted); // error: Property 'deletedAt' is missing in type 'ModelAccessor<Contract, "Tag", ...>'
 ```
 
-It has the comparison methods the codec's traits allow and the operations registered for the codec, such as `fullTextMatches` on a text field. A model without the field, a field of another codec and a field of another nullability are compile errors. `ModelFieldCodec<Contract, Model, Field>` gives a field's `codecId` and `nullable`.
+It has the same set of comparison methods as the field on the model accessor, chosen by the codec's traits, and the operations registered for the codec, such as `fullTextMatches` on a text field. A model without the field, a field of another codec and a field of another nullability are compile errors. The codec id must be one of the contract's codecs.
 
-**A shared `select` and `include`.** `rowFragment<Contract, Model>()(body)` types the body once, against the model's plain collection, and returns a step:
+A `CodecField` checks values against the codec's output type, not against the field's own type. Where a field refines its codec's value, such as a PSL enum stored as text or a `Char<36>` column, the fragment accepts values the field does not: `(row: { kind: CodecField<Contract, 'pg/text@1'> }) => row.kind.eq('superuser')` compiles, while `user.kind.eq('superuser')` written on the model is refused. One fragment serves many models, so it can only know the codec.
+
+**A shared `select` and `include`.** `modelStep<Contract, Model>()(body)` types the body once, against the model's plain collection, and returns a step, a `ModelStep<Contract, Model, Result>`:
 
 ```ts
-const summary = rowFragment<Contract, 'Post'>()((posts) => posts.select('id', 'title').include('user'));
+const summary = modelStep<Contract, 'Post'>()((posts) => posts.select('id', 'title').include('user'));
 type PostSummary = CollectionRowOf<ReturnType<typeof summary>>;
 
 db.Post.where({ userId }).pipe(summary);
@@ -112,15 +114,15 @@ db.User.include('posts', (posts) => posts.pipe(summary));
 db.Post.select('id').pipe(summary); // error: the rows no longer have every Post field
 ```
 
-The step accepts any collection of the model whose rows have every field of the model: a root, filtered, ordered or included collection, an include refinement, or `this` in a custom class. It refuses a collection of another model and one narrowed by `select` or `variant`. Its result has the default type state: a filter or order applied before it still runs, but `update` and `cursor` are refused after it.
+`Model` is one model name of the contract; a misspelled name or a union of names is a compile error. The step takes an `UnnarrowedCollection<Contract, Model>`: a root, filtered, ordered or included collection, a custom class, an include refinement, or `this` in a custom class. It refuses a collection of another model, one narrowed by `select`, whose rows lack fields the body's result would claim, and one narrowed by `variant`, after which the model's class methods do not apply either. Its result has the default type state: a filter or order applied before it still runs, but `update` and `cursor` are refused after it.
 
-**A sort field from a request.** `sortField(collection, name, direction?, allowed?)` returns an `orderBy` selector:
+**A field to order by, from a request.** `orderByField(collection, name, direction?, allowed?)` returns an `orderBy` selector:
 
 ```ts
-db.Post.orderBy(sortField(db.Post, input.sort, input.direction, ['title', 'createdAt']));
+db.Post.orderBy(orderByField(db.Post, input.orderBy, input.direction, ['title', 'createdAt']));
 ```
 
-`allowed` takes only fields whose codec has the `order` trait (`SortableFieldName<Contract, Model>`); without it, every such field is allowed. `sortField` throws `ORM.ARGUMENT_INVALID`, before any query runs, for a `name` that is not a field of the model, is a relation, has a codec without the `order` trait or is not in `allowed`, and for a `direction` other than `asc` or `desc`. It reads the trait from the codec descriptors of the execution context. The selector fits any collection of a model with the allowed fields, and `orderBy` records the order, so `cursor` is allowed after it.
+`direction` is a `Direction`, `'asc'` or `'desc'`, and defaults to `'asc'`. `allowed` takes only fields whose codec has the `order` trait (`OrderableFieldName<Contract, Model>`); without it, every such field is allowed. `orderByField` throws `ORM.ARGUMENT_INVALID`, before any query runs, for a `name` that is not a field of the model, is a relation, has a codec without the `order` trait or is not in `allowed`, and for any other direction. The error quotes the name and cuts it to 64 characters; `meta` has it in full. The trait is read with the same run-time lookup the model accessor uses. Only the model's own fields can be named: on a collection narrowed by `variant`, a field that only the variant has is refused. The selector fits any collection of a model with the allowed fields, and `orderBy` records the order, so `cursor` is allowed after it.
 
 ## Skipping rows that collide with a unique constraint
 
