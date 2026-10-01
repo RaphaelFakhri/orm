@@ -44,7 +44,7 @@ This is a public API change. It lands with the matching guide and skill updates 
 
 - `configPath` present: a section validation error. The engine's headline is `CLI.CONFIG_SECTION_INVALID` with Composer's message attached; that is the engine's shape and is accepted.
 - Section absent: the validator already receives an absent section today. It returns an error saying the `composer` section is missing and, when the config file's directory is known from provenance and holds `prisma-composer.config.*`, that the old file is no longer read. The implementer establishes what the engine passes for an absent section and writes the best message the engine allows.
-- Section present and `prisma-composer.config.*` also present in the section's directory: the handler fails before the pipeline starts, code `CONFIG.LEGACY_FILE`. Only that directory is checked.
+- Section present and `prisma-composer.config.*` also present in the section's directory: the handler fails before the pipeline starts, code `CONFIG.FILE_RETIRED`. Only that directory is checked.
 
 **Deletions.** `load-config.ts`, `check-effect-resolution.ts` and their tests; `executorLoadFailure`'s use of the effect check in `operations/shared.ts`; the `c12` dependency from the cli package, `@prisma/composer` and `@prisma/composer-cli`; `CONFIG_FILENAME` and the three user-facing messages that name the old file in `validate-coverage.ts`, `assemble-services.ts` and core `control/deploy.ts`; the header comments in `app-config.ts` that name it.
 
@@ -80,7 +80,7 @@ One reviewer can hold this: every change follows from one fact, the section is t
 
 ## Slice-specific done conditions
 
-- From `examples/orm-demo`, `pnpm exec prisma-composer deploy --help` and a dry deploy that reaches the plan stage run against `prisma.config.ts` alone; with `prisma-composer.config.ts` restored, `CONFIG.LEGACY_FILE`; with `composer: { configPath: './x.ts' }`, the section error naming `configPath`.
+- From `examples/orm-demo`, `pnpm exec prisma-composer deploy --help` and a dry deploy that reaches the plan stage run against `prisma.config.ts` alone; with `prisma-composer.config.ts` restored, `CONFIG.FILE_RETIRED`; with `composer: { configPath: './x.ts' }`, the section error naming `configPath`.
 - `pnpm exec check-family-static-graph` and `check-cli-engine-pin` pass unchanged; the control-import guard tests pass; `scripts/check-npm-effect-resolution.mjs` passes in its reworked form (it needs network and built tarballs; run it once and record the output in the PR).
 - A search for `prisma-composer.config` over `packages/`, `examples/`, `test/`, `website/`, `docs/guides/` and `skills/` finds only the diagnostics that name the old file and the ADRs.
 

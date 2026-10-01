@@ -32,7 +32,7 @@ export default definePrismaConfig({
 `prisma deploy module.ts` and `prisma dev module.ts` read the `composer` section. There is no `prisma-composer.config.ts` and no `prisma-composer` binary. A project that still has the old file gets:
 
 ```
-CONFIG.LEGACY_FILE  prisma-composer.config.ts is no longer read.
+CONFIG.FILE_RETIRED  prisma-composer.config.ts is no longer read.
 Move its contents into the `composer` section of prisma.config.ts:
 
   composer: composer({ extensions: [...], state: ... })
