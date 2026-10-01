@@ -1,3 +1,4 @@
+import type { AuthoringTypeConstructorDescriptor } from '@internal/framework-components/authoring';
 import type { ArgType, Param, PositionalParam } from '@internal/psl-parser';
 
 interface ArgumentSignature {
@@ -13,6 +14,34 @@ export function requiredArgumentsSnippet(signature: ArgumentSignature): string {
   return requiredArguments(signature)
     .map((argument, index) => requiredArgumentSnippet(argument, index + 1))
     .join(', ');
+}
+
+export function typeConstructorSnippet(
+  name: string,
+  descriptor: AuthoringTypeConstructorDescriptor,
+): string {
+  const args = descriptor.args ?? [];
+  const reference = descriptor.entityRefArg;
+  const count = Math.max(args.length, (reference?.index ?? -1) + 1);
+  const values: string[] = [];
+  for (let index = 0; index < count; index++) {
+    const arg = args[index];
+    if (index === reference?.index) {
+      values.push(argSnippetPlaceholder('identifier', values.length + 1, reference.entityKind));
+    } else if (arg !== undefined && arg.optional !== true) {
+      const key = arg.name ?? `arg${index + 1}`;
+      const kind =
+        arg.kind === 'string' || arg.kind === 'stringArray'
+          ? 'str'
+          : arg.kind === 'object'
+            ? 'record'
+            : 'identifier';
+      const placeholder = argSnippetPlaceholder(kind, values.length + 1, key);
+      values.push(arg.kind === 'stringArray' ? `[${placeholder}]` : placeholder);
+    }
+  }
+  const content = values.join(', ') || (count > 0 ? '$' + '{1:}' : '');
+  return `${name}(${content})`;
 }
 
 function requiredArguments(signature: ArgumentSignature): readonly RequiredArgument[] {
@@ -34,23 +63,26 @@ function requiredArguments(signature: ArgumentSignature): readonly RequiredArgum
 
 function requiredArgumentSnippet(argument: RequiredArgument, tabStop: number): string {
   if (argument.kind === 'positional') {
-    return argSnippetPlaceholder(argument.argument.type, tabStop, argument.argument.key);
+    return argumentPlaceholder(argument.argument.type, tabStop, argument.argument.key);
   }
-  return `${argument.key}: ${argSnippetPlaceholder(argument.type, tabStop, argument.key)}`;
+  return `${argument.key}: ${argumentPlaceholder(argument.type, tabStop, argument.key)}`;
+}
+
+function argumentPlaceholder(type: ArgType<unknown, never>, tabStop: number, key: string): string {
+  const tag = type.kind === 'dataTypeValue' ? type.tags[0] : undefined;
+  if (tag !== undefined) return `${tag}\`\${${tabStop.toString()}:${key}}\``;
+  return argSnippetPlaceholder(type.kind, tabStop, key);
 }
 
 function argSnippetPlaceholder(
-  param: ArgType<unknown, never>,
+  kind: ArgType<unknown, never>['kind'],
   tabStop: number,
   key: string,
 ): string {
   const placeholder = `\${${tabStop.toString()}:${key}}`;
-  if (param.kind === 'str') return `"${placeholder}"`;
-  if (param.kind === 'dataTypeValue' && param.tags[0] !== undefined) {
-    return `${param.tags[0]}\`${placeholder}\``;
-  }
-  if (param.kind === 'list') return `[${placeholder}]`;
-  if (param.kind === 'record') return `{ ${placeholder} }`;
+  if (kind === 'str') return `"${placeholder}"`;
+  if (kind === 'list') return `[${placeholder}]`;
+  if (kind === 'record') return `{ ${placeholder} }`;
   return placeholder;
 }
 

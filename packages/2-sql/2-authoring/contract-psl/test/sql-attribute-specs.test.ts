@@ -272,6 +272,7 @@ describe('sqlAttributeSpecs.field.default', () => {
       'str',
       'num',
       'bool',
+      'null',
       'funcCall',
       'funcCall',
       'funcCall',
@@ -356,7 +357,7 @@ describe('sqlAttributeSpecs.field.default', () => {
     expect(
       element.alternatives.filter((alt) => alt.kind === 'taggedLiteral').map((alt) => alt.tags),
     ).toEqual([['json']]);
-    expect(element.label).toBe('string | number | boolean | json`...`');
+    expect(element.label).toBe('string | number | boolean | null | json`...`');
   });
 
   it('exposes enum default alternatives and empty-enum rejection metadata', () => {

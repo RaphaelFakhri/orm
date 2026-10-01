@@ -71,6 +71,7 @@ import { getAttribute } from './psl-attribute-parsing';
 import {
   fieldSpecContext,
   interpretFieldAttribute,
+  type ParsedNullLiteral,
   sqlAttributeSpecs,
 } from './sql-attribute-specs';
 import { type ValueObjectTypes, valueObjectDefaultMismatches } from './value-object-default';
@@ -559,6 +560,32 @@ const TAGGED_LITERAL_CANONICALIZATION_CODES = {
   'too-large': 'PSL_TAGGED_LITERAL_TOO_LARGE',
 } as const;
 
+/**
+ * Refuses a `null` element in the list default of a field whose list elements are not nullable,
+ * at the first `null`. Returns whether it refused.
+ */
+export function rejectStrictListNullDefault(input: {
+  readonly field: FieldSymbol;
+  readonly modelName: string;
+  readonly elements: readonly { readonly kind: string }[];
+  readonly source: DiagnosticSource;
+  readonly diagnostics: PslDiagnosticCollector;
+}): boolean {
+  if (input.field.elementOptional) return false;
+  const nullElement = input.elements.find(isParsedNullLiteral);
+  if (nullElement === undefined) return false;
+  input.diagnostics.push({
+    code: 'PSL_INVALID_DEFAULT_APPLICABILITY',
+    message: `Field "${input.modelName}.${input.field.name}" has strict list elements and cannot use null in a literal list default. Make the element type nullable or remove null from the default.`,
+    ...input.source.at(nullElement.span),
+  });
+  return true;
+}
+
+function isParsedNullLiteral(element: { readonly kind: string }): element is ParsedNullLiteral {
+  return element.kind === 'null';
+}
+
 export function lowerDefaultForField(input: {
   readonly modelName: string;
   readonly fieldName: string;
@@ -608,15 +635,36 @@ export function lowerDefaultForField(input: {
   if (interpreted === undefined) return {};
   const value = interpreted.value;
   const attributeSpan = nodePslSpan(node.syntax, input.sources);
+  if (value.kind === 'null') {
+    if (!input.field.optional) {
+      input.diagnostics.push({
+        code: 'PSL_INVALID_DEFAULT_APPLICABILITY',
+        message: `Field "${input.modelName}.${input.fieldName}" is non-nullable and cannot use null as its literal default. Make the field nullable or use a non-null default.`,
+        ...source.at(),
+      });
+      return {};
+    }
+    return { defaultValue: { kind: 'literal', value: null, canonical: true } };
+  }
+  if (
+    value.kind === 'list' &&
+    rejectStrictListNullDefault({ ...input, elements: value.elements, source })
+  )
+    return {};
   // A list of value objects is stored in one column whose value is the whole list: a list literal
   // fills it element by element, as it fills a list column, and any other literal is read as the
   // whole value.
   const readsListElements = (written: WrittenValue) =>
     input.isListColumn || (input.field.list && written.kind === 'list');
-  const readAsLiteral = (written: WrittenValue, spans: DefaultSpans) => {
+  const readAsLiteral = (
+    written: WrittenValue,
+    spans: DefaultSpans,
+    sourceElementIndexes?: readonly number[],
+  ) => {
     const lowered = lowerDataTypeDefault({
       written,
       spans,
+      sourceElementIndexes,
       isList: readsListElements(written),
       column: input.columnDescriptor,
       codecLookup: input.codecLookup,
@@ -631,12 +679,25 @@ export function lowerDefaultForField(input: {
       });
       return {};
     }
+    let restoredValue = lowered.value;
+    if (
+      value.kind === 'list' &&
+      value.elements.some(isParsedNullLiteral) &&
+      Array.isArray(lowered.value)
+    ) {
+      let index = 0;
+      const nonNullValues = lowered.value;
+      restoredValue = value.elements.map((element) =>
+        element.kind === 'null' ? null : (nonNullValues[index++] ?? null),
+      );
+    }
     if (input.valueObjectDefault !== undefined) {
       const mismatches = valueObjectDefaultMismatches({
         fieldPath: `${input.modelName}.${input.fieldName}`,
-        value: lowered.value,
+        value: restoredValue,
         list: input.field.list,
         nullable: input.field.optional,
+        elementNullable: input.field.elementOptional,
         ...input.valueObjectDefault,
         codecLookup: input.codecLookup,
       });
@@ -645,7 +706,7 @@ export function lowerDefaultForField(input: {
       }
       if (mismatches.length > 0) return {};
     }
-    return { defaultValue: { kind: 'literal' as const, value: lowered.value, canonical: true } };
+    return { defaultValue: { kind: 'literal' as const, value: restoredValue, canonical: true } };
   };
 
   const canonicalized = (scalar: ParsedWrittenScalar): WrittenScalar | undefined => {
@@ -675,20 +736,24 @@ export function lowerDefaultForField(input: {
     return { defaultValue: { kind: 'function' as const, expression: text } };
   };
 
-  // An enum member identifier is lowered against its enum's handle, which a field without one lacks.
-  if (value.kind === 'member') return {};
+  // An enum member identifier or list of them is lowered against its enum's handle, which a field without one lacks.
+  if (value.kind === 'member' || value.kind === 'member-list') return {};
 
   // A column bound to a value set (`pg.enum(Ref)`) takes member names, which are checked against the
   // value set rather than read as literals; its codec accepts no literal default at all.
   if (input.columnDescriptor.valueSet !== undefined) {
-    const memberName = (scalar: ParsedWrittenScalar) =>
-      scalar.written?.kind === 'string' ? scalar.written.text : undefined;
+    const memberName = (element: ParsedWrittenScalar | ParsedNullLiteral) =>
+      element.kind === 'scalar' && element.written?.kind === 'string'
+        ? element.written.text
+        : undefined;
     if (value.kind === 'scalar') {
       const member = memberName(value);
       if (member !== undefined) return { defaultValue: { kind: 'literal', value: member } };
     }
     if (value.kind === 'list') {
-      const members = value.elements.map(memberName);
+      const members = value.elements.map((element) =>
+        element.kind === 'null' ? null : memberName(element),
+      );
       if (members.every((member) => member !== undefined)) {
         return { defaultValue: { kind: 'literal', value: members } };
       }
@@ -697,10 +762,13 @@ export function lowerDefaultForField(input: {
 
   if (value.kind === 'list') {
     const elements: WrittenValue[] = [];
-    for (const element of value.elements) {
+    const sourceElementIndexes: number[] = [];
+    for (const [sourceIndex, element] of value.elements.entries()) {
+      if (element.kind === 'null') continue;
       const written = canonicalized(element);
       if (written === undefined) return {};
       elements.push(written);
+      sourceElementIndexes.push(sourceIndex);
     }
     return readAsLiteral(
       { kind: 'list', elements },
@@ -709,6 +777,7 @@ export function lowerDefaultForField(input: {
         value: value.span,
         elements: value.elements.map((element) => element.span),
       },
+      sourceElementIndexes,
     );
   }
 
