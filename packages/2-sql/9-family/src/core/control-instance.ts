@@ -5,6 +5,7 @@ import type {
 } from '@internal/framework-components/components';
 import type {
   AuthoredContractValidationCapable,
+  ConsumedHintDescriptionCapable,
   ControlFamilyInstance,
   ControlStack,
   CoreSchemaView,
@@ -61,6 +62,7 @@ import {
 } from './diff/schema-verify';
 import { sqlFamilyError } from './errors';
 import { SqlContractSerializer } from './ir/sql-contract-serializer';
+import { describeConsumedHint } from './migrations/hint-advice';
 import type { SqlSchemaDiffFn } from './migrations/schema-differ';
 import type {
   SqlControlAdapterDescriptor,
@@ -215,6 +217,7 @@ export interface SqlControlFamilyInstance
     PslContractInferCapable<SqlSchemaIRNode>,
     PslContractBuildCapable<Contract<SqlStorage>>,
     AuthoredContractValidationCapable<Contract<SqlStorage>>,
+    ConsumedHintDescriptionCapable,
     OperationPreviewCapable,
     SqlFamilyInstanceState {
   /**
@@ -1073,6 +1076,8 @@ export function createSqlFamilyInstance<TTargetId extends string>(
     validateAuthoredContract(contract: Contract<SqlStorage>): void {
       assertContractHintsConsistent(contract);
     },
+
+    describeConsumedHint,
 
     toSchemaView(schema: SqlSchemaIRNode): CoreSchemaView {
       // Walk the schema-IR tree's own structure (root → namespaces → tables)

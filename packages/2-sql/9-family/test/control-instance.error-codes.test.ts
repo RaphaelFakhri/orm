@@ -9,6 +9,7 @@ import type {
 import {
   createControlStack,
   hasAuthoredContractValidation,
+  hasConsumedHintDescription,
 } from '@internal/framework-components/control';
 import { UNBOUND_NAMESPACE_ID } from '@internal/framework-components/ir';
 import { sqlContractCanonicalizationHooks } from '@internal/sql-contract/canonicalization-hooks';
@@ -205,5 +206,22 @@ describe('sql family instance authored-contract validation', () => {
       code: 'CONTRACT.HINT_INVALID',
       message: 'Contract hints: table "ghost" carries a hint but the contract does not declare it.',
     });
+  });
+});
+
+describe('sql family instance consumed-hint description', () => {
+  it('declares the capability and describes the hint', () => {
+    const instance = createSqlFamilyInstance(makeStack());
+
+    expect(hasConsumedHintDescription(instance)).toBe(true);
+    expect(
+      instance.describeConsumedHint({
+        kind: 'renamed',
+        coordinate: { namespaceId: UNBOUND_NAMESPACE_ID, entityKind: 'table', entityName: 'User' },
+        from: 'Person',
+      }),
+    ).toBe(
+      'rename hint on table "User" (was "Person"): renamed and recorded in this migration; you can remove the hint.',
+    );
   });
 });
