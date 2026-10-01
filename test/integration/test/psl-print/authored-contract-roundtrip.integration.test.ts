@@ -446,12 +446,14 @@ model Account {
 model Ledger {
   id Int @id
 
-  @@hint(was: "Journal")
+  @@hint(was: "Journal \\"v1\\" \\\\ old")
 }
 `);
       expect(authored.hints).toEqual({
         namespaces: {
-          public: { tables: { Ledger: { was: 'Journal' }, accounts: { was: 'customers' } } },
+          public: {
+            tables: { Ledger: { was: 'Journal "v1" \\ old' }, accounts: { was: 'customers' } },
+          },
         },
       });
       const { text } = printContract(authored);
