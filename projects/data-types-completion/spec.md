@@ -59,7 +59,7 @@ embedding pgvector.Vector(1536)
 3. **Exact comparison.** `db verify` compares a data type id and normalised parameters by equality. Other names are used only while reading a database.
 4. **Extensible by declaration.** An extension's data type is recognised by introspection, verify and infer with no change outside the extension. No production code names a type it does not own.
 5. **No SQL words in the framework layer.** Names, texts and rendering live in the SQL family's data type; the framework `DataType` gains only the parameter schema. `pnpm lint:framework-vocabulary` must not rise.
-6. **Targets declare types; the family declares none** and exports shared helpers.
+6. **Targets declare column types; the family declares none** and exports shared helpers. The SQL family's `sql/expression` (TML-3296) is the type of a written SQL expression value, never a column's type: it has no texts and is neither written nor reported.
 7. **A data type is what the database stores.** On SQLite that is `text`, `integer`, `real`, `blob`, and the two character types.
 8. **No backward-compatibility shims.** An old-format contract is refused. The refusal does not mention the upgrade script.
 9. **Tests against a real database** for everything that reads or writes database text.
