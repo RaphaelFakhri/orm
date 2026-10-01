@@ -12,6 +12,7 @@ import type {
   AnyCodecDescriptor,
   Codec,
   CodecLookup,
+  CodecLookupWithDescriptors,
   DataType,
   DataTypeLookup,
 } from '@internal/framework-components/codec';
@@ -120,8 +121,11 @@ function storesAsAuthored(codecId: string): Codec {
   });
 }
 
+/** A test's own codecs: a codec lookup, with descriptors where the test has them. */
+export type TestCodecs = CodecLookup & Partial<Pick<CodecLookupWithDescriptors, 'descriptorFor'>>;
+
 export interface TestSqlTypeLookups {
-  readonly codecLookup: CodecLookup;
+  readonly codecLookup: CodecLookupWithDescriptors;
   readonly dataTypeLookup: DataTypeLookup;
 }
 
@@ -143,7 +147,7 @@ function sharedDataType(id: string): DataType {
  */
 export function testSqlTypeLookups(
   names: Readonly<Record<string, string>> = {},
-  codecs?: CodecLookup,
+  codecs?: TestCodecs,
 ): TestSqlTypeLookups {
   const ownDataTypes = new Map<string, DataType>();
   const codecOf = (codecId: string): Codec | undefined =>
@@ -205,9 +209,9 @@ export const testTypeLookups: TestSqlTypeLookups = testSqlTypeLookups();
 
 /** The lookup arguments of `buildSqlContractFromDefinition`, around a test's own codecs. */
 export function withTestTypes(
-  codecs?: CodecLookup,
+  codecs?: TestCodecs,
   names: Readonly<Record<string, string>> = {},
-): readonly [CodecLookup, DataTypeLookup] {
+): readonly [CodecLookupWithDescriptors, DataTypeLookup] {
   const lookups = testSqlTypeLookups(names, codecs);
   return [lookups.codecLookup, lookups.dataTypeLookup];
 }

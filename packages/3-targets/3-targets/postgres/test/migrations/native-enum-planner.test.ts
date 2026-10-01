@@ -42,6 +42,7 @@ const stubLowerer: ExecuteRequestLowerer = {
   lower(_ast, _ctx) {
     return { sql: 'stub', params: [] };
   },
+  renderColumnDefault: async () => '',
   async lowerToExecuteRequest(_ast, _ctx) {
     return { sql: 'stub', params: [] };
   },
@@ -58,6 +59,7 @@ function recordingLowerer(): { lowerer: ExecuteRequestLowerer; received: unknown
         received.push(ast);
         return { sql: 'stub', params: [] };
       },
+      renderColumnDefault: async () => '',
       async lowerToExecuteRequest(ast, _ctx) {
         received.push(ast);
         return { sql: 'stub', params: [] };

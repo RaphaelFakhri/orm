@@ -2,11 +2,11 @@
 
 Status: **Accepted**
 
-Built: data types with their casts, a codec naming the type it represents, the PSL entries that read and write a type's values, and strict assembly across packs. Each SQL data type declares its DDL names, its parameters with their bounds, and how its parameterised name is written; the planners and the runtime's parameter casts write a column's type from it, and a codec's parameter schema is its data type's. The contract stores each column's data type in `dataType`, and SQLite declares the types it stores. Not built yet: recognising a reported database type through the declared names (introspection, `db verify` and `contract infer`), and function parameters typed by a data type. The "Printing" section and the function calls under "Three kinds of expression" describe those parts.
+Built: data types with their casts, a codec naming the type it represents, the PSL entries that read and write a type's values, and strict assembly across packs. Lowering entries are gone: every authoring entry names a data type, and `sql` is the tag of `sql/expression`. Each SQL data type declares its DDL names, its parameters with their bounds, and how its parameterised name is written; the planners and the runtime's parameter casts write a column's type from it, and a codec's parameter schema is its data type's. A type that is never a column's type, such as `sql/expression`, declares no names. The contract stores each column's data type in `dataType`, and SQLite declares the types it stores. Not built yet: recognising a reported database type through the declared names (introspection, `db verify` and `contract infer`), and function parameters typed by a data type. The "Printing" section and the function calls under "Three kinds of expression" describe those parts.
 
 ## Decision
 
-A **data type** is a database type made first-class: `pg/int8`, `pg/jsonb`, `pg/numeric`, `sqlite/integer`, `postgis/geometry`. Each target and extension registers its own. A data type owns what was always its own: its name in DDL, its parameters, the rendering of its parameterised name, and its **casts**, which say which other types' values it takes and how. A **codec** is one representation of a data type. Every value written in PSL has a data type, every column has one, and a written value is admitted when its type is the column's or the column's type casts from it.
+A **data type** is the type of a value Prisma stores or passes to the database. Most are database types made first-class: `pg/int8`, `pg/jsonb`, `pg/numeric`, `sqlite/integer`, `postgis/geometry`. Each target and extension registers its own. A data type owns what was always its own: its name in DDL, its parameters, the rendering of its parameterised name, and its **casts**, which say which other types' values it takes and how. A **codec** is one representation of a data type. Every value written in PSL has a data type, every column has one, and a written value is admitted when its type is the column's or the column's type casts from it.
 
 ```prisma
 model Account {
@@ -88,7 +88,7 @@ export const pgNumeric = sqlDataType('pg/numeric', {
 - **Texts.** Every name the database has for the type, in lower case, with `{name}` standing for the parameter `name`. A text marked `written` is the one a migration writes; a text marked `catalog` is the one the database catalog prints; a text with neither mark is another name the database accepts, such as `decimal`. Among texts with the same placeholders at most one is written and at most one is catalog. `display` gives the exact characters when they differ in letter case only: PostGIS writes `geometry(Geometry,{srid})`. `json` and `jsonb` are two database types and therefore two data types. A type the catalog reports by kind rather than by text, a Postgres enum, declares `claimsKind: 'enum'` with `render` and `fromReported` in place of texts.
 - **Parameters.** `params` is an arktype object schema, and it is the only place a parameter's bound is written: a codec's `paramsSchema` is its data type's `params`, extended by any keys of the codec's own. `normalize` gives the normal form, so `numeric(10)` and `numeric(10,0)` have equal parameters. Parameters do not make a new type; `numeric(10,2)` holds values of `pg/numeric` under a constraint.
 - **Writing a name.** `renderSqlTypeName(type, params)` picks the written text whose placeholders are exactly the given parameters and fills them in: `numeric(10,2)`, `vector(1536)`, `timestamptz(3)`. A parameter outside its bound, or a set of parameters no written text takes, is `CONTRACT.TYPE_PARAMS_INVALID`. `sqlBaseName(type, params)` is the name without parameters, which the runtime's parameter casts use (`$1::numeric`), because a cast to `varchar(n)` truncates and to `numeric(p,s)` rounds.
-- **Canonical form.** The one JSON shape `contract.json` stores for a value of the type. `pg/int8` stores digit text; `pg/int4` a JSON number; `pg/jsonb` the document. Every codec of the type stores and reads exactly this form.
+- **Canonical form.** The one JSON shape `contract.json` stores for a value of the type. `pg/int8` stores digit text; `pg/int4` a JSON number; `pg/jsonb` the document. Every codec of the type stores and reads exactly this form. A type whose values have several written forms, such as a date, also declares a `toCanonicalForm` function that turns each of them into the one stored form.
 - **Casts.** For each other type whose values this type takes, a pure function from that type's canonical form to this one's. A cast may convert (`pg/int2` to `pg/int8` turns a number into digit text; `pg/numeric` to `pg/float8` turns decimal text into a number and keeps the words `NaN`, `Infinity`, `-Infinity` as the text the floating-point types store) or may return the value unchanged (`pg/json` to `pg/jsonb`); either way the declaration is the point: this type takes those values. A cast may also refuse: the cast into the floating-point types refuses a magnitude no double holds rather than rounding it to `Infinity`, because the database refuses it too and storing `Infinity` would make a written number indistinguishable from a written `Infinity`.
 
 Casts are declared by the type that receives, never by the source, so there is at most one cast for any pair and the owner of a type is the only one who decides what it takes. That ownership rule is the one PostgreSQL uses for its own cast table, and the rule is all we borrow: these casts are between our data types, applied in the framework before a value is stored or sent, and they model nothing about what the database can convert. Nothing central computes convertibility, because only a type's owner knows what its database or extension can take.
@@ -97,7 +97,33 @@ There is no list data type. A list literal is several values, each cast on its o
 
 A data type is what the database stores. Codecs that store the same thing represent one data type, however they present it in memory. SQLite stores text, integers, reals and blobs, so its target declares `sqlite/text`, `sqlite/integer`, `sqlite/real` and `sqlite/blob`, and the two types a column may be declared with, `sqlite/character` and `sqlite/character-varying`; nothing else. `sqlite/json@1` and `sqlite/datetime@1` represent `sqlite/text`, and `sqlite/bigint@1`, `sqlite/bigintnumber@1` and `sql/int@1` represent `sqlite/integer`. What makes a SQLite column a JSON column is its codec, not its data type.
 
-No type spans targets, and no family registers types. The SQL family exports implementations targets share, such as the digit classifier and the JSON parse and print, and each target declares its own types with them.
+No database type spans targets. The SQL family exports implementations targets share, such as the digit classifier and the JSON parse and print, and each target declares its own types with them. A family registers only a data type that is the same on every target and that nothing casts from. `sql/expression` is the only one: a SQL expression in the target database's language, whose canonical form is its text. The SQL family registers it and its authoring entry itself, so no target has to remember to. It has no codec and no DDL name, no column has it, it declares no casts, and no type casts from it. The SQL family refuses a stack in which a type casts from it, with `CONTRACT.DATA_TYPE_CASTS_FROM_SQL_EXPRESSION`.
+
+### Date and time types
+
+A date or time value can be written many ways, so each date and time type declares a `toCanonicalForm` function in its `dataType(id, spec)` declaration. The function turns any text the type takes into the one text `contract.json` stores for that value, and refuses text the type does not hold. The type's cast from its target's text type is the same function. `2024-01-01T00:00:00Z`, `2024-01-01T00:00:00.000Z` and `2024-01-01T01:00:00+01:00` on a `timestamptz` column are one instant, stored once as `2024-01-01T00:00:00Z`.
+
+| Data type | Canonical form | Earliest | Latest |
+|---|---|---|---|
+| `pg/timestamptz` | the instant in UTC: `2024-01-01T00:00:00Z` | `-004713-11-24T00:00:00Z` | `+275760-09-13T00:00:00Z` |
+| `sqlite/datetime` | the instant in UTC: `2024-01-01T00:00:00Z` | `-271821-04-20T00:00:00Z` | `+275760-09-13T00:00:00Z` |
+| `pg/timestamp` | `2024-01-01T12:34:56` | `-004713-11-24T00:00:00` | `+275760-09-13T23:59:59.999999` |
+| `pg/date` | `2024-01-01` | `-004713-11-24` | `+275760-09-13` |
+| `pg/time` | `12:34:56` | | |
+| `pg/timetz` | the time and its offset, `12:34:56+02:00`; `Z` for a zero offset | | |
+| `pg/interval` | an ISO 8601 duration: `P1Y2M3DT4H5M6.5S` | | |
+
+- Seconds are always written. A fraction of a second has no trailing zeros. It has at most six digits, because the Postgres types hold microseconds, and at most three on `sqlite/datetime`, because its codec holds a JavaScript `Date`, which holds milliseconds.
+- A year from 0000 to 9999 has four digits. Any other year is a sign and six digits: `-000043-03-15`, `+012026-01-02`. Years count as ISO 8601 counts them, with year 0000 as 1 BC.
+- An offset is `+HH:MM`, or `+HH:MM:SS` when it has seconds. `pg/timetz` holds offsets up to 15:59 either way.
+- `infinity` and `-infinity` are values of `pg/date`, `pg/timestamp` and `pg/timestamptz`.
+- An interval balances months into years and minutes and seconds into hours, and keeps days as days: `P14MT90M` is `P1Y2MT1H30M`. It leaves out a part that is zero, and a zero interval is `PT0S`. Years, months and days each carry their own sign; hours, minutes and seconds carry the sign of the time as a whole: `-1 days -04:05:00` is `P-1DT-4H-5M`.
+
+The earliest value of each Postgres type is the earliest PostgreSQL holds, 4714-11-24 BC. It is year `-004713` because PostgreSQL has no year 0: its 1 BC is ISO year 0000. The latest value of every type, and the earliest of `sqlite/datetime`, is the limit of the `Temporal` and `Date` values its codecs produce. A type refuses a value outside its range rather than storing one that some codec of the type cannot read.
+
+Each type reads ISO 8601 with a four-digit or signed six-digit year and a `T` or a space between date and time. A Postgres type also reads the text PostgreSQL prints: a ` BC` suffix, a year of five or six digits, `infinity` and `-infinity`, and for `pg/interval` the text PostgreSQL prints under `IntervalStyle = postgres`. The function uses no `Temporal` and no JavaScript `Date`, so a default reads the same on every runtime. It refuses an offset on a type that holds none, a missing offset on a type that needs one, a date on a time type, a time on `pg/date`, more fraction digits than the type holds, a date or time that does not exist, and a value outside the type's range. Each refusal names what is wrong and shows text the type takes.
+
+Whatever stores, compares, writes or prints a date or time value from the contract uses the canonical form of the column's data type. It finds the function through the data type the column's codec names, so a codec from an extension that represents one of these types is treated the same way, with one exception in SQLite DDL, described below. Every codec's `encodeJson` produces the canonical form, and a codec whose value holds nanoseconds refuses digits below one microsecond. PostgreSQL reads no signed year, so Postgres DDL writes a year after 9999 without its sign and leading zeros (`10000-01-01`) and a year at or before 0000 with a ` BC` suffix (`0044-03-15 BC`). SQLite compares datetime text byte by byte, so SQLite DDL writes a `sqlite/datetime` default as the text the codec writes for every row, `2024-01-01T00:00:00.000Z`: a default then equals the text an application writes for the same instant. The SQLite planner picks that text by the fixed codec id `sqlite/datetime@1`, the only codec of the type today, so it does not cover an extension codec of `sqlite/datetime`: the planner would write that codec's default in canonical form.
 
 ## Codecs
 
@@ -111,9 +137,11 @@ export class PgInt8NumberDescriptor extends PostgresCodecDescriptor<void> {
 }
 ```
 
-Several codecs may represent one type. `pg/int8@1` and `pg/int8number@1` both represent `pg/int8`, differing in the in-memory value they produce, a `bigint` and a `number`; both store digit text, and `pg/int8number@1` refuses text past 2^53 as a limit of its own representation. `decodeJson` takes the canonical form and nothing else; `encodeJson` produces it. A codec has no method for PSL and never sees PSL text.
+Several codecs may represent one type. `pg/int8@1` and `pg/int8number@1` both represent `pg/int8`, differing in the in-memory value they produce, a `bigint` and a `number`; both store digit text, and `pg/int8number@1` refuses text past 2^53 as a limit of its own representation. `encodeJson` produces the canonical form, and `decodeJson` takes a stored form of the type and nothing else, as [`Codec.decodeJson`](../../../packages/1-framework/1-core/framework-components/src/shared/codec.ts) states. A codec has no method for PSL and never sees PSL text.
 
-Checks that depend on a column's parameters run in the codec instance built with those parameters, on the canonical form: `vector(3)` refuses four elements, `numeric(10,2)` refuses a third decimal place, an enum codec refuses a member it was not declared with. A limit of the stored representation is also the codec's to refuse: `sqlite/real@1` refuses `NaN`, because SQLite cannot store it, with its own message. Whether a SQLite boolean is stored as the integer `1` is likewise the boolean type's codec's business.
+Checks that depend on a column's parameters run in the codec instance built with those parameters, on the canonical form: `vector(3)` refuses four elements, `numeric(10,2)` refuses a third decimal place, an enum codec refuses a member it was not declared with. A limit of the stored representation is also the codec's to refuse, and a target adds it where it adapts a family codec: SQLite cannot store `NaN`, so `sqlite/real@1`, and `sql/float@1` as SQLite adapts it, refuse `NaN` in `encode`, `encodeJson` and `decodeJson`. The SQLite driver refuses a `NaN` parameter no codec encoded, such as one in raw SQL. Whether a SQLite boolean is stored as the integer `1` is likewise the boolean type's codec's business.
+
+`decodeJson` refuses a value the target's column would not store unchanged. A family codec checks only what every target of the family stores, and each target adds its own column's rule where it adapts the family codec. `sql/int@1` refuses an integer past 2^53 on every SQL target; on PostgreSQL, whose column is an `int4`, it also refuses one outside the `int4` range. `sql/char@1` has no length rule in the family; on PostgreSQL it refuses text longer than the column's length, which is 1 when the column declares none, because a bare `character` is `character(1)`.
 
 ## Columns and type constructors
 
@@ -136,16 +164,16 @@ A **type constructor** is how PSL names a column's type: `Int`, `Numeric(10, 2)`
 
 ## How PSL writes a value
 
-The pack that owns a data type contributes PSL support for it, keyed by the type's id, in its authoring contribution:
+The component that registers a data type contributes PSL support for it, keyed by the type's id, in its authoring contribution:
 
 ```ts
 authoring: {
   dataTypes: {
     [pgJson.id]: {
-      // `parse` turns the tag body into the canonical form and refuses what it cannot read.
+      // `parse` turns the literal's text into the canonical form and refuses what it cannot read.
       written: { kind: 'tag', tag: 'json', parse: parseJsonBody },
       print: printJsonBody,
-      documentation: 'Reads the body as a JSON document and stores it as the default value.',
+      documentation: 'Reads the text as a JSON document and stores it as the default value.',
     },
     [pgText.id]: {
       written: { kind: 'plain', syntax: 'string', parse: (text) => text },
@@ -173,7 +201,7 @@ authoring: {
 
 There are two ways a value is written.
 
-**With a tag.** A tag is a qualified name followed by a string in any of PSL's quote styles, whose body is canonicalised as [ADR 129](ADR%20129%20-%20Template-Tagged%20Literals%20for%20Extensions.md) describes. The entry's `parse` turns the body into the type's canonical form and `print` does the reverse. A target may register an unprefixed tag; every other pack prefixes: `json` is registered by each SQL target for the type it stores JSON documents in, `postgis.geometry` by the postgis extension.
+**With a tag.** A tag is a qualified name followed by a string in any of PSL's quote styles. The body written between the quotes is canonicalised into the text, as [ADR 129](ADR%20129%20-%20Template-Tagged%20Literals%20for%20Extensions.md) describes. The entry's `parse` turns the text into the type's canonical form and `print` does the reverse. A tag is unprefixed when the owner of its data type is the family or a target; every other owner prefixes its tags with its own namespace. So `json` is unprefixed because each SQL target registers it for the type it stores JSON documents in, `sql` is unprefixed because the SQL family owns `sql/expression`, and `postgis.geometry` is prefixed because the postgis extension owns its type.
 
 **Plainly.** Three pieces of syntax the interpreter reads without a tag: a quoted string, `true`/`false`, and a number. Each target says which of its types they are. A number is the one plain kind that yields several types, so the target's number entry carries a **classifier** that picks the type from the digits and returns the canonical form with it, in place of `parse`. Beside the classifier the entry lists `types`, every data type the classifier can return; that list is how assembly knows those types can be written, even though each is keyed under no entry of its own. The Postgres target's rule is its own, not PostgreSQL's: a whole number takes the narrowest of `pg/int2`, `pg/int4`, `pg/int8` that holds it; anything else — a larger whole number, a number with a fraction, or `NaN`, `Infinity`, `-Infinity` — is `pg/numeric`. It diverges from PostgreSQL, which types a whole integer literal as `integer` and never as `smallint`. Starting narrower costs nothing here, because a column takes the value only through a cast its type declares, and every wider integer type casts from `pg/int2`. SQLite's rule: a whole number of up to 64 bits is `sqlite/integer`, stored as digit text; a number with a fraction is `sqlite/real`, stored as a JSON number; anything else — a whole number past 64 bits, or one of the three words — has no SQLite type and is refused. `sqlite/real` casts from `sqlite/integer`, so a `Float` column takes `42`. Digit text has no leading zeros and no negative zero, and keeps trailing zeros: `007` is `7`, `-007.50` is `-7.50`. A type may be writable both ways; a target that registered an `int2` tag would make `` int2`8` `` and `8` the same value.
 
@@ -194,7 +222,7 @@ SQLite stores a JSON document as text, so its `json` tag yields a value of `sqli
 
 An entry that names a type must sit under its tag's key, and an entry under a data type's id must name none; anything else fails assembly with `CONTRACT.DATA_TYPE_ENTRY_KEY_INVALID`. On SQLite a `Json` column given a plain string is refused by its codec, `sqlite/json@1`, with `PSL_INVALID_DEFAULT_LITERAL`, because a string is not the text of a document; a `String` column takes a `json` literal, because both are `sqlite/text`.
 
-Some tags name no data type. `sql` takes an expression in the database's language, which nothing in the framework reads, and stores it in the contract's expression form on any column. Such a tag is registered in the same map as the others, as a **lowering** entry under a reserved key that no data type id can collide with; Postgres registers `sql` and `pg.sql` this way, SQLite `sql` and `sqlite.sql`.
+Every tag names a data type. `sql` names `sql/expression`: its `parse` returns the text unchanged, because nothing in the framework reads SQL. Because `sql/expression` declares no casts and no type casts from it, a `sql` literal is admitted only where the receiving position is of that type, and no other literal is admitted there. `@default` is the one position that takes it beside the column's own type: it stores the text in the contract's expression form on any column.
 
 The language server takes tag completion and documentation from the same entries. So does `contract infer`, and so does the reader for the earlier Prisma schema language, which maps its own syntax onto the same plain kinds and, for quoted JSON on a JSON column, the `json` entry's `parse`.
 
@@ -202,7 +230,7 @@ The language server takes tag completion and documentation from the same entries
 
 PSL has three kinds of expression, and each has one rule.
 
-- **A literal** is written plainly or with a tag. The interpreter finds the entry, calls `parse`, and has a value of a known type. The receiving type must be that type or cast from it: for a column, the column's type; for a function argument, the parameter's declared type; inside a list, per element. No cast is `PSL_DEFAULT_TYPE_INCOMPATIBLE`: `Field "Account.count": pg/int4 has no cast from pg/int8; it casts from pg/int2`. Text the entry cannot parse is `PSL_INVALID_DEFAULT_LITERAL`; a JSON body that does not parse is `PSL_INVALID_JSON_LITERAL`; a tag nobody registered is `PSL_UNKNOWN_DEFAULT_LITERAL_TAG`. Every one points at the written value.
+- **A literal** is written plainly or with a tag. The interpreter finds the entry, calls `parse`, and has a value of a known type. The receiving type must be that type or cast from it: for a column, the column's type; for a function argument, the parameter's declared type; inside a list, per element. No cast is `PSL_VALUE_TYPE_INCOMPATIBLE`: `Field "Account.count": pg/int4 has no cast from pg/int8; it casts from pg/int2`. Text the entry cannot parse, the text of a `json` literal included, is `PSL_INVALID_LITERAL`; a tag nobody registered is `PSL_UNKNOWN_LITERAL_TAG`. Two codes are about defaults only: a single value on a list column is `PSL_DEFAULT_LIST_EXPECTED`, and a value the column's codec refuses is `PSL_INVALID_DEFAULT_LITERAL`. `@default` reports `PSL_UNKNOWN_LITERAL_TAG` at the literal and the other codes at the `@default` attribute.
 - **A reference** is an identifier. It resolves through the symbol table to a declaration, and its value is that declaration's, of the declaration's type. An enum member resolves to the member declared in its `enum` block, and the only check is scope: the member must belong to this column's enum. No parsing and no cast.
 - **A call** names a registered function. Each argument is an expression delivered to a parameter, and a parameter names a data type, so an argument is admitted by the same rule as a default. Function registries are per target, so `nanoid`'s size parameter is `pg/int4` on Postgres and `sqlite/integer` on SQLite, with one shared implementation. The call produces what the function registry defines, a storage default or a client-side generator.
 
@@ -211,7 +239,7 @@ Value positions, in attributes and in function signatures, are typed through the
 Reading a default is then:
 
 1. The parser yields a literal, a reference, or a call, with source spans.
-2. A reference resolves; a call dispatches; a `sql` tag lowers. Any other literal is parsed to a value of a known type.
+2. A reference resolves; a call dispatches. A literal is parsed to a value of a known type, and a value of `sql/expression` is stored as the column's default expression.
 3. If the value's type is not the column's, the column's type is looked up for a cast from it. None is a diagnostic at the value.
 4. The canonical form, cast or not, is validated by the codec instance for the column's parameters; a refusal is a diagnostic at the value with the codec's message.
 5. The canonical form is stored. The contract's two default forms, a value and an expression, are unchanged.
@@ -236,6 +264,8 @@ Assembly also refuses declarations that no user input can produce, as an `Intern
 9. two SQL data types would both recognise one reported type: their claiming texts collide, or they claim the same kind. Two texts collide when either text's pattern matches the other with each placeholder replaced by `1`.
 
 The reverse of the last is not required: a type may be reachable only through casts. Assembly is the right level for these checks because they span packs: `pgvector/vector` casting from `pg/numeric` is valid only when the Postgres target that owns `pg/numeric` is in the stack. Within a pack, references are by constant rather than by string, so a misspelt id fails to compile and an unregistered one fails assembly.
+
+A family may add checks for its own data types. The SQL family checks that no type casts from `sql/expression` when it creates its control instance, not during assembly, so the CLI reports `CONTRACT.DATA_TYPE_CASTS_FROM_SQL_EXPRESSION` and the language server does not. Like the assembly checks, it names the contributor.
 
 ## Printing
 
@@ -266,7 +296,7 @@ model Place {
 - **Codec methods that receive PSL text** (`encodePsl`/`decodePsl`, the sketch in [ADR 184](ADR%20184%20-%20Codec-owned%20value%20serialization.md)). Every codec becomes coupled to PSL's tokenizer and escaping, and there is no check before a decode fails.
 - **A central rule for which types convert into which.** Databases and extensions define their own types and their own conversions; the framework cannot know them. A type's own casts are the only honest declaration.
 - **Conversion inside the codec**, the codec listing what it takes and converting in `decodeJson`. Two codecs of one type repeat the same fact and the same conversion, and `decodeJson` ends up accepting shapes the codec never writes.
-- **A family-level vocabulary of written types** (`sql/i8`, `sql/json`, …) that every target's types cast from. It invents types no database has, and most of its casts would return the value unchanged.
+- **A family-level vocabulary of written types** (`sql/i8`, `sql/json`, …) that every target's types cast from. It invents types no database has, and most of its casts would return the value unchanged. `sql/expression` is not such a type: no column has it and nothing casts from it.
 - **A data type as the set of values a group of codecs share**, so that `json` and `jsonb` are one type. It invents a layer between the database's types and the codecs that the database does not have, and a cast that returns the document unchanged says the same thing without it.
 - **Separate `json` and `jsonb` literals.** An author would have to know a column's storage to pick a tag for the same text, and infer would print a different tag per column.
 - **One `number` type converted per receiver.** Big numbers round, and every numeric receiver carries the same conversion.
@@ -284,6 +314,6 @@ Whether temporal, bytes and interval types get tags of their own and stop castin
 ## Related
 
 - [ADR 184 — Codec-owned value serialization](ADR%20184%20-%20Codec-owned%20value%20serialization.md): the canonical form now belongs to the data type; the PSL half is replaced by this decision.
-- [ADR 129 — Tagged literals](ADR%20129%20-%20Template-Tagged%20Literals%20for%20Extensions.md): the tag syntax and canonical body; a tag is how PSL writes a data type, and `sql` is the one lowering tag.
+- [ADR 129 — Tagged literals](ADR%20129%20-%20Template-Tagged%20Literals%20for%20Extensions.md): the tag syntax and the canonical text; a tag is how PSL writes a data type, and `sql` is the tag of `sql/expression`.
 - [ADR 208 — Higher-order codecs for parameterized types](ADR%20208%20-%20Higher-order%20codecs%20for%20parameterized%20types.md): parameters now belong to the data type; codec instances still check them.
 - [ADR 252 — An earlier Prisma version's schema is a contract source](ADR%20252%20-%20An%20earlier%20Prisma%20version's%20schema%20is%20a%20contract%20source.md): a second text source mapped onto the same types.

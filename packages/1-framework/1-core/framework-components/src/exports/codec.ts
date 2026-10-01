@@ -19,6 +19,7 @@ export type {
   CodecCallContext,
   CodecInstanceContext,
   CodecLookup,
+  CodecLookupWithDescriptors,
   CodecRef,
   CodecRegistry,
   CodecTrait,
@@ -38,6 +39,7 @@ export type {
   DataTypeLookup,
   DataTypeSpec,
   ListCast,
+  ToCanonicalForm,
 } from '../shared/data-type';
 export {
   assembleDataTypes,
@@ -49,9 +51,27 @@ export {
   requiredParamKeys,
   requiredSchemaKeys,
 } from '../shared/data-type';
+export type { BigIntRange, IntegerRange } from '../shared/decode-json';
+export {
+  decodeJsonBoolean,
+  decodeJsonFloat,
+  decodeJsonInteger,
+  decodeJsonIntegerText,
+  decodeJsonMatching,
+  decodeJsonString,
+  encodeJsonFloat,
+  INT32_RANGE,
+  INT64_RANGE,
+  isIntegerIn,
+  isNonFiniteText,
+  refuseJsonValue,
+  SAFE_INTEGER_BIGINT_RANGE,
+  SAFE_INTEGER_RANGE,
+} from '../shared/decode-json';
 export { renderTsLiteral } from '../shared/render-ts-literal';
 export {
   CONTRACT_CODEC_DESCRIPTOR_MISSING,
+  codecForRef,
   materializeCodec,
   resolveCodecDescriptorOrThrow,
   validateCodecTypeParams,

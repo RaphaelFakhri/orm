@@ -39,7 +39,7 @@ export function sqliteRenderDefault(def: ColumnDefault, column: StorageColumn): 
     }
     return def.expression;
   }
-  return renderDefaultLiteral(def.value, column.dataType);
+  return renderDefaultLiteral(def.value, column);
 }
 
 /**

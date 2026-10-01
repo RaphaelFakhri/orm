@@ -9,7 +9,7 @@ import {
 } from './authoring';
 import { postgresRenderCheckExpressions } from './check-expressions';
 import { postgresQualifyColumnType } from './codecs';
-import { createPostgresDataTypeEntries } from './data-type-authoring';
+import { postgresDataTypeEntries } from './data-type-entries';
 import { postgresTargetDescriptorMetaRuntime } from './descriptor-meta-runtime';
 import { postgresIndexTypes } from './index-types';
 import { DEFAULT_NAMESPACE_ID } from './namespace-ids';
@@ -22,9 +22,8 @@ const postgresTargetDescriptorMetaBase = {
   indexTypes: postgresIndexTypes,
   authoring: {
     type: postgresAuthoringTypes,
-    valueObjectStorageType: 'Jsonb',
     field: postgresAuthoringFieldPresets,
-    dataTypes: createPostgresDataTypeEntries(),
+    dataTypes: postgresDataTypeEntries(),
     entityTypes: postgresAuthoringEntityTypes,
     pslBlockDescriptors: postgresAuthoringPslBlockDescriptors,
     modelAttributes: postgresAuthoringModelAttributes,

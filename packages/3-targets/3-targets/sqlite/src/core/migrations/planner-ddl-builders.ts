@@ -8,7 +8,6 @@
  * see `StorageColumn` or `storageTypes`.
  */
 
-import { checkSqlDefaultBody } from '@internal/family-sql/control';
 import {
   dataTypeParams,
   renderSqlTypeName,
@@ -20,22 +19,11 @@ import type {
   StorageTable,
   StorageTypeInstance,
 } from '@internal/sql-contract/types';
+import { SQLITE_DATETIME_CODEC_ID } from '../codec-ids';
+import { decodeSqliteDatetime, encodeSqliteDatetime } from '../codecs';
 import { sqliteInteger } from '../data-types';
 import { sqliteError } from '../errors';
 import { escapeLiteral, quoteIdentifier } from '../sql-utils';
-
-type SqliteColumnDefault = StorageColumn['default'];
-
-function assertSafeDefaultExpression(expression: string): void {
-  if (checkSqlDefaultBody(expression) !== undefined) {
-    throw sqliteError(
-      'CONTRACT.DEFAULT_INVALID',
-      `Unsafe default expression in contract: "${expression}". ` +
-        'Default expressions must not contain semicolons, SQL comment tokens, dollar-quoting, or subqueries.',
-      { meta: { expression } },
-    );
-  }
-}
 
 /**
  * Renders the column's DDL type token (e.g. `"INTEGER"`, `"TEXT"`): the name the data type of its
@@ -51,42 +39,33 @@ export function buildColumnTypeSql(
   return renderSqlTypeName(dataType, dataTypeParams(dataType, resolved.typeParams)).toUpperCase();
 }
 
-/**
- * Renders the column's `DEFAULT …` clause. Returns the empty string when
- * there is no default, and also when the default is `autoincrement()` —
- * SQLite encodes that as `INTEGER PRIMARY KEY AUTOINCREMENT` inline on the
- * column definition, not as a separate DEFAULT.
- */
-export function buildColumnDefaultSql(
-  columnDefault: SqliteColumnDefault | undefined,
-  dataType?: string,
-): string {
-  if (!columnDefault) return '';
-
-  switch (columnDefault.kind) {
-    case 'literal':
-      return `DEFAULT ${renderDefaultLiteral(columnDefault.value, dataType)}`;
-    case 'function': {
-      if (columnDefault.expression === 'autoincrement()') return '';
-      if (columnDefault.expression === 'now()') return "DEFAULT (datetime('now'))";
-      assertSafeDefaultExpression(columnDefault.expression);
-      return `DEFAULT (${columnDefault.expression})`;
-    }
-  }
-}
-
 const DIGIT_TEXT = /^-?\d+$/;
+
+/** The column a literal default is written for: its codec, and the data type that codec represents. */
+export interface DefaultLiteralColumn {
+  readonly codecId: string;
+  readonly dataType: string;
+}
 
 /**
  * A literal default in SQL. An `integer` column stores digit text in the contract, which is written
- * as the integer it names.
+ * as the integer it names. A datetime default is the stored value itself in SQLite, which compares
+ * text byte by byte, so it is written as the text the column's codec writes for every row, not as
+ * its canonical form.
  */
-export function renderDefaultLiteral(value: unknown, dataType?: string): string {
-  if (dataType === sqliteInteger.id && typeof value === 'string' && DIGIT_TEXT.test(value)) {
+export function renderDefaultLiteral(value: unknown, column?: DefaultLiteralColumn): string {
+  if (
+    column?.dataType === sqliteInteger.id &&
+    typeof value === 'string' &&
+    DIGIT_TEXT.test(value)
+  ) {
     return value;
   }
   if (value instanceof Date) {
-    return `'${escapeLiteral(value.toISOString())}'`;
+    return `'${escapeLiteral(encodeSqliteDatetime(value))}'`;
+  }
+  if (typeof value === 'string' && column?.codecId === SQLITE_DATETIME_CODEC_ID) {
+    return `'${escapeLiteral(encodeSqliteDatetime(decodeSqliteDatetime(value)))}'`;
   }
   if (typeof value === 'string') {
     return `'${escapeLiteral(value)}'`;

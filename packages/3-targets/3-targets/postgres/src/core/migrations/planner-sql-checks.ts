@@ -1,6 +1,6 @@
 import {
   dataTypeParams,
-  renderSqlTypeName,
+  renderSqlCatalogText,
   type SqlTypeLookups,
   sqlDataTypeOfCodec,
   unquotedSqlBaseName,
@@ -25,26 +25,17 @@ export function qualifyTableName(schema: string, table: string): string {
   return postgresCreateNamespace({ id: schema, entries: { table: {} } }).qualifyTable(table);
 }
 
-const FORMAT_TYPE_DISPLAY: ReadonlyMap<string, string> = new Map([
-  ['int2', 'smallint'],
-  ['int4', 'integer'],
-  ['int8', 'bigint'],
-  ['float4', 'real'],
-  ['float8', 'double precision'],
-  ['bool', 'boolean'],
-  ['timestamp', 'timestamp without time zone'],
-  ['timestamptz', 'timestamp with time zone'],
-  ['time', 'time without time zone'],
-  ['timetz', 'time with time zone'],
-]);
-
+/**
+ * The type `format_type` prints, for the column's ALTER COLUMN TYPE postcheck: the catalog text of
+ * its data type with normalised parameters, or for an enum its name, quoted where Postgres quotes
+ * it.
+ */
 export function buildExpectedFormatType(
   column: Pick<StorageColumn, 'codecId' | 'typeParams' | 'typeRef'>,
   types: SqlTypeLookups,
   storageTypes: Record<string, StorageTypeInstance> = {},
 ): string {
   const resolved = resolveColumnTypeMetadata(column, storageTypes);
-
   const dataType = sqlDataTypeOfCodec(resolved.codecId, types);
   const params = dataTypeParams(dataType, resolved.typeParams);
   if (dataType.sql.claimsKind !== undefined) {
@@ -53,10 +44,5 @@ export function buildExpectedFormatType(
       .map(quoteIdentifierWhereNeeded)
       .join('.');
   }
-  if (Object.keys(params).length > 0) {
-    return renderSqlTypeName(dataType, params);
-  }
-
-  const baseName = unquotedSqlBaseName(dataType, params);
-  return FORMAT_TYPE_DISPLAY.get(baseName) ?? baseName;
+  return renderSqlCatalogText(dataType, params);
 }

@@ -1,5 +1,6 @@
 import { createDataTypeLookup, dataType } from '@internal/framework-components/codec';
 import { sqlDataType } from '@internal/sql-contract/data-type';
+import { sqlExpressionDataType } from '@internal/sql-contract/sql-expression';
 import { blindCast } from '@internal/utils/casts';
 import { InternalError } from '@internal/utils/internal-error';
 import { type } from 'arktype';
@@ -82,6 +83,20 @@ describe('enforceSqlDataTypeInvariants', () => {
   it('ignores data types that are not SQL data types', () => {
     expect(() =>
       enforceSqlDataTypeInvariants(stackWith([dataType('ext/plain', {})])),
+    ).not.toThrow();
+  });
+
+  it("ignores the family's sql/expression data type, which is no column's type", () => {
+    const stack = stackWith([]);
+    expect(() =>
+      enforceSqlDataTypeInvariants({
+        ...stack,
+        family: { id: 'sql', dataTypes: [sqlExpressionDataType] },
+        dataTypeLookup: createDataTypeLookup([
+          sqlExpressionDataType,
+          ...stack.dataTypeLookup.all(),
+        ]),
+      }),
     ).not.toThrow();
   });
 });

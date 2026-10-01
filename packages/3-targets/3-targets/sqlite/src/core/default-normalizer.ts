@@ -11,7 +11,7 @@ import type { ColumnDefault } from '@internal/contract/types';
 
 const NULL_PATTERN = /^NULL$/i;
 const INTEGER_PATTERN = /^-?\d+$/;
-const REAL_PATTERN = /^-?\d+\.\d+(?:[eE][+-]?\d+)?$/;
+const REAL_PATTERN = /^-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?$/;
 const HEX_PATTERN = /^0[xX][\dA-Fa-f]+$/;
 const STRING_LITERAL_PATTERN = /^'((?:[^']|'')*)'$/;
 
@@ -77,7 +77,11 @@ export function parseSqliteDefault(
 
   if (isNumericLiteral(trimmed)) {
     const num = Number(trimmed);
-    if (!Number.isFinite(num)) return undefined;
+    // A number no double holds reads as an infinity, which is how SQLite stores it and how the
+    // float codecs write an infinite default: `9e999` in DDL, the text `Infinity` in the contract.
+    if (!Number.isFinite(num)) {
+      return { kind: 'literal', value: num > 0 ? 'Infinity' : '-Infinity' };
+    }
     return { kind: 'literal', value: num };
   }
 

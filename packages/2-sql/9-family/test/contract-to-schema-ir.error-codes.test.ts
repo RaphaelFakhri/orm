@@ -1,5 +1,5 @@
 import { type Contract, profileHash, type StorageHashBase } from '@internal/contract/types';
-import type { CodecLookup } from '@internal/framework-components/codec';
+import type { CodecLookupWithDescriptors } from '@internal/framework-components/codec';
 import { UNBOUND_NAMESPACE_ID } from '@internal/framework-components/ir';
 import { SqlStorage, type StorageColumn, type StorageTable } from '@internal/sql-contract/types';
 import { isStructuredError } from '@internal/utils/structured-error';
@@ -80,12 +80,12 @@ describe('contract-to-schema-ir structured error codes', () => {
       },
     });
 
-    const codecLookup: CodecLookup = {
+    const codecLookup: CodecLookupWithDescriptors = {
       ...testTypeLookups.codecLookup,
       descriptorFor: (codecId) =>
         codecId === 'app/unknown@1'
           ? undefined
-          : testTypeLookups.codecLookup.descriptorFor?.(codecId),
+          : testTypeLookups.codecLookup.descriptorFor(codecId),
     };
     const error = captureError(() =>
       contractToSchemaIR(wrap(storage), { annotationNamespace: 'pg', ...types, codecLookup }),

@@ -1,6 +1,7 @@
 import { generateContractDts } from '@internal/emitter';
 import {
   type CodecLookup,
+  type CodecLookupWithDescriptors,
   createDataTypeLookup,
   renderTsLiteral,
 } from '@internal/framework-components/codec';
@@ -52,7 +53,7 @@ const contract = defineContract({
 
 const knownCodecIds = new Set(['mongo/string@1', 'mongo/objectId@1']);
 
-const codecLookup: CodecLookup = {
+const codecLookup: CodecLookupWithDescriptors = {
   get: (id: string) => {
     if (!knownCodecIds.has(id)) return undefined;
     return {
@@ -146,17 +147,24 @@ describe('mongo enum — end-to-end (replica set)', {
 
   describe('out-of-set scalar write is rejected', () => {
     it('rejects an insert with a role value not in the enum', async () => {
-      // 'nope' is not in the value union — bypass TS to test MongoDB's $jsonSchema enforcement.
+      // 'nope' is not in the value union — bypass TS; the ORM refuses it before the validator sees it.
       await expect(
         db.orm.accounts.create({ role: 'nope' as never, mood: null, tags: [] }),
-      ).rejects.toMatchObject({ code: 121 });
+      ).rejects.toMatchObject({
+        code: 'RUNTIME.ENCODE_FAILED',
+        details: { label: 'role', received: 'nope', allowed: ['user', 'admin'] },
+      });
     });
 
     it('rejects an insert with a null value on a non-nullable field', async () => {
-      // null is not valid for a non-nullable field — bypass TS to test MongoDB enforcement.
+      // null is not valid for a non-nullable field — bypass TS; the ORM refuses it before the validator sees it.
       await expect(
         db.orm.accounts.create({ role: null as never, mood: null, tags: [] }),
-      ).rejects.toMatchObject({ code: 121 });
+      ).rejects.toMatchObject({
+        code: 'RUNTIME.ENCODE_FAILED',
+        message:
+          "Failed to encode field role in collection 'accounts': the field is required and cannot be null",
+      });
     });
   });
 
@@ -195,10 +203,10 @@ describe('mongo enum — end-to-end (replica set)', {
     });
 
     it('rejects an out-of-set value on a nullable enum field', async () => {
-      // 'bogus' is not in the value union — bypass TS to test MongoDB enforcement.
+      // 'bogus' is not in the value union — bypass TS; the ORM refuses it before the validator sees it.
       await expect(
         db.orm.accounts.create({ role: 'user', mood: 'bogus' as never, tags: [] }),
-      ).rejects.toMatchObject({ code: 121 });
+      ).rejects.toMatchObject({ code: 'RUNTIME.ENCODE_FAILED', details: { label: 'mood' } });
     });
   });
 
@@ -219,10 +227,13 @@ describe('mongo enum — end-to-end (replica set)', {
     });
 
     it('rejects an array containing an out-of-set element', async () => {
-      // 'bogus' is not in the value union — bypass TS to test MongoDB enforcement.
+      // 'bogus' is not in the value union — bypass TS; the ORM refuses it before the validator sees it.
       await expect(
         db.orm.accounts.create({ role: 'user', mood: null, tags: ['bogus' as never] }),
-      ).rejects.toMatchObject({ code: 121 });
+      ).rejects.toMatchObject({
+        code: 'RUNTIME.ENCODE_FAILED',
+        details: { label: 'tags', received: 'bogus' },
+      });
     });
   });
 

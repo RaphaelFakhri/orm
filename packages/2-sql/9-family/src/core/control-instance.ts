@@ -34,6 +34,7 @@ import { isPlainRecord } from '@internal/framework-components/ir';
 import type { PslDocumentAst } from '@internal/framework-components/psl-ast';
 import { assertDescriptorSelfConsistency } from '@internal/migration-tools/spaces';
 import { sqlContractCanonicalizationHooks } from '@internal/sql-contract/canonicalization-hooks';
+import { assertNothingCastsFromSqlExpression } from '@internal/sql-contract/sql-expression';
 import type { SqlControlDriverInstance, SqlStorage } from '@internal/sql-contract/types';
 import type {
   AnyQueryAst,
@@ -53,6 +54,7 @@ import type { SqlControlAdapter } from './control-adapter';
 import type {
   SqlControlTargetDescriptor,
   SqlDescribedContractSpace,
+  SqlPslBuildContext,
 } from './control-target-descriptor';
 import {
   classifyDiffEntityKind,
@@ -454,6 +456,7 @@ export function createSqlFamilyInstance<TTargetId extends string>(
   if (!stack.adapter) {
     throw new InternalError('SQL family requires an adapter descriptor in ControlStack');
   }
+  assertNothingCastsFromSqlExpression(stack.declaredDataTypes);
 
   const target = blindCast<
     TargetDescriptor<'sql', TTargetId>,
@@ -527,6 +530,13 @@ export function createSqlFamilyInstance<TTargetId extends string>(
     SqlControlTargetDescriptor<TTargetId, unknown>,
     'reading the optional target-descriptor inferPslContract hook'
   >(target).inferPslContract;
+  // The stack parts `contract emit` reads a PSL document with, which `contract infer` and
+  // `contract print` write one with.
+  const pslBuildContext: SqlPslBuildContext = {
+    authoringContributions: stack.authoringContributions,
+    codecLookup: stack.codecLookup,
+    dataTypeLookup: stack.dataTypeLookup,
+  };
   // The hook that builds the PSL document of a contract is read off the descriptor the same way.
   // Absent for targets without `contract print`.
   const targetBuildPslContract = blindCast<
@@ -970,7 +980,7 @@ export function createSqlFamilyInstance<TTargetId extends string>(
           },
         );
       }
-      return targetInferPslContract(schemaIR, describedContracts);
+      return targetInferPslContract(schemaIR, pslBuildContext, describedContracts);
     },
 
     buildPslContract(contract: Contract<SqlStorage>): PslContractDocument {
@@ -986,11 +996,7 @@ export function createSqlFamilyInstance<TTargetId extends string>(
         );
       }
       return {
-        document: targetBuildPslContract(contract, {
-          authoringContributions: stack.authoringContributions,
-          codecLookup: stack.codecLookup,
-          dataTypeLookup: stack.dataTypeLookup,
-        }),
+        document: targetBuildPslContract(contract, pslBuildContext),
         sourceSettings: ifDefined('defaultControlPolicy', contract.defaultControlPolicy),
       };
     },

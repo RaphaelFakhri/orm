@@ -82,6 +82,7 @@ export {
   isStorageTypeInstance,
   isStorageValueSet,
   PrimaryKey,
+  resolvedTypeParams,
   SqlNamespaceBase,
   SqlNode,
   SqlStorage,

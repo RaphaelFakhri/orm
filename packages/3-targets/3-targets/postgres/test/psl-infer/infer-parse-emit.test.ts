@@ -2,7 +2,7 @@ import {
   type AuthoringTypeNamespace,
   collectScalarTypeConstructors,
 } from '@internal/framework-components/authoring';
-import type { CodecLookup } from '@internal/framework-components/codec';
+import type { CodecLookupWithDescriptors } from '@internal/framework-components/codec';
 import { createDataTypeLookup } from '@internal/framework-components/codec';
 import { assembleAuthoringContributions } from '@internal/framework-components/control';
 import { buildSymbolTable } from '@internal/psl-parser';
@@ -77,7 +77,7 @@ const target = {
   authoring: { type: authoringTypes },
 };
 
-const codecLookup: CodecLookup = createPostgresBuiltinCodecLookup();
+const codecLookup: CodecLookupWithDescriptors = createPostgresBuiltinCodecLookup();
 
 function parseAndEmit(source: string) {
   const { document, sources } = parse(source, 'infer-parse-emit.test.psl');

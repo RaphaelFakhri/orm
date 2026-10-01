@@ -1,7 +1,13 @@
-import type { Contract, ContractField, ScalarFieldType } from '@internal/contract/types';
+import type {
+  Contract,
+  ContractEnum,
+  ContractField,
+  JsonValue,
+  ScalarFieldType,
+} from '@internal/contract/types';
 import type { SqlPslBuildContext } from '@internal/family-sql/control';
 import type { PslTypeMap } from '@internal/family-sql/psl-build';
-import { requiredParamKeys } from '@internal/framework-components/codec';
+import { requiredParamKeys, validateCodecTypeParams } from '@internal/framework-components/codec';
 import type {
   PslCompositeType,
   PslField,
@@ -10,48 +16,58 @@ import type {
 } from '@internal/framework-components/psl-ast';
 import { isSqlDataType } from '@internal/sql-contract/data-type';
 import type { SqlStorage } from '@internal/sql-contract/types';
-import { StorageColumn } from '@internal/sql-contract/types';
+import { resolvedTypeParams, StorageColumn } from '@internal/sql-contract/types';
+import { blindCast } from '@internal/utils/casts';
 import { ifDefined } from '@internal/utils/defined';
 import { SYNTHETIC_SPAN } from '../psl-build/psl-literals';
 import { buildColumnType, type PslColumnType } from './column-types';
 import {
+  refuseMemberCodecNeedingTypeParameters,
+  refuseMemberCodecWithoutNativeType,
+  refuseUnderivedMemberValueSet,
   refuseUnwritableFieldShape,
   refuseUnwritableName,
-  refuseValueObjectFieldCodecNeedingTypeParameters,
-  refuseValueObjectFieldCodecWithoutNativeType,
-  refuseValueObjectFieldPartsTheSourceDrops,
   refuseValueObjectsOutsideDefaultNamespace,
 } from './refusals';
 
 /**
- * The data type a value-object field's codec represents. The field has no column of its own, and no
- * type parameters, which the PSL source would not keep.
+ * The data type a value-object member's codec represents, after checking the member's type
+ * parameters against it. A member has no column of its own.
  */
-function dataTypeOfValueObjectField(
-  field: ContractField & { readonly type: ScalarFieldType },
+function dataTypeOfMember(
+  type: ScalarFieldType,
   coordinate: string,
   context: SqlPslBuildContext,
 ): string {
-  const { codecId } = field.type;
-  const descriptor = context.codecLookup.descriptorFor?.(codecId);
-  const dataType =
-    descriptor === undefined ? undefined : context.dataTypeLookup.get(descriptor.dataType);
+  const { codecId } = type;
+  const descriptor = context.codecLookup.descriptorFor(codecId);
+  if (descriptor === undefined) refuseMemberCodecWithoutNativeType(codecId, coordinate);
+  const dataType = context.dataTypeLookup.get(descriptor.dataType);
   if (dataType === undefined || !isSqlDataType(dataType)) {
-    refuseValueObjectFieldCodecWithoutNativeType(codecId, coordinate);
+    refuseMemberCodecWithoutNativeType(codecId, coordinate);
   }
-  if (requiredParamKeys(dataType).length > 0) {
-    refuseValueObjectFieldCodecNeedingTypeParameters(codecId, coordinate);
+  const typeParams = resolvedTypeParams(type, undefined);
+  if (typeParams === undefined) {
+    if (requiredParamKeys(dataType).length > 0) {
+      refuseMemberCodecNeedingTypeParameters(codecId, coordinate);
+    }
+    return dataType.id;
   }
+  validateCodecTypeParams(descriptor, {
+    codecId,
+    typeParams: blindCast<JsonValue, 'contract type parameters are JSON'>(typeParams),
+  });
   return dataType.id;
 }
 
-/** The PSL type position of a domain field: a value object by name, or a scalar as a column would print. */
-export function buildDomainFieldType(input: {
+/** The PSL type position of a value-object member: a value object or an enum by name, or a scalar as a column would print. */
+function buildMemberType(input: {
   readonly field: ContractField;
   readonly coordinate: string;
   readonly typeMap: PslTypeMap;
   readonly context: SqlPslBuildContext;
   readonly enumBlockNames: ReadonlyMap<string, string>;
+  readonly domainEnums: Readonly<Record<string, ContractEnum>>;
 }): PslColumnType {
   const { field, coordinate } = input;
   refuseUnwritableFieldShape(field, coordinate);
@@ -59,13 +75,22 @@ export function buildDomainFieldType(input: {
   if (type.kind === 'valueObject') {
     return { typeName: type.name };
   }
-  refuseValueObjectFieldPartsTheSourceDrops({ ...field, type }, coordinate);
+  refuseUnderivedMemberValueSet({
+    field,
+    type,
+    coordinate,
+    domainEnums: input.domainEnums,
+  });
+  if (field.valueSet !== undefined) {
+    return { typeName: field.valueSet.entityName };
+  }
   return buildColumnType({
     column: new StorageColumn({
-      dataType: dataTypeOfValueObjectField({ ...field, type }, coordinate, input.context),
+      dataType: dataTypeOfMember(type, coordinate, input.context),
       codecId: type.codecId,
       nullable: field.nullable,
       ...ifDefined('many', field.many),
+      ...ifDefined('typeParams', type.typeParams),
     }),
     typeMap: input.typeMap,
     authoringTypes: input.context.authoringContributions.type,
@@ -82,6 +107,7 @@ export function buildCompositeTypes(input: {
   readonly typeMap: PslTypeMap;
   readonly context: SqlPslBuildContext;
   readonly enumBlockNames: ReadonlyMap<string, string>;
+  readonly domainEnums: Readonly<Record<string, ContractEnum>>;
 }): readonly PslCompositeType[] {
   refuseValueObjectsOutsideDefaultNamespace(input.contract, input.namespaceId);
   const valueObjects = input.contract.domain.namespaces[input.namespaceId]?.valueObjects ?? {};
@@ -92,12 +118,13 @@ export function buildCompositeTypes(input: {
       name,
       fields: Object.entries(valueObject.fields).map(([fieldName, field]): PslField => {
         refuseUnwritableName('field', fieldName);
-        const { typeName, typeConstructor } = buildDomainFieldType({
+        const { typeName, typeConstructor } = buildMemberType({
           field,
           coordinate: `"${input.namespaceId}".${name}.${fieldName}`,
           typeMap: input.typeMap,
           context: input.context,
           enumBlockNames: input.enumBlockNames,
+          domainEnums: input.domainEnums,
         });
         return {
           kind: 'field',

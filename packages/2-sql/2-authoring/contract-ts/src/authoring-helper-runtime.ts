@@ -10,13 +10,16 @@ import {
   validateAuthoringHelperArguments,
   validateAuthoringTypeParams,
 } from '@internal/framework-components/authoring';
-import type { CodecLookup, DataTypeLookup } from '@internal/framework-components/codec';
+import type {
+  CodecLookupWithDescriptors,
+  DataTypeLookup,
+} from '@internal/framework-components/codec';
 import { type AuthoredStorageType, CODEC_INSTANCE_KIND } from '@internal/sql-contract/types';
 import { contractError } from './contract-errors';
 
 /** The codecs and data types of the packs a contract is authored with. */
 export interface AuthoringTypeLookups {
-  readonly codecLookup: CodecLookup;
+  readonly codecLookup: CodecLookupWithDescriptors;
   readonly dataTypeLookup: DataTypeLookup;
 }
 
@@ -58,7 +61,7 @@ export function createTypeHelpersFromNamespace(
           helperPath,
           value.output,
           output.typeParams,
-          lookups.codecLookup.descriptorFor?.(output.codecId)?.paramsSchema,
+          lookups.codecLookup.descriptorFor(output.codecId)?.paramsSchema,
         );
         return {
           kind: CODEC_INSTANCE_KIND,
@@ -78,7 +81,7 @@ export function createTypeHelpersFromNamespace(
 export function createFieldPresetHelper<Result>(options: {
   readonly helperPath: string;
   readonly descriptor: AuthoringFieldPresetDescriptor;
-  readonly codecLookup: CodecLookup;
+  readonly codecLookup: CodecLookupWithDescriptors;
   readonly build: (options: {
     readonly args: readonly unknown[];
     readonly namedConstraintOptions?: RuntimeNamedConstraintSpec;
@@ -125,7 +128,7 @@ export function createFieldPresetHelper<Result>(options: {
       options.helperPath,
       output,
       instantiateAuthoringFieldPreset(options.descriptor, args).descriptor.typeParams,
-      options.codecLookup.descriptorFor?.(output.codecId)?.paramsSchema,
+      options.codecLookup.descriptorFor(output.codecId)?.paramsSchema,
     );
 
     return options.build({

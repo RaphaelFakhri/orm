@@ -7,11 +7,12 @@ import type {
 import type {
   AnyCodecDescriptor,
   Codec,
-  CodecLookup,
+  CodecLookupWithDescriptors,
   DataType,
 } from '@internal/framework-components/codec';
 import { createDataTypeLookup } from '@internal/framework-components/codec';
 import { sqlDataType } from '@internal/sql-contract/data-type';
+import { InternalError } from '@internal/utils/internal-error';
 import { type } from 'arktype';
 import { describe, expect, it } from 'vitest';
 import { sqlFamilyEnumEntityDescriptor } from '../src/core/authoring-entity-types';
@@ -44,6 +45,8 @@ const TEXT_CODEC_ID = 'pg/text@1';
 const INT_CODEC_ID = 'pg/int@1';
 const JSON_CODEC_ID = 'test/json@1';
 const FOLDING_CODEC_ID = 'test/folding-text@1';
+const ENCODE_FOLDING_CODEC_ID = 'test/encode-folding-text@1';
+const BROKEN_CODEC_ID = 'test/broken@1';
 
 const textCodec: Codec = {
   id: TEXT_CODEC_ID,
@@ -89,6 +92,25 @@ const foldingCodec: Codec = {
   },
 };
 
+const encodeFoldingCodec: Codec = {
+  id: ENCODE_FOLDING_CODEC_ID,
+  encode: async (v: unknown) => v,
+  decode: async (w: unknown) => w,
+  encodeJson: (value) => String(value).toLowerCase(),
+  decodeJson(json) {
+    if (typeof json !== 'string') throw new Error(`expected string, got ${typeof json}`);
+    return json;
+  },
+};
+
+const brokenCodec: Codec = {
+  ...textCodec,
+  id: BROKEN_CODEC_ID,
+  decodeJson() {
+    throw new InternalError('a codec broke an invariant');
+  },
+};
+
 const VECTOR_CODEC_ID = 'test/vector@1';
 const vectorCodec: Codec = { ...textCodec, id: VECTOR_CODEC_ID };
 
@@ -109,14 +131,18 @@ const dataTypeOfCodec: Readonly<Record<string, DataType>> = {
   [JSON_CODEC_ID]: jsonType,
   [FOLDING_CODEC_ID]: textType,
   [VECTOR_CODEC_ID]: vectorType,
+  [ENCODE_FOLDING_CODEC_ID]: textType,
+  [BROKEN_CODEC_ID]: textType,
 };
 
-const testCodecLookup: CodecLookup = {
+const testCodecLookup: CodecLookupWithDescriptors = {
   get(id: string): Codec | undefined {
     if (id === TEXT_CODEC_ID) return textCodec;
     if (id === INT_CODEC_ID) return intCodec;
     if (id === JSON_CODEC_ID) return jsonCodec;
     if (id === FOLDING_CODEC_ID) return foldingCodec;
+    if (id === ENCODE_FOLDING_CODEC_ID) return encodeFoldingCodec;
+    if (id === BROKEN_CODEC_ID) return brokenCodec;
     if (id === VECTOR_CODEC_ID) return vectorCodec;
     if (id === ORPHAN_CODEC_ID) return orphanCodec;
     return undefined;
@@ -416,6 +442,26 @@ describe('sqlFamilyEnumEntityDescriptor: explicit @@type bypasses inference, nev
     ]);
   });
 
+  it('collides on the values the contract stores, naming both members', () => {
+    const diagnostics: unknown[] = [];
+    const handle = factory(
+      enumBlock({
+        name: 'Folded',
+        values: { first: 'Admin', second: 'admin' },
+        typeCodecId: ENCODE_FOLDING_CODEC_ID,
+      }),
+      makeContext(diagnostics),
+    );
+
+    expect(handle).toBeUndefined();
+    expect(diagnostics).toEqual([
+      expect.objectContaining({
+        code: 'PSL_ENUM_DUPLICATE_MEMBER_VALUE',
+        message: 'enum "Folded": members "first" and "second" both store "admin"',
+      }),
+    ]);
+  });
+
   it('an explicit-codec empty enum is reported as missing members', () => {
     const diagnostics: unknown[] = [];
     const handle = factory(
@@ -425,5 +471,21 @@ describe('sqlFamilyEnumEntityDescriptor: explicit @@type bypasses inference, nev
 
     expect(handle).toBeUndefined();
     expect(diagnostics).toEqual([expect.objectContaining({ code: 'PSL_ENUM_MISSING_TYPE' })]);
+  });
+});
+
+describe('sqlFamilyEnumEntityDescriptor: a codec internal error', () => {
+  it.each([
+    ['a member with a value', { low: 'low' }],
+    ['a bare member', { low: undefined }],
+  ])('passes through for %s, instead of becoming a diagnostic', (_label, values) => {
+    const diagnostics: unknown[] = [];
+    expect(() =>
+      factory(
+        enumBlock({ name: 'Level', values, typeCodecId: BROKEN_CODEC_ID }),
+        makeContext(diagnostics),
+      ),
+    ).toThrow(InternalError);
+    expect(diagnostics).toEqual([]);
   });
 });

@@ -13,12 +13,10 @@
  * the blocks in directly.
  */
 import sqlFamilyPack from '@internal/family-sql/pack';
-import type { PslPrinterOptions } from '@internal/family-sql/psl-infer';
 import {
   type AuthoringTypeNamespace,
   collectScalarTypeConstructors,
 } from '@internal/framework-components/authoring';
-import type { CodecLookup } from '@internal/framework-components/codec';
 import { createDataTypeLookup } from '@internal/framework-components/codec';
 import { assembleAuthoringContributions } from '@internal/framework-components/control';
 import type {
@@ -48,9 +46,13 @@ import { createPostgresBuiltinCodecLookup } from '../../../src/core/codec-regist
 import { parsePostgresDefault } from '../../../src/core/default-normalizer';
 import { isPostgresSchema, postgresCreateNamespace } from '../../../src/core/postgres-schema';
 import { createPostgresTypeMap } from '../../../src/core/psl-build/postgres-type-map';
-import { buildPslDocumentAst } from '../../../src/core/psl-infer/infer-psl-contract';
+import { inferredColumnDefaults } from '../../../src/core/psl-infer/infer-default-codec';
+import {
+  buildPslDocumentAst,
+  type PostgresPslInferOptions,
+} from '../../../src/core/psl-infer/infer-psl-contract';
 import { createPostgresDefaultMapping } from '../../../src/core/psl-infer/postgres-default-mapping';
-import { inferPslAstFromFlat } from '../fixtures';
+import { inferBuildContext, inferPslAstFromFlat } from '../fixtures';
 
 const postgresDataTypeLookup = createDataTypeLookup(postgresDataTypes);
 
@@ -80,7 +82,7 @@ const target = {
   authoring: { type: authoringTypes },
 };
 
-const codecLookup: CodecLookup = createPostgresBuiltinCodecLookup();
+const codecLookup = createPostgresBuiltinCodecLookup();
 
 function print(ast: PslDocumentAst): string {
   return printPsl(ast, { pslBlockDescriptors: assembled.pslBlockDescriptors });
@@ -279,7 +281,8 @@ describe('buildPslDocumentAst and the top-level bucket', () => {
     },
   });
 
-  const printerOptions: PslPrinterOptions = {
+  const printerOptions: PostgresPslInferOptions = {
+    columnDefaults: inferredColumnDefaults(inferBuildContext),
     typeMap: createPostgresTypeMap(new Set()),
     defaultMapping: createPostgresDefaultMapping(),
     parseRawDefault: parsePostgresDefault,

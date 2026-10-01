@@ -6,7 +6,6 @@ import { MigrationToolsError } from '@internal/migration-tools/errors';
 import { readRef, writeRef } from '@internal/migration-tools/refs';
 import { spaceMigrationDirectory, spaceRefsDirectory } from '@internal/migration-tools/spaces';
 import { ifDefined } from '@internal/utils/defined';
-import { isInternalError } from '@internal/utils/internal-error';
 import { notOk as notOkResult, ok as okResult, type Result } from '@internal/utils/result';
 import type { Block, Presentations, Span, Text, TreeNode } from '@prisma/cli-engine';
 import { flag, positional } from '@prisma/cli-engine';
@@ -458,7 +457,11 @@ export function createDbSignCommand(
                 schemaVerdictDiagnostic({
                   result: outcome.schema,
                   space: outcome.space,
-                  nextActions: schemaDriftNextActions({ verb: 'sign', contractRef }),
+                  nextActions: schemaDriftNextActions({
+                    verb: 'sign',
+                    contractRef,
+                    issues: outcome.schema.schema.issues,
+                  }),
                 }),
               ]
             : [],
@@ -478,9 +481,6 @@ export function createDbSignCommand(
           ),
         );
       } catch (error) {
-        if (isInternalError(error)) {
-          throw error;
-        }
         return notOk(verificationThrow({ error, invocation: 'db sign', connection: dbConnection }));
       } finally {
         await closeQuietly(client);

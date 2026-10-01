@@ -37,6 +37,7 @@ import { postgresTypeComponents, postgresTypeLookups } from '../postgres-type-lo
 
 const stubLowerer: ExecuteRequestLowerer = {
   lower: () => ({ sql: 'stub', params: [] }),
+  renderColumnDefault: async () => '',
   lowerToExecuteRequest: async () => ({ sql: 'stub', params: [] }),
 };
 

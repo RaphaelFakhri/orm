@@ -21,6 +21,12 @@ import {
   resetMocks,
   signedSpace,
 } from './db-sign-fixtures';
+import {
+  refusedConnection,
+  refusedWithDiagnostics,
+  reportedDiagnostics,
+  reportedRefusedConnection,
+} from './unreachable-database';
 
 beforeEach(resetMocks);
 afterEach(cleanupProjectDirs);
@@ -219,7 +225,7 @@ describe('db sign', () => {
         {
           kind: 'run-command',
           label: 'Change the database to match the contract, then sign again',
-          command: '{bin} db update',
+          command: 'prisma-test db update',
         },
         {
           kind: 'user-choice',
@@ -243,7 +249,7 @@ describe('db sign', () => {
         {
           kind: 'run-command',
           label: 'Change the database to match the contract, then sign again',
-          command: '{bin} db update --to "staging"',
+          command: 'prisma-test db update --to "staging"',
         },
         {
           kind: 'user-choice',
@@ -359,6 +365,30 @@ describe('db sign', () => {
         error: { code: 'MIGRATION.REF_NOT_FOUND' },
       });
       expect(mocks.dbSign).not.toHaveBeenCalled();
+    });
+
+    it('reports a refused connection as every command does, with its driver code', async () => {
+      const dir = await projectDir();
+      mocks.schemaVerify.mockRejectedValue(refusedConnection());
+
+      const run = await harness(ormConfig()).run(['db', 'sign', '--json'], { cwd: dir });
+
+      expect(run.exitCode).toBe(2);
+      expect(envelopeOf(run)?.error).toEqual(reportedRefusedConnection('db sign'));
+    });
+
+    it('keeps the diagnostics of a structured driver error, without the connection string', async () => {
+      const dir = await projectDir();
+      mocks.schemaVerify.mockRejectedValue(refusedWithDiagnostics());
+
+      const run = await harness(ormConfig()).run(['db', 'sign', '--json'], { cwd: dir });
+
+      expect(envelopeOf(run)).toMatchObject({
+        ok: false,
+        error: { code: 'DRIVER.CONNECTION_FAILED' },
+        diagnostics: reportedDiagnostics,
+      });
+      expect(JSON.stringify(run.json.at(-1))).not.toContain('secret');
     });
 
     it('errors at exit 2 when the driver throws, without leaking the connection string', async () => {

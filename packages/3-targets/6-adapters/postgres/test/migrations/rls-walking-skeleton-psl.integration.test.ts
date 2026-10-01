@@ -11,8 +11,8 @@ import { parse } from '@internal/psl-parser/syntax';
 import type { SqlStorage } from '@internal/sql-contract/types';
 import { interpretPslDocumentToSqlContract } from '@internal/sql-contract-psl';
 import { createPostgresBuiltinCodecLookup } from '@internal/target-postgres/codecs';
+import { postgresScalarAuthoringTypes } from '@internal/target-postgres/control';
 import { postgresDataTypes } from '@internal/target-postgres/data-types';
-import postgresTargetPack from '@internal/target-postgres/pack';
 import {
   PostgresRlsPolicy,
   PostgresSchema,
@@ -60,7 +60,7 @@ namespace public {
 // ============================================================================
 
 function buildScalarTypeDescriptors(): ReadonlyMap<string, { codecId: string }> {
-  return collectScalarTypeConstructors(postgresTargetPack.authoring.type);
+  return collectScalarTypeConstructors(postgresScalarAuthoringTypes);
 }
 
 function buildPslContract() {

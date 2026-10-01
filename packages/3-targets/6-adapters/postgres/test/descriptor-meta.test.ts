@@ -1,5 +1,5 @@
-import postgresTargetPack from '@internal/target-postgres/pack';
 import { describe, expect, it } from 'vitest';
+import { postgresAuthoringTypes } from '../src/core/control-mutation-defaults';
 import { postgresAdapterDescriptorMeta } from '../src/core/descriptor-meta';
 import postgresRuntimeAdapterDescriptor from '../src/exports/runtime';
 
@@ -53,7 +53,7 @@ describe('precision bounds live on the data type', () => {
     'TimestamptzString',
     'TimeString',
   ] as const)('%s declares no bound of its own on precision', (typeName) => {
-    const typeConstructor = postgresTargetPack.authoring.type[typeName];
+    const typeConstructor = postgresAuthoringTypes[typeName];
     expect(typeConstructor.args?.find((arg) => arg.name === 'precision')).toEqual({
       kind: 'number',
       name: 'precision',

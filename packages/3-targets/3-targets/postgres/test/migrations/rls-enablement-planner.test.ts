@@ -31,6 +31,7 @@ import { postgresTypeComponents } from '../postgres-type-lookups';
 const TABLE_NAME = 'profiles';
 const stubLowerer: ExecuteRequestLowerer = {
   lower: () => ({ sql: 'stub', params: [] }),
+  renderColumnDefault: async () => '',
   lowerToExecuteRequest: async () => ({ sql: 'stub', params: [] }),
 };
 

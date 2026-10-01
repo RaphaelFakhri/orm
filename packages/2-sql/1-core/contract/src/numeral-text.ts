@@ -1,10 +1,3 @@
-const NON_FINITE_WORDS: ReadonlySet<string> = new Set(['NaN', 'Infinity', '-Infinity']);
-
-/** Whether `text` is one of the three words a floating-point value is written as. */
-export function isNonFiniteText(text: string): boolean {
-  return NON_FINITE_WORDS.has(text);
-}
-
 /**
  * A number as a contract source writes it: no exponent, because no schema language has that syntax,
  * so the decimal point moves to where the exponent puts it. A non-finite number is its own word.

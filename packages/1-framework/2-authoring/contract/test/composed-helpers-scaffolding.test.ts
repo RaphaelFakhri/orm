@@ -22,7 +22,7 @@ function helperAt(surface: Record<string, unknown>, path: string): Helper {
 const ctx: AuthoringEntityContext = {
   family: 'sql',
   target: 'postgres',
-  codecLookup: emptyCodecLookup,
+  codecLookup: { ...emptyCodecLookup, descriptorFor: () => undefined },
   dataTypeLookup: createDataTypeLookup([]),
 };
 

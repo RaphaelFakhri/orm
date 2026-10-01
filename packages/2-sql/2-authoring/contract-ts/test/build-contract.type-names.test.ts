@@ -1,6 +1,6 @@
 import {
   type AnyCodecDescriptor,
-  type CodecLookup,
+  type CodecLookupWithDescriptors,
   createDataTypeLookup,
 } from '@internal/framework-components/codec';
 import type { TargetPackRef } from '@internal/framework-components/components';
@@ -38,7 +38,7 @@ const codecDataTypes: Readonly<Record<string, AnyCodecDescriptor['dataType']>> =
   't/enum@1': enumType.id,
 };
 
-const codecLookup: CodecLookup = {
+const codecLookup: CodecLookupWithDescriptors = {
   get: () => undefined,
   descriptorFor: (codecId) => {
     const dataType = codecDataTypes[codecId];

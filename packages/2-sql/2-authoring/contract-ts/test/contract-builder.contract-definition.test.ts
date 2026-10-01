@@ -1,4 +1,7 @@
-import type { AnyCodecDescriptor, CodecLookup } from '@internal/framework-components/codec';
+import type {
+  AnyCodecDescriptor,
+  CodecLookupWithDescriptors,
+} from '@internal/framework-components/codec';
 import type { TargetPackRef } from '@internal/framework-components/components';
 import { describe, expect, it } from 'vitest';
 import { createTestSqlNamespace } from '../../../1-core/contract/test/test-support';
@@ -7,6 +10,7 @@ import { buildSqlContractFromDefinition } from '../src/contract-builder';
 import { modelsOf } from './contract-test-helpers';
 import { crossRef, documentScopedTypes } from './cross-ref-helpers';
 import { unboundTables } from './unbound-tables';
+import { withDescriptors } from './with-descriptors';
 
 const postgresTargetPack: TargetPackRef<'sql', 'postgres'> = {
   kind: 'target',
@@ -186,7 +190,7 @@ describe('shared contract definition lowering', () => {
   });
 
   it('encodes literal defaults through codecLookup during storage lowering', () => {
-    const codecLookup: CodecLookup = {
+    const codecLookup: CodecLookupWithDescriptors = withDescriptors({
       get: (id) => {
         if (id !== 'pg/timestamptz-temporal@1') {
           return undefined;
@@ -202,7 +206,7 @@ describe('shared contract definition lowering', () => {
         };
       },
       renderOutputTypeFor: () => undefined,
-    };
+    });
 
     const contract = buildSqlContractFromDefinition(
       {
@@ -263,7 +267,7 @@ describe('shared contract definition lowering', () => {
       }),
     } as unknown as AnyCodecDescriptor;
 
-    const codecLookup: CodecLookup = {
+    const codecLookup: CodecLookupWithDescriptors = {
       // The representative instance carries no params, as the control stack's does, so a build that
       // used it in place of the column's own codec refuses every value.
       get: (id) =>
@@ -526,7 +530,9 @@ describe('shared contract definition lowering', () => {
         testTypeLookups.codecLookup,
         testTypeLookups.dataTypeLookup,
       ),
-    ).toThrow('Field "User.id" cannot be nullable when executionDefaults are present.');
+    ).toThrow(
+      'Field "User.id" is filled on write by a generated default (a preset such as temporal.createdAt() or an id generator), so it cannot be optional; remove .optional().',
+    );
   });
 
   it('rejects nullable identity fields', () => {

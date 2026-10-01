@@ -6,9 +6,9 @@ import {
   type ColumnHelperFor,
   type ColumnHelperForStrict,
   column,
+  decodeJsonString,
 } from '@internal/framework-components/codec';
 import { CastExpr, type ProjectionExpr } from '@internal/sql-relational-core/ast';
-import { blindCast } from '@internal/utils/casts';
 import type { StandardSchemaV1 } from '@standard-schema/spec';
 import { PostgresCodecDescriptor } from './codec-descriptor';
 import type { PrecisionParams } from './codec-helpers';
@@ -18,7 +18,17 @@ import {
   PG_TIMESTAMP_TEMPORAL_CODEC_ID,
   PG_TIMESTAMPTZ_TEMPORAL_CODEC_ID,
 } from './codec-ids';
-import { pgDate, pgPrecisionParams, pgTime, pgTimestamp, pgTimestamptz } from './data-types';
+import {
+  pgDate,
+  pgDateCanonical,
+  pgPrecisionParams,
+  pgTime,
+  pgTimeCanonical,
+  pgTimestamp,
+  pgTimestampCanonical,
+  pgTimestamptz,
+  pgTimestamptzCanonical,
+} from './data-types';
 import {
   pgDateTemporalDecode,
   pgDateTemporalEncode,
@@ -43,12 +53,10 @@ export class PgDateTemporalCodec extends CodecImpl<
     return pgDateTemporalDecode(wire);
   }
   encodeJson(value: Temporal.PlainDate): JsonValue {
-    return pgDateTemporalEncode(value);
+    return pgDateCanonical(pgDateTemporalEncode(value));
   }
   decodeJson(json: JsonValue): Temporal.PlainDate {
-    return pgDateTemporalDecode(
-      blindCast<string, 'date-temporal columns serialize to JSON as their wire string form'>(json),
-    );
+    return pgDateTemporalDecode(decodeJsonString(PG_DATE_TEMPORAL_CODEC_ID, json));
   }
 }
 
@@ -86,14 +94,10 @@ export class PgTimestampTemporalCodec extends CodecImpl<
     return pgTimestampTemporalDecode(wire);
   }
   encodeJson(value: Temporal.PlainDateTime): JsonValue {
-    return pgTimestampTemporalEncode(value);
+    return pgTimestampCanonical(pgTimestampTemporalEncode(value));
   }
   decodeJson(json: JsonValue): Temporal.PlainDateTime {
-    return pgTimestampTemporalDecode(
-      blindCast<string, 'timestamp-temporal columns serialize to JSON as their wire string form'>(
-        json,
-      ),
-    );
+    return pgTimestampTemporalDecode(decodeJsonString(PG_TIMESTAMP_TEMPORAL_CODEC_ID, json));
   }
 }
 
@@ -137,14 +141,10 @@ export class PgTimestamptzTemporalCodec extends CodecImpl<
     return pgTimestamptzTemporalDecode(wire);
   }
   encodeJson(value: Temporal.Instant): JsonValue {
-    return pgTimestamptzTemporalEncode(value);
+    return pgTimestamptzCanonical(pgTimestamptzTemporalEncode(value));
   }
   decodeJson(json: JsonValue): Temporal.Instant {
-    return pgTimestamptzTemporalDecode(
-      blindCast<string, 'timestamptz-temporal columns serialize to JSON as their wire string form'>(
-        json,
-      ),
-    );
+    return pgTimestamptzTemporalDecode(decodeJsonString(PG_TIMESTAMPTZ_TEMPORAL_CODEC_ID, json));
   }
 }
 
@@ -188,12 +188,10 @@ export class PgTimeTemporalCodec extends CodecImpl<
     return pgTimeTemporalDecode(wire);
   }
   encodeJson(value: Temporal.PlainTime): JsonValue {
-    return pgTimeTemporalEncode(value);
+    return pgTimeCanonical(pgTimeTemporalEncode(value));
   }
   decodeJson(json: JsonValue): Temporal.PlainTime {
-    return pgTimeTemporalDecode(
-      blindCast<string, 'time-temporal columns serialize to JSON as their wire string form'>(json),
-    );
+    return pgTimeTemporalDecode(decodeJsonString(PG_TIME_TEMPORAL_CODEC_ID, json));
   }
 }
 

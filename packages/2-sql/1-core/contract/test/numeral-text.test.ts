@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isNonFiniteText, numeralText } from '../src/numeral-text';
+import { numeralText } from '../src/numeral-text';
 
 describe('numeralText', () => {
   it.each([
@@ -11,15 +11,5 @@ describe('numeralText', () => {
     ['writes a word for a non-finite number', Number.NaN, 'NaN'],
   ])('%s', (_name, value, text) => {
     expect(numeralText(value)).toBe(text);
-  });
-});
-
-describe('isNonFiniteText', () => {
-  it.each(['NaN', 'Infinity', '-Infinity'])('reads %s as a non-finite word', (text) => {
-    expect(isNonFiniteText(text)).toBe(true);
-  });
-
-  it.each(['0', '-42', '1.50', '1e3', '', 'nan'])('reads %o as no non-finite word', (text) => {
-    expect(isNonFiniteText(text)).toBe(false);
   });
 });

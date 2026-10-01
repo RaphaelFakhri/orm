@@ -9,6 +9,7 @@ import {
   type SqlTypeText,
   sqlBaseName,
 } from '@internal/sql-contract/data-type';
+import { SQL_EXPRESSION_DATA_TYPE_ID } from '@internal/sql-contract/sql-expression';
 import { describe, expect, it } from 'vitest';
 import { codecDescriptors } from '../src/core/codecs';
 import { sqliteTargetDescriptorMeta } from '../src/core/descriptor-meta';
@@ -120,4 +121,18 @@ describe('the parameter schema of every codec this target ships', () => {
       expect(descriptor.isParameterized).toBe(type?.params !== undefined);
     },
   );
+});
+
+describe("the SQL family's sql/expression data type", () => {
+  it('is not among the data types this target declares texts for', () => {
+    expect(registered.map((type) => type.id)).not.toContain(SQL_EXPRESSION_DATA_TYPE_ID);
+  });
+
+  it('is represented by no codec this target ships', () => {
+    expect(
+      codecDescriptors
+        .filter((descriptor) => descriptor.dataType === SQL_EXPRESSION_DATA_TYPE_ID)
+        .map((descriptor) => descriptor.codecId),
+    ).toEqual([]);
+  });
 });

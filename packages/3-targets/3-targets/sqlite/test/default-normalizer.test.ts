@@ -46,3 +46,26 @@ describe('parseSqliteDefault on an integer column', () => {
     expect(parseSqliteDefault('1.5', 'integer')).toEqual({ kind: 'literal', value: 1.5 });
   });
 });
+
+describe('parseSqliteDefault', () => {
+  it.each([
+    ['9e999', 'Infinity'],
+    ['-9e999', '-Infinity'],
+    ['(9e999)', 'Infinity'],
+    ['1.5e400', 'Infinity'],
+    ['-1e309', '-Infinity'],
+  ])(
+    'reads the number %j, which only an infinity holds, as the text the float codecs store',
+    (raw, value) => {
+      expect(parseSqliteDefault(raw, 'real')).toEqual({ kind: 'literal', value });
+    },
+  );
+
+  it.each([
+    ['1e5', 100000],
+    ['1.5', 1.5],
+    ['-2', -2],
+  ])('reads the number %j as the number it is', (raw, value) => {
+    expect(parseSqliteDefault(raw, 'real')).toEqual({ kind: 'literal', value });
+  });
+});

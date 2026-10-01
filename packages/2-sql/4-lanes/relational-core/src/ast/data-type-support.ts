@@ -1,17 +1,21 @@
 /**
  * Shared implementations every SQL target uses to declare its data types and their PSL support.
  *
- * The family registers no data types of its own: a data type is a database type, and every database
- * type belongs to a target or an extension. What the family owns is the arithmetic every SQL target
- * repeats — how a written number is canonicalised, which integer type holds it, and how a JSON body
- * is read and written.
+ * Most data types are database types, which belong to a target or an extension. The family defines
+ * and registers one, `sql/expression`, in `@internal/sql-contract/sql-expression`. This file holds the arithmetic
+ * every SQL target repeats: how a written number is canonicalised, which integer type holds it, and
+ * how a JSON text is read and written.
  *
  * ADR 254.
  */
 
 import type { JsonValue } from '@internal/contract/types';
-import type { DataTypeId } from '@internal/framework-components/codec';
-import { isNonFiniteText } from '@internal/sql-contract/data-type';
+import {
+  type DataTypeId,
+  isNonFiniteText,
+  type ToCanonicalForm,
+} from '@internal/framework-components/codec';
+import { numeralText } from '@internal/sql-contract/data-type';
 import { structuredError } from '@internal/utils/structured-error';
 
 const INTEGER_TEXT = /^-?\d+$/;
@@ -34,6 +38,22 @@ export function canonicalNumeralText(text: string): string {
   const digits = `${whole}${fraction}`;
   return /^[0.]+$/.test(digits) ? digits : `${sign}${digits}`;
 }
+
+/**
+ * The canonical form of a 64-bit integer type: digit text. A database reads an integer default back as a number when it is a safe integer, so a safe integer reads as its digit text too; any other number may already have lost digits and is refused.
+ */
+export const integerTextCanonicalForm: ToCanonicalForm = (value) => {
+  if (typeof value === 'number' && Number.isSafeInteger(value)) return numeralText(value);
+  if (typeof value === 'string' && INTEGER_TEXT.test(value)) return BigInt(value).toString();
+  throw structuredError(
+    'CONTRACT.CAST_REFUSED',
+    `Expected digit text or a safe integer, got ${JSON.stringify(value)}.`,
+    {
+      why: 'A 64-bit integer type stores its value as digit text, and a number past the safe integer range may already have lost digits.',
+      fix: 'Write the value as digit text.',
+    },
+  );
+};
 
 /** A string as a contract source writes it, with the escapes its string reader resolves. */
 export function escapePslString(value: string): string {

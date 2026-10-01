@@ -173,8 +173,9 @@ changes:
   - id: authoring-entity-context-takes-data-type-lookup
     summary: |
       `AuthoringEntityContext` gains a required `dataTypeLookup`, the stack's data types, and its
-      `codecLookup` becomes required. Code that builds a context passes both. The `codecLookup` input
-      of `interpretPslDocumentToMongoContract` becomes required too.
+      `codecLookup` becomes a required `CodecLookupWithDescriptors`. Code that builds a context
+      passes both. The `codecLookup` input of `interpretPslDocumentToMongoContract` becomes a required
+      `CodecLookupWithDescriptors` too.
     detection:
       glob: "**/*.{ts,mts,cts}"
       matches:
@@ -199,12 +200,12 @@ changes:
         - 'import\s*\{[^}]*\bassembleDataTypes\b[^}]*\}\s*from\s*[''"]@internal/framework-components/control[''"]'
   - id: number-text-helpers-moved
     summary: |
-      `numeralText` and `isNonFiniteText` move from `@internal/sql-relational-core/ast` to
-      `@internal/sql-contract/data-type`, beside the SQL data type declarations that use them.
+      `numeralText` moves from `@internal/sql-relational-core/ast` to
+      `@internal/sql-contract/data-type`, beside the SQL data type declarations that use it.
     detection:
       glob: "**/*.{ts,mts,cts}"
       matches:
-        - '\b(numeralText|isNonFiniteText)\b'
+        - '\bnumeralText\b'
 ---
 
 After the edits below, delete imports and constants that are no longer used, and run the package's formatter so imports are sorted.
@@ -624,7 +625,7 @@ A package that exposes its own `defineContract` over `buildBoundContract`, as th
    ```ts
    import {
      assembleDataTypes,
-     type CodecLookup,
+     type CodecLookupWithDescriptors,
      type DataTypeLookup,
    } from '@internal/framework-components/codec';
    ```
@@ -633,7 +634,7 @@ A package that exposes its own `defineContract` over `buildBoundContract`, as th
 
    ```ts
    readonly createNamespace: (input: SqlNamespaceInput) => SqlNamespaceBase;
-   readonly codecLookup: CodecLookup;
+   readonly codecLookup: CodecLookupWithDescriptors;
    readonly dataTypeLookup: DataTypeLookup;
    ```
 
@@ -642,7 +643,7 @@ A package that exposes its own `defineContract` over `buildBoundContract`, as th
    ```ts
    > & {
      /** Overrides the codecs of the target and the extensions. */
-     readonly codecLookup?: CodecLookup;
+     readonly codecLookup?: CodecLookupWithDescriptors;
      /** Overrides the data types of the target and the extensions. */
      readonly dataTypeLookup?: DataTypeLookup;
    ```
@@ -742,7 +743,7 @@ const ctx: AuthoringEntityContext = {
 };
 ```
 
-Pass the lookups of the stack the context serves; `createDataTypeLookup` from `@internal/framework-components/codec` builds a data type lookup from a list of data types, and `emptyCodecLookup` from the same module stands in where no codecs apply. A call of `interpretPslDocumentToMongoContract` passes `codecLookup` as well: the stack's codec lookup, or `emptyCodecLookup`.
+Pass the lookups of the stack the context serves; `createDataTypeLookup` from `@internal/framework-components/codec` builds a data type lookup from a list of data types, and `{ ...emptyCodecLookup, descriptorFor: () => undefined }`, with `emptyCodecLookup` from the same module, stands in where no codecs apply. A stub codec lookup that answers `descriptorFor` is typed `CodecLookupWithDescriptors`. A call of `interpretPslDocumentToMongoContract` passes `codecLookup` as well: the stack's codec lookup, or that stand-in.
 
 ## `validate-scalar-type-codec-ids-removed`
 
@@ -762,12 +763,12 @@ import { assembleDataTypes } from '@internal/framework-components/codec';
 
 ## `number-text-helpers-moved`
 
-Import `numeralText` and `isNonFiniteText` from `@internal/sql-contract/data-type`, adding them to an existing import from that module. Remove them from the `@internal/sql-relational-core/ast` import, and delete that import if nothing is left in it:
+Import `numeralText` from `@internal/sql-contract/data-type`, adding it to an existing import from that module. Remove it from the `@internal/sql-relational-core/ast` import, and delete that import if nothing is left in it:
 
 ```ts
 // before
-import { isNonFiniteText } from '@internal/sql-relational-core/ast';
+import { numeralText } from '@internal/sql-relational-core/ast';
 
 // after
-import { isNonFiniteText } from '@internal/sql-contract/data-type';
+import { numeralText } from '@internal/sql-contract/data-type';
 ```

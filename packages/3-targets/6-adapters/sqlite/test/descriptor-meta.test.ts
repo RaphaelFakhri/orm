@@ -3,7 +3,9 @@ import sqlFamilyDescriptor from '@internal/family-sql/control';
 import { createControlStack } from '@internal/framework-components/control';
 import { SQL_CHAR_CODEC_ID, SQL_VARCHAR_CODEC_ID } from '@internal/sql-relational-core/ast';
 import { sqliteCodecRegistry } from '@internal/target-sqlite/codecs';
-import sqliteTargetDescriptor from '@internal/target-sqlite/control';
+import sqliteTargetDescriptor, {
+  sqliteScalarAuthoringTypes,
+} from '@internal/target-sqlite/control';
 import { describe, expect, it } from 'vitest';
 import { sqliteAdapterDescriptorMeta } from '../src/core/descriptor-meta';
 import sqliteAdapterDescriptor from '../src/exports/control';
@@ -27,13 +29,8 @@ describe('the SQLite adapter descriptor metadata', () => {
     expect(sqliteAdapterDescriptorMeta).not.toHaveProperty('dataTypes');
   });
 
-  it('contributes no type constructors, because the target contributes them', () => {
-    expect(sqliteAdapterDescriptor.authoring?.type).toBeUndefined();
-  });
-
-  it('leaves the value-object storage type to the target, which declares Json', () => {
-    expect(sqliteAdapterDescriptor.authoring?.valueObjectStorageType).toBeUndefined();
-    expect(sqliteTargetDescriptor.authoring?.valueObjectStorageType).toBe('Json');
+  it('contributes the base scalar type constructors the target defines', () => {
+    expect(sqliteAdapterDescriptor.authoring?.type).toBe(sqliteScalarAuthoringTypes);
   });
 
   it('contributes no data type entries, because the target contributes them', () => {

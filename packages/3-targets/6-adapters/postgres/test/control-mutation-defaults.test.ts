@@ -1,8 +1,12 @@
-import postgresTargetPack from '@internal/target-postgres/pack';
+import {
+  postgresNativeAuthoringTypes,
+  postgresScalarAuthoringTypes,
+} from '@internal/target-postgres/control';
 import { describe, expect, it } from 'vitest';
 import {
   createPostgresDefaultFunctionRegistry,
   createPostgresMutationDefaultGeneratorDescriptors,
+  postgresAuthoringTypes,
 } from '../src/core/control-mutation-defaults';
 import postgresAdapterDescriptor from '../src/exports/control';
 import runtimeAdapterDescriptor from '../src/exports/runtime';
@@ -197,16 +201,19 @@ describe('postgres runtime mutation default generators', () => {
 });
 
 describe('the adapter authoring contribution', () => {
-  it('contributes no type constructors, which the target contributes', () => {
-    expect(postgresAdapterDescriptor.authoring?.type).toBeUndefined();
+  it('contributes the scalar and native type constructors', () => {
+    expect(postgresAdapterDescriptor.authoring?.type).toBe(postgresAuthoringTypes);
+    expect(Object.keys(postgresAuthoringTypes)).toEqual([
+      ...Object.keys(postgresScalarAuthoringTypes),
+      ...Object.keys(postgresNativeAuthoringTypes),
+    ]);
   });
 
   it('contributes no data type entries, which the target contributes', () => {
-    expect(postgresAdapterDescriptor.authoring?.dataTypes).toBeUndefined();
+    expect(postgresAdapterDescriptor.authoring).not.toHaveProperty('dataTypes');
   });
 
-  it('leaves the value-object storage type to the target, which declares Jsonb', () => {
-    expect(postgresAdapterDescriptor.authoring?.valueObjectStorageType).toBeUndefined();
-    expect(postgresTargetPack.authoring.valueObjectStorageType).toBe('Jsonb');
+  it('declares Jsonb as the value-object storage type', () => {
+    expect(postgresAdapterDescriptor.authoring?.valueObjectStorageType).toBe('Jsonb');
   });
 });

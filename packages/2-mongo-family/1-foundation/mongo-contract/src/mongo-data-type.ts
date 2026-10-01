@@ -6,7 +6,7 @@
  */
 
 import type {
-  CodecLookup,
+  CodecLookupWithDescriptors,
   DataType,
   DataTypeLookup,
   DataTypeSpec,
@@ -40,7 +40,7 @@ export function isMongoDataType(type: DataType): type is MongoDataType {
  */
 /** The lookups that find the Mongo data type a codec represents. */
 export interface MongoTypeLookups {
-  readonly codecLookup: Pick<CodecLookup, 'descriptorFor'>;
+  readonly codecLookup: Pick<CodecLookupWithDescriptors, 'descriptorFor'>;
   readonly dataTypeLookup: Pick<DataTypeLookup, 'get'>;
 }
 
@@ -48,7 +48,7 @@ export function bsonTypesOfCodec(
   codecId: string,
   lookups: MongoTypeLookups,
 ): readonly string[] | undefined {
-  const descriptor = lookups.codecLookup.descriptorFor?.(codecId);
+  const descriptor = lookups.codecLookup.descriptorFor(codecId);
   const type =
     descriptor === undefined ? undefined : lookups.dataTypeLookup.get(descriptor.dataType);
   return type !== undefined && isMongoDataType(type) ? type.mongo.bsonTypes : undefined;

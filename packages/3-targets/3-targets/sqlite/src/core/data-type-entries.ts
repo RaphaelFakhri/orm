@@ -7,7 +7,7 @@
  */
 
 import type { JsonValue } from '@internal/contract/types';
-import { type AuthoringDataTypeEntry, tagEntryKey } from '@internal/framework-components/authoring';
+import { type DataTypeAuthoringEntry, tagEntryKey } from '@internal/framework-components/authoring';
 import { canonicalizeJson } from '@internal/framework-components/utils';
 import { numeralText } from '@internal/sql-contract/data-type';
 import {
@@ -26,7 +26,7 @@ function printNumber(value: JsonValue): string {
   return typeof value === 'number' ? numeralText(value) : String(value);
 }
 
-export function sqliteDataTypeEntries(): Readonly<Record<string, AuthoringDataTypeEntry>> {
+export function sqliteDataTypeEntries(): Readonly<Record<string, DataTypeAuthoringEntry>> {
   return {
     [sqliteText.id]: {
       written: { kind: 'plain', syntax: 'string', parse: (text) => text },

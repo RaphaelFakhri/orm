@@ -7,6 +7,7 @@ import {
   sqliteIntegerDescriptor,
   sqliteJsonDescriptor,
   sqliteRealDescriptor,
+  sqliteSqlFloatDescriptor,
   sqliteSqlIntDescriptor,
 } from '../src/core/codecs';
 
@@ -24,7 +25,7 @@ describe('sqlite/bigint@1 decodeJson', () => {
     ['a fractional JSON number', 1.5],
   ])('refuses %s', (_name, json) => {
     expect(() => codec.decodeJson(json)).toThrow(
-      'sqlite/bigint@1 database JSON value must be a decimal string',
+      'sqlite/bigint@1 JSON value must be a decimal integer string from -9223372036854775808 to 9223372036854775807',
     );
   });
 });
@@ -43,7 +44,7 @@ describe('sqlite/bigintnumber@1 digit text', () => {
 
   it('refuses a JSON number', () => {
     expect(() => codec.decodeJson(42)).toThrow(
-      'sqlite/bigintnumber@1 database JSON value must be decimal text',
+      'sqlite/bigintnumber@1 JSON value must be a decimal integer string from -9007199254740991 to 9007199254740991',
     );
   });
 
@@ -51,14 +52,14 @@ describe('sqlite/bigintnumber@1 digit text', () => {
     'refuses the digit text %s, naming the limit',
     (json) => {
       expect(() => codec.decodeJson(json)).toThrow(
-        'sqlite/bigintnumber@1 value must be an integer within the safe integer range',
+        'sqlite/bigintnumber@1 JSON value must be a decimal integer string from -9007199254740991 to 9007199254740991',
       );
     },
   );
 
   it('refuses decimal text', () => {
     expect(() => codec.decodeJson('1.5')).toThrow(
-      'sqlite/bigintnumber@1 database JSON value must be decimal text',
+      'sqlite/bigintnumber@1 JSON value must be a decimal integer string from -9007199254740991 to 9007199254740991',
     );
   });
 });
@@ -86,7 +87,7 @@ describe.each([
     ['a boolean', true],
   ])('refuses %s', (_name, json) => {
     expect(() => codec.decodeJson(json)).toThrow(
-      `${codecId} database JSON value must be decimal text`,
+      `${codecId} JSON value must be a decimal integer string from -9007199254740991 to 9007199254740991`,
     );
   });
 
@@ -94,7 +95,7 @@ describe.each([
     'refuses the digit text %s, which no number holds exactly',
     (json) => {
       expect(() => codec.decodeJson(json)).toThrow(
-        `${codecId} value must be an integer within the safe integer range`,
+        `${codecId} JSON value must be a decimal integer string from -9007199254740991 to 9007199254740991`,
       );
     },
   );
@@ -166,12 +167,67 @@ describe('sqlite/real@1 decodeJson', () => {
   it.each([
     ['digit text', '42'],
     ['decimal text', '1.5'],
-    ['the text NaN', 'NaN'],
-    ['the text Infinity', 'Infinity'],
-    ['the text -Infinity', '-Infinity'],
   ])('refuses %s', (_name, json) => {
     expect(() => codec.decodeJson(json)).toThrow(
-      'sqlite/real@1 database JSON value must be a number',
+      'sqlite/real@1 JSON value must be a finite number or the text NaN, Infinity or -Infinity',
     );
+  });
+
+  it('refuses the text NaN, which SQLite cannot store', () => {
+    expect(() => codec.decodeJson('NaN')).toThrow(
+      'sqlite/real@1 JSON value must be a finite number or the text Infinity or -Infinity; SQLite cannot store NaN',
+    );
+  });
+});
+
+describe('sqlite/real@1 encode', () => {
+  const codec = sqliteRealDescriptor.factory()(ctx);
+
+  it('writes an infinity, which SQLite stores', async () => {
+    expect(
+      await Promise.all(
+        [Number.POSITIVE_INFINITY, Number.NEGATIVE_INFINITY].map((value) =>
+          codec.encode(value, {}),
+        ),
+      ),
+    ).toEqual([Number.POSITIVE_INFINITY, Number.NEGATIVE_INFINITY]);
+  });
+});
+
+describe.each([
+  ['sqlite/real@1', sqliteRealDescriptor],
+  ['sql/float@1', sqliteSqlFloatDescriptor],
+] as const)('%s on SQLite, which cannot store NaN', (codecId, descriptor) => {
+  const codec = descriptor.factory()(ctx);
+  const refusal = expect.objectContaining({
+    code: 'RUNTIME.ENCODE_FAILED',
+    message: `${codecId} value must be a number other than NaN, which SQLite cannot store`,
+    meta: { codecId, received: 'NaN' },
+  });
+
+  it('refuses NaN when it encodes a value to write or filter by', async () => {
+    await expect(codec.encode(Number.NaN, {})).rejects.toThrow(refusal);
+  });
+
+  it('refuses NaN when it encodes a value to store in the contract', () => {
+    expect(() => codec.encodeJson(Number.NaN)).toThrow(refusal);
+  });
+
+  it('refuses the text NaN in JSON', () => {
+    expect(() => codec.decodeJson('NaN')).toThrow(
+      expect.objectContaining({
+        code: 'RUNTIME.DECODE_FAILED',
+        message: `${codecId} JSON value must be a finite number or the text Infinity or -Infinity; SQLite cannot store NaN`,
+        meta: { codecId, received: '"NaN"' },
+      }),
+    );
+  });
+
+  it('writes and reads the infinities, which SQLite stores', async () => {
+    const infinities = [Number.POSITIVE_INFINITY, Number.NEGATIVE_INFINITY];
+    expect({
+      encoded: await Promise.all(infinities.map((value) => codec.encode(value, {}))),
+      json: infinities.map((value) => codec.decodeJson(codec.encodeJson(value))),
+    }).toEqual({ encoded: infinities, json: infinities });
   });
 });

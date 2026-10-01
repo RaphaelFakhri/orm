@@ -1,6 +1,6 @@
 import type { Contract, JsonValue } from '@internal/contract/types';
 import { blindCast } from '@internal/utils/casts';
-import { InternalError } from '@internal/utils/internal-error';
+import { InternalError, isInternalError } from '@internal/utils/internal-error';
 import type { AggregateDescriptor } from '../shared/aggregate-descriptor';
 import { aggregateDescriptorKey, isAggregateDescriptor } from '../shared/aggregate-descriptor';
 import type { CapabilityMatrix } from '../shared/capabilities';
@@ -13,7 +13,6 @@ import { assembleDataTypes, objectSchemaKeys } from '../shared/data-type';
 import type {
   AuthoringAttributeSpecContributions,
   AuthoringContributions,
-  AuthoringDataTypeEntry,
   AuthoringEntityTypeNamespace,
   AuthoringFieldNamespace,
   AuthoringFieldPresetDescriptor,
@@ -21,6 +20,7 @@ import type {
   AuthoringPslBlockDescriptorNamespace,
   AuthoringTypeConstructorDescriptor,
   AuthoringTypeNamespace,
+  DataTypeAuthoringEntry,
 } from '../shared/framework-authoring';
 import {
   assertNoCrossRegistryCollisions,
@@ -31,8 +31,6 @@ import {
   isAuthoringArgRef,
   isAuthoringFieldPresetDescriptor,
   isAuthoringTypeConstructorDescriptor,
-  isDataTypeLoweringEntry,
-  isLoweringEntryKey,
   isTagEntryKey,
   mergeAuthoringAttributeSpecs,
   mergeAuthoringNamespaces,
@@ -46,8 +44,8 @@ import type {
 } from '../shared/mutation-default-types';
 import {
   CONTRACT_CODEC_DESCRIPTOR_MISSING,
-  materializeCodec,
-  resolveCodecDescriptorOrThrow,
+  codecDescriptorMissing,
+  codecForRef,
 } from '../shared/resolve-codec';
 import { runtimeError } from '../shared/runtime-error';
 import type { TypesImportSpec } from '../shared/types-import-spec';
@@ -67,7 +65,7 @@ export interface AssembledAuthoringContributions {
   readonly modelAttributes: AuthoringModelAttributeDescriptorNamespace;
   readonly attributeSpecs: AuthoringAttributeSpecContributions;
   /** PSL support for every registered data type, merged across the composed components. ADR 254. */
-  readonly dataTypes: Readonly<Record<string, AuthoringDataTypeEntry>>;
+  readonly dataTypes: Readonly<Record<string, DataTypeAuthoringEntry>>;
   /** The single {@link AuthoringContributions.valueObjectStorageType} declared across the composed components, validated at assembly against the merged `type` namespace. */
   readonly valueObjectStorageType?: string;
 }
@@ -95,6 +93,11 @@ export interface ControlStack<
   readonly authoringContributions: AssembledAuthoringContributions;
   /** Every data type the composed components register, by id. ADR 254. */
   readonly dataTypeLookup: DataTypeLookup;
+  /** Every data type the composed components register, with the id of the component that registered it. ADR 254. */
+  readonly declaredDataTypes: ReadonlyArray<{
+    readonly type: DataType;
+    readonly contributedBy: string;
+  }>;
   /** Names of the top-level zero-arg type constructors in the assembled authoring namespace — the base scalars of the composed stack. */
   readonly scalarTypes: ReadonlyArray<string>;
   readonly controlMutationDefaults: ControlMutationDefaults;
@@ -344,8 +347,8 @@ export function assembleAuthoringContributions(
 /** Merge every component's PSL support for its data types, refusing two claims on one key. */
 export function assembleAuthoringDataTypes(
   descriptors: ReadonlyArray<{ readonly id?: string; readonly authoring?: AuthoringContributions }>,
-): Readonly<Record<string, AuthoringDataTypeEntry>> {
-  const merged: Record<string, AuthoringDataTypeEntry> = {};
+): Readonly<Record<string, DataTypeAuthoringEntry>> {
+  const merged: Record<string, DataTypeAuthoringEntry> = {};
   const owners = new Map<string, string>();
 
   for (const descriptor of descriptors) {
@@ -380,7 +383,7 @@ export interface DataTypeInvariantInput {
   }>;
   readonly authoringEntries: ReadonlyArray<{
     readonly key: string;
-    readonly entry: AuthoringDataTypeEntry;
+    readonly entry: DataTypeAuthoringEntry;
     readonly contributedBy: string;
   }>;
   readonly constructors: ReadonlyArray<ContributedConstructor>;
@@ -498,7 +501,6 @@ export function enforceDataTypeInvariants(input: DataTypeInvariantInput): void {
   }
 
   for (const { key, entry, contributedBy } of input.authoringEntries) {
-    if (isLoweringEntryKey(key)) continue;
     const written = entry.written;
     const tagType = written.kind === 'tag' && 'type' in written ? written.type : undefined;
     if (isTagEntryKey(key) || tagType !== undefined) {
@@ -529,16 +531,12 @@ export function enforceDataTypeInvariants(input: DataTypeInvariantInput): void {
   // A type a classifier can return is written as a plain number, so it is writable even though the
   // entry that reads it is keyed under another type.
   const writable = new Set(
-    input.authoringEntries.flatMap(({ key, entry }) =>
-      isLoweringEntryKey(key) || isDataTypeLoweringEntry(entry)
-        ? []
-        : [
-            authoringEntryType(key, entry),
-            ...(entry.written.kind === 'plain' && entry.written.syntax === 'number'
-              ? entry.written.types
-              : []),
-          ],
-    ),
+    input.authoringEntries.flatMap(({ key, entry }) => [
+      authoringEntryType(key, entry),
+      ...(entry.written.kind === 'plain' && entry.written.syntax === 'number'
+        ? entry.written.types
+        : []),
+    ]),
   );
 
   for (const { type, contributedBy } of input.declaredTypes) {
@@ -732,8 +730,9 @@ export function extractCodecLookup(
               name: `<lookup:${codecDescriptor.codecId}>`,
             } as Parameters<ReturnType<typeof codecDescriptor.factory>>[0]);
             byId.set(codecDescriptor.codecId, representative);
-          } catch {
+          } catch (error) {
             // Factory requires concrete params; skip representative materialization. Per-column instances are built at runtime; id-keyed lookup miss is the correct outcome here.
+            if (isInternalError(error)) throw error;
           }
         } else {
           const representative = codecDescriptor.factory(undefined as never)({
@@ -744,15 +743,12 @@ export function extractCodecLookup(
       }
     }
   }
-  return {
+  const registry: CodecRegistry = {
     get: (id) => byId.get(id),
     forCodecRef(ref: CodecRef) {
-      const d = resolveCodecDescriptorOrThrow(
-        (id) => descriptorsById.get(id),
-        ref,
-        CONTRACT_CODEC_DESCRIPTOR_MISSING,
+      return (
+        codecForRef(registry, ref) ?? codecDescriptorMissing(ref, CONTRACT_CODEC_DESCRIPTOR_MISSING)
       );
-      return materializeCodec(d, ref, { name: `<ref:${ref.codecId}>` });
     },
     forColumn: () => undefined,
     renderOutputTypeFor: (id, params) => renderersById.get(id)?.(params),
@@ -760,6 +756,7 @@ export function extractCodecLookup(
     renderValueLiteralFor: (id, value, side) => valueLiteralRenderersById.get(id)?.(value, side),
     descriptorFor: (id) => descriptorsById.get(id),
   };
+  return registry;
 }
 
 interface DependencyDeclaringDescriptor {
@@ -917,6 +914,7 @@ export function createControlStack<TFamilyId extends string, TTargetId extends s
     codecLookup,
     codecDescriptors,
     dataTypeLookup: dataTypes.lookup,
+    declaredDataTypes: dataTypes.declared,
     aggregateDescriptors: collectAggregateDescriptors(allDescriptors),
     authoringContributions,
     scalarTypes: [...collectScalarTypeConstructors(authoringContributions.type).keys()],

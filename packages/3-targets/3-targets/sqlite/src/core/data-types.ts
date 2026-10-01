@@ -8,6 +8,7 @@
 import type { JsonValue } from '@internal/contract/types';
 import type { Cast, DataType } from '@internal/framework-components/codec';
 import { sqlDataType } from '@internal/sql-contract/data-type';
+import { integerTextCanonicalForm } from '@internal/sql-relational-core/ast';
 import { structuredError } from '@internal/utils/structured-error';
 import { type as arktype } from 'arktype';
 
@@ -33,7 +34,12 @@ const storedAs = (id: string, name: string, casts: Readonly<Record<string, Cast>
   sqlDataType(id, { texts: [{ text: name, written: true, catalog: true }], casts });
 
 export const sqliteText = storedAs('sqlite/text', 'text');
-export const sqliteInteger = storedAs('sqlite/integer', 'integer');
+/** Digit text, which holds every 64-bit integer exactly; SQLite reads an INTEGER default back as a number. */
+export const sqliteInteger = sqlDataType('sqlite/integer', {
+  texts: [{ text: 'integer', written: true, catalog: true }],
+  toCanonicalForm: integerTextCanonicalForm,
+  casts: {},
+});
 export const sqliteReal = storedAs('sqlite/real', 'real', { [sqliteInteger.id]: asReal });
 export const sqliteBlob = storedAs('sqlite/blob', 'blob', { [sqliteText.id]: unchanged });
 

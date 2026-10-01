@@ -1,7 +1,6 @@
 import type { StorageColumn, StorageTable } from '@internal/sql-contract/types';
 import { describe, expect, it } from 'vitest';
 import {
-  buildColumnDefaultSql,
   buildColumnTypeSql,
   buildCreateIndexSql,
   buildDropIndexSql,
@@ -62,77 +61,6 @@ describe('buildColumnTypeSql', () => {
   });
 });
 
-describe('buildColumnDefaultSql', () => {
-  it('returns empty for no default', () => {
-    expect(buildColumnDefaultSql(undefined)).toBe('');
-  });
-
-  it('renders literal string default', () => {
-    expect(buildColumnDefaultSql({ kind: 'literal', value: 'hello' })).toBe("DEFAULT 'hello'");
-  });
-
-  it('renders literal number default', () => {
-    expect(buildColumnDefaultSql({ kind: 'literal', value: 42 })).toBe('DEFAULT 42');
-  });
-
-  it.each([
-    ['digit text', '7', 'DEFAULT 7'],
-    ['negative digit text', '-42', 'DEFAULT -42'],
-    ['digit text past the safe range', '9007199254740993', 'DEFAULT 9007199254740993'],
-  ])('renders an integer column’s %s as an integer', (_name, value, sql) => {
-    expect(buildColumnDefaultSql({ kind: 'literal', value }, 'sqlite/integer')).toBe(sql);
-  });
-
-  it('renders digit text on a text column as text', () => {
-    expect(buildColumnDefaultSql({ kind: 'literal', value: '7' }, 'sqlite/text')).toBe(
-      "DEFAULT '7'",
-    );
-  });
-
-  it('renders literal boolean as 0/1', () => {
-    expect(buildColumnDefaultSql({ kind: 'literal', value: true })).toBe('DEFAULT 1');
-    expect(buildColumnDefaultSql({ kind: 'literal', value: false })).toBe('DEFAULT 0');
-  });
-
-  it('renders NULL literal', () => {
-    expect(buildColumnDefaultSql({ kind: 'literal', value: null })).toBe('DEFAULT NULL');
-  });
-
-  it("renders now() as datetime('now')", () => {
-    expect(buildColumnDefaultSql({ kind: 'function', expression: 'now()' })).toBe(
-      "DEFAULT (datetime('now'))",
-    );
-  });
-
-  it('returns empty for autoincrement()', () => {
-    expect(buildColumnDefaultSql({ kind: 'function', expression: 'autoincrement()' })).toBe('');
-  });
-
-  it('renders custom function default', () => {
-    expect(buildColumnDefaultSql({ kind: 'function', expression: 'random()' })).toBe(
-      'DEFAULT (random())',
-    );
-  });
-
-  it('renders a tagged-literal body verbatim inside DEFAULT (...)', () => {
-    expect(buildColumnDefaultSql({ kind: 'function', expression: 'CURRENT_TIMESTAMP' })).toBe(
-      'DEFAULT (CURRENT_TIMESTAMP)',
-    );
-  });
-
-  it('rejects a dollar-quoted body with CONTRACT.DEFAULT_INVALID, the same rule as Postgres', () => {
-    expect(() => buildColumnDefaultSql({ kind: 'function', expression: '$$x$$' })).toThrow(
-      expect.objectContaining({ code: 'CONTRACT.DEFAULT_INVALID' }),
-    );
-  });
-
-  it('rejects unsafe default expressions', () => {
-    expect(() =>
-      buildColumnDefaultSql({ kind: 'function', expression: 'foo(); DROP TABLE' }),
-    ).toThrow(/Unsafe/);
-  });
-});
-
 describe('renderDefaultLiteral', () => {
   it('renders Date as ISO8601 string', () => {
     const d = new Date('2024-01-15T10:30:00.000Z');
@@ -141,6 +69,22 @@ describe('renderDefaultLiteral', () => {
 
   it('renders JSON objects', () => {
     expect(renderDefaultLiteral({ key: 'val' })).toBe('\'{"key":"val"}\'');
+  });
+
+  it.each([
+    ['digit text', '7', '7'],
+    ['negative digit text', '-42', '-42'],
+    ['digit text past the safe range', '9007199254740993', '9007199254740993'],
+  ])('renders an integer column’s %s as an integer', (_name, value, sql) => {
+    expect(
+      renderDefaultLiteral(value, { codecId: 'sqlite/integer@1', dataType: 'sqlite/integer' }),
+    ).toBe(sql);
+  });
+
+  it('renders digit text on a text column as text', () => {
+    expect(renderDefaultLiteral('7', { codecId: 'sqlite/text@1', dataType: 'sqlite/text' })).toBe(
+      "'7'",
+    );
   });
 });
 
