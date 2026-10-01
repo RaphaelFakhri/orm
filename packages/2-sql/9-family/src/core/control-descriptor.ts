@@ -24,7 +24,7 @@ export class SqlFamilyDescriptor
     entityTypes: sqlFamilyEntityTypes,
     pslBlockDescriptors: sqlFamilyPslBlockDescriptors,
     attributeSpecs: sqlAttributeSpecs,
-    dataTypes: sqlExpressionRegistration.authoring,
+    dataTypes: sqlExpressionRegistration.authoring.dataTypes,
   } as const;
 
   create<TTargetId extends string>(

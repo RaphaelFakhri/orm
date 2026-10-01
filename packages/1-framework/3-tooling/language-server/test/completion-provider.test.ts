@@ -255,7 +255,9 @@ interface ActualSqliteDataTypesModule {
 
 interface ActualSqlExpressionModule {
   readonly sqlExpressionRegistration: {
-    readonly authoring: Readonly<Record<string, DataTypeAuthoringEntry>>;
+    readonly authoring: {
+      readonly dataTypes: Readonly<Record<string, DataTypeAuthoringEntry>>;
+    };
   };
 }
 
@@ -351,7 +353,7 @@ async function sqlExpressionDataTypes(): Promise<Readonly<Record<string, DataTyp
   const family = await importFromPackageRoot<ActualSqlExpressionModule>(
     '../../../2-sql/1-core/contract/src/exports/sql-expression.ts',
   );
-  return family.sqlExpressionRegistration.authoring;
+  return family.sqlExpressionRegistration.authoring.dataTypes;
 }
 
 async function importFromPackageRoot<T>(relativePath: string): Promise<T> {
@@ -1441,7 +1443,7 @@ describe('providePslCompletionItems', () => {
     const withFamilyEntry = (
       targetEntries: Readonly<Record<string, DataTypeAuthoringEntry>>,
     ): Readonly<Record<string, DataTypeAuthoringEntry>> => ({
-      ...family.sqlExpressionRegistration.authoring,
+      ...family.sqlExpressionRegistration.authoring.dataTypes,
       ...targetEntries,
     });
     const complete = (

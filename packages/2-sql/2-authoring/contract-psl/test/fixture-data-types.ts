@@ -147,7 +147,7 @@ function parseJson(text: string): JsonValue {
 }
 
 export const fixtureDataTypeEntries: Readonly<Record<string, DataTypeAuthoringEntry>> = {
-  ...sqlExpressionRegistration.authoring,
+  ...sqlExpressionRegistration.authoring.dataTypes,
   [pgText.id]: {
     written: { kind: 'plain', syntax: 'string', parse: (text) => text },
     print: (value) => String(value),

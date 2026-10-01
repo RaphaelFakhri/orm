@@ -2,11 +2,7 @@ import type { JsonValue } from '@internal/contract/types';
 import type { DataTypeAuthoringEntry } from '@internal/framework-components/authoring';
 import type { Cast, DataType } from '@internal/framework-components/codec';
 import { createDataTypeLookup, dataType } from '@internal/framework-components/codec';
-import {
-  SQL_EXPRESSION_DATA_TYPE_ID,
-  sqlExpressionAuthoringEntry,
-  sqlExpressionDataType,
-} from '@internal/sql-contract/sql-expression';
+import { sqlExpressionRegistration } from '@internal/sql-contract/sql-expression';
 import {
   createNumberClassifier,
   isNonFiniteText,
@@ -75,7 +71,7 @@ const types: readonly DataType[] = [
   vector,
   blob,
   date,
-  sqlExpressionDataType,
+  ...sqlExpressionRegistration.dataTypes,
 ];
 
 const classify = createNumberClassifier({
@@ -119,7 +115,7 @@ const entries: Readonly<Record<string, DataTypeAuthoringEntry>> = {
     print: printJsonText,
     documentation: 'A JSON document.',
   },
-  [SQL_EXPRESSION_DATA_TYPE_ID]: sqlExpressionAuthoringEntry,
+  ...sqlExpressionRegistration.authoring.dataTypes,
 };
 
 function forColumn(
