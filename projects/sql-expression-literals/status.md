@@ -274,6 +274,26 @@ Logs in the gitignored `wip/3/`.
 - Done-condition grep (`grep-done-condition.log`): empty.
 - `check:upgrade-coverage`: `upgrade-coverage.log`, run after the status commit.
 
+### Slice 3 review fixes, 2026-10-01
+
+Brief: `dispatches/3-review-fixes-brief.md`. Reviews: `slice-reviews/3/`. Commits `a96c781ef6` to the status commit. Not pushed, no pull request. No findings file: no decision was wrong against the code.
+
+- **A01**: in the `sql` tag, each line of an interpolated value after its first is prefixed with the spaces and tabs at the start of the last line of the text joined so far, which is the template line the `${…}` sits on. The joined text is then canonicalized once. Unit tests compare with `canonicalSqlText` of the same SQL written out. The parity fixture adds `post_admin_write`, a multi-line predicate interpolated into an indented `withCheck`; it fails with the old join (`parity-red-old-join.log`). Design section 2, ADRs 129 and 260, the README and both fragments state the rule.
+- **A02, A03**: ADR 129's infer bullet ends at the print refusal; the default bullet names `.defaultSql()` too. ADR 260 has a section "Column defaults that do not read back" that says what each command keeps unchanged. ADR 129, the error reference, design 11.2 and the app fragment link to it.
+- **A04 and the deferred item**: the `what` strings are `Index "<name>" where`, `Index "<name>" expression`, `Check "<name>" expression`, `Full-text index "<name>" where`, `Policy "<name>" using`, `Policy "<name>" withCheck`. `<name>` is `name`, else `map`. An unnamed index or check is `Index on "<Model>"` or `Check on "<Model>"` (the check form extends the decision the same way). `fullTextIndex` checks its own `where`, because lowering cannot tell a full-text index from another index. Design 15 and the error reference record the strings.
+- **A05**: the doc comment sits on `refuseSqlTextThatDoesNotReadBack` and names column defaults.
+- **A06, F05, frozen registration**: `sqlExpressionRegistration` is `{ dataTypes, authoring: { dataTypes } }`, deeply frozen. The family descriptor, the language-server test and six fixtures read it.
+- **A07**: lowering canonicalizes the text `render` returns with `new SqlExpression(...)`. Test in `contract-builder.deferred-index-expression.test.ts`.
+- **A08**: ADR 254 names `sql/expression` as the one type without a codec.
+- **A09**: app change `infer-notes-defaults-that-do-not-read-back`, detection `**/contract.prisma` with `@default(sql` whose backtick text does not close on its line, or a double-quoted text holding `\r` or `\n`. The extension fragment keeps one sentence.
+- **F01**: both raw-SQL detections use `glob: ["**/*.{ts,mts,cts}", "!**/migrations/**"]`; the prose says migration files keep strings.
+- **F02**: `rls-entities.test.ts` refuses a string `using` and `withCheck` on `policyUpdate`, asserting code, message and meta.
+- **F03, F04, F07**: several interpolated values, oversize `meta`, `not.toExtend`, and the whole inferred default line.
+- **F06**: the extension import detection matches only imports that name `sql`.
+- **Deferred items**: ADR 260's example defines `Post` and compiles against `@prisma/orm-postgres` (`adr-260-example-tsc.log`). The plan lists a public way to build a `sql` value from a computed string under "Deferred beyond this project".
+
+Verification, logs in `wip/3-fixes/`: `build`, `typecheck`, `lint`, `lint:deps`, `lint:skills`, `check:error-reference` (362 codes), `fixtures:check` (tree clean) pass; `lint:casts` and `lint:throws` delta 0; `lint:framework-vocabulary` 272 of 272. Detection check: 81 cases pass (`detection-check.log`). Integration files: 88 files, 1262 tests pass (`integration.log`). Postgres extension: 25 files pass (`ext-postgres.log`). `test:packages` (`test-packages.log`): 1450 files pass, 10 fail. The three tarball tests are the known failures. The two `language-server` files and `mongo-orm` `polymorphism.test.ts` pass alone (`rerun-language-server.log`, `rerun-mongo-polymorphism.log`). `render-typescript.roundtrip.test.ts`, the two `cli-telemetry` files and `driver.buffered-release.integration.test.ts` failed again alone with timeouts while the machine's load average was about 230 (`rerun-render-roundtrip.log`, `rerun-cli-telemetry.log`, `rerun-driver-buffered.log`); none of them is touched by these fixes, and different tests time out on each run. CI must confirm them. `check:upgrade-coverage` after the status commit: `upgrade-coverage.log`.
+
 ## Slice 1, 2026-09-30
 
 Built in the linked worktree `wip/wt-1` from `main`, since it depends on no other slice. Briefs: `dispatches/1-implementer-brief.md`, `dispatches/1-review-fixes-brief.md`. Reviews: `slice-reviews/1/` and `slice-reviews/1-round-2/`. Round 1 found a real bug: the SQLite migration-file renderer passed the `OpaqueSql` object to the JSON printer. Round 2 corrected the app fragment: only the wire name changes, not a policy's stored body, and the plan drops and recreates the object. PR https://github.com/prisma/orm/pull/30546.
