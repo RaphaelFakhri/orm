@@ -72,6 +72,34 @@ describe('data contract JSON schema', () => {
     });
   });
 
+  it('accepts a hints section', () => {
+    const validate = compileGeneratedSchema();
+    const contract = validSqlContractJson({
+      hints: {
+        namespaces: {
+          public: {
+            tables: {
+              Legacy: { deleted: true, control: 'tolerated' },
+              User: { columns: { firstName: { was: 'first_name' } }, was: 'Profile' },
+            },
+          },
+        },
+      },
+    });
+    expect({ valid: validate(contract), errors: validate.errors }).toEqual({
+      valid: true,
+      errors: null,
+    });
+  });
+
+  it('rejects a hints table entry with an unknown property', () => {
+    const validate = compileGeneratedSchema();
+    const contract = validSqlContractJson({
+      hints: { namespaces: { public: { tables: { User: { was: 'Profile', renamed: true } } } } },
+    });
+    expect(validate(contract)).toBe(false);
+  });
+
   it('rejects a column with an unknown property', () => {
     const validate = compileGeneratedSchema();
     const contract = validSqlContractJson({

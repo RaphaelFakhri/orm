@@ -852,6 +852,117 @@
       "type": "object",
       "additionalProperties": {}
     },
+    "hints": {
+      "type": "object",
+      "properties": {
+        "namespaces": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "tables": {
+                "type": "object",
+                "additionalProperties": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "columns": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "anyOf": [
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "deleted": {
+                                    "const": true
+                                  }
+                                },
+                                "required": ["deleted"],
+                                "additionalProperties": false
+                              },
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "was": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  }
+                                },
+                                "required": ["was"],
+                                "additionalProperties": false
+                              }
+                            ]
+                          }
+                        }
+                      },
+                      "required": ["columns"],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "deleted": {
+                          "const": true
+                        },
+                        "control": {
+                          "enum": ["external", "managed", "observed", "tolerated"]
+                        }
+                      },
+                      "required": ["deleted"],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "was": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "columns": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "anyOf": [
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "deleted": {
+                                    "const": true
+                                  }
+                                },
+                                "required": ["deleted"],
+                                "additionalProperties": false
+                              },
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "was": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  }
+                                },
+                                "required": ["was"],
+                                "additionalProperties": false
+                              }
+                            ]
+                          }
+                        }
+                      },
+                      "required": ["was"],
+                      "additionalProperties": false
+                    }
+                  ]
+                }
+              }
+            },
+            "required": ["tables"],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": ["namespaces"],
+      "additionalProperties": false
+    },
     "meta": {
       "type": "object",
       "additionalProperties": {}
