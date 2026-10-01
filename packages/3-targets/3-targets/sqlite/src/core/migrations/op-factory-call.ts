@@ -9,6 +9,7 @@
  * strategies, mirroring the Postgres `ColumnSpec` pattern.
  */
 
+import type { ColumnDefault } from '@internal/contract/types';
 import { errorUnfilledPlaceholder } from '@internal/errors/migration';
 import type {
   MigrationOperationClass,
@@ -704,7 +705,8 @@ function renderColumnSpec(column: SqliteColumnSpec): string {
   const sources: RenderedSources<SqliteColumnSpec> = {
     name: jsonToTsSource(column.name),
     typeSql: jsonToTsSource(column.typeSql),
-    defaultSql: tsQuotedTextSource(column.defaultSql),
+    default: column.default === undefined ? undefined : renderSpecDefault(column.default),
+    codecRef: renderIfDefined(column.codecRef),
     nullable: jsonToTsSource(column.nullable),
     inlineAutoincrementPrimaryKey: renderIfDefined(column.inlineAutoincrementPrimaryKey),
   };
@@ -721,10 +723,26 @@ function renderTableSpec(table: SqliteTableSpec): string {
   return tsObjectSource(definedSourceEntries(sources));
 }
 
-function renderPostcheck(postcheck: RecreateTableCall['postchecks'][number]): string {
-  const sources: RenderedSources<RecreateTableCall['postchecks'][number]> = {
+function renderSpecDefault(columnDefault: ColumnDefault): string {
+  if (columnDefault.kind === 'literal') return jsonToTsSource(columnDefault);
+  const sources: RenderedSources<typeof columnDefault> = {
+    kind: jsonToTsSource(columnDefault.kind),
+    expression: tsQuotedTextSource(columnDefault.expression),
+  };
+  return tsObjectSource(definedSourceEntries(sources));
+}
+
+function renderPostcheck(postcheck: RecreatePostcheck): string {
+  if ('sql' in postcheck) {
+    const sources: RenderedSources<typeof postcheck> = {
+      description: jsonToTsSource(postcheck.description),
+      sql: tsQuotedTextSource(postcheck.sql),
+    };
+    return tsObjectSource(definedSourceEntries(sources));
+  }
+  const sources: RenderedSources<typeof postcheck> = {
     description: jsonToTsSource(postcheck.description),
-    sql: tsQuotedTextSource(postcheck.sql),
+    columnDefault: jsonToTsSource(postcheck.columnDefault),
   };
   return tsObjectSource(definedSourceEntries(sources));
 }

@@ -222,14 +222,41 @@ describe('AddColumnCall', () => {
   it('renders a default holding both quote kinds as a template literal', () => {
     const call = new AddColumnCall(
       'user',
-      colSpec({ name: 'meta', typeSql: 'TEXT', defaultSql: `DEFAULT '{"a": 1}'`, nullable: false }),
+      colSpec({
+        name: 'meta',
+        typeSql: 'TEXT',
+        default: { kind: 'function', expression: `'{"a": 1}'` },
+        nullable: false,
+      }),
     );
     expect(call.renderTypeScript()).toBe(
       [
         'this.addColumn({ table: "user", column: {',
         '  name: "meta",',
         '  typeSql: "TEXT",',
-        '  defaultSql: `DEFAULT \'{"a": 1}\'`,',
+        '  default: { kind: "function", expression: `\'{"a": 1}\'` },',
+        '  nullable: false,',
+        '} })',
+      ].join('\n'),
+    );
+  });
+
+  it('renders a literal default as its JSON value', () => {
+    const call = new AddColumnCall(
+      'user',
+      colSpec({
+        name: 'meta',
+        typeSql: 'TEXT',
+        default: { kind: 'literal', value: { a: 'it\'s "x"' } },
+        nullable: false,
+      }),
+    );
+    expect(call.renderTypeScript()).toBe(
+      [
+        'this.addColumn({ table: "user", column: {',
+        '  name: "meta",',
+        '  typeSql: "TEXT",',
+        '  default: { kind: "literal", value: { a: "it\'s \\"x\\"" } },',
         '  nullable: false,',
         '} })',
       ].join('\n'),
@@ -505,7 +532,8 @@ describe('RecreateTableCall', () => {
           colSpec({
             name: 'meta',
             typeSql: 'TEXT',
-            defaultSql: `DEFAULT '{"a": 1}'`,
+            default: { kind: 'function', expression: `'{"a": 1}'` },
+            codecRef: { codecId: 'sqlite/text@1' },
             nullable: false,
           }),
         ],
@@ -519,6 +547,7 @@ describe('RecreateTableCall', () => {
           description: 'verify "meta" default on "user"',
           sql: `SELECT COUNT(*) > 0 FROM pragma_table_info('user') WHERE "dflt_value" = '1'`,
         },
+        { description: 'verify "meta" default', columnDefault: 'meta' },
       ],
       operationClass: 'widening',
     });
@@ -531,14 +560,14 @@ describe('RecreateTableCall', () => {
         '  {',
         '  name: "id",',
         '  typeSql: "INTEGER",',
-        '  defaultSql: "",',
         '  nullable: false,',
         '  inlineAutoincrementPrimaryKey: true,',
         '},',
         '  {',
         '  name: "meta",',
         '  typeSql: "TEXT",',
-        '  defaultSql: `DEFAULT \'{"a": 1}\'`,',
+        '  default: { kind: "function", expression: `\'{"a": 1}\'` },',
+        '  codecRef: { codecId: "sqlite/text@1" },',
         '  nullable: false,',
         '},',
         '],',
@@ -554,6 +583,7 @@ describe('RecreateTableCall', () => {
         '  description: "verify \\"meta\\" default on \\"user\\"",',
         "  sql: `SELECT COUNT(*) > 0 FROM pragma_table_info('user') WHERE \"dflt_value\" = '1'`,",
         '},',
+        '  { description: "verify \\"meta\\" default", columnDefault: "meta" },',
         '],',
         '  operationClass: "widening",',
         '})',

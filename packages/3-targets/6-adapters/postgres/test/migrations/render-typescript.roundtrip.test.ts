@@ -18,7 +18,7 @@ import { pathToFileURL } from 'node:url';
 import { promisify } from 'node:util';
 import { APP_SPACE_ID, storageHashHex } from '@internal/framework-components/control';
 import { keepInternalSpecifiers } from '@internal/framework-components/emission';
-import { checkExpression, col, primaryKey } from '@internal/sql-relational-core/contract-free';
+import { checkExpression, col, fn, primaryKey } from '@internal/sql-relational-core/contract-free';
 import { createPostgresBuiltinCodecLookup } from '@internal/target-postgres/codecs';
 import {
   AddColumnCall,
@@ -238,7 +238,11 @@ describe('TypeScriptRenderablePostgresMigration round-trip', () => {
       ),
       new AddColumnCall('public', 'user', col('nickname', 'text')),
       new AddColumnCall('public', 'user', col('meta', 'jsonb')),
-      new SetDefaultCall('public', 'user', 'meta', `DEFAULT '{"a": 1}'::jsonb`),
+      new SetDefaultCall(
+        'public',
+        'user',
+        col('meta', 'jsonb', { default: fn(`'{"a": 1}'::jsonb`) }),
+      ),
       new CreateIndexCall('public', 'user', 'user_email_idx', { columns: ['email'] }),
       new CreateIndexCall(
         'public',
@@ -281,7 +285,7 @@ describe('TypeScriptRenderablePostgresMigration round-trip', () => {
     expect(tsSource).toContain('where: `"nickname" <> \'anonymous\'`');
     expect(tsSource).toContain('using: `("id" = auth.uid() AND "email" <> \'\')`');
     expect(tsSource).toContain(`\`"email" !~ '\\\\d' AND "email" <> '\\\`\\\${x}'\``);
-    expect(tsSource).toContain('defaultSql: `DEFAULT \'{"a": 1}\'::jsonb`');
+    expect(tsSource).toContain('default: fn(`\'{"a": 1}\'::jsonb`)');
     await writeFile(join(tmpDir, 'migration.ts'), tsSource);
 
     const { stdout, stderr } = await execFileAsync(tsxPath, [join(tmpDir, 'migration.ts')], {
