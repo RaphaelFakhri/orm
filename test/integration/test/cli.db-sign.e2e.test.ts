@@ -66,8 +66,7 @@ withTempDir(({ createTempDir }) => {
 
           const output = stripAnsi(run.stderr);
           expect(output).toContain('Database signed');
-          expect(output).toMatch(/from:\s+none/);
-          expect(output).toMatch(/to:\s+\S/);
+          expect(output).toMatch(/app: signed \S+ \(no marker before\)/);
         });
       },
       timeouts.spinUpPpgDev,
@@ -138,15 +137,22 @@ withTempDir(({ createTempDir }) => {
           expect(run.exitCode).toBe(0);
 
           expect(run.presented?.data).toMatchObject({
-            summary: expect.any(String),
-            contract: {
-              storageHash: expect.any(String),
-              profileHash: expect.any(String),
-            },
-            marker: {
-              created: true,
-              updated: false,
-            },
+            ok: true,
+            summary: 'Database signed',
+            spaces: [
+              {
+                space: 'app',
+                status: 'signed',
+                contract: {
+                  storageHash: expect.any(String),
+                  profileHash: expect.any(String),
+                },
+                marker: {
+                  created: true,
+                  updated: false,
+                },
+              },
+            ],
           });
         });
       },
@@ -309,7 +315,7 @@ withTempDir(({ createTempDir }) => {
           expect(run.presented?.data).toMatchObject({
             ok: false,
             summary: expect.stringContaining('does not satisfy contract'),
-            schema: expect.anything(),
+            spaces: [{ space: 'app', status: 'failed', schema: expect.anything() }],
           });
         });
       },
