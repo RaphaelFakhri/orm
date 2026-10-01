@@ -258,9 +258,12 @@ describe('load-time diagnostics name the prefix', () => {
   it.each([
     ['using', policySelect, { using: 'true' }],
     ['withCheck', policyInsert, { withCheck: 'true' }],
+    ['using', policyUpdate, { using: 'true', withCheck: sql`true` }],
+    ['withCheck', policyUpdate, { using: sql`true`, withCheck: 'true' }],
   ] as const)('refuses a string %s from an untyped caller', (predicate, helper, predicates) => {
     const Profile = makeProfile();
     const untypedHelper = helper as (model: unknown, descriptor: unknown) => RlsEntityHandle;
+    const what = `Policy "p" ${predicate}`;
     expect(() =>
       defineContract({
         models: { Profile },
@@ -272,7 +275,8 @@ describe('load-time diagnostics name the prefix', () => {
     ).toThrow(
       expect.objectContaining({
         code: 'CONTRACT.ARGUMENT_INVALID',
-        message: `Policy "${predicate}" must be a sql\`...\` value.`,
+        message: `${what} must be a sql\`...\` value.`,
+        meta: { what },
       }),
     );
   });

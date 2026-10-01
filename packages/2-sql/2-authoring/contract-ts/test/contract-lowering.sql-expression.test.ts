@@ -19,24 +19,51 @@ function refusal(what: string) {
 }
 
 describe('lowering refuses a raw-SQL field that holds a string at run time', () => {
-  it('index where', () => {
+  it('index where, naming the index', () => {
     const User = model('User', { fields }).sql(({ cols, constraints }) => ({
       indexes: [constraints.index([cols.email], { name: 'a', where: untyped('x') })],
     }));
-    expect(() => defineTestContract({ models: { User } })).toThrow(refusal('Index "where"'));
+    expect(() => defineTestContract({ models: { User } })).toThrow(refusal('Index "a" where'));
+  });
+
+  it('index where, naming the index by its map', () => {
+    const User = model('User', { fields }).sql(({ cols, constraints }) => ({
+      indexes: [constraints.index([cols.email], { map: 'user_email', where: untyped('x') })],
+    }));
+    expect(() => defineTestContract({ models: { User } })).toThrow(
+      refusal('Index "user_email" where'),
+    );
+  });
+
+  it('index where on an unnamed index, naming the model', () => {
+    const User = model('User', { fields }).sql(({ cols, constraints }) => ({
+      indexes: [constraints.index([cols.email], { where: untyped('x') })],
+    }));
+    expect(() => defineTestContract({ models: { User } })).toThrow(
+      refusal('Index on "User" where'),
+    );
   });
 
   it('index expression', () => {
     const User = model('User', { fields }).sql(({ constraints }) => ({
       indexes: [constraints.index({ expression: untyped('lower(email)'), name: 'a' })],
     }));
-    expect(() => defineTestContract({ models: { User } })).toThrow(refusal('Index "expression"'));
+    expect(() => defineTestContract({ models: { User } })).toThrow(refusal('Index "a" expression'));
   });
 
   it('check expression', () => {
     const User = model('User', { fields }).sql({
       checks: [check({ expression: untyped('true'), name: 'a' })],
     });
-    expect(() => defineTestContract({ models: { User } })).toThrow(refusal('Check "expression"'));
+    expect(() => defineTestContract({ models: { User } })).toThrow(refusal('Check "a" expression'));
+  });
+
+  it('check expression on an unnamed check, naming the model', () => {
+    const User = model('User', { fields }).sql({
+      checks: [check({ expression: untyped('true') })],
+    });
+    expect(() => defineTestContract({ models: { User } })).toThrow(
+      refusal('Check on "User" expression'),
+    );
   });
 });

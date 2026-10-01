@@ -11,7 +11,11 @@ import {
   type ResolvedPackEntityHandle,
 } from '@internal/sql-contract/entity-handle-lowering-hook';
 import type { AuthoredIndexMethod } from '@internal/sql-contract/index-naming';
-import { isSqlExpression, requireSqlExpression } from '@internal/sql-contract/sql-expression';
+import {
+  isSqlExpression,
+  requireSqlExpression,
+  SqlExpression,
+} from '@internal/sql-contract/sql-expression';
 import type { StorageTypeInstance } from '@internal/sql-contract/types';
 import { blindCast } from '@internal/utils/casts';
 import { ifDefined } from '@internal/utils/defined';
@@ -852,12 +856,24 @@ function indexExpressionText(
   spec: Pick<RuntimeModelSpec, 'modelName' | 'fieldToColumn'>,
   expression: IndexExpressionInput,
   fieldCodecIds: Readonly<Record<string, string>>,
+  owner: string,
 ): string {
   if (isSqlExpression(expression)) return expression.text;
   if (typeof expression === 'object' && expression !== null && 'render' in expression) {
-    return expression.render(resolveDeferredColumns(spec, expression, fieldCodecIds));
+    return new SqlExpression(
+      expression.render(resolveDeferredColumns(spec, expression, fieldCodecIds)),
+    ).text;
   }
-  return requireSqlExpression(expression, 'Index "expression"').text;
+  return requireSqlExpression(expression, `${owner} expression`).text;
+}
+
+function constraintOwner(
+  kind: 'Index' | 'Check',
+  modelName: string,
+  constraint: { readonly name?: string | undefined; readonly map?: string | undefined },
+): string {
+  const name = constraint.name ?? constraint.map;
+  return name === undefined ? `${kind} on "${modelName}"` : `${kind} "${name}"`;
 }
 
 function resolveModelNode(
@@ -918,11 +934,12 @@ function resolveModelNode(
       AuthoredIndexMethod,
       'the constraint type carries the union; reading the two fields separately loses the correlation'
     >({ type: index.type, options: index.options });
+    const owner = constraintOwner('Index', spec.modelName, index);
     const carried = {
       where:
         index.where === undefined
           ? undefined
-          : requireSqlExpression(index.where, 'Index "where"').text,
+          : requireSqlExpression(index.where, `${owner} where`).text,
       unique: index.unique,
       name: index.name,
       map: index.map,
@@ -931,7 +948,7 @@ function resolveModelNode(
     return index.expression !== undefined
       ? {
           ...carried,
-          expression: indexExpressionText(spec, index.expression, fieldCodecIds),
+          expression: indexExpressionText(spec, index.expression, fieldCodecIds, owner),
         }
       : {
           ...carried,
@@ -944,7 +961,10 @@ function resolveModelNode(
   });
   const checks = (spec.sqlSpec?.checks ?? []).map(
     (authoredCheck): CheckNode => ({
-      expression: requireSqlExpression(authoredCheck.expression, 'Check "expression"').text,
+      expression: requireSqlExpression(
+        authoredCheck.expression,
+        `${constraintOwner('Check', spec.modelName, authoredCheck)} expression`,
+      ).text,
       name: authoredCheck.name,
       map: authoredCheck.map,
     }),

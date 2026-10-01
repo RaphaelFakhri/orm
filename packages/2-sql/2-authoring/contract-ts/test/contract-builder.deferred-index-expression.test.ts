@@ -40,6 +40,7 @@ const render = (columns: readonly DeferredIndexColumn[]) =>
 function messageIndexes(options: {
   readonly mappedColumn?: string;
   readonly naming?: ContractInput['naming'];
+  readonly render?: (columns: readonly DeferredIndexColumn[]) => string;
 }) {
   const searchText = options.mappedColumn
     ? field.column(textColumn).column(options.mappedColumn)
@@ -56,7 +57,7 @@ function messageIndexes(options: {
         table: 'message',
         indexes: [
           constraints.index({
-            expression: { fields: [cols.searchText], render },
+            expression: { fields: [cols.searchText], render: options.render ?? render },
             name: 'message_text_search',
           }),
         ],
@@ -83,6 +84,17 @@ describe('a deferred index expression', () => {
   it("renders the contract's column naming convention", () => {
     expect(messageIndexes({ naming: { columns: 'snake_case' } })[0]).toMatchObject({
       expression: `to_tsvector('english', "search_text")`,
+    });
+  });
+
+  it('canonicalizes the rendered text as a sql literal is canonicalized', () => {
+    const multiLine = (columns: readonly DeferredIndexColumn[]) => `
+        to_tsvector(
+          'english', "${columns[0]?.name}"
+        )
+      `;
+    expect(messageIndexes({ render: multiLine })[0]).toMatchObject({
+      expression: `to_tsvector(\n  'english', "searchText"\n)`,
     });
   });
 

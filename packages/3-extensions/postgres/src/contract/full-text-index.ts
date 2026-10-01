@@ -1,4 +1,4 @@
-import type { SqlExpression } from '@internal/sql-contract/sql-expression';
+import { requireSqlExpression, type SqlExpression } from '@internal/sql-contract/sql-expression';
 import type { ColumnRef, IndexConstraint } from '@internal/sql-contract-ts/contract-builder';
 import type { FullTextSearchLanguage } from '@internal/target-postgres/operation-types';
 import {
@@ -86,7 +86,14 @@ export function fullTextIndex(
       },
     },
     type: 'gin',
-    ...(options.where !== undefined ? { where: options.where } : {}),
+    ...(options.where !== undefined
+      ? {
+          where: requireSqlExpression(
+            options.where,
+            `Full-text index "${options.name ?? options.map}" where`,
+          ),
+        }
+      : {}),
     ...(options.name !== undefined ? { name: options.name } : {}),
     ...(options.map !== undefined ? { map: options.map } : {}),
   };

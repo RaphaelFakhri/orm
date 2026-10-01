@@ -361,17 +361,17 @@ describe('isSqlExpression', () => {
 describe('requireSqlExpression', () => {
   it('returns a sql value', () => {
     const value = sql`x`;
-    expect(requireSqlExpression(value, 'Index "where"')).toBe(value);
+    expect(requireSqlExpression(value, 'Index "a" where')).toBe(value);
   });
 
   it.each([['x'], [1], [{ text: 'x' }], [undefined]])(
     'refuses %j with CONTRACT.ARGUMENT_INVALID',
     (value) => {
-      expect(() => requireSqlExpression(value, 'Index "where"')).toThrow(
+      expect(() => requireSqlExpression(value, 'Index "a" where')).toThrow(
         expect.objectContaining({
           code: 'CONTRACT.ARGUMENT_INVALID',
-          message: 'Index "where" must be a sql`...` value.',
-          meta: { what: 'Index "where"' },
+          message: 'Index "a" where must be a sql`...` value.',
+          meta: { what: 'Index "a" where' },
         }),
       );
     },

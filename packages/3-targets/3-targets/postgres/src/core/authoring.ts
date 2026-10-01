@@ -1089,8 +1089,8 @@ export function postgresLowerEntityHandles(
         namespaceId: coordinate.namespaceId,
         operation: policy.operation,
         roles: roleNames,
-        ...ifDefined('using', predicateText(policy.using, 'Policy "using"')),
-        ...ifDefined('withCheck', predicateText(policy.withCheck, 'Policy "withCheck"')),
+        ...ifDefined('using', predicateText(policy.using, `Policy "${prefix}" using`)),
+        ...ifDefined('withCheck', predicateText(policy.withCheck, `Policy "${prefix}" withCheck`)),
       }),
     });
   }
