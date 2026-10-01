@@ -17,6 +17,7 @@ import {
   type LockStrengthCapabilities,
   type LockWaitOptions,
   type LockWaitRequest,
+  lockIncompatible,
   lockOptionCapabilities,
   lockStrengthCapabilities,
   lockWaitPolicyOf,
@@ -2764,6 +2765,12 @@ class CollectionImpl<
     strength: LockStrength,
     options: LockWaitRequest | undefined,
   ): Collection<TContract, ModelName, Row, State> {
+    if (this.includeRefinementMode) {
+      throw lockIncompatible(
+        'includeRefinement',
+        `${strength}() cannot be called inside an include() refinement callback`,
+      );
+    }
     assertLockCapability(this.contract, lockStrengthCapabilities[strength], strength);
     const waitPolicy = lockWaitPolicyOf(strength, options);
     if (waitPolicy !== undefined) {

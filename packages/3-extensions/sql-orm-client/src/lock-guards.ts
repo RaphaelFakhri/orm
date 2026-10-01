@@ -5,14 +5,14 @@ import type { CollectionState, IncludeExpr } from './types';
 export type LockDroppingCall = Extract<LockConflict, 'aggregate' | 'groupBy' | 'mutation'>;
 
 function includeCarriesLock(include: IncludeExpr): boolean {
-  if (stateCarriesLock(include.nested) || include.scalar?.state.locking !== undefined) {
-    return true;
-  }
-  return Object.values(include.combine ?? {}).some((branch) =>
-    branch.kind === 'rows'
-      ? stateCarriesLock(branch.state)
-      : branch.selector.state.locking !== undefined,
-  );
+  const states = [
+    include.nested,
+    ...(include.scalar === undefined ? [] : [include.scalar.state]),
+    ...Object.values(include.combine ?? {}).map((branch) =>
+      branch.kind === 'rows' ? branch.state : branch.selector.state,
+    ),
+  ];
+  return states.some(stateCarriesLock);
 }
 
 function stateCarriesLock(state: CollectionState): boolean {
@@ -23,7 +23,7 @@ function conflictOf(
   state: CollectionState,
   call: LockDroppingCall | undefined,
 ): LockConflict | undefined {
-  if (state.includes.some(includeCarriesLock)) return 'include';
+  if (state.includes.some(includeCarriesLock)) return 'includeRefinement';
   if (state.locking === undefined) return undefined;
   if (call !== undefined) return call;
   if (state.includes.length > 0) return 'include';
@@ -32,7 +32,7 @@ function conflictOf(
   return undefined;
 }
 
-/** Refuses a row lock the ORM cannot render: with include, distinct or distinctOn in the state, or before a call that drops it. */
+/** Refuses a row lock the ORM cannot render: inside an include, with include, distinct or distinctOn in the state, or before a call that drops it. */
 export function assertLockCompatible(state: CollectionState, call?: LockDroppingCall): void {
   const conflict = conflictOf(state, call);
   if (conflict !== undefined) {

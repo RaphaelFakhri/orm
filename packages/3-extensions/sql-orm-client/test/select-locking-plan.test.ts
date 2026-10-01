@@ -1,4 +1,5 @@
 import { createPostgresAdapter } from '@internal/adapter-postgres/adapter';
+import { soleDomainNamespaceId } from '@internal/contract/types';
 import type { SqlQueryPlan } from '@internal/sql-relational-core/plan';
 import { describe, expect, it } from 'vitest';
 import type { PostgresContract } from '../../../3-targets/6-adapters/postgres/src/core/types';
@@ -155,37 +156,97 @@ describe('ORM row locking, refusals', () => {
     );
   });
 
-  it('a lock inside an include refinement', async () => {
+  describe('a lock method inside an include() refinement callback', () => {
     const { collection } = createCollectionFor('User');
+    const refusal = lockIncompatible('includeRefinement');
 
-    await expect(
-      collection
-        .include('posts', (posts) => posts.forUpdate())
-        .all()
-        .toArray(),
-    ).rejects.toThrow(lockIncompatible('include'));
+    it.each(['forUpdate', 'forNoKeyUpdate', 'forShare', 'forKeyShare'] as const)(
+      '%s throws when called',
+      (method) => {
+        expect(() => collection.include('posts', (posts) => posts[method]())).toThrow(refusal);
+      },
+    );
+
+    it('before a scalar reducer', () => {
+      expect(() => collection.include('posts', (posts) => posts.forUpdate().count())).toThrow(
+        refusal,
+      );
+    });
+
+    it('in a combine branch', () => {
+      expect(() =>
+        collection.include('posts', (posts) => posts.combine({ locked: posts.forUpdate() })),
+      ).toThrow(refusal);
+    });
+
+    it('on an include nested under a scalar reducer', () => {
+      expect(() =>
+        collection.include('posts', (posts) =>
+          posts.include('comments', (comments) => comments.forUpdate()).count(),
+        ),
+      ).toThrow(refusal);
+    });
+
+    it('on an include nested under a combine scalar branch', () => {
+      expect(() =>
+        collection.include('posts', (posts) =>
+          posts.combine({
+            count: posts.include('comments', (comments) => comments.forUpdate()).count(),
+          }),
+        ),
+      ).toThrow(refusal);
+    });
   });
 
-  it('a lock inside an include scalar reducer', async () => {
-    const { collection } = createCollectionFor('User');
+  describe('a locked state an include refinement returns is refused when lowered', () => {
+    const context = getTestContext();
+    const namespaceId = soleDomainNamespaceId(context.contract.domain);
+    const users = () => createCollectionFor('User').collection;
+    const lockedComments = () => createCollectionFor('Comment').collection.forUpdate();
+    const postsWithLockedComments = () =>
+      new Collection({ runtime: createMockRuntime(), context }, 'Post', {
+        namespaceId,
+        includeRefinementMode: true,
+        state: createCollectionFor('Post').collection.include('comments', () => lockedComments())
+          .state,
+      });
+    const refusal = lockIncompatible('includeRefinement');
 
-    await expect(
-      collection
-        .include('posts', (posts) => posts.forUpdate().count())
-        .all()
-        .toArray(),
-    ).rejects.toThrow(lockIncompatible('include'));
-  });
+    it('as the include rows', async () => {
+      await expect(
+        users()
+          .include('posts', () => lockedPosts())
+          .all()
+          .toArray(),
+      ).rejects.toThrow(refusal);
+    });
 
-  it('a lock inside an include combine branch', async () => {
-    const { collection } = createCollectionFor('User');
+    it('as an include nested under a scalar reducer', async () => {
+      await expect(
+        users()
+          .include('posts', () => postsWithLockedComments().count())
+          .all()
+          .toArray(),
+      ).rejects.toThrow(refusal);
+    });
 
-    await expect(
-      collection
-        .include('posts', (posts) => posts.combine({ locked: posts.forUpdate() }))
-        .all()
-        .toArray(),
-    ).rejects.toThrow(lockIncompatible('include'));
+    it('as a combine rows branch', async () => {
+      await expect(
+        users()
+          .include('posts', (posts) => posts.combine({ locked: lockedPosts() }))
+          .all()
+          .toArray(),
+      ).rejects.toThrow(refusal);
+    });
+
+    it('as an include nested under a combine scalar branch', async () => {
+      await expect(
+        users()
+          .include('posts', (posts) => posts.combine({ count: postsWithLockedComments().count() }))
+          .all()
+          .toArray(),
+      ).rejects.toThrow(refusal);
+    });
   });
 
   it('a lock with groupBy', async () => {
