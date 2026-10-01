@@ -38,7 +38,10 @@
                 "nullable": false,
                 "type": {
                   "codecId": "pg/vector@1",
-                  "kind": "scalar"
+                  "kind": "scalar",
+                  "typeParams": {
+                    "length": 3
+                  }
                 }
               },
               "id": {
@@ -52,14 +55,21 @@
                 "nullable": false,
                 "type": {
                   "codecId": "pg/numeric@1",
-                  "kind": "scalar"
+                  "kind": "scalar",
+                  "typeParams": {
+                    "precision": 10,
+                    "scale": 2
+                  }
                 }
               },
               "shortText": {
                 "nullable": false,
                 "type": {
                   "codecId": "sql/varchar@1",
-                  "kind": "scalar"
+                  "kind": "scalar",
+                  "typeParams": {
+                    "length": 255
+                  }
                 }
               }
             },

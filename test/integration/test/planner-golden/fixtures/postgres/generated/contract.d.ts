@@ -10,14 +10,8 @@ import type {
   Char,
   CodecTypes as PgTypes,
   Interval,
-  JsonValue,
   Numeric,
-  Time,
   TimeString,
-  Timestamp,
-  TimestampString,
-  Timestamptz,
-  TimestamptzString,
   Timetz,
   VarBit,
   Varchar,
@@ -1317,7 +1311,11 @@ type ContractBase = Omit<
               };
               readonly embedding: {
                 readonly nullable: false;
-                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/vector@1' };
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'pg/vector@1';
+                  readonly typeParams: { readonly length: 3 };
+                };
               };
               readonly id: {
                 readonly nullable: false;
@@ -1325,11 +1323,19 @@ type ContractBase = Omit<
               };
               readonly money: {
                 readonly nullable: false;
-                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/numeric@1' };
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'pg/numeric@1';
+                  readonly typeParams: { readonly precision: 10; readonly scale: 2 };
+                };
               };
               readonly shortText: {
                 readonly nullable: false;
-                readonly type: { readonly kind: 'scalar'; readonly codecId: 'sql/varchar@1' };
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'sql/varchar@1';
+                  readonly typeParams: { readonly length: 255 };
+                };
               };
             };
             readonly relations: Record<string, never>;

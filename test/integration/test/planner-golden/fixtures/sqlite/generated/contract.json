@@ -92,7 +92,10 @@
                 "nullable": false,
                 "type": {
                   "codecId": "sql/varchar@1",
-                  "kind": "scalar"
+                  "kind": "scalar",
+                  "typeParams": {
+                    "length": 255
+                  }
                 }
               },
               "sqlFloat": {

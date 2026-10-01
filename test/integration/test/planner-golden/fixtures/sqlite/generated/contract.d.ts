@@ -434,7 +434,11 @@ type ContractBase = Omit<
               };
               readonly shortText: {
                 readonly nullable: false;
-                readonly type: { readonly kind: 'scalar'; readonly codecId: 'sql/varchar@1' };
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'sql/varchar@1';
+                  readonly typeParams: { readonly length: 255 };
+                };
               };
               readonly sqlFloat: {
                 readonly nullable: false;
