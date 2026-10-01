@@ -405,7 +405,7 @@ function literalOrRawAttribute(
             columnDefault.value,
             defaultMapping.columnDataType === undefined
               ? undefined
-              : defaultMapping.dataTypes?.get(defaultMapping.columnDataType)?.toCanonicalForm,
+              : defaultMapping.dataTypeLookup?.get(defaultMapping.columnDataType)?.toCanonicalForm,
             defaultMapping.list === true,
           ).value,
         }

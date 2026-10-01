@@ -15,10 +15,10 @@ import {
   type Cast,
   type DataType,
   type DataTypeLookup,
+  isNonFiniteText,
   type ToCanonicalForm,
 } from '@internal/framework-components/codec';
 import {
-  isNonFiniteText,
   numeralText,
   type ReportedSqlType,
   type SqlTypeText,
