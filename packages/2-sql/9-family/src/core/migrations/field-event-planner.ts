@@ -25,6 +25,7 @@
 import type { Contract } from '@internal/contract/types';
 import type { OpFactoryCall } from '@internal/framework-components/control';
 import { type SqlStorage, type StorageColumn, StorageTable } from '@internal/sql-contract/types';
+import type { ResolvedTableRename } from './resolve-table-rename';
 import type { CodecControlHooks, FieldEvent, FieldEventContext } from './types';
 
 export interface PlanFieldEventOperationsOptions {
@@ -48,16 +49,10 @@ export interface PlanFieldEventOperationsOptions {
    */
   readonly codecHooks: ReadonlyMap<string, CodecControlHooks>;
   /**
-   * The tables the plan renames, keyed by {@link renamedTableKey} of the old name, valued by the
-   * new name. A column under the old name is the same column under the new one, so a rename alone
-   * fires no event.
+   * The table renames the plan applies. A column under a renamed table's old name is the same
+   * column under its new name, so a rename alone fires no event.
    */
-  readonly renamedTables: ReadonlyMap<string, string>;
-}
-
-/** The key of a renamed table in `renamedTables`: its namespace id and its old storage name. */
-export function renamedTableKey(namespaceId: string, oldTableName: string): string {
-  return JSON.stringify([namespaceId, oldTableName]);
+  readonly renames: readonly ResolvedTableRename[];
 }
 
 interface FieldEntry {
@@ -75,6 +70,11 @@ export function planFieldEventOperations(
 ): readonly OpFactoryCall[] {
   const priorContract = options.priorContract;
   const newContract = options.newContract;
+  const renamedTo = new Map(
+    options.renames.map((rename) => [renameKey(rename.namespaceId, rename.from), rename.to]),
+  );
+  const newNameOf = (namespaceId: string, tableName: string) =>
+    renamedTo.get(renameKey(namespaceId, tableName));
 
   const added: FieldEntry[] = [];
   const dropped: FieldEntry[] = [];
@@ -89,7 +89,7 @@ export function planFieldEventOperations(
     const priorNs = priorContract?.storage.namespaces[namespaceId];
     const newNs = newContract.storage.namespaces[namespaceId];
     const priorTables = underNewNames(priorNs?.entries.table, (tableName) =>
-      options.renamedTables.get(renamedTableKey(namespaceId, tableName)),
+      newNameOf(namespaceId, tableName),
     );
     const newTables = newNs?.entries.table;
 
@@ -135,6 +135,10 @@ export function planFieldEventOperations(
   appendCalls('dropped', dropped, options.codecHooks, calls, (e) => e.priorField?.codecId);
   appendCalls('altered', altered, options.codecHooks, calls, (e) => e.newField?.codecId);
   return calls;
+}
+
+function renameKey(namespaceId: string, tableName: string): string {
+  return JSON.stringify([namespaceId, tableName]);
 }
 
 function underNewNames<T>(

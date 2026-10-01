@@ -1,5 +1,5 @@
 import type { Contract } from '@internal/contract/types';
-import { type ResolvedHints, renamedTableKey } from '@internal/family-sql/control';
+import type { ResolvedHints, ResolvedTableRename } from '@internal/family-sql/control';
 import type { TargetBoundComponentDescriptor } from '@internal/framework-components/components';
 import type { ConsumedHint } from '@internal/framework-components/control';
 import type { SqlStorage } from '@internal/sql-contract/types';
@@ -13,8 +13,8 @@ export interface HintRenames {
   /** The origin with every planned rename applied: the schema the rest of the plan diffs. */
   readonly adjustedOrigin: SqlSchemaIR;
   readonly consumed: readonly ConsumedHint[];
-  /** The renamed tables, keyed by `renamedTableKey` of the old name, valued by the new name. */
-  readonly renamedTables: ReadonlyMap<string, string>;
+  /** The table renames applied, in order. */
+  readonly renames: readonly ResolvedTableRename[];
   /** Always empty: SQLite applies a hint whatever the table's control policy. */
   readonly warnings: readonly [];
 }
@@ -32,7 +32,7 @@ export function planHintRenames(input: {
   const working = createWorkingSchema(input.origin);
   const calls: RenameTableCall[] = [];
   const consumed: ConsumedHint[] = [];
-  const renamedTables = new Map<string, string>();
+  const renames: ResolvedTableRename[] = [];
   for (const rename of input.hints.tableRenames) {
     const call = sqliteTableRenameCall({
       previous: working.current,
@@ -42,12 +42,12 @@ export function planHintRenames(input: {
     });
     working.apply(call);
     calls.push(call);
-    renamedTables.set(renamedTableKey(rename.namespaceId, rename.from), rename.to);
+    renames.push(rename);
     consumed.push({
       kind: 'renamed',
       coordinate: { namespaceId: rename.namespaceId, entityKind: 'table', entityName: rename.to },
       from: rename.from,
     });
   }
-  return { calls, adjustedOrigin: working.current, consumed, renamedTables, warnings: [] };
+  return { calls, adjustedOrigin: working.current, consumed, renames, warnings: [] };
 }

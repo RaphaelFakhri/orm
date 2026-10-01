@@ -24,7 +24,7 @@ describe('planFieldEventOperations', () => {
       priorContract: fromContract,
       newContract,
       codecHooks,
-      renamedTables: new Map(),
+      renames: [],
     });
 
     expect(cs.calls).toEqual([
@@ -62,7 +62,7 @@ describe('planFieldEventOperations', () => {
       priorContract: fromContract,
       newContract,
       codecHooks,
-      renamedTables: new Map(),
+      renames: [],
     });
 
     expect(cs.calls).toEqual([
@@ -97,7 +97,7 @@ describe('planFieldEventOperations', () => {
       priorContract: fromContract,
       newContract,
       codecHooks,
-      renamedTables: new Map(),
+      renames: [],
     });
 
     expect(cs.calls).toHaveLength(1);
@@ -126,7 +126,7 @@ describe('planFieldEventOperations', () => {
       priorContract: fromContract,
       newContract,
       codecHooks,
-      renamedTables: new Map(),
+      renames: [],
     });
 
     expect(cs.calls.map((c) => c.event)).toEqual(['altered']);
@@ -152,7 +152,7 @@ describe('planFieldEventOperations', () => {
       priorContract: fromContract,
       newContract,
       codecHooks,
-      renamedTables: new Map(),
+      renames: [],
     });
 
     expect(cs.calls.map((c) => c.event)).toEqual(['altered']);
@@ -178,7 +178,7 @@ describe('planFieldEventOperations', () => {
       priorContract: fromContract,
       newContract,
       codecHooks,
-      renamedTables: new Map(),
+      renames: [],
     });
 
     expect(text.calls).toHaveLength(0);
@@ -198,7 +198,7 @@ describe('planFieldEventOperations', () => {
       priorContract: same,
       newContract: same,
       codecHooks,
-      renamedTables: new Map(),
+      renames: [],
     });
 
     expect(cs.calls).toHaveLength(0);
@@ -220,7 +220,7 @@ describe('planFieldEventOperations', () => {
       priorContract: null,
       newContract,
       codecHooks,
-      renamedTables: new Map(),
+      renames: [],
     });
 
     expect(cs.calls.map((c) => c.event)).toEqual(['added']);
@@ -243,7 +243,7 @@ describe('planFieldEventOperations', () => {
       priorContract: fromContract,
       newContract,
       codecHooks,
-      renamedTables: new Map(),
+      renames: [],
     });
 
     expect(ops).toHaveLength(0);
@@ -261,7 +261,7 @@ describe('planFieldEventOperations', () => {
       priorContract: fromContract,
       newContract,
       codecHooks,
-      renamedTables: new Map(),
+      renames: [],
     });
 
     expect(ops).toHaveLength(0);
@@ -280,7 +280,7 @@ describe('planFieldEventOperations', () => {
       priorContract: fromContract,
       newContract,
       codecHooks,
-      renamedTables: new Map(),
+      renames: [],
     });
 
     expect(ops.map((o) => (o.toOp() as MigrationPlanOperation).id)).toEqual([
@@ -303,7 +303,7 @@ describe('planFieldEventOperations', () => {
       priorContract: fromContract,
       newContract,
       codecHooks,
-      renamedTables: new Map(),
+      renames: [],
     });
 
     expect(cs.calls).toHaveLength(1);
@@ -331,7 +331,7 @@ describe('planFieldEventOperations', () => {
       priorContract: fromContract,
       newContract,
       codecHooks,
-      renamedTables: new Map(),
+      renames: [],
     });
 
     expect(cs.calls.map((c) => c.event)).toEqual(['added', 'dropped', 'altered']);
@@ -362,7 +362,7 @@ describe('planFieldEventOperations', () => {
       priorContract: fromContract,
       newContract,
       codecHooks,
-      renamedTables: new Map(),
+      renames: [],
     });
 
     expect(cs.calls.map((c) => `${c.tableName}.${c.fieldName}`)).toEqual([
@@ -393,7 +393,7 @@ describe('planFieldEventOperations', () => {
       priorContract: fromContract,
       newContract,
       codecHooks,
-      renamedTables: new Map(),
+      renames: [],
     });
 
     expect(cs.calls.map((c) => c.fieldName)).toEqual(['secret']);
@@ -428,13 +428,13 @@ describe('planFieldEventOperations', () => {
       priorContract: fromContract,
       newContract,
       codecHooks,
-      renamedTables: new Map(),
+      renames: [],
     });
     const opsB = planFieldEventOperations({
       priorContract: fromContract,
       newContract,
       codecHooks,
-      renamedTables: new Map(),
+      renames: [],
     });
 
     // Materialise each `OpFactoryCall` rather than `JSON.stringify`-ing
@@ -469,7 +469,7 @@ describe('planFieldEventOperations', () => {
       priorContract: fromContract,
       newContract,
       codecHooks,
-      renamedTables: new Map(),
+      renames: [],
     });
 
     expect(ops.map((o) => (o.toOp() as MigrationPlanOperation).id)).toEqual([

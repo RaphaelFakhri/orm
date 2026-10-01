@@ -1,9 +1,7 @@
 import { UNBOUND_NAMESPACE_ID } from '@internal/framework-components/ir';
 import { describe, expect, it } from 'vitest';
-import {
-  planFieldEventOperations,
-  renamedTableKey,
-} from '../src/core/migrations/field-event-planner';
+import { planFieldEventOperations } from '../src/core/migrations/field-event-planner';
+import type { ResolvedTableRename } from '../src/core/migrations/resolve-table-rename';
 import type { CodecControlHooks } from '../src/core/migrations/types';
 import { col, contract, recordingHook, table } from './field-event-fixtures';
 
@@ -18,13 +16,13 @@ const newContract = contract({
   }),
 });
 
-function eventsWith(renamedTables: ReadonlyMap<string, string>) {
+function eventsWith(renames: readonly ResolvedTableRename[]) {
   const cs = recordingHook([]);
   planFieldEventOperations({
     priorContract,
     newContract,
     codecHooks: new Map<string, CodecControlHooks>([['cs/string@1', cs.hook]]),
-    renamedTables,
+    renames,
   });
   return cs.calls.map((call) => `${call.event} ${call.tableName}.${call.fieldName}`);
 }
@@ -32,12 +30,12 @@ function eventsWith(renamedTables: ReadonlyMap<string, string>) {
 describe('planFieldEventOperations with renamed tables', () => {
   it('treats the columns of a renamed table as the same columns under the new name', () => {
     expect(
-      eventsWith(new Map([[renamedTableKey(UNBOUND_NAMESPACE_ID, 'Profile'), 'Member']])),
+      eventsWith([{ namespaceId: UNBOUND_NAMESPACE_ID, from: 'Profile', to: 'Member' }]),
     ).toEqual(['added Member.nickname']);
   });
 
   it('still reports a table that is not renamed as dropped and created', () => {
-    expect(eventsWith(new Map())).toEqual([
+    expect(eventsWith([])).toEqual([
       'added Member.email',
       'added Member.id',
       'added Member.nickname',
@@ -47,7 +45,7 @@ describe('planFieldEventOperations with renamed tables', () => {
   });
 
   it('keys a rename by namespace, so the same table name in another namespace is not renamed', () => {
-    expect(eventsWith(new Map([[renamedTableKey('other', 'Profile'), 'Member']]))).toEqual([
+    expect(eventsWith([{ namespaceId: 'other', from: 'Profile', to: 'Member' }])).toEqual([
       'added Member.email',
       'added Member.id',
       'added Member.nickname',

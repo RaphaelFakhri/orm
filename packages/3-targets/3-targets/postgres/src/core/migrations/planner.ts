@@ -409,7 +409,7 @@ export class PostgresMigrationPlanner implements MigrationPlanner<'sql', 'postgr
       priorContract: planOptions.fromContract,
       newContract: planOptions.contract,
       codecHooks,
-      renamedTables: hintRenames.renamedTables,
+      renames: hintRenames.renames,
     });
     // Codec hook ops are target-agnostic `OpFactoryCall`; Postgres planning
     // lifts them at this integration boundary (see field-event-planner JSDoc).
