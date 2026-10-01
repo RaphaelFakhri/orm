@@ -6,7 +6,7 @@
  * anything this attribute does not cover.
  */
 
-import type { CodecLookup } from '@internal/framework-components/codec';
+import type { CodecLookupWithDescriptors } from '@internal/framework-components/codec';
 import { assembleAuthoringContributions } from '@internal/framework-components/control';
 import { buildSymbolTable } from '@internal/psl-parser';
 import { parse } from '@internal/psl-parser/syntax';
@@ -55,7 +55,7 @@ const scalarTypeDescriptors = new Map<string, { codecId: string; nativeType: str
 ]);
 
 // `pg.enum(Ref)` resolves its column through the enum codec's descriptor.
-const codecLookup: CodecLookup = {
+const codecLookup: CodecLookupWithDescriptors = {
   get: () => undefined,
   targetTypesFor: () => undefined,
   renderOutputTypeFor: () => undefined,

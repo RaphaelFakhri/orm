@@ -22,7 +22,7 @@ const emptyContext: ContractSourceContext = {
     attributeSpecs: { model: {}, field: {} },
   },
   dataTypes: { entries: {}, lookup: createDataTypeLookup([]) },
-  codecLookup: emptyCodecLookup,
+  codecLookup: { ...emptyCodecLookup, descriptorFor: () => undefined },
   controlMutationDefaults: {
     defaultFunctionRegistry: new Map(),
     generatorDescriptors: [],

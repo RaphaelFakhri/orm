@@ -40,6 +40,8 @@ it('pushes owned default diagnostics with filename and range rather than a provi
       dataTypes: fixtureDataTypeSupport,
     }).binder,
     columnDescriptor: { codecId: 'pg/text@1', nativeType: 'text' },
+    isListColumn: false,
+    valueObjectDefault: undefined,
     generatorDescriptorById: new Map(),
     defaultFunctionRegistry: new Map(),
     dataTypes: fixtureDataTypeSupport,

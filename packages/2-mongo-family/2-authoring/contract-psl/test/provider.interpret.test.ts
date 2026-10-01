@@ -37,7 +37,7 @@ function createMongoTestContext(overrides?: Partial<ContractSourceContext>): Con
       attributeSpecs: { model: {}, field: {} },
     },
     dataTypes: { entries: {}, lookup: createDataTypeLookup([]) },
-    codecLookup: emptyCodecLookup,
+    codecLookup: { ...emptyCodecLookup, descriptorFor: () => undefined },
     controlMutationDefaults: {
       defaultFunctionRegistry: new Map(),
       generatorDescriptors: [],
