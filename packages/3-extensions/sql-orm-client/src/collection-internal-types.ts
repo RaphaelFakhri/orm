@@ -1,9 +1,8 @@
 import type { Contract } from '@internal/contract/types';
 import type { ExtractAggregateTypes, SqlStorage } from '@internal/sql-contract/types';
 import type { WhereArg } from '@internal/sql-relational-core/ast';
-import type { Simplify } from '@internal/utils/types';
 import type { Collection } from './collection';
-import type { HasRow, RowType } from './collection-types';
+import type { CollectionRowOf, HasRow, RowType } from './collection-types';
 import type {
   CollectionContext,
   CollectionTypeState,
@@ -122,7 +121,13 @@ export type IncludeRefinementValue<
       // cardinality-wrapped; Collection carries a raw row that still needs it.
       RefinedResult extends { readonly kind: 'includeScalar' | 'includeCombine' }
       ? V
-      : RefinedIncludeRelationValue<TContract, ParentModelName, RelName, Simplify<V>, NsId>
+      : RefinedIncludeRelationValue<
+          TContract,
+          ParentModelName,
+          RelName,
+          CollectionRowOf<HasRow<V>>,
+          NsId
+        >
     : IncludeRelationValue<TContract, ParentModelName, RelName, DefaultIncludedRow, NsId>;
 
 /**
