@@ -105,7 +105,7 @@ function whyNotSortable(collection: RuntimeModelCollection, name: string): strin
 }
 
 /**
- * An `orderBy` selector for a field named by a string, such as a sort parameter of a request. A name that is not a sortable field of the collection's model, or not in `allowed`, throws `ORM.ARGUMENT_INVALID`.
+ * An `orderBy` selector for a field named by a string, such as a sort parameter of a request. A name that is not a sortable field of the collection's model or not in `allowed`, and a direction other than `asc` or `desc`, throw `ORM.ARGUMENT_INVALID`.
  *
  * ```ts
  * db.Post.orderBy(sortField(db.Post, input.sort, input.direction, ['title', 'createdAt']));
