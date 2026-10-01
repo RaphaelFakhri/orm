@@ -29,6 +29,7 @@ export type {
   AggregateBuilder,
   AggregateIncludeReducers,
   AggregateResult,
+  AggregateSelector,
   AggregateSpec,
   CollectionContext,
   CollectionModelName,

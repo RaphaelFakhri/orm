@@ -1292,6 +1292,10 @@ export class CollectionBase<
    * await db.orm.User.all((meta) => meta.annotate(cacheAnnotation({ key: 'users' })));
    * ```
    */
+  all<Self>(
+    this: Self,
+    configure?: (meta: MetaBuilder<'read'>) => void,
+  ): AsyncIterableResult<CollectionRowOf<this & Self>>;
   all(configure?: (meta: MetaBuilder<'read'>) => void): AsyncIterableResult<CollectionRowOf<this>>;
   all(configure?: (meta: MetaBuilder<'read'>) => void): AsyncIterableResult<unknown> {
     return this.#withAnnotationsFromMeta(configure, 'all').#dispatch();
@@ -1370,13 +1374,19 @@ export class CollectionBase<
    * );
    * ```
    */
-  async first(): Promise<CollectionRowOf<this> | null>;
-  async first(
+  async first<Self>(this: Self): Promise<CollectionRowOf<this & Self> | null>;
+  async first<Self>(
+    this: Self,
     filter: undefined,
     configure: (meta: MetaBuilder<'read'>) => void,
-  ): Promise<CollectionRowOf<this> | null>;
-  async first(
+  ): Promise<CollectionRowOf<this & Self> | null>;
+  async first<Self>(
+    this: Self,
     filter: WhereInput<TContract, State['nsId'], ModelName, State['variantName']>,
+    configure?: (meta: MetaBuilder<'read'>) => void,
+  ): Promise<CollectionRowOf<this & Self> | null>;
+  async first(
+    filter?: WhereInput<TContract, State['nsId'], ModelName, State['variantName']>,
     configure?: (meta: MetaBuilder<'read'>) => void,
   ): Promise<CollectionRowOf<this> | null>;
   async first(
@@ -1543,12 +1553,20 @@ export class CollectionBase<
    * validation applies, but the recorded annotations are discarded: neither the nested
    * statements nor the read-back query carry them.
    */
-  async create(
+  async create<Self>(
+    this: Self,
     data: ResolvedCreateInput<TContract, ModelName, State['variantName'], State['nsId']>,
     configure?: (meta: MetaBuilder<'write'>) => void,
-  ): Promise<CollectionRowOf<this>>;
-  async create(
+  ): Promise<CollectionRowOf<this & Self>>;
+  async create<Self>(
+    this: Self,
     data: MutationCreateInputWithRelations<TContract, ModelName, State['nsId']>,
+    configure?: (meta: MetaBuilder<'write'>) => void,
+  ): Promise<CollectionRowOf<this & Self>>;
+  async create(
+    data:
+      | ResolvedCreateInput<TContract, ModelName, State['variantName'], State['nsId']>
+      | MutationCreateInputWithRelations<TContract, ModelName, State['nsId']>,
     configure?: (meta: MetaBuilder<'write'>) => void,
   ): Promise<CollectionRowOf<this>>;
   async create(
@@ -1655,6 +1673,17 @@ export class CollectionBase<
    * compiled insert plan. It may be passed in second position when
    * there are no options.
    */
+  createAll<Self>(
+    this: Self,
+    data: readonly ResolvedScalarCreateInput<
+      TContract,
+      ModelName,
+      State['variantName'],
+      State['nsId']
+    >[],
+    optionsOrConfigure?: CreateConflictOptions<TContract, ModelName> | WriteConfigure,
+    configure?: WriteConfigure,
+  ): AsyncIterableResult<CollectionRowOf<this & Self>>;
   createAll(
     data: readonly ResolvedScalarCreateInput<
       TContract,
@@ -2133,6 +2162,15 @@ export class CollectionBase<
    *
    * Not supported on MTI variants.
    */
+  async upsert<Self>(
+    this: Self,
+    input: {
+      create: ResolvedScalarCreateInput<TContract, ModelName, State['variantName'], State['nsId']>;
+      update: Partial<DefaultModelRow<TContract, ModelName>>;
+      conflictOn?: UniqueConstraintCriterion<TContract, ModelName>;
+    },
+    configure?: (meta: MetaBuilder<'write'>) => void,
+  ): Promise<CollectionRowOf<this & Self>>;
   async upsert(
     input: {
       create: ResolvedScalarCreateInput<TContract, ModelName, State['variantName'], State['nsId']>;
@@ -2281,7 +2319,7 @@ export class CollectionBase<
     this: Self,
     data: MutationUpdateInput<TContract, ModelName, State['nsId']>,
     configure?: (meta: MetaBuilder<'write'>) => void,
-  ): Promise<CollectionRowOf<this> | null>;
+  ): Promise<CollectionRowOf<this & Self> | null>;
   async update(
     data: MutationUpdateInput<TContract, ModelName, State['nsId']>,
     configure?: (meta: MetaBuilder<'write'>) => void,
@@ -2371,7 +2409,7 @@ export class CollectionBase<
     this: Self,
     data: Partial<DefaultModelRow<TContract, ModelName, State['nsId']>>,
     configure?: (meta: MetaBuilder<'write'>) => void,
-  ): AsyncIterableResult<CollectionRowOf<this>>;
+  ): AsyncIterableResult<CollectionRowOf<this & Self>>;
   updateAll(
     data: Partial<DefaultModelRow<TContract, ModelName, State['nsId']>>,
     configure?: (meta: MetaBuilder<'write'>) => void,
@@ -2499,7 +2537,7 @@ export class CollectionBase<
   async delete<Self extends HasWhere>(
     this: Self,
     configure?: (meta: MetaBuilder<'write'>) => void,
-  ): Promise<CollectionRowOf<this> | null>;
+  ): Promise<CollectionRowOf<this & Self> | null>;
   async delete(configure?: (meta: MetaBuilder<'write'>) => void): Promise<unknown> {
     assertReturningCapability(this.contract, 'delete()');
     const annotationsMap = this.#collectAnnotationsFromMeta(configure, 'write', 'delete');
@@ -2541,7 +2579,7 @@ export class CollectionBase<
   deleteAll<Self extends HasWhere>(
     this: Self,
     configure?: (meta: MetaBuilder<'write'>) => void,
-  ): AsyncIterableResult<CollectionRowOf<this>>;
+  ): AsyncIterableResult<CollectionRowOf<this & Self>>;
   deleteAll(configure?: (meta: MetaBuilder<'write'>) => void): AsyncIterableResult<unknown> {
     return this.#deleteAllWithAnnotations(
       this.#collectAnnotationsFromMeta(configure, 'write', 'deleteAll'),

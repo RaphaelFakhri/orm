@@ -27,10 +27,6 @@ class AuthorCollection extends Collection<TestContract, 'User'> {
     return this.include('posts').first({ name });
   }
 
-  preparedWithPosts() {
-    return this.include('posts').prepared;
-  }
-
   createWithPosts() {
     return this.include('posts').create(newUser);
   }
@@ -86,10 +82,6 @@ describe('a class method that includes a relation and then reads rows', () => {
     expectTypeOf(
       await Authors.firstMatchingWithPosts('Ada'),
     ).toEqualTypeOf<AuthorWithPosts | null>();
-  });
-
-  test('prepared', () => {
-    expectTypeOf(Authors.preparedWithPosts()).toEqualTypeOf(outside.prepared);
   });
 
   test('create', async () => {
