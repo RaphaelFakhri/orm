@@ -358,7 +358,7 @@ describe('op building (typed DDL node)', () => {
     const node = received.find((n): n is PostgresDropType => n instanceof PostgresDropType);
     expect(node?.schema).toBe('sales');
     expect(node?.name).toBe('order_status');
-    expect(op.operationClass).toBe('destructive');
+    expect(op.operationClass).toBe('widening');
   });
 
   it('an unbound-namespace create builds a node with no schema so search_path resolves it', async () => {

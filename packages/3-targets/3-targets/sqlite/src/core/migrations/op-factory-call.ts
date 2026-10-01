@@ -606,7 +606,7 @@ export class CreateIndexCall extends SqliteOpFactoryCallNode {
 
 export class DropIndexCall extends SqliteOpFactoryCallNode {
   readonly factoryName = 'dropIndex' as const;
-  readonly operationClass = 'destructive' as const;
+  readonly operationClass = 'widening' as const;
   readonly tableName: string;
   readonly indexName: string;
   readonly label: string;
@@ -636,7 +636,7 @@ export class DropIndexCall extends SqliteOpFactoryCallNode {
       id: `dropIndex.${this.tableName}.${this.indexName}`,
       label: `Drop index ${this.indexName} on ${this.tableName}`,
       summary: `Drops index ${this.indexName} on ${this.tableName} which is not in the contract`,
-      operationClass: 'destructive',
+      operationClass: 'widening',
       target: {
         id: 'sqlite',
         details: buildTargetDetails('index', this.indexName, this.tableName),

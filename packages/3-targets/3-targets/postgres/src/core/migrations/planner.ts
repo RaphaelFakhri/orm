@@ -477,7 +477,6 @@ export class PostgresMigrationPlanner implements MigrationPlanner<'sql', 'postgr
     readonly conflicts: readonly SqlPlannerConflict[];
     readonly suppressions: readonly SuppressionRecord[];
   } {
-    const allowsDestructive = options.policy.allowedOperationClasses.includes('destructive');
     const allowsWidening = options.policy.allowedOperationClasses.includes('widening');
 
     interface PolicyFinding {
@@ -652,7 +651,7 @@ export class PostgresMigrationPlanner implements MigrationPlanner<'sql', 'postgr
         ),
       );
     }
-    if (allowsDestructive) {
+    if (allowsWidening) {
       for (const finding of extra) {
         if (renamedExtras.has(finding)) continue;
         calls.push(
@@ -856,7 +855,7 @@ function gradePolicyReplacement(
       },
     };
   }
-  if (!allowedOperationClasses.includes('destructive')) {
+  if (!allowedOperationClasses.includes('widening')) {
     return {
       disposition: 'conflict',
       conflict: conflictForDisallowedCall(replacement.drop, allowedOperationClasses),

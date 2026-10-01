@@ -77,7 +77,7 @@ export async function dropRlsPolicy(
   return {
     id: `rlsPolicy.${schemaName}.${tableName}.${policyName}.drop`,
     label: `Drop RLS policy "${policyName}" on "${tableName}"`,
-    operationClass: 'destructive',
+    operationClass: 'widening',
     target: targetDetails('rlsPolicy', policyName, schemaName, tableName),
     precheck: [step(`ensure RLS policy "${policyName}" exists`, present.sql, present.params)],
     execute: [step(`drop RLS policy "${policyName}"`, execute.sql, execute.params)],
