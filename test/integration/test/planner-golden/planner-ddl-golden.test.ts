@@ -93,7 +93,10 @@ function parseJson(path: string): unknown {
 }
 
 function listCommittedSqlContracts(): readonly CommittedContract[] {
-  const files = execFileSync('git', ['ls-files', '*.json'], { cwd: repoRoot, encoding: 'utf8' })
+  const files = execFileSync('git', ['ls-files', '*.json', ':!upgrade-instructions'], {
+    cwd: repoRoot,
+    encoding: 'utf8',
+  })
     .split('\n')
     .filter((line) => line !== '')
     .sort();
