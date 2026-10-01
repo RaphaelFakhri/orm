@@ -20,6 +20,7 @@ export const paradedbIndexTypes = defineIndexTypes().add('bm25', {
     '+': 'reject',         // reject any extra option keys (registrant opt-in)
     key_field: 'string',
   }),
+  backsForeignKey: false,  // a search index cannot serve a foreign key's lookups
 });
 ```
 
@@ -78,12 +79,13 @@ The registry resolves all three by giving the system one place that knows which 
 
 ## The registry primitive
 
-An entry is a pair: a `type` literal and a validator describing the entry's `options`.
+An entry names a `type` literal, carries a validator describing the entry's `options`, and says whether an index of the type can back a foreign key.
 
 ```ts
 type IndexTypeEntry<TOptions> = {
   readonly type: string;
   readonly options: arktype.Type<TOptions>;
+  readonly backsForeignKey: boolean;
 };
 ```
 
@@ -91,13 +93,17 @@ Entries are produced by a small fluent builder. The builder is the only way an e
 
 ```ts
 defineIndexTypes()
-  .add('bm25',  { options: type({ '+': 'reject', key_field: 'string' }) })
-  .add('vector', { options: type({ '+': 'reject', m: 'number', ef_construction: 'number' }) });
+  .add('bm25',  { options: type({ '+': 'reject', key_field: 'string' }), backsForeignKey: false })
+  .add('vector', { options: type({ '+': 'reject', m: 'number', ef_construction: 'number' }), backsForeignKey: false });
 ```
 
 `defineIndexTypes()` returns a value carrying both the runtime entry list and a TypeScript-only phantom map of `type` literal → `options` shape. The same value is what a pack stores on its descriptor; both halves stay in lockstep automatically because both come from the same builder call. Drift between the runtime shape and the TS shape becomes a TypeScript error at the `.add(…)` call site, not a runtime surprise downstream.
 
 Calling `.add(name, …)` twice with the same `name` is a builder-time error naming the duplicate. The builder is immutable — every `.add(…)` returns a new builder — so the resulting registration is safe to share across contracts that attach the same pack.
+
+### Foreign-key backing
+
+A foreign key gets a derived backing index unless an index of its table already covers its columns in order. Whether an index can stand in for that backing index depends on its access method: a btree or hash index serves the equality lookups a foreign key needs, a search, spatial or range-summary index does not. The SQL family does not know the access methods, so each entry declares it with `backsForeignKey`, and the registry answers `backsForeignKey(type)` — `false` for a type nobody registered. An index counts as backing when it has no `where` predicate and either has no `type` (the target's default access method) or a type whose entry declares `backsForeignKey: true`. Contract construction and `contract infer` read the same rule. Postgres declares it for `btree` and `hash`, and not for `gin`, `gist`, `spgist` or `brin`.
 
 ## How packs and contracts compose
 
@@ -159,7 +165,7 @@ There is **no per-entry rendering hook**. A single universal renderer formats `o
 
 Two consequences are worth naming:
 
-- **The universal renderer is sufficient because validators constrain leaves to scalars.** There is no entry whose options need bespoke rendering, because no entry can declare an options shape with non-scalar leaves.
+- **The universal renderer is sufficient because the options it renders are scalars.** The one structured option in use, the Postgres full-text definition (`fields`, `language` on a `gin` index), is consumed by the target to render the index's expression and never reaches `WITH (…)`.
 - **SQL-injection risk is bounded to framework-owned helpers.** An extension author cannot accidentally introduce an unsafe rendering path; the only path that produces SQL string fragments from extension data is the one the framework controls and tests.
 
 ## Index identity and migration semantics
