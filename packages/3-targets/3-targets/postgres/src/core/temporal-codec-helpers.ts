@@ -179,7 +179,9 @@ export const pgTimeTemporalDecode = (wire: string): Temporal.PlainTime =>
 export const pgTimeTemporalEncode = (value: Temporal.PlainTime): string =>
   encodeTemporalValue(TIME_TEMPORAL, value);
 
-const EARLIEST_POSTGRES_TIMESTAMP_MILLISECONDS = new Date('-004713-11-24T00:00:00Z').getTime();
+export const EARLIEST_POSTGRES_TIMESTAMP_MILLISECONDS = new Date(
+  '-004713-11-24T00:00:00Z',
+).getTime();
 
 function utcText(value: Date, codecId: string, zone: '' | 'Z'): string {
   const milliseconds = value.getTime();
