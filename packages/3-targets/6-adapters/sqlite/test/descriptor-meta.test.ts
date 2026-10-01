@@ -28,11 +28,16 @@ describe('the SQLite adapter descriptor metadata', () => {
   });
 
   it('contributes no type constructors, because the target contributes them', () => {
-    expect(sqliteAdapterDescriptor.authoring).not.toHaveProperty('type');
+    expect(sqliteAdapterDescriptor.authoring?.type).toBeUndefined();
+  });
+
+  it('leaves the value-object storage type to the target, which declares Json', () => {
+    expect(sqliteAdapterDescriptor.authoring?.valueObjectStorageType).toBeUndefined();
+    expect(sqliteTargetDescriptor.authoring.valueObjectStorageType).toBe('Json');
   });
 
   it('contributes no data type entries, because the target contributes them', () => {
-    expect(sqliteAdapterDescriptor.authoring).not.toHaveProperty('dataTypes');
+    expect(sqliteAdapterDescriptor.authoring?.dataTypes).toBeUndefined();
   });
 });
 

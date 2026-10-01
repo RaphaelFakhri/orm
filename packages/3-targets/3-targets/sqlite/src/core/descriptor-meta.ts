@@ -10,6 +10,7 @@ const sqliteTargetDescriptorMetaBase = {
   supportsNamespaces: false,
   authoring: {
     type: sqliteAuthoringTypes,
+    valueObjectStorageType: 'Json',
     field: sqliteAuthoringFieldPresets,
     dataTypes: createSqliteDataTypeEntries(),
   },

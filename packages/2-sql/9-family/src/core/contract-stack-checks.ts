@@ -9,6 +9,7 @@ import {
   type SqlStorage,
   type StorageTable,
 } from '@internal/sql-contract/types';
+import { valueObjectStorageTypeMissingMessage } from '@internal/sql-contract/validators';
 import { blindCast } from '@internal/utils/casts';
 
 export interface ContractStackCheckInputs {
@@ -76,9 +77,7 @@ function valueObjectProblems(
         if (columnName === undefined || column === undefined) return [];
         const path = `${table.path}.columns.${columnName}`;
         if (expectedCodecId === undefined) {
-          return [
-            `${path}: a value-object column needs the stack's value-object storage type, and the stack declares none`,
-          ];
+          return [valueObjectStorageTypeMissingMessage(path)];
         }
         if (column.codecId === expectedCodecId) return [];
         return [

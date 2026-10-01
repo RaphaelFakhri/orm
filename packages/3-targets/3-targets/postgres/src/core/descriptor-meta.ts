@@ -22,6 +22,7 @@ const postgresTargetDescriptorMetaBase = {
   indexTypes: postgresIndexTypes,
   authoring: {
     type: postgresAuthoringTypes,
+    valueObjectStorageType: 'Jsonb',
     field: postgresAuthoringFieldPresets,
     dataTypes: createPostgresDataTypeEntries(),
     entityTypes: postgresAuthoringEntityTypes,

@@ -1,3 +1,4 @@
+import postgresTargetPack from '@internal/target-postgres/pack';
 import { describe, expect, it } from 'vitest';
 import {
   createPostgresDefaultFunctionRegistry,
@@ -197,14 +198,15 @@ describe('postgres runtime mutation default generators', () => {
 
 describe('the adapter authoring contribution', () => {
   it('contributes no type constructors, which the target contributes', () => {
-    expect(postgresAdapterDescriptor.authoring).not.toHaveProperty('type');
+    expect(postgresAdapterDescriptor.authoring?.type).toBeUndefined();
   });
 
   it('contributes no data type entries, which the target contributes', () => {
-    expect(postgresAdapterDescriptor.authoring).not.toHaveProperty('dataTypes');
+    expect(postgresAdapterDescriptor.authoring?.dataTypes).toBeUndefined();
   });
 
-  it('declares Jsonb as the value-object storage type', () => {
-    expect(postgresAdapterDescriptor.authoring?.valueObjectStorageType).toBe('Jsonb');
+  it('leaves the value-object storage type to the target, which declares Jsonb', () => {
+    expect(postgresAdapterDescriptor.authoring?.valueObjectStorageType).toBeUndefined();
+    expect(postgresTargetPack.authoring.valueObjectStorageType).toBe('Jsonb');
   });
 });

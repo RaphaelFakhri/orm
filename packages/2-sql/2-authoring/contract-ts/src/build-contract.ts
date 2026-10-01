@@ -30,6 +30,7 @@ import type {
   AuthoringWarning,
 } from '@internal/framework-components/authoring';
 import {
+  collectScalarTypeConstructors,
   flushAuthoringWarnings,
   isAuthoringEntityTypeDescriptor,
 } from '@internal/framework-components/authoring';
@@ -76,7 +77,10 @@ import {
   type StorageValueSetInput,
   toStorageTypeInstance,
 } from '@internal/sql-contract/types';
-import { validateStorageSemantics } from '@internal/sql-contract/validators';
+import {
+  validateStorageSemantics,
+  valueObjectStorageTypeMissingMessage,
+} from '@internal/sql-contract/validators';
 import { deriveValueSetFromEntity } from '@internal/sql-contract/value-set-derivation-hook';
 import {
   type CheckKind,
@@ -731,8 +735,6 @@ function mergeColumnAndAttachedEntities(
   return result;
 }
 
-const JSONB_CODEC_ID = 'pg/jsonb@1';
-
 function resolveModelNamespaceId(
   model: ModelNode,
   modelNameToNamespaceId: ReadonlyMap<string, string>,
@@ -853,27 +855,43 @@ interface TypeLookups {
   readonly dataTypeLookup: DataTypeLookup;
 }
 
+function valueObjectStorageCodecId(target: ContractDefinition['target']): string | undefined {
+  const name = target.authoring?.valueObjectStorageType;
+  if (name === undefined) return undefined;
+  return collectScalarTypeConstructors(target.authoring?.type ?? {}).get(name)?.codecId;
+}
+
 function buildStorageColumn(
   field: FieldNode | ValueObjectFieldNode,
   storageValueSetRef: ValueSetRef | undefined,
-  modelName: string,
+  site: { readonly modelName: string; readonly columnPath: string },
   storageTypes: Record<string, AuthoredStorageType>,
+  valueObjectCodecId: string | undefined,
   lookups: TypeLookups,
 ): StorageColumn {
   const { codecLookup } = lookups;
+  const { modelName } = site;
   if (isValueObjectField(field)) {
+    if (valueObjectCodecId === undefined) {
+      throw contractError(
+        'CONTRACT.VALIDATION_FAILED',
+        valueObjectStorageTypeMissingMessage(site.columnPath),
+        { meta: { modelName, fieldName: field.fieldName } },
+      );
+    }
     const encodedDefault =
       field.default !== undefined
-        ? encodeColumnDefault(field.default, codecLookup, (lookup) => lookup.get(JSONB_CODEC_ID), {
-            modelName,
-            fieldName: field.fieldName,
-            codecId: JSONB_CODEC_ID,
-          })
+        ? encodeColumnDefault(
+            field.default,
+            codecLookup,
+            (lookup) => lookup.get(valueObjectCodecId),
+            { modelName, fieldName: field.fieldName, codecId: valueObjectCodecId },
+          )
         : undefined;
 
     return {
-      dataType: sqlDataTypeOfCodec(JSONB_CODEC_ID, lookups).id,
-      codecId: JSONB_CODEC_ID,
+      dataType: sqlDataTypeOfCodec(valueObjectCodecId, lookups).id,
+      codecId: valueObjectCodecId,
       nullable: field.nullable,
       ...ifDefined('default', encodedDefault),
     };
@@ -1120,6 +1138,7 @@ export function buildSqlContractFromDefinition(
   const target = definition.target.targetId;
   const defaultNamespaceId = definition.target.defaultNamespaceId;
   const qualifyColumnType = resolveColumnTypeQualifier(definition.target);
+  const valueObjectCodecId = valueObjectStorageCodecId(definition.target);
   const renderCheckExpressions = resolveCheckExpressionRenderer(definition.target);
   const targetFamily = 'sql';
   const resolveNamespaceId = (m: ModelNode): string =>
@@ -1290,8 +1309,12 @@ export function buildSqlContractFromDefinition(
       const column = buildStorageColumn(
         resolvedField,
         storageValueSetRef,
-        semanticModel.modelName,
+        {
+          modelName: semanticModel.modelName,
+          columnPath: `storage.namespaces.${namespaceId}.entries.table.${tableName}.columns.${field.columnName}`,
+        },
         definition.storageTypes ?? {},
+        valueObjectCodecId,
         lookups,
       );
       columns[field.columnName] = column;

@@ -171,6 +171,11 @@ export function createSqlStorageSchema(
 
 const StorageSchema = createSqlStorageSchema(DEFAULT_SQL_KINDS);
 
+/** The refusal of a value-object column when the stack declares no value-object storage type. */
+export function valueObjectStorageTypeMissingMessage(columnPath: string): string {
+  return `${columnPath}: a value-object column needs the stack's value-object storage type, and the stack declares none`;
+}
+
 /**
  * Contracts emitted before a column named its data type stored the database type name in `nativeType`. Each such key is reported with its path, so an old contract is refused with a message that says what changed.
  */

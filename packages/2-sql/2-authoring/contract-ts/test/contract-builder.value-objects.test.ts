@@ -15,6 +15,10 @@ const postgresTargetPack: TargetPackRef<'sql', 'postgres'> = {
   targetId: 'postgres',
   version: '0.0.1',
   defaultNamespaceId: 'public',
+  authoring: {
+    type: { Jsonb: { kind: 'typeConstructor', output: { codecId: 'pg/jsonb@1' } } },
+    valueObjectStorageType: 'Jsonb',
+  },
 };
 
 describe('value objects in contract definition builder', () => {
