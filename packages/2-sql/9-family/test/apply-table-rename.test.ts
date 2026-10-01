@@ -12,7 +12,9 @@ import { describe, expect, it } from 'vitest';
 import { createTestSqlNamespace } from '../../1-core/contract/test/test-support';
 import {
   applyTableRename,
+  resolveTableRenameAgainst,
   TABLE_RENAME_UNMATCHED_CODE,
+  type TableLookup,
   type TableRename,
 } from '../src/core/migrations/apply-table-rename';
 
@@ -114,7 +116,6 @@ describe('applyTableRename', () => {
       startContract,
       endContract,
       rename: rename('userProfile', 'UserProfile'),
-      renameTableReferences: undefined,
     });
 
     expect(result.ok).toBe(true);
@@ -153,7 +154,6 @@ describe('applyTableRename', () => {
       startContract,
       endContract,
       rename: rename('userProfile', 'UserProfile'),
-      renameTableReferences: undefined,
     });
 
     expect(result.ok).toBe(true);
@@ -180,7 +180,6 @@ describe('applyTableRename', () => {
       startContract,
       endContract,
       rename: rename('userProfile', 'UserProfile'),
-      renameTableReferences: undefined,
     });
 
     expect(result.ok).toBe(true);
@@ -207,7 +206,6 @@ describe('applyTableRename', () => {
       startContract,
       endContract,
       rename: rename('userProfile', 'UserProfile', 'auth'),
-      renameTableReferences: undefined,
     });
 
     expect(result.ok).toBe(true);
@@ -218,36 +216,6 @@ describe('applyTableRename', () => {
       to: 'UserProfile',
     });
     expect(tablesOf(result.value.contract, 'app')).toEqual(['userProfile']);
-  });
-
-  it("lets the target rename its own references to the table in the table's namespace", () => {
-    const startContract = contractOf({
-      auth: { userProfile: table(), account: table() },
-      app: { userProfile: table() },
-    });
-    const endContract = contractOf({
-      auth: { UserProfile: table(), account: table() },
-      app: { userProfile: table() },
-    });
-    const calls: string[] = [];
-
-    const result = applyTableRename({
-      startContract,
-      endContract,
-      rename: rename('userProfile', 'UserProfile', 'auth'),
-      renameTableReferences: (entries, applied) => {
-        calls.push(`${applied.namespaceId}:${applied.from}>${applied.to}`);
-        return { ...entries, marker: { [applied.to]: { tableName: applied.to } } };
-      },
-    });
-
-    expect(result.ok).toBe(true);
-    if (!result.ok) return;
-    expect(calls).toEqual(['auth:userProfile>UserProfile']);
-    expect(result.value.contract.storage.namespaces['auth']?.entries['marker']).toEqual({
-      UserProfile: { tableName: 'UserProfile' },
-    });
-    expect(result.value.contract.storage.namespaces['app']?.entries['marker']).toBeUndefined();
   });
 
   describe('refusals', () => {
@@ -266,7 +234,6 @@ describe('applyTableRename', () => {
         startContract: start,
         endContract,
         rename: tableRename,
-        renameTableReferences: undefined,
       });
       expect(result.ok).toBe(false);
       return result.ok ? undefined : result.failure;
@@ -314,7 +281,6 @@ describe('applyTableRename', () => {
         }),
         endContract: contractOf({ auth: { UserProfile: table() }, app: { userProfile: table() } }),
         rename: rename('userProfile', 'UserProfile'),
-        renameTableReferences: undefined,
       });
 
       expect(result.ok).toBe(false);
@@ -323,5 +289,63 @@ describe('applyTableRename', () => {
         'table "userProfile" is declared in more than one namespace (auth, app); name its namespace',
       );
     });
+  });
+});
+
+describe('resolveTableRenameAgainst', () => {
+  const endContract = contractOf({
+    [UNBOUND_NAMESPACE_ID]: { UserProfile: table(), Account: table() },
+    auth: { Session: table() },
+  });
+  const atThisPoint = (namespaces: Readonly<Record<string, readonly string[]>>): TableLookup => ({
+    where: 'at this point of the migration',
+    declares: (namespaceId, tableName) => namespaces[namespaceId]?.includes(tableName) === true,
+    namespacesDeclaring: (tableName) =>
+      Object.keys(namespaces).filter((namespaceId) => namespaces[namespaceId]?.includes(tableName)),
+  });
+  const lookup = atThisPoint({
+    [UNBOUND_NAMESPACE_ID]: ['userProfile', 'Account'],
+    auth: ['login'],
+  });
+
+  function refusalFor(tableRename: TableRename, against: TableLookup = lookup) {
+    const result = resolveTableRenameAgainst(against, endContract, tableRename);
+    expect(result.ok).toBe(false);
+    return result.ok ? undefined : result.failure;
+  }
+
+  it('resolves the namespace the lookup finds the table in', () => {
+    const result = resolveTableRenameAgainst(lookup, endContract, rename('login', 'Session'));
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value).toEqual({ namespaceId: 'auth', from: 'login', to: 'Session' });
+  });
+
+  it('refuses a table the lookup does not have at this point of the migration', () => {
+    expect(refusalFor(rename('ghost', 'UserProfile'))).toMatchObject({
+      code: TABLE_RENAME_UNMATCHED_CODE,
+      message:
+        'renameTable "ghost" to "UserProfile" does not match the migration\'s contracts: table "ghost" does not exist at this point of the migration.',
+      meta: { from: 'ghost', to: 'UserProfile' },
+    });
+  });
+
+  it('refuses a new name the lookup already has at this point of the migration', () => {
+    expect(refusalFor(rename('userProfile', 'Account'))?.message).toContain(
+      'table "Account" already exists at this point of the migration',
+    );
+  });
+
+  it('refuses a new name the end contract does not have', () => {
+    expect(refusalFor(rename('userProfile', 'Profile'))?.message).toContain(
+      'table "Profile" does not exist in the end contract',
+    );
+  });
+
+  it('refuses a table name the lookup has in more than one namespace when no namespace is given', () => {
+    const twice = atThisPoint({ auth: ['userProfile'], app: ['userProfile'] });
+    expect(refusalFor(rename('userProfile', 'UserProfile'), twice)?.message).toContain(
+      'table "userProfile" is declared in more than one namespace (auth, app); name its namespace',
+    );
   });
 });

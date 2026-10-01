@@ -20,7 +20,6 @@ export function sqliteTableRenameCalls(input: {
     startContract: input.startContract,
     endContract: input.endContract,
     rename: input.rename,
-    renameTableReferences: undefined,
   });
   if (!applied.ok) {
     throw applied.failure;

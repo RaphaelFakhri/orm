@@ -32,19 +32,10 @@ export interface ResolvedTableRename {
   readonly to: string;
 }
 
-/**
- * Renames a target's own references to a renamed table inside one namespace's entries: entity kinds the family does not know, such as a target's row-level-security markers, that name a table.
- */
-export type RenameTableReferences = (
-  entries: SqlNamespaceEntries,
-  rename: ResolvedTableRename,
-) => SqlNamespaceEntries;
-
 export interface ApplyTableRenameInput {
   readonly startContract: Contract<SqlStorage> | null;
   readonly endContract: Contract<SqlStorage>;
   readonly rename: TableRename;
-  readonly renameTableReferences: RenameTableReferences | undefined;
 }
 
 export interface AppliedTableRename {
@@ -69,7 +60,8 @@ function declares(contract: Contract<SqlStorage>, namespaceId: string, tableName
   return Object.hasOwn(contract.storage.namespaces[namespaceId]?.entries.table ?? {}, tableName);
 }
 
-function unmatched(rename: TableRename, reason: string): StructuredError {
+/** Refuses a `renameTable` call that does not match the migration's contracts, with `MIGRATION.TABLE_RENAME_UNMATCHED`. */
+export function unmatchedTableRename(rename: TableRename, reason: string): StructuredError {
   return sqlFamilyError(
     TABLE_RENAME_UNMATCHED_CODE,
     `renameTable "${tableLabel(rename.namespaceId, rename.from)}" to "${rename.to}" does not match the migration's contracts: ${reason}.`,
@@ -80,45 +72,63 @@ function unmatched(rename: TableRename, reason: string): StructuredError {
   );
 }
 
-function resolveTableRename(
-  rename: TableRename,
-  startContract: Contract<SqlStorage>,
+/** The tables a rename is resolved against. `where` names that state in a refusal, for example `at this point of the migration`. */
+export interface TableLookup {
+  readonly where: string;
+  declares(namespaceId: string, tableName: string): boolean;
+  namespacesDeclaring(tableName: string): readonly string[];
+}
+
+function startContractLookup(contract: Contract<SqlStorage>): TableLookup {
+  return {
+    where: 'in the start contract',
+    declares: (namespaceId, tableName) => declares(contract, namespaceId, tableName),
+    namespacesDeclaring: (tableName) => namespacesDeclaring(contract, tableName),
+  };
+}
+
+/**
+ * Resolves a table a migration renames: the table must exist in `lookup` (in exactly one namespace when the namespace is not given), and the new name must exist in the end contract and not in `lookup`; otherwise the rename is refused with `MIGRATION.TABLE_RENAME_UNMATCHED`.
+ */
+export function resolveTableRenameAgainst(
+  lookup: TableLookup,
   endContract: Contract<SqlStorage>,
+  rename: TableRename,
 ): Result<ResolvedTableRename, StructuredError> {
   const namespaceIds =
     rename.namespaceId === undefined
-      ? namespacesDeclaring(startContract, rename.from)
-      : declares(startContract, rename.namespaceId, rename.from)
+      ? lookup.namespacesDeclaring(rename.from)
+      : lookup.declares(rename.namespaceId, rename.from)
         ? [rename.namespaceId]
         : [];
   const [namespaceId, ...others] = namespaceIds;
   if (namespaceId === undefined) {
     return notOk(
-      unmatched(
+      unmatchedTableRename(
         rename,
-        `table "${tableLabel(rename.namespaceId, rename.from)}" does not exist in the start contract`,
+        `table "${tableLabel(rename.namespaceId, rename.from)}" does not exist ${lookup.where}`,
       ),
     );
   }
   if (others.length > 0) {
     return notOk(
-      unmatched(
+      unmatchedTableRename(
         rename,
         `table "${rename.from}" is declared in more than one namespace (${namespaceIds.join(', ')}); name its namespace`,
       ),
     );
   }
-  if (declares(startContract, namespaceId, rename.to)) {
+  if (lookup.declares(namespaceId, rename.to)) {
     return notOk(
-      unmatched(
+      unmatchedTableRename(
         rename,
-        `table "${tableLabel(namespaceId, rename.to)}" already exists in the start contract`,
+        `table "${tableLabel(namespaceId, rename.to)}" already exists ${lookup.where}`,
       ),
     );
   }
   if (!declares(endContract, namespaceId, rename.to)) {
     return notOk(
-      unmatched(
+      unmatchedTableRename(
         rename,
         `table "${tableLabel(namespaceId, rename.to)}" does not exist in the end contract`,
       ),
@@ -187,7 +197,6 @@ function withEntries(namespace: SqlNamespaceBase, entries: SqlNamespaceEntries):
 function renameTableInNamespace(
   namespace: SqlNamespace,
   rename: ResolvedTableRename,
-  renameTableReferences: RenameTableReferences | undefined,
 ): SqlNamespace {
   const ownsTable = rename.namespaceId === namespace.id;
   const tables = Object.entries(namespace.entries.table ?? {}).map(
@@ -204,27 +213,17 @@ function renameTableInNamespace(
       `applyTableRename: namespace "${namespace.id}" is not a materialized SQL namespace`,
     );
   }
-  const renamedTables: SqlNamespaceEntries = {
-    ...namespace.entries,
-    table: Object.fromEntries(tables),
-  };
-  return withEntries(
-    namespace,
-    renameTableReferences === undefined || !ownsTable
-      ? renamedTables
-      : renameTableReferences(renamedTables, rename),
-  );
+  return withEntries(namespace, { ...namespace.entries, table: Object.fromEntries(tables) });
 }
 
 function renameTableInContract(
   contract: Contract<SqlStorage>,
   rename: ResolvedTableRename,
-  renameTableReferences: RenameTableReferences | undefined,
 ): Contract<SqlStorage> {
   const namespaces = Object.fromEntries(
     Object.entries(contract.storage.namespaces).map(([id, namespace]) => [
       id,
-      renameTableInNamespace(namespace, rename, renameTableReferences),
+      renameTableInNamespace(namespace, rename),
     ]),
   );
   const materialized: Record<string, SqlNamespaceBase> = {};
@@ -249,22 +248,22 @@ function renameTableInContract(
 /**
  * Resolves the table a migration renames against its start and end contracts and returns the start contract with that table under its new name, so a diff against the end contract sees the table under one name. The table must exist in the start contract (in exactly one namespace when the namespace is not given), and the new name must exist in the end contract and not in the start contract; otherwise the rename is refused with `MIGRATION.TABLE_RENAME_UNMATCHED`.
  *
- * Foreign keys that name the renamed table on either side are retargeted. Index, unique, check and primary-key names are carried unchanged. Target entity kinds that name the table are renamed by the target's `renameTableReferences`.
+ * Foreign keys that name the renamed table on either side are retargeted. Index, unique, check and primary-key names are carried unchanged.
  */
 export function applyTableRename(
   input: ApplyTableRenameInput,
 ): Result<AppliedTableRename, StructuredError> {
   if (input.startContract === null) {
-    return notOk(unmatched(input.rename, 'the migration has no start contract'));
+    return notOk(unmatchedTableRename(input.rename, 'the migration has no start contract'));
   }
-  const resolved = resolveTableRename(input.rename, input.startContract, input.endContract);
+  const resolved = resolveTableRenameAgainst(
+    startContractLookup(input.startContract),
+    input.endContract,
+    input.rename,
+  );
   if (!resolved.ok) return resolved;
   return ok({
-    contract: renameTableInContract(
-      input.startContract,
-      resolved.value,
-      input.renameTableReferences,
-    ),
+    contract: renameTableInContract(input.startContract, resolved.value),
     rename: resolved.value,
   });
 }

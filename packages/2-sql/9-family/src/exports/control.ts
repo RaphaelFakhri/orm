@@ -23,11 +23,15 @@ export type {
 export type {
   AppliedTableRename,
   ApplyTableRenameInput,
-  RenameTableReferences,
   ResolvedTableRename,
+  TableLookup,
   TableRename,
 } from '../core/migrations/apply-table-rename';
-export { applyTableRename } from '../core/migrations/apply-table-rename';
+export {
+  applyTableRename,
+  resolveTableRenameAgainst,
+  unmatchedTableRename,
+} from '../core/migrations/apply-table-rename';
 export type {
   ContractToSchemaIROptions,
   DefaultRenderer,
