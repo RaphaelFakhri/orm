@@ -1,10 +1,11 @@
 import { opaqueSql } from '@internal/sql-relational-core/ast';
+import { col, lit } from '@internal/sql-relational-core/contract-free';
 import { SqlColumnDefaultIR, SqlColumnIR } from '@internal/sql-schema-ir/types';
 import { describe, expect, it } from 'vitest';
 import {
+  buildSetDefaultColumn,
   renderColumnAlterType,
   renderColumnDdl,
-  renderColumnDefaultSql,
   resolveColumnTemporaryDefault,
 } from '../../src/core/migrations/column-ddl-rendering';
 
@@ -126,16 +127,16 @@ describe('resolveColumnTemporaryDefault', () => {
   });
 });
 
-describe('renderColumnDefaultSql', () => {
+describe('buildSetDefaultColumn', () => {
   const noHooks = new Map();
 
-  it('renders an empty string when the diff node carries no resolved default', () => {
+  it('has no column to set when the diff node carries no resolved default', () => {
     const defaultNode = new SqlColumnDefaultIR({ raw: "'hello'::text" });
 
-    expect(renderColumnDefaultSql('v', defaultNode, noHooks)).toBe('');
+    expect(buildSetDefaultColumn('v', defaultNode, noHooks)).toBeUndefined();
   });
 
-  it('renders a DEFAULT clause for a scalar literal', () => {
+  it('carries a scalar literal default with the column type and codec, for the adapter to write', () => {
     const defaultNode = new SqlColumnDefaultIR({
       resolved: { kind: 'literal', value: 'hello' },
       nativeTypeContext: 'text',
@@ -143,18 +144,20 @@ describe('renderColumnDefaultSql', () => {
       codecBaseNativeType: 'text',
     });
 
-    expect(renderColumnDefaultSql('v', defaultNode, noHooks)).toBe("DEFAULT 'hello'");
+    expect(buildSetDefaultColumn('v', defaultNode, noHooks)).toEqual(
+      col('v', 'text', { default: lit('hello'), codecRef: { codecId: 'pg/text@1' } }),
+    );
   });
 
-  it('renders a DEFAULT clause for a number literal', () => {
+  it('has no column to set for an autoincrement default, which the column type writes', () => {
     const defaultNode = new SqlColumnDefaultIR({
-      resolved: { kind: 'literal', value: 42 },
+      resolved: { kind: 'function', expression: 'autoincrement()' },
       nativeTypeContext: 'int4',
       codecRef: { codecId: 'pg/int4@1' },
       codecBaseNativeType: 'int4',
     });
 
-    expect(renderColumnDefaultSql('v', defaultNode, noHooks)).toBe('DEFAULT 42');
+    expect(buildSetDefaultColumn('v', defaultNode, noHooks)).toBeUndefined();
   });
 
   it.each([
@@ -163,7 +166,7 @@ describe('renderColumnDefaultSql', () => {
     { typeName: 'my"enum', cast: '"my""enum"[]' },
     { typeName: 'audit.AuditAction', cast: '"audit"."AuditAction"[]' },
   ])(
-    'casts a list default of the enum $typeName to the column type as DDL writes it',
+    'gives a list default of the enum $typeName the column type as DDL writes it',
     ({ typeName, cast }) => {
       const defaultNode = new SqlColumnDefaultIR({
         resolved: { kind: 'literal', value: ['asc'] },
@@ -173,9 +176,7 @@ describe('renderColumnDefaultSql', () => {
         codecBaseNativeType: typeName,
       });
 
-      expect(renderColumnDefaultSql('v', defaultNode, noHooks)).toBe(
-        `DEFAULT ARRAY['asc']::${cast}`,
-      );
+      expect(buildSetDefaultColumn('v', defaultNode, noHooks)?.type).toBe(cast);
     },
   );
 
@@ -185,7 +186,7 @@ describe('renderColumnDefaultSql', () => {
       nativeTypeContext: 'int4',
     });
 
-    expect(() => renderColumnDefaultSql('v', defaultNode, noHooks)).toThrow(
+    expect(() => buildSetDefaultColumn('v', defaultNode, noHooks)).toThrow(
       /carries no codec identity/,
     );
   });
