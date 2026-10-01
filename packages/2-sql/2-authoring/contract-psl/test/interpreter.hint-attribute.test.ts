@@ -340,6 +340,52 @@ model Post {
   });
 });
 
+describe('@@hint diagnostic anchors', () => {
+  function startsOf(schema: string) {
+    const result = interpretSchema(schema);
+    expect(result.ok).toBe(false);
+    return result.ok
+      ? []
+      : result.failure.diagnostics.map(({ code, span }) => ({
+          code,
+          line: span?.start.line,
+          column: span?.start.column,
+        }));
+  }
+
+  it('anchors an argument rule on the @@hint attribute', () => {
+    expect(
+      startsOf(`model User {
+  id Int @id
+  @@hint
+}`),
+    ).toEqual([{ code: PSL_HINT_INVALID, line: 3, column: 3 }]);
+  });
+
+  it('anchors a placement rule on the @@hint attribute', () => {
+    expect(
+      startsOf(`model User {
+  id Int @id
+    @@hint(was: "Post")
+}
+
+model Post {
+  id Int @id
+}`),
+    ).toEqual([{ code: PSL_HINT_INVALID, line: 3, column: 5 }]);
+  });
+
+  it('anchors a duplicate on the second @@hint', () => {
+    expect(
+      startsOf(`model User {
+  id Int @id
+  @@hint(was: "Profile")
+   @@hint(was: "Account")
+}`),
+    ).toEqual([{ code: 'PSL_DUPLICATE_ATTRIBUTE', line: 4, column: 4 }]);
+  });
+});
+
 describe('@@hint with an inheritance cycle', () => {
   it('returns and reports the cycle when two models name each other in @@base', () => {
     const codes = diagnosticsOf(`model Task {
