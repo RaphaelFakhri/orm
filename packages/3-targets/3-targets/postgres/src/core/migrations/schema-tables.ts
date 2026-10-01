@@ -1,21 +1,30 @@
 import type { Contract } from '@internal/contract/types';
-import type { HintOrigin } from '@internal/family-sql/control';
+import type { SchemaTables } from '@internal/family-sql/control';
 import type { SqlStorage } from '@internal/sql-contract/types';
 import type { PostgresDatabaseSchemaNode } from '../schema-ir/postgres-database-schema-node';
 import { resolveDdlSchemaForNamespaceStorage } from './resolve-ddl-schema';
 
-/** What a Postgres schema contains, as hint resolution asks it, by the contract's namespace ids. */
-export function postgresHintOrigin(
+/**
+ * The tables of a Postgres schema, addressed by `contract`'s namespace ids, each mapped to its DDL
+ * schema.
+ */
+export function postgresSchemaTables(
   schema: PostgresDatabaseSchemaNode,
   contract: Contract<SqlStorage>,
-): HintOrigin {
+): SchemaTables {
   const tableIn = (namespaceId: string, table: string) =>
     schema.namespaces[resolveDdlSchemaForNamespaceStorage(contract.storage, namespaceId)]?.tables[
       table
     ];
+  const hasTable = (namespaceId: string, table: string) =>
+    tableIn(namespaceId, table) !== undefined;
   return {
-    hasTable: (namespaceId, table) => tableIn(namespaceId, table) !== undefined,
+    hasTable,
     hasColumn: (namespaceId, table, column) =>
       Object.hasOwn(tableIn(namespaceId, table)?.columns ?? {}, column),
+    namespacesWithTable: (table) =>
+      Object.keys(contract.storage.namespaces).filter((namespaceId) =>
+        hasTable(namespaceId, table),
+      ),
   };
 }

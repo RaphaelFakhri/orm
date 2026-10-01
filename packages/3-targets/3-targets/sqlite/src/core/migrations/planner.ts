@@ -28,7 +28,6 @@ import {
   SqlTableIR,
 } from '@internal/sql-schema-ir/types';
 import { buildSqlitePlanDiff, sqlitePlanOrigin } from './diff-database-schema';
-import { sqliteHintOrigin } from './hint-origin';
 import { type HintRenames, noHintRenames, planHintRenames } from './hint-renames';
 import { indexNameCaseChange, pairIndexReplacements } from './index-replacements';
 import {
@@ -45,6 +44,7 @@ import {
 } from './planner-produced-sqlite-migration';
 import { sqlitePlannerStrategies } from './planner-strategies';
 import type { SqlitePlanTargetDetails } from './planner-target-details';
+import { sqliteSchemaTables } from './schema-tables';
 
 export function createSqliteMigrationPlanner(
   lowerer: ExecuteRequestLowerer,
@@ -142,7 +142,7 @@ export class SqliteMigrationPlanner
     const origin = sqlitePlanOrigin(options.schema);
     const hints = resolveHints({
       contract: options.contract,
-      origin: sqliteHintOrigin(origin),
+      origin: sqliteSchemaTables(origin),
       policy: options.policy,
       ownership: options.ownership,
       spaceId: options.spaceId,

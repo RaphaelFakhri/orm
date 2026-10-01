@@ -4,6 +4,7 @@ import type { SqlStorage } from '@internal/sql-contract/types';
 import { notOk, ok, type Result } from '@internal/utils/result';
 import type { StructuredError } from '@internal/utils/structured-error';
 import { sqlFamilyError } from '../errors';
+import type { SchemaTables } from './hints';
 
 export const TABLE_RENAME_UNMATCHED_CODE = 'MIGRATION.TABLE_RENAME_UNMATCHED';
 
@@ -49,26 +50,20 @@ export function unmatchedTableRename(rename: TableRename, reason: string): Struc
   );
 }
 
-/** The tables a migration has at the point of a rename, after its earlier operations. */
-export interface TableLookup {
-  declares(namespaceId: string, tableName: string): boolean;
-  namespacesDeclaring(tableName: string): readonly string[];
-}
-
 /**
- * Resolves a table a migration renames: the table must exist in `lookup` (in exactly one namespace
+ * Resolves a table a migration renames: the table must exist in `previous` (in exactly one namespace
  * when the namespace is not given), and the new name must exist in the end contract and not in
- * `lookup`; otherwise the rename is refused with `MIGRATION.TABLE_RENAME_UNMATCHED`.
+ * `previous`; otherwise the rename is refused with `MIGRATION.TABLE_RENAME_UNMATCHED`.
  */
 export function resolveTableRenameAgainst(
-  lookup: TableLookup,
+  previous: SchemaTables,
   endContract: Contract<SqlStorage>,
   rename: TableRename,
 ): Result<ResolvedTableRename, StructuredError> {
   const namespaceIds =
     rename.namespaceId === undefined
-      ? lookup.namespacesDeclaring(rename.from)
-      : lookup.declares(rename.namespaceId, rename.from)
+      ? previous.namespacesWithTable(rename.from)
+      : previous.hasTable(rename.namespaceId, rename.from)
         ? [rename.namespaceId]
         : [];
   const [namespaceId, ...others] = namespaceIds;
@@ -88,7 +83,7 @@ export function resolveTableRenameAgainst(
       ),
     );
   }
-  if (lookup.declares(namespaceId, rename.to)) {
+  if (previous.hasTable(namespaceId, rename.to)) {
     return notOk(
       unmatchedTableRename(
         rename,

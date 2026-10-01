@@ -10,8 +10,8 @@ import { describe, expect, it } from 'vitest';
 import {
   HINT_CONTRADICTED_CODE,
   HINT_FOREIGN_TABLE_CODE,
-  type HintOrigin,
   resolveHints,
+  type SchemaTables,
 } from '../src/core/migrations/hints';
 import { TestSqlContractSerializer } from './test-sql-contract-serializer';
 
@@ -41,11 +41,12 @@ const userContract = contractWith(
   { namespaces: { public: { tables: { User: { was: 'Profile' } } } } },
 );
 
-function origin(...tables: string[]): HintOrigin {
+function origin(...tables: string[]): SchemaTables {
   const present = new Set(tables);
   return {
     hasTable: (namespaceId, table) => present.has(`${namespaceId}.${table}`),
     hasColumn: () => false,
+    namespacesWithTable: () => [],
   };
 }
 
@@ -62,7 +63,7 @@ function ownedBy(owners: Record<string, string>): SchemaOwnership {
 
 function resolve(input: {
   readonly contract?: Contract<SqlStorage>;
-  readonly origin: HintOrigin;
+  readonly origin: SchemaTables;
   readonly policy?: MigrationOperationPolicy;
   readonly ownership?: SchemaOwnership;
 }) {

@@ -48,7 +48,6 @@ import {
   resolvePostgresNodeIssueCreationFactoryName,
 } from './control-policy';
 import { buildPostgresPlanDiff } from './diff-database-schema';
-import { postgresHintOrigin } from './hint-origin';
 import { noHintRenames, planHintRenames } from './hint-renames';
 import { pairCheckRenames, pairIndexRenames } from './index-and-check-renames';
 import {
@@ -75,6 +74,7 @@ import { TypeScriptRenderablePostgresMigration } from './planner-produced-postgr
 import { postgresPlannerStrategies } from './planner-strategies';
 import { postgresContractToSchema } from './postgres-contract-to-schema';
 import { resolveDdlSchemaForNamespaceStorage } from './resolve-ddl-schema';
+import { postgresSchemaTables } from './schema-tables';
 import { emissionSchemaForNamespace } from './table-rename-calls';
 import { verifyPostgresNamespacePresence } from './verify-postgres-namespaces';
 
@@ -222,7 +222,7 @@ export class PostgresMigrationPlanner implements MigrationPlanner<'sql', 'postgr
     PostgresDatabaseSchemaNode.assert(options.schema);
     const hints = resolveHints({
       contract: options.contract,
-      origin: postgresHintOrigin(options.schema, options.contract),
+      origin: postgresSchemaTables(options.schema, options.contract),
       policy: options.policy,
       ownership: options.ownership,
       spaceId: options.spaceId,

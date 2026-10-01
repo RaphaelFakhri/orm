@@ -9,10 +9,10 @@ import {
 import { applicationDomainOf } from '@repo/test-utils';
 import { describe, expect, it } from 'vitest';
 import { createTestSqlNamespace } from '../../1-core/contract/test/test-support';
+import type { SchemaTables } from '../src/core/migrations/hints';
 import {
   resolveTableRenameAgainst,
   TABLE_RENAME_UNMATCHED_CODE,
-  type TableLookup,
   type TableRename,
 } from '../src/core/migrations/resolve-table-rename';
 
@@ -66,9 +66,10 @@ describe('resolveTableRenameAgainst', () => {
     [UNBOUND_NAMESPACE_ID]: { UserProfile: table(), Account: table() },
     auth: { Session: table() },
   });
-  const atThisPoint = (namespaces: Readonly<Record<string, readonly string[]>>): TableLookup => ({
-    declares: (namespaceId, tableName) => namespaces[namespaceId]?.includes(tableName) === true,
-    namespacesDeclaring: (tableName) =>
+  const atThisPoint = (namespaces: Readonly<Record<string, readonly string[]>>): SchemaTables => ({
+    hasTable: (namespaceId, tableName) => namespaces[namespaceId]?.includes(tableName) === true,
+    hasColumn: () => false,
+    namespacesWithTable: (tableName) =>
       Object.keys(namespaces).filter((namespaceId) => namespaces[namespaceId]?.includes(tableName)),
   });
   const lookup = atThisPoint({
@@ -76,7 +77,7 @@ describe('resolveTableRenameAgainst', () => {
     auth: ['login'],
   });
 
-  function refusalFor(tableRename: TableRename, against: TableLookup = lookup) {
+  function refusalFor(tableRename: TableRename, against: SchemaTables = lookup) {
     const result = resolveTableRenameAgainst(against, endContract, tableRename);
     expect(result.ok).toBe(false);
     return result.ok ? undefined : result.failure;

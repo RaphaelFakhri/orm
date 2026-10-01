@@ -3,7 +3,6 @@ import { errorMigrationOperationOptionRemoved } from '@internal/errors/migration
 import {
   resolveTableRenameAgainst,
   type SqlMigrationPlanOperation,
-  type TableLookup,
   type TableRename,
   unmatchedTableRename,
 } from '@internal/family-sql/control';
@@ -57,7 +56,7 @@ import type { CreateIndexExtras } from './operations/indexes';
 import type { ForeignKeySpec } from './operations/shared';
 import type { PostgresPlanTargetDetails } from './planner-target-details';
 import { postgresContractToSchema } from './postgres-contract-to-schema';
-import { resolveDdlSchemaForNamespaceStorage } from './resolve-ddl-schema';
+import { postgresSchemaTables } from './schema-tables';
 import { WorkingSchema } from './schema-working-state';
 import { postgresTableRenameCall } from './table-rename-calls';
 
@@ -400,7 +399,7 @@ export abstract class PostgresMigration<
     const working = this.workingSchemaFrom(startContract);
     const endContract = this.endContract;
     const resolved = resolveTableRenameAgainst(
-      workingTableLookup(working, startContract),
+      postgresSchemaTables(working.current, startContract),
       endContract,
       rename,
     );
@@ -652,27 +651,4 @@ function refuseEarlierSetDefaultOptions(options: {
       'Pass the column as `col(name, type, { default, codecRef })`, with its default written as `lit(value)` or `fn(expression)`, in place of its name and `defaultSql`.',
     upgradeEntry: 'migration-ts-column-defaults',
   });
-}
-
-/**
- * The tables a migration's working schema holds, addressed by the start contract's namespace ids.
- */
-function workingTableLookup(
-  working: WorkingSchema,
-  startContract: Contract<SqlStorage>,
-): TableLookup {
-  const declares = (namespaceId: string, tableName: string): boolean =>
-    Object.hasOwn(
-      working.current.namespaces[
-        resolveDdlSchemaForNamespaceStorage(startContract.storage, namespaceId)
-      ]?.tables ?? {},
-      tableName,
-    );
-  return {
-    declares,
-    namespacesDeclaring: (tableName) =>
-      Object.keys(startContract.storage.namespaces).filter((namespaceId) =>
-        declares(namespaceId, tableName),
-      ),
-  };
 }

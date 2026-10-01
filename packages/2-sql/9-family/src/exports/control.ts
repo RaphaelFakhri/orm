@@ -44,10 +44,10 @@ export { buildDataTypeResolver } from '../core/migrations/data-type-resolver';
 export type { PlanFieldEventOperationsOptions } from '../core/migrations/field-event-planner';
 export { planFieldEventOperations, renamedTableKey } from '../core/migrations/field-event-planner';
 export type {
-  HintOrigin,
   ResolvedColumnRename,
   ResolvedHints,
   ResolveHintsInput,
+  SchemaTables,
   StatedColumnDrop,
   StatedTableDrop,
 } from '../core/migrations/hints';
@@ -67,7 +67,6 @@ export {
 export { INIT_ADDITIVE_POLICY } from '../core/migrations/policies';
 export type {
   ResolvedTableRename,
-  TableLookup,
   TableRename,
 } from '../core/migrations/resolve-table-rename';
 export {

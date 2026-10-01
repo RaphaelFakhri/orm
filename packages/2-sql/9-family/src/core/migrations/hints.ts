@@ -18,10 +18,14 @@ export const HINT_FOREIGN_TABLE_CODE = 'MIGRATION.HINT_FOREIGN_TABLE';
 
 const HINT_INVALID_CODE = 'CONTRACT.HINT_INVALID';
 
-/** What the schema a plan starts from contains, as the hint resolution asks it. */
-export interface HintOrigin {
+/**
+ * The tables a schema has, addressed by the contract's namespace ids: the schema a plan starts
+ * from, or the schema a migration's earlier renames leave behind.
+ */
+export interface SchemaTables {
   hasTable(namespaceId: string, table: string): boolean;
   hasColumn(namespaceId: string, table: string, column: string): boolean;
+  namespacesWithTable(table: string): readonly string[];
 }
 
 export interface ResolvedColumnRename {
@@ -54,7 +58,7 @@ export interface ResolvedHints {
 
 export interface ResolveHintsInput {
   readonly contract: Contract<SqlStorage>;
-  readonly origin: HintOrigin;
+  readonly origin: SchemaTables;
   readonly policy: MigrationOperationPolicy;
   readonly ownership: SchemaOwnership | undefined;
   readonly spaceId: string;

@@ -3,7 +3,6 @@ import {
   type MigrationOperationClass,
   resolveTableRenameAgainst,
   type SqlMigrationPlanOperation,
-  type TableLookup,
   type TableRename,
   unmatchedTableRename,
 } from '@internal/family-sql/control';
@@ -11,7 +10,6 @@ import type { SqlControlAdapter } from '@internal/family-sql/control-adapter';
 import { Migration as SqlMigration } from '@internal/family-sql/migration';
 import type { TargetBoundComponentDescriptor } from '@internal/framework-components/components';
 import type { ControlStack } from '@internal/framework-components/control';
-import { UNBOUND_NAMESPACE_ID } from '@internal/framework-components/ir';
 import { MigrationContractViews } from '@internal/migration-tools/migration';
 import type { SqlStorage } from '@internal/sql-contract/types';
 import type { DdlColumn, DdlTableConstraint } from '@internal/sql-relational-core/ast';
@@ -31,6 +29,7 @@ import {
 import type { SqliteColumnSpec, SqliteIndexSpec, SqliteTableSpec } from './operations/shared';
 import type { RecreatePostcheck } from './operations/tables';
 import type { SqlitePlanTargetDetails } from './planner-target-details';
+import { sqliteSchemaTables } from './schema-tables';
 import { WorkingSchema } from './schema-working-state';
 import { sqliteTableRenameCall } from './table-rename-calls';
 
@@ -168,7 +167,11 @@ export abstract class SqliteMigration<
     }
     const working = this.workingSchemaFrom(startContract);
     const endContract = this.endContract;
-    const resolved = resolveTableRenameAgainst(workingTableLookup(working), endContract, rename);
+    const resolved = resolveTableRenameAgainst(
+      sqliteSchemaTables(working.current),
+      endContract,
+      rename,
+    );
     if (!resolved.ok) {
       throw resolved.failure;
     }
@@ -233,13 +236,4 @@ export abstract class SqliteMigration<
   }): Promise<Op> {
     return new RecreateTableCall(options).toOp(this.controlAdapterFor('recreateTable'));
   }
-}
-
-/** The tables a migration's working schema holds. SQLite has one namespace, the unbound one. */
-function workingTableLookup(working: WorkingSchema): TableLookup {
-  const declares = (tableName: string): boolean => Object.hasOwn(working.current.tables, tableName);
-  return {
-    declares: (_namespaceId, tableName) => declares(tableName),
-    namespacesDeclaring: (tableName) => (declares(tableName) ? [UNBOUND_NAMESPACE_ID] : []),
-  };
 }
