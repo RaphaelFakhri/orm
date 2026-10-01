@@ -96,7 +96,7 @@ Default rewrites (`wip/s2b-default-rewrites.md`) match the built codecs: JSON to
 
 Tests written after the code can fail. I removed the `DATA_TYPE_ENTRY_KEY_INVALID` check and 3 assembly tests failed. The `default-mapping` test fails against the code before this dispatch, which threw on `dataTypeId('tag:json')`. The adapter verify and DDL tests have red logs (`wip/s2b/adapter-verify-red.log`, `ddl-red.log`).
 
-Checks: the 25 changed test files pass alone (369 tests), the SQLite codec testkit passes (66), typecheck passes for framework-components, adapter-sqlite, family-sql, sql-contract-psl and sqlite-codec-testkit. target-sqlite fails only on the committed `contract.d.ts` files of round 1. `lint:deps` passes. `check:error-reference` passes. Framework vocabulary is 254 at 254.
+Checks: the 25 changed test files pass alone (398 tests), the SQLite codec testkit passes (66), typecheck passes for framework-components, adapter-sqlite, family-sql, sql-contract-psl and sqlite-codec-testkit. target-sqlite fails only on the committed `contract.d.ts` files of round 1. `lint:deps` passes. `check:error-reference` passes. Framework vocabulary is 254 at 254.
 
 ### Dispatch a, round 3
 
