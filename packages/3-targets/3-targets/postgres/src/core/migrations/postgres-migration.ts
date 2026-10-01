@@ -1,6 +1,12 @@
 import type { Contract } from '@internal/contract/types';
 import { errorMigrationOperationOptionRemoved } from '@internal/errors/migration';
-import type { SqlMigrationPlanOperation } from '@internal/family-sql/control';
+import {
+  resolveTableRenameAgainst,
+  type SqlMigrationPlanOperation,
+  type TableLookup,
+  type TableRename,
+  unmatchedTableRename,
+} from '@internal/family-sql/control';
 import type { SqlControlAdapter } from '@internal/family-sql/control-adapter';
 import { Migration as SqlMigration } from '@internal/family-sql/migration';
 import type { TargetBoundComponentDescriptor } from '@internal/framework-components/components';
@@ -50,7 +56,10 @@ import { installExtension } from './operations/dependencies';
 import type { CreateIndexExtras } from './operations/indexes';
 import type { ForeignKeySpec } from './operations/shared';
 import type { PostgresPlanTargetDetails } from './planner-target-details';
-import { postgresTableRenameCalls } from './table-rename-calls';
+import { postgresContractToSchema } from './postgres-contract-to-schema';
+import { resolveDdlSchemaForNamespaceStorage } from './resolve-ddl-schema';
+import { WorkingSchema } from './schema-working-state';
+import { postgresTableRenameCall } from './table-rename-calls';
 
 /**
  * Target-owned base class for Postgres migrations.
@@ -92,6 +101,8 @@ export abstract class PostgresMigration<
    * throws a MIGRATION.POSTGRES_CONTROL_STACK_MISSING in that case to surface the misuse.
    */
   protected readonly controlAdapter: SqlControlAdapter<'postgres'> | undefined;
+
+  #workingSchema: WorkingSchema | undefined;
 
   #endView = new MigrationContractViews<PostgresContractView<End>>(
     this,
@@ -358,7 +369,7 @@ export abstract class PostgresMigration<
   }
 
   /**
-   * Emit the operations that rename a table: the table rename, then a rename of each primary key, unique constraint, foreign key, index and check whose name was derived from the old table name, read from this migration's start and end contracts. Spread the result into `operations`: `...this.renameTable({ table: 'userProfile', to: 'UserProfile' })`. `schema` names the table's namespace when more than one declares the table. Throws `MIGRATION.TABLE_RENAME_UNMATCHED` when the start contract lacks the table or the end contract lacks the new name.
+   * Emit the operations that rename a table: the table rename, then a rename of each primary key, unique constraint, foreign key, index and check whose name was derived from the old table name. The old name is resolved against the schema as this migration's earlier `renameTable` calls leave it, and the new name against the end contract. Spread the result into `operations`: `...this.renameTable({ table: 'userProfile', to: 'UserProfile' })`. `schema` names the table's namespace when more than one declares the table. Throws `MIGRATION.TABLE_RENAME_UNMATCHED` when the table does not exist at that point of the migration or the end contract lacks the new name.
    */
   protected renameTable(options: {
     readonly schema?: string;
@@ -366,12 +377,45 @@ export abstract class PostgresMigration<
     readonly to: string;
   }): readonly Promise<SqlMigrationPlanOperation<PostgresPlanTargetDetails>>[] {
     const adapter = this.controlAdapterFor('renameTable');
-    return postgresTableRenameCalls({
-      startContract: this.startContract,
-      endContract: this.endContract,
-      rename: { namespaceId: options.schema, from: options.table, to: options.to },
+    const rename: TableRename = {
+      namespaceId: options.schema,
+      from: options.table,
+      to: options.to,
+    };
+    const startContract = this.startContract;
+    if (startContract === null) {
+      throw unmatchedTableRename(rename, 'the migration has no start contract');
+    }
+    const working = this.workingSchemaFrom(startContract);
+    const endContract = this.endContract;
+    const resolved = resolveTableRenameAgainst(
+      workingTableLookup(working, startContract),
+      endContract,
+      rename,
+    );
+    if (!resolved.ok) {
+      throw resolved.failure;
+    }
+    const call = postgresTableRenameCall({
+      previous: working.current,
+      next: postgresContractToSchema(endContract, this.frameworkComponents()),
+      contract: endContract,
+      rename: resolved.value,
       frameworkComponents: this.frameworkComponents(),
-    }).map(async (call) => call.toOp(adapter));
+    });
+    working.apply(call);
+    return call.toOps(adapter).map(async (op) => op);
+  }
+
+  private workingSchemaFrom(startContract: Contract<SqlStorage>): WorkingSchema {
+    this.#workingSchema ??= new WorkingSchema(
+      postgresContractToSchema(startContract, this.frameworkComponents()),
+    );
+    return this.#workingSchema;
+  }
+
+  protected override resetAuthoringState(): void {
+    this.#workingSchema = undefined;
   }
 
   protected dropTable(options: {
@@ -581,4 +625,26 @@ function refuseEarlierSetDefaultOptions(options: {
       'Pass the column as `col(name, type, { default, codecRef })`, with its default written as `lit(value)` or `fn(expression)`, in place of its name and `defaultSql`.',
     upgradeEntry: 'migration-ts-column-defaults',
   });
+}
+
+/** The tables a migration's working schema holds, addressed by the start contract's namespace ids. */
+function workingTableLookup(
+  working: WorkingSchema,
+  startContract: Contract<SqlStorage>,
+): TableLookup {
+  const declares = (namespaceId: string, tableName: string): boolean =>
+    Object.hasOwn(
+      working.current.namespaces[
+        resolveDdlSchemaForNamespaceStorage(startContract.storage, namespaceId)
+      ]?.tables ?? {},
+      tableName,
+    );
+  return {
+    where: 'at this point of the migration',
+    declares,
+    namespacesDeclaring: (tableName) =>
+      Object.keys(startContract.storage.namespaces).filter((namespaceId) =>
+        declares(namespaceId, tableName),
+      ),
+  };
 }

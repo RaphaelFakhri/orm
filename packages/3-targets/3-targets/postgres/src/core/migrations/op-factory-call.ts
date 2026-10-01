@@ -365,6 +365,8 @@ export class DropTableCall extends PostgresOpFactoryCallNode {
   }
 }
 
+export type RenameTableCompanionCall = RenameConstraintCall | RenameIndexCall;
+
 export class RenameTableCall extends PostgresOpFactoryCallNode {
   readonly factoryName = 'renameTable' as const;
   // `widening` for the same reason as `RenameConstraintCall`: a rename is
@@ -377,14 +379,26 @@ export class RenameTableCall extends PostgresOpFactoryCallNode {
   /** The new name: the table's contract-side identity after the rename. */
   readonly tableName: string;
   readonly label: string;
+  /** The renames of objects whose names derive from the table name. They run after the table rename and are never rendered on their own. */
+  readonly companions: readonly RenameTableCompanionCall[];
 
-  constructor(schemaName: string, oldTableName: string, tableName: string) {
+  constructor(
+    schemaName: string,
+    oldTableName: string,
+    tableName: string,
+    companions: readonly RenameTableCompanionCall[],
+  ) {
     super();
     this.schemaName = schemaName;
     this.oldTableName = oldTableName;
     this.tableName = tableName;
     this.label = `Rename table "${oldTableName}" to "${tableName}"`;
+    this.companions = Object.freeze([...companions]);
     this.freeze();
+  }
+
+  toOps(lowerer?: ExecuteRequestLowerer): readonly (Op | Promise<Op>)[] {
+    return [this.toOp(lowerer), ...this.companions.map((companion) => companion.toOp(lowerer))];
   }
 
   async toOp(lowerer?: ExecuteRequestLowerer): Promise<Op> {

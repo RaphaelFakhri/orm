@@ -335,6 +335,7 @@ export class PostgresMigrationPlanner implements MigrationPlanner<'sql', 'postgr
           rename.namespaceId ?? UNBOUND_NAMESPACE_ID,
           rename.from,
           rename.to,
+          [],
         ).renderTypeScript(),
       contract: options.contract,
       defaultNamespaceId: DEFAULT_NAMESPACE_ID,

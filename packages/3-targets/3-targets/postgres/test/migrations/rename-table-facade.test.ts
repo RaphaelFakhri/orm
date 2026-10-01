@@ -6,6 +6,7 @@ import { type Contract, coreHash, profileHash } from '@internal/contract/types';
 import type { SqlMigrationPlanOperation } from '@internal/family-sql/control';
 import type { SqlControlAdapter } from '@internal/family-sql/control-adapter';
 import type { ControlStack } from '@internal/framework-components/control';
+import { Migration } from '@internal/migration-tools/migration';
 import {
   type CheckConstraintInput,
   type ForeignKeyInput,
@@ -44,16 +45,19 @@ function jsonOf(contract: Contract<SqlStorage>): ContractJson {
   return new PostgresContractSerializer().serializeContract(contract) as unknown as ContractJson;
 }
 
+type TableRenameOptions = { readonly schema?: string; readonly table: string; readonly to: string };
+
 function renameMigration(
   start: Contract<SqlStorage> | null,
   end: Contract<SqlStorage>,
-  rename: { readonly schema?: string; readonly table: string; readonly to: string },
-): { readonly operations: readonly Promise<Op>[] } {
+  rename: TableRenameOptions,
+  ...more: readonly TableRenameOptions[]
+): PostgresMigration & { readonly operations: readonly Promise<Op>[] } {
   const endJson = jsonOf(end);
   class WithoutStart extends PostgresMigration {
     override readonly endContractJson = endJson;
     override get operations(): readonly Promise<Op>[] {
-      return [...this.renameTable(rename)];
+      return [rename, ...more].flatMap((each) => this.renameTable(each));
     }
   }
   if (start === null) return new WithoutStart(stack);
@@ -294,7 +298,9 @@ describe('PostgresMigration.renameTable', () => {
     ).toThrow(
       expect.objectContaining({
         code: 'MIGRATION.TABLE_RENAME_UNMATCHED',
-        message: expect.stringContaining('table "ghost" does not exist in the start contract'),
+        message: expect.stringContaining(
+          'table "ghost" does not exist at this point of the migration',
+        ),
       }),
     );
   });
@@ -331,7 +337,7 @@ describe('PostgresMigration.renameTable', () => {
       expect.objectContaining({
         code: 'MIGRATION.TABLE_RENAME_UNMATCHED',
         message: expect.stringContaining(
-          'table "UserProfile" already exists in the start contract',
+          'table "UserProfile" already exists at this point of the migration',
         ),
       }),
     );
@@ -341,5 +347,75 @@ describe('PostgresMigration.renameTable', () => {
     expect(
       () => renameMigration(null, contractOf('UserProfile', {}, 'to'), RENAME).operations,
     ).toThrow(expect.objectContaining({ code: 'MIGRATION.TABLE_RENAME_UNMATCHED' }));
+  });
+
+  it('renames a table twice in one migration when the end contract declares both new names, each rename from where the last left it', async () => {
+    const intermediate = () => ({
+      UserProfile: new StorageTable({
+        columns: { id: { nativeType: 'int4', codecId: 'pg/int4@1', nullable: false } },
+        primaryKey: { columns: ['id'], name: 'profile_pk' },
+        uniques: [],
+        indexes: [],
+        foreignKeys: [],
+      }),
+    });
+    const ops = await Promise.all(
+      renameMigration(
+        contractOf('userProfile', {}, 'from'),
+        contractOf('Member', {}, 'to', intermediate),
+        { table: 'userProfile', to: 'UserProfile' },
+        { table: 'UserProfile', to: 'Member' },
+      ).operations,
+    );
+
+    expect(ops.map((op) => op.label)).toEqual([
+      'Rename table "userProfile" to "UserProfile"',
+      'Rename table "UserProfile" to "Member"',
+    ]);
+  });
+
+  it('refuses a table an earlier rename in the migration took away', () => {
+    expect(
+      () =>
+        renameMigration(
+          contractOf('userProfile', {}, 'from'),
+          contractOf('UserProfile', {}, 'to'),
+          RENAME,
+          RENAME,
+        ).operations,
+    ).toThrow(
+      expect.objectContaining({
+        code: 'MIGRATION.TABLE_RENAME_UNMATCHED',
+        message: expect.stringContaining(
+          'table "userProfile" does not exist at this point of the migration',
+        ),
+      }),
+    );
+  });
+
+  it('reads the same operations again after the authoring state is reset', async () => {
+    const migration = renameMigration(
+      contractOf('userProfile', withObjects, 'from'),
+      contractOf('UserProfile', withObjects, 'to'),
+      RENAME,
+    );
+    const first = await Promise.all(migration.operations);
+    Migration.resetAuthoringStateOf(migration);
+    const second = await Promise.all(migration.operations);
+
+    expect(second).toEqual(first);
+  });
+
+  it('refuses a second read of the operations without a reset, since the table is already renamed', () => {
+    const migration = renameMigration(
+      contractOf('userProfile', {}, 'from'),
+      contractOf('UserProfile', {}, 'to'),
+      RENAME,
+    );
+    void migration.operations;
+
+    expect(() => migration.operations).toThrow(
+      expect.objectContaining({ code: 'MIGRATION.TABLE_RENAME_UNMATCHED' }),
+    );
   });
 });
