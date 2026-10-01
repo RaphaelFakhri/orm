@@ -18,17 +18,17 @@ const posts = await db.Post
   .all();
 ```
 
-- `pipe` applies a function to the collection and returns whatever the function returns.
-- The function may contain any code: here a conditional, elsewhere an early return or a loop.
+- `pipe` applies a step, a function from a collection to a collection, and returns whatever the step returns (ADR 258).
+- The step may contain any code: here a conditional, elsewhere an early return or a loop.
 - The result is a collection that may or may not be filtered. Its type says the filter is not known, so `deleteAll` would be refused on it.
 
-A query is a chain of calls, so a piece of a query that is shared between places is a function. `pipe` is how a function is applied in the middle of a chain. The rest of this decision adds three small helpers for the pieces applications share most: a filter that fits any model with a given field, a shared `select` and `include`, and a sort field taken from a request.
+A query is a chain of calls, so a piece of a query that is shared between places is a step. This decision adds three small helpers for the pieces applications share most: a filter that fits any model with a given field, a shared `select` and `include`, and a sort field taken from a request.
 
 ## Decision
 
 A **query fragment** is a function. A fragment of a row is a function from the row accessor to an expression, and `where` and `orderBy` take it. A fragment of a query is a function from a collection to a collection, and `pipe` applies it.
 
-1. **`Collection` has a `pipe` method.** `pipe(step)` returns `step(this)`. It is typed with a `this` parameter, so the step receives the caller's exact type, including a custom collection class.
+1. **A collection fragment is a step, applied with `pipe`** (ADR 258). The step receives the caller's exact type, including a custom collection class, and the result is whatever the step returns.
 2. **The query API has no control-flow methods.** Whatever the application would write in a function body, it writes inside the step. The type stays sound because a filtered collection is a subtype of an unfiltered one, so a step that may or may not filter yields the unfiltered type (ADR 258).
 3. **A field type is named by its codec.** `FieldExpression<Contract, CodecId, Nullable>` is the type of any row field with that codec and nullability, with the same comparison methods and operations as the field on a model. A row fragment typed with it fits every model that has such a field.
 4. **A step that changes the row is defined once per model.** `rowFragment<Contract, Model>()(body)` types the body against the plain collection of that model and returns a step that takes that model's collection in any state. `RowOf<Step>` names the row the step produces.
@@ -44,21 +44,14 @@ A function can be applied with no support from the collection at all: `notDelete
 
 ## How it works
 
-### 1. `pipe` applies a step
+### 1. A step is applied with `pipe`
 
 ```ts
-db.Post.pipe((posts) => posts.where((p) => p.userId.eq(userId)).orderBy((p) => p.createdAt.desc()));
+const byUser = (posts: PostCollection) => posts.where((p) => p.userId.eq(userId)).orderBy((p) => p.createdAt.desc());
+db.Post.pipe(byUser);   // Ordered<Filtered<PostCollection>>
 ```
 
-`pipe` is one line:
-
-```ts
-pipe<Self, Result>(this: Self, step: (collection: Self) => Result): Result {
-  return step(this);
-}
-```
-
-The `this` parameter makes `Self` the static type of the receiver. A custom collection class receives itself, an include refinement receives the refinement, a collection after `select` receives the narrowed row. The result is whatever the step returns: a step that filters yields `Self & HasWhere`, and a step that selects yields a new row.
+`pipe` calls the step with the receiver (ADR 258). A custom collection class receives itself, an include refinement receives the refinement, a collection after `select` receives the narrowed row. A step that filters yields `Filtered<Self>`, and a step that selects yields a new row.
 
 ### 2. Any function body is sound
 
@@ -72,9 +65,9 @@ class PostCollection extends Collection<Contract, 'Post'> {
 }
 ```
 
-The two branches have the types `Self & HasWhere` and `Self`. The first is a subtype of the second, so TypeScript reduces the union to `Self`: the unfiltered collection, or the unfiltered class. `update`, `delete` and `cursor` stay refused. An `if` with an early return, a `switch`, a loop that may run zero times, and a reassigned `let` reduce the same way. A function whose every return path filters yields `Self & HasWhere`, and `update` is allowed on it.
+The two branches have the types `Filtered<Self>` and `Self`. The first is a subtype of the second, so TypeScript reduces the union to `Self`: the unfiltered collection, or the unfiltered class. `update`, `delete` and `cursor` stay refused. An `if` with an early return, a `switch`, a loop that may run zero times, and a reassigned `let` reduce the same way. A function whose every return path filters yields `Filtered<Self>`, and `update` is allowed on it.
 
-All of this is the subtyping rule of ADR 258. `pipe` adds nothing to it and needs nothing beyond the `this` parameter.
+All of this is the subtyping rule of ADR 258. `pipe` adds nothing to it.
 
 ### 3. A row fragment names its fields by codec
 
@@ -129,7 +122,7 @@ Measured as type instantiations on an application of about 750,000 instantiation
 
 ## Consequences
 
-- **Any function is a step.** Control flow stays in the language. The query API gains one method and no combinators.
+- **Any function is a step.** Control flow stays in the language. The query API gains no combinators.
 - **A package can offer a fragment for any model.** A row fragment typed with `FieldExpression` needs no knowledge of the application's models. A package that introduces a kind of index can offer a step built from the index definition, and the application applies it with `pipe`.
 - **The error for a missing field names the wrong overload.** `db.Tag.where(notDeleted)` fails, but the message reports the shorthand filter overload of `where` rather than the missing field.
 

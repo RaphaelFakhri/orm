@@ -39,14 +39,26 @@ await posts.deleteAll();                               // error: the collection 
 
 A collection's type is its class plus what the chain has established. Every method either keeps that class and adds a fact, or produces a different kind of row and returns the shared `Collection` type.
 
+**A method is a step with the receiver bound.** A step is a function from a collection to a collection, `Step<In, Out> = (collection: In) => Out`. The built-in methods, the methods of a custom class, and a step an application or a package writes all have the same type: a function from a receiver type `Self` to `Self` plus a fact. The facts have names, and the names are the vocabulary all three share:
+
+```ts
+type Filtered<Self>              = Self & HasWhere;
+type Ordered<Self>               = Self & HasOrderBy;
+type Including<Self, Rel>        = Self & { readonly [RowType]: CollectionRowOf<Self> & { [K in Rel]: RelationRow<Self, K> } };
+type Step<In, Out>               = (collection: In) => Out;
+```
+
 | Method | Returns | Class kept | What the type gains |
 | --- | --- | --- | --- |
-| `where` | the receiver's type `& HasWhere` | yes | a filter has been applied |
-| `orderBy` | the receiver's type `& HasOrderBy` | yes | an order has been applied |
-| `limit`, `offset`, `distinct`, `cursor` | the receiver's type | yes | nothing |
-| `include` | the receiver's type with the row widened | yes | each row has the included relation |
+| `where` | `Filtered<Self>` | yes | a filter has been applied |
+| `orderBy` | `Ordered<Self>` | yes | an order has been applied |
+| `limit`, `offset`, `distinct`, `cursor` | `Self` | yes | nothing |
+| `include` | `Including<Self, Rel>` | yes | each row has the included relation |
+| `pipe(step)` | whatever `step(this)` returns | as the step | as the step |
 | `select` | `Collection<Contract, Model, NarrowedRow, State>` | no | a different row |
 | `variant` | `Collection<Contract, Model, VariantRow, State>` | no | a different row |
+
+`pipe` is the principle made explicit: it calls a step with the receiver. A class method `published() { return this.where(...) }` has the type `Filtered<this>`; the same query as a step is `(posts: PostCollection) => Filtered<PostCollection>`, and `db.Post.pipe(published)` has the same type as `db.Post.published()`.
 
 The facts live in two declared properties on the class, the **type state** and the **row**:
 
@@ -98,10 +110,11 @@ export class CollectionImpl<TContract, ModelName, Row, State> {
   declare readonly [StateType]: State;
   declare readonly [RowType]: Row;
 
-  where<Self>(this: Self, ...): Self & HasWhere;
-  orderBy<Self>(this: Self, ...): Self & HasOrderBy;
+  where<Self>(this: Self, ...): Filtered<Self>;
+  orderBy<Self>(this: Self, ...): Ordered<Self>;
   limit<Self>(this: Self, n: number): Self;
-  include<Self, Rel>(this: Self, relation: Rel): Self & { readonly [RowType]: CollectionRowOf<Self> & { [K in Rel]: ... } };
+  include<Self, Rel>(this: Self, relation: Rel): Including<Self, Rel>;
+  pipe<Self, Out>(this: Self, step: Step<Self, Out>): Out { return step(this); }
 
   all(): Promise<CollectionRowOf<this>[]>;
   update(data: CollectionStateOf<this>['hasWhere'] extends true ? UpdateInput : never): Promise<CollectionRowOf<this> | null>;
@@ -132,11 +145,12 @@ A conditional makes TypeScript compare the two branch types. It caches the compa
 ## Consequences
 
 - **Class methods chain**, before and after the built-in methods, and after `include`.
+- **A built-in method, a class method and a step are one typed thing.** A query shared between places is written once as a step and applied with `pipe`, or wrapped in a class method; both give the same type. A package can supply steps without any knowledge of the application's classes.
 - **Conditional queries are sound.** A ternary, an `if`, a loop or a reassigned `let` never unlocks `update`, `delete` or `cursor` on a collection that may lack the filter or order.
 - **After `select` or `variant`, class methods are gone**, because the rows are no longer the model's.
 - **A conditional between two differently flagged collections keeps a union.** `flag ? db.Post.published() : db.Post.newestFirst()` is `(PostCollection & HasWhere) | (PostCollection & HasOrderBy)`. Reads, `select`, `include` and class methods work on it; writes and `cursor` are refused. Annotating the result as `PostCollection` reduces it.
 - **A chain on the plain `Collection` prints as an intersection.** A hover shows `CollectionImpl<...> & HasWhere` rather than a single alias.
-- **These names are part of the public surface** because declaration output needs them for any library that exports a collection class: `CollectionImpl`, `HasWhere`, `HasOrderBy`, `StateType`, `RowType`, `CollectionStateOf`, `CollectionRowOf`, `RowSelection` and `IncludeReceiver`.
+- **These names are part of the public surface**, because step authors write them and declaration output needs them for any library that exports a collection class: `Step`, `Filtered`, `Ordered`, `Including`, `CollectionImpl`, `HasWhere`, `HasOrderBy`, `StateType`, `RowType`, `CollectionStateOf`, `CollectionRowOf`, `RowSelection` and `IncludeReceiver`.
 - **The state and the row are read with `CollectionStateOf<C>` and `CollectionRowOf<C>`**, not by extracting a type argument of `Collection`. The type arguments hold what the collection started with; the facts are in the intersection.
 - **`ReturnType` of a chaining method gives only the fact it adds.** `ReturnType<C['where']>` is `HasWhere`, because `ReturnType` of a generic method uses the type parameter's constraint. The type of a filtered collection is written `C & HasWhere`.
 - **`include` takes no explicit type argument.** `include<'tasks'>` leaves `Self` uninferred and the result is `never`. The relation name is inferred from the argument.
