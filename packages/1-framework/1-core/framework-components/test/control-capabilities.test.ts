@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   hasAuthoredContractValidation,
+  hasConsumedHintDescription,
   hasOperationPreview,
   hasPslContractBuild,
   hasPslContractInfer,
@@ -129,5 +130,29 @@ describe('hasOperationPreview', () => {
     } as unknown as ControlFamilyInstance<'sql', unknown>;
 
     expect(hasOperationPreview(instance)).toBe(false);
+  });
+});
+
+describe('hasConsumedHintDescription', () => {
+  it('returns true when instance exposes describeConsumedHint function', () => {
+    const instance = {
+      ...baseInstance,
+      describeConsumedHint: () => 'described',
+    } as ControlFamilyInstance<'sql', unknown>;
+
+    expect(hasConsumedHintDescription(instance)).toBe(true);
+  });
+
+  it('returns false when instance does not declare describeConsumedHint', () => {
+    expect(hasConsumedHintDescription(baseInstance)).toBe(false);
+  });
+
+  it('returns false when describeConsumedHint is present but not a function', () => {
+    const instance = {
+      ...baseInstance,
+      describeConsumedHint: 'described',
+    } as unknown as ControlFamilyInstance<'sql', unknown>;
+
+    expect(hasConsumedHintDescription(instance)).toBe(false);
   });
 });

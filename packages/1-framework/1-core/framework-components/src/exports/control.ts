@@ -8,6 +8,7 @@ export {
 } from '../control/contract-snapshot-layout';
 export type {
   AuthoredContractValidationCapable,
+  ConsumedHintDescriptionCapable,
   DiffSubjectGranularity,
   MigratableTargetDescriptor,
   OperationPreviewCapable,
@@ -20,6 +21,7 @@ export type {
 } from '../control/control-capabilities';
 export {
   hasAuthoredContractValidation,
+  hasConsumedHintDescription,
   hasMigrations,
   hasOperationPreview,
   hasPslContractBuild,
