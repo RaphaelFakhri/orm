@@ -6,6 +6,7 @@ import {
   contractSnapshotDir,
   readContractSnapshotJson,
   readContractSnapshotJsonTolerant,
+  stripContractHints,
   writeContractSnapshot,
 } from '../src/contract-snapshot-store';
 import { MigrationToolsError } from '../src/errors';
@@ -46,6 +47,21 @@ describe('writeContractSnapshot', () => {
 
     const dts = await readFile(join(result.dir, 'contract.d.ts'), 'utf-8');
     expect(dts).toBe('export type Contract = {};\n');
+  });
+
+  it('writes the snapshot without the contract hints section', async () => {
+    const result = await writeContractSnapshot(migrationsDir, STORAGE_HASH, {
+      contractJson: {
+        ...contractFixture(STORAGE_HASH),
+        hints: { namespaces: { public: { tables: { User: { was: 'Profile' } } } } },
+      },
+      contractDts: 'export type Contract = {};',
+    });
+
+    expect(await readContractSnapshotJson(migrationsDir, STORAGE_HASH)).toEqual(
+      contractFixture(STORAGE_HASH),
+    );
+    expect(await readFile(join(result.dir, 'contract.json'), 'utf-8')).not.toContain('hints');
   });
 
   it('does not append a second trailing newline when contractDts already ends with one', async () => {
@@ -249,5 +265,21 @@ describe('MigrationToolsError shape on contract snapshot errors', () => {
     } catch (error) {
       expect(MigrationToolsError.is(error)).toBe(true);
     }
+  });
+});
+
+describe('stripContractHints', () => {
+  it('removes the top-level hints key and keeps every other key', () => {
+    const contract = { target: 'postgres', meta: { hints: 'kept' } };
+    expect(stripContractHints({ ...contract, hints: { namespaces: {} } })).toEqual(contract);
+  });
+
+  it('returns a contract without hints unchanged', () => {
+    const contract = { target: 'postgres' };
+    expect(stripContractHints(contract)).toEqual(contract);
+  });
+
+  it('returns a non-object value unchanged', () => {
+    expect(stripContractHints(null)).toBeNull();
   });
 });
