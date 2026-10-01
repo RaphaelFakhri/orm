@@ -23,6 +23,7 @@ Reviewer-maintained. Contract: `projects/data-types-completion/design.md` sectio
 | e | 1 and 2 (`813a092bc5`..`da192ec6ab`, implementer commits only) | ANOTHER ROUND NEEDED: 1 must-fix |
 | e | 3 (`40bde80ebb`, `5ffb0d42f6`) | SATISFIED: S2-e-R1-1 closed, no new finding |
 | f | 1 (`8819d89a73`, `b237abc245`, `a8cbeacfb9`, `a1438656e8`, `625fa4411a`, `16f4682c19`) | ANOTHER ROUND NEEDED: 4 must-fix, 1 should-fix, 1 low |
+| f | 2 (`0e325b563a`, `a359d8c43e`, `71a218f46e`, `a68d3a22fa`, `dc4e090968`, `cb85a39d8c`) | SATISFIED: S2-f-R1-1 to S2-f-R1-5 closed; S2-f-R1-6 waits for the base merge; no new finding |
 
 ## Findings log
 
@@ -160,7 +161,20 @@ Reviewer-maintained. Contract: `projects/data-types-completion/design.md` sectio
 - What is wrong: `bot/data-types-completion` merged main and is at 8.0.0-rc.14, so the check stops with "head 8.0.0-rc.13 is behind prev 8.0.0-rc.14 (reversed range)". Against the merge base `1e9cc29f05` it passes.
 - Change: merge the base before opening the pull request; no change to this dispatch.
 
+### Dispatch f round 2 status of the round 1 findings
+
+- S2-f-R1-1: closed (`0e325b563a`). Two new extension changes name the deleted SQLite types, the stored types that replace them, `DEFAULT 42`, and the entry key rule with before and after code that matches `data-type-entries.ts`. The SQLite pattern matches `'sqlite/json'`, `"sqlite/bigint"`, `` `sqlite/datetime` `` and `sqliteBigint.id`, and does not match `'sqlite/json@1'`, `'sqlite/datetime@1'`, `'sqlite/bigintnumber@1'`, `'sqlite/bigintnumber'` or `sqliteBigintNumber.id`. `@internal/target-sqlite/data-types` is a real export.
+- S2-f-R1-2: closed (`71a218f46e`). The case lives in `examples/prisma-8-demo/test/contract-view-data-type.test.ts` (jsdom, `createElement`); both files pass (3 tests) and the demo typechecks.
+- S2-f-R1-3: closed (`a68d3a22fa`, ruled in `cb85a39d8c`). Step 5 of both flows gains the one sentence; `lint:skills` passes.
+- S2-f-R1-4: closed (`a359d8c43e`). The extension text quotes the sentence, and applying it reproduces `CONTRACT-FIDELITY.md`.
+- S2-f-R1-5: closed (`dc4e090968`, `cb85a39d8c`). The three tests use the new shapes and pass (35 and 4); the plan allows the `migration.ts` comment class.
+- S2-f-R1-6: open until the base merge; `check:upgrade-coverage --mode pr --prev 1e9cc29f05` passes.
+
 ## Round notes
+
+### Dispatch f, round 2
+
+Extension flow rerun in a disposable linked checkout `wip/proof-review2` at `dc4e090968`, `packages/3-extensions/` restored to `3bb7dbe6a6`: script exit 0, prose applied with `wip/s2f/proof2/apply-prose.py` (its one addition is the quoted `CONTRACT-FIDELITY.md` sentence), formatter on the five changed source files. Step 4 prints nothing. Step 5: the only test files that differ from the base are the 12 script-written fixture contracts, each equal to the head; nothing untracked. Checkout removed. `wip/s2f/proof2/results.txt` agrees, including the app flow. Checks: `lint:agent`, `lint:docs`, `lint:skills` exit 0; `check:upgrade-coverage --mode pr --prev 1e9cc29f05` exit 0. Logs `wip/rev-f/r2-*.log`.
 
 ### Dispatch f, round 1
 
