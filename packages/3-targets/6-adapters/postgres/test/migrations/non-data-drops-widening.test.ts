@@ -1,6 +1,7 @@
 import type { OpFactoryCall } from '@internal/framework-components/control';
 import { createPostgresBuiltinCodecLookup } from '@internal/target-postgres/codecs';
 import {
+  DisableRowLevelSecurityCall,
   DropCheckConstraintCall,
   DropColumnCall,
   DropConstraintCall,
@@ -31,6 +32,7 @@ describe('drops that lose no stored data', () => {
     ['a row-level-security policy', new DropPostgresRlsPolicyCall('public', 'user', 'own_rows')],
     ['a column default', new DropDefaultCall('public', 'user', 'created_at')],
     ['a native enum type', new DropNativeEnumTypeCall('public', 'role')],
+    ['row-level security', new DisableRowLevelSecurityCall('public', 'user')],
   ])('dropping %s is widening', async (_label, call) => {
     expect(await classes(call)).toEqual({ call: 'widening', op: 'widening' });
   });

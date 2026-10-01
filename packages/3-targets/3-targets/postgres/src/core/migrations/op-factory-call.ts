@@ -1939,7 +1939,7 @@ export class EnableRowLevelSecurityCall extends PostgresOpFactoryCallNode {
 
 export class DisableRowLevelSecurityCall extends PostgresOpFactoryCallNode {
   readonly factoryName = 'disableRowLevelSecurity' as const;
-  readonly operationClass = 'destructive' as const;
+  readonly operationClass = 'widening' as const;
   readonly schemaName: string;
   readonly tableName: string;
   readonly label: string;

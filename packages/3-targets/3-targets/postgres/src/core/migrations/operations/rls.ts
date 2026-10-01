@@ -126,7 +126,7 @@ export async function disableRowLevelSecurity(
   return {
     id: `rowLevelSecurity.${schemaName}.${tableName}.disable`,
     label: `Disable row-level security on "${tableName}"`,
-    operationClass: 'destructive',
+    operationClass: 'widening',
     target: targetDetails('rowLevelSecurity', tableName, schemaName),
     precheck: [
       step(`check RLS is currently enabled on "${tableName}"`, enabled.sql, enabled.params),

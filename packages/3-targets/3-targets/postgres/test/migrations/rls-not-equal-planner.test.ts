@@ -1,7 +1,7 @@
 /**
  * A `not-equal` policy issue — reachable once exact-named (prefix-absent)
  * policies compare by content — maps to drop + create: the drop is
- * destructive-gated, and without the destructive allowance the plan fails
+ * widening-gated, and without the widening allowance the plan fails
  * with the existing disallowed-call conflict instead of silently skipping
  * the drift.
  */
