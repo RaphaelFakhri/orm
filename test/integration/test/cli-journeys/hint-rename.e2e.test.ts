@@ -12,8 +12,9 @@
  * Journey H4 names, as the old table, a table that still exists beside the new one: `migration plan` fails with `MIGRATION.HINT_CONTRADICTED` and writes nothing.
  */
 
-import { readFileSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { contractSnapshotDir } from '@internal/migration-tools/contract-snapshot-store';
 import { describe, expect, it } from 'vitest';
 import { withTempDir } from '../utils/cli-test-helpers';
 import {
@@ -23,6 +24,7 @@ import {
   latestMigrationDirName,
   parseJsonOutput,
   planMigrationAndSelfEmit,
+  pslContractFixtures,
   runContractEmit,
   runDbUpdate,
   runDbVerify,
@@ -42,6 +44,7 @@ const RENAME_CALL = "...this.renameTable({ schema: 'public', table: 'Profile', t
 
 interface PlanDocument {
   readonly noOp: boolean;
+  readonly to: string;
   readonly operations: readonly { readonly label: string; readonly operationClass: string }[];
   readonly consumedHints?: readonly { readonly text: string }[];
 }
@@ -85,6 +88,27 @@ async function emitHinted(ctx: JourneyContext, label: string): Promise<void> {
   swapPslContract(ctx, 'contract-hint-rename-to');
   const emit = await runContractEmit(ctx);
   expect(emit.exitCode, `${label}: emit Member with the hint: ${emit.stderr}`).toBe(0);
+}
+
+function emittedContract(ctx: JourneyContext): {
+  readonly storage: { readonly storageHash: string };
+  readonly hints?: unknown;
+} {
+  return JSON.parse(readFileSync(join(ctx.testDir, 'contract.json'), 'utf-8'));
+}
+
+/** Emits the hinted schema with its `@@hint` line removed, and returns that contract's storage hash. */
+async function storageHashWithoutHint(ctx: JourneyContext, label: string): Promise<string> {
+  const hinted = readFileSync(pslContractFixtures['contract-hint-rename-to'], 'utf-8');
+  const unhinted = hinted.replace('    @@hint(was: "Profile")\n', '');
+  expect(unhinted, `${label}: the schema without the hint differs only by that line`).not.toBe(
+    hinted,
+  );
+  writeFileSync(join(ctx.testDir, 'contract.prisma'), unhinted, 'utf-8');
+  const emit = await runContractEmit(ctx);
+  expect(emit.exitCode, `${label}: emit Member without the hint: ${emit.stderr}`).toBe(0);
+  expect(emittedContract(ctx).hints, `${label}: no hints without the hint`).toBeUndefined();
+  return emittedContract(ctx).storage.storageHash;
 }
 
 function operationsBlock(ctx: JourneyContext, dirName: string): string {
@@ -158,7 +182,15 @@ withTempDir(({ createTempDir }) => {
           contractMode: 'psl',
         });
         await seedProfile(ctx, db.connectionString, 'H1', 'migrate');
+        const unhintedHash = await storageHashWithoutHint(ctx, 'H1.04');
         await emitHinted(ctx, 'H1.04');
+        expect(emittedContract(ctx).hints, 'H1.04: the emitted contract carries the hint').toEqual({
+          namespaces: { public: { tables: { Member: { was: 'Profile' } } } },
+        });
+        expect(
+          emittedContract(ctx).storage.storageHash,
+          'H1.04: the hint leaves the storage hash unchanged',
+        ).toBe(unhintedHash);
 
         const plan = await planMigrationAndSelfEmit(ctx, [
           '--name',
@@ -169,6 +201,17 @@ withTempDir(({ createTempDir }) => {
         ]);
         expect(plan.exitCode, `H1.05: plan the rename: ${plan.stderr}`).toBe(0);
         const planned = parseJsonOutput<PlanDocument>(plan);
+        expect(planned.to, 'H1.05: the plan is toward the hinted contract').toBe(unhintedHash);
+        const snapshot = JSON.parse(
+          readFileSync(
+            join(contractSnapshotDir(join(ctx.testDir, 'migrations'), planned.to), 'contract.json'),
+            'utf-8',
+          ),
+        );
+        expect(snapshot.storage.storageHash, 'H1.05: the snapshot is the plan destination').toBe(
+          planned.to,
+        );
+        expect(snapshot, 'H1.05: the snapshot carries no hints').not.toHaveProperty('hints');
         expect(planned.consumedHints, 'H1.05: the plan reports the hint it used').toEqual([
           { hint: expect.objectContaining({ kind: 'renamed', from: 'Profile' }), text: HINT_TEXT },
         ]);
