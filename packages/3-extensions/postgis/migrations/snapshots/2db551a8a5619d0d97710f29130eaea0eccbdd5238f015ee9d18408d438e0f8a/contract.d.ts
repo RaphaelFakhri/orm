@@ -34,7 +34,7 @@ import type {
 } from '@internal/contract/types';
 
 export type StorageHash =
-  StorageHashBase<'3d2c56a2944685bd21b05bc8a8d73164397df51c014201902932fbe7e80ff1b8'>;
+  StorageHashBase<'2db551a8a5619d0d97710f29130eaea0eccbdd5238f015ee9d18408d438e0f8a'>;
 export type ExecutionHash = ExecutionHashBase<string>;
 export type ProfileHash =
   ProfileHashBase<'3916f444a8a17ad749191acf9e08dad97d1a327b88c2f1d45d12f240296aa8b2'>;
@@ -278,10 +278,10 @@ type ContractBase = Omit<
       };
     };
     readonly types: {
-      readonly vector: {
+      readonly geometry: {
         readonly kind: 'codec-instance';
-        readonly codecId: 'pg/vector@1';
-        readonly nativeType: 'vector';
+        readonly codecId: 'pg/geometry@1';
+        readonly dataType: 'postgis/geometry';
         readonly typeParams: Record<string, never>;
       };
     };
