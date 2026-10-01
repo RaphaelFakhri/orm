@@ -1,6 +1,6 @@
 # Slice spec — The hint attribute, the contract section, and model renames
 
-**Project:** `projects/intent-hints/` · **Slice 1** · **Linear:** [TML-3422](https://linear.app/prisma-company/issue/TML-3422) · **Branch:** `tml-3422-intent-hints-model-rename` (stacked on the shaping branch `tml-3421-rename-hints`; retarget to `main` once prisma/orm#30557 merges)
+**Project:** `projects/intent-hints/` · **Slice 1** · **Linear:** [TML-3422](https://linear.app/prisma-company/issue/TML-3422) · **PR:** https://github.com/prisma/orm/pull/30570 · **Branch:** `tml-3422-intent-hints-model-rename` (stacked on the shaping branch `tml-3421-rename-hints`; retarget to `main` once prisma/orm#30557 merges)
 
 ## At a glance
 

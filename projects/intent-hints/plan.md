@@ -10,7 +10,7 @@
 - **Builds on:** prisma/orm#30331 merged.
 - **Hands to:** the contract section and its validation, the planner's hint input and resolution helper, the consumed-hints report.
 - **Linear:** TML-3422.
-- **Branch:** cut from `main` after prisma/orm#30331 merges.
+- **PR:** https://github.com/prisma/orm/pull/30570, stacked on the shaping PR prisma/orm#30557; retarget to `main` once that merges.
 
 ### Slice 2 — Field renames
 
