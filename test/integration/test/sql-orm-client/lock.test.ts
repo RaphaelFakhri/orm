@@ -10,14 +10,20 @@ async function inTransaction<T>(
   fn: (tx: RuntimeScope) => Promise<T>,
 ): Promise<T> {
   const connection = await runtime.connection?.();
-  const tx = await connection?.transaction?.();
-  if (connection === undefined || tx === undefined) {
-    throw new Error('the integration runtime opens no transaction');
+  if (connection === undefined) {
+    throw new Error('the integration runtime opens no connection');
   }
   try {
-    return await fn(tx);
+    const tx = await connection.transaction?.();
+    if (tx?.rollback === undefined) {
+      throw new Error('the integration runtime opens no transaction it can roll back');
+    }
+    try {
+      return await fn(tx);
+    } finally {
+      await tx.rollback();
+    }
   } finally {
-    await tx.rollback?.();
     await connection.release?.();
   }
 }

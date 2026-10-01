@@ -7,7 +7,7 @@ import { createMockRuntime, getTestContext, withCapabilities } from './helpers';
 
 const allFlags = baseContract.capabilities;
 
-function postsWith(capabilities: Record<string, Record<string, boolean>>) {
+function postsWith<Caps extends Record<string, Record<string, boolean>>>(capabilities: Caps) {
   const contract = withCapabilities(baseContract, capabilities);
   return new Collection(
     { runtime: createMockRuntime(), context: { ...getTestContext(), contract } },
@@ -16,10 +16,6 @@ function postsWith(capabilities: Record<string, Record<string, boolean>>) {
       namespaceId: soleDomainNamespaceId(contract.domain),
     },
   );
-}
-
-function withoutFlag(group: 'sql' | 'postgres', flag: string) {
-  return postsWith({ ...allFlags, [group]: { ...allFlags[group], [flag]: false } });
 }
 
 const capabilityMissing = (method: string, capability: string) =>
@@ -88,15 +84,50 @@ describe('row-locking methods', () => {
 
   describe('capabilities', () => {
     it.each([
-      { method: 'forUpdate', group: 'sql' },
-      { method: 'forShare', group: 'sql' },
-      { method: 'forNoKeyUpdate', group: 'postgres' },
-      { method: 'forKeyShare', group: 'postgres' },
-    ] as const)('$method throws without $group.$method', ({ method, group }) => {
-      const collection = withoutFlag(group, method);
-
-      // @ts-expect-error the method is gated out without its flag
-      expect(() => collection[method]()).toThrow(capabilityMissing(method, `${group}.${method}`));
+      {
+        method: 'forUpdate',
+        capability: 'sql.forUpdate',
+        call: () => {
+          const posts = postsWith({ ...allFlags, sql: { ...allFlags.sql, forUpdate: false } });
+          // @ts-expect-error forUpdate needs sql.forUpdate
+          return posts.forUpdate();
+        },
+      },
+      {
+        method: 'forShare',
+        capability: 'sql.forShare',
+        call: () => {
+          const posts = postsWith({ ...allFlags, sql: { ...allFlags.sql, forShare: false } });
+          // @ts-expect-error forShare needs sql.forShare
+          return posts.forShare();
+        },
+      },
+      {
+        method: 'forNoKeyUpdate',
+        capability: 'postgres.forNoKeyUpdate',
+        call: () => {
+          const posts = postsWith({
+            ...allFlags,
+            postgres: { ...allFlags.postgres, forNoKeyUpdate: false },
+          });
+          // @ts-expect-error forNoKeyUpdate needs postgres.forNoKeyUpdate
+          return posts.forNoKeyUpdate();
+        },
+      },
+      {
+        method: 'forKeyShare',
+        capability: 'postgres.forKeyShare',
+        call: () => {
+          const posts = postsWith({
+            ...allFlags,
+            postgres: { ...allFlags.postgres, forKeyShare: false },
+          });
+          // @ts-expect-error forKeyShare needs postgres.forKeyShare
+          return posts.forKeyShare();
+        },
+      },
+    ])('$method throws without $capability', ({ method, capability, call }) => {
+      expect(call).toThrow(capabilityMissing(method, capability));
     });
 
     it('checks the flag in its own group', () => {
@@ -110,15 +141,30 @@ describe('row-locking methods', () => {
       expect(() => collection.forUpdate()).toThrow(capabilityMissing('forUpdate', 'sql.forUpdate'));
     });
 
-    it.each([
-      { flag: 'lockNowait', options: { nowait: true } },
-      { flag: 'lockSkipLocked', options: { skipLocked: true } },
-    ] as const)('an option throws without sql.$flag', ({ flag, options }) => {
-      const collection = withoutFlag('sql', flag);
+    it('nowait throws without sql.lockNowait', () => {
+      const collection = postsWith({ ...allFlags, sql: { ...allFlags.sql, lockNowait: false } });
 
-      // @ts-expect-error the option is gated out without its flag
-      expect(() => collection.forUpdate(options)).toThrow(
-        capabilityMissing('forUpdate', `sql.${flag}`),
+      expect(collection.forUpdate().state.locking).toEqual([
+        LockingClause.of('forUpdate', { of: ['posts'] }),
+      ]);
+      // @ts-expect-error nowait needs sql.lockNowait
+      expect(() => collection.forUpdate({ nowait: true })).toThrow(
+        capabilityMissing('forUpdate', 'sql.lockNowait'),
+      );
+    });
+
+    it('skipLocked throws without sql.lockSkipLocked', () => {
+      const collection = postsWith({
+        ...allFlags,
+        sql: { ...allFlags.sql, lockSkipLocked: false },
+      });
+
+      expect(collection.forUpdate().state.locking).toEqual([
+        LockingClause.of('forUpdate', { of: ['posts'] }),
+      ]);
+      // @ts-expect-error skipLocked needs sql.lockSkipLocked
+      expect(() => collection.forUpdate({ skipLocked: true })).toThrow(
+        capabilityMissing('forUpdate', 'sql.lockSkipLocked'),
       );
     });
   });
