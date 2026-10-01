@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { cpSync, mkdtempSync, readdirSync, readFileSync, rmSync } from 'node:fs';
+import { cpSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, relative, sep } from 'node:path';
 import { after, describe, it } from 'node:test';
@@ -120,6 +120,33 @@ describe('an extension package', () => {
 
   it('ships the same script to both audiences', () => {
     assert.equal(readFileSync(extensionScript, 'utf8'), readFileSync(appScript, 'utf8'));
+  });
+});
+
+describe('a migration.ts that writes hashes as literals', () => {
+  const oldHash = '3d2c56a2944685bd21b05bc8a8d73164397df51c014201902932fbe7e80ff1b8';
+  const newHash = '4a96b488a4ce92b434e5f7d6607b6435c0955f0d36b0018077045787764240e6';
+  const unrelated = 'c'.repeat(64);
+  const migrationTs = (hash: string) =>
+    [
+      'export default class M extends Migration {',
+      `  readonly checksum = '${unrelated}';`,
+      '  override describe() {',
+      `    return { from: '${hash}', to: '${hash}' };`,
+      '  }',
+      '}',
+      '',
+    ].join('\n');
+
+  it('replaces every mapped hash and leaves other hashes unchanged', () => {
+    const root = copyFixture('extension-package', 'before');
+    const path = join(root, 'migrations', '20260601T0000_install_vector_extension', 'migration.ts');
+    writeFileSync(path, migrationTs(oldHash));
+    const run = runScript(root, extensionScript);
+    assert.deepEqual(
+      { status: run.status, migrationTs: readFileSync(path, 'utf8') },
+      { status: 0, migrationTs: migrationTs(newHash) },
+    );
   });
 });
 

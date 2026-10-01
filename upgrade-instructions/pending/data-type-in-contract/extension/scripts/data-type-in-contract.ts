@@ -886,10 +886,10 @@ function main({ root, dataTypes, errors }: Options): number {
   }
   for (const path of files.migrationTs) {
     const text = readFileSync(path, 'utf8');
-    const next = text.replace(/snapshots\/([0-9a-f]{64})\//g, (match: string, hash: string) => {
-      const newHash = hashes.get(hash);
-      return newHash === undefined ? match : `snapshots/${newHash}/`;
-    });
+    const next = text.replace(
+      /(?<![0-9a-f])[0-9a-f]{64}(?![0-9a-f])/g,
+      (hash: string) => hashes.get(hash) ?? hash,
+    );
     if (next !== text) writes.set(path, next);
   }
 
