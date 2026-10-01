@@ -171,6 +171,12 @@ export interface OpFactoryCall {
    * the lowering requires async codec resolution (e.g. DDL with literal defaults).
    */
   toOp(): MigrationPlanOperation | Promise<MigrationPlanOperation>;
+  /**
+   * Lower this call to several runtime operations, in order, when one call stands for a change
+   * that takes more than one. Renderers use it instead of {@link toOp} when present, and pass it
+   * the same target lowerer.
+   */
+  toOps?(lowerer?: unknown): readonly (MigrationPlanOperation | Promise<MigrationPlanOperation>)[];
 }
 
 // ============================================================================
@@ -181,6 +187,17 @@ export interface OpFactoryCall {
  * A migration plan for display purposes.
  * Contains only the fields needed for CLI output (summary, JSON envelope).
  */
+/**
+ * A planner hint the plan acted on. `coordinate` is the table the hint is on; `memberName` names
+ * the column when the hint is on one; `from` is the old name of a rename.
+ */
+export interface ConsumedHint {
+  readonly kind: 'renamed' | 'deleted';
+  readonly coordinate: SchemaEntityCoordinate;
+  readonly memberName?: string;
+  readonly from?: string;
+}
+
 export interface MigrationPlan {
   /** The target ID this plan is for (e.g., 'postgres'). */
   readonly targetId: string;
@@ -208,6 +225,8 @@ export interface MigrationPlan {
   };
   /** Ordered list of operations to execute. May contain Promises for ops that require async codec resolution. */
   readonly operations: readonly (MigrationPlanOperation | Promise<MigrationPlanOperation>)[];
+  /** The planner hints this plan acted on, for the command to report. */
+  readonly consumedHints?: readonly ConsumedHint[];
   /**
    * Sorted, deduplicated invariant ids declared by this plan's data-transform
    * ops. Authored migrations carry the canonical value from
