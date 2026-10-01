@@ -38,19 +38,19 @@ export function writtenScalar<Ctx extends AttributeCtx>(
 }
 
 /** A written list with its span, so a refusal about the whole list is reported at it. */
-export interface ParsedWrittenList {
+export interface ParsedWrittenList<Element = ParsedWrittenScalar> {
   readonly kind: 'list';
-  readonly elements: readonly ParsedWrittenScalar[];
+  readonly elements: readonly Element[];
   readonly span: PslSpan;
 }
 
-/** A list of written scalars, yielding its elements and the span of the whole list. ADR 254. */
-export function writtenList<Ctx extends AttributeCtx>(
-  of: ArgType<ParsedWrittenScalar, Ctx>,
-): ArgType<ParsedWrittenList, Ctx> {
+/** A list of the elements `of` yields, with the span of the whole list. ADR 254. */
+export function writtenList<Element, Ctx extends AttributeCtx>(
+  of: ArgType<Element, Ctx>,
+): ArgType<ParsedWrittenList<Element>, Ctx> {
   return mapArg(
     list(of, { label: `list of (${of.label})` }),
-    (elements, arg, ctx): ParsedWrittenList => ({
+    (elements, arg, ctx): ParsedWrittenList<Element> => ({
       kind: 'list',
       elements,
       span: nodePslSpan(arg.syntax, ctx.sources),

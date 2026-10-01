@@ -73,7 +73,7 @@ import {
   sqlTextFromCanonical,
 } from '@internal/sql-contract/sql-expression';
 import { blindCast } from '@internal/utils/casts';
-import { notOk } from '@internal/utils/result';
+import { notOk, ok } from '@internal/utils/result';
 import { removedDbgeneratedMessage } from './default-function-registry';
 import { getAttribute } from './psl-attribute-parsing';
 
@@ -261,6 +261,36 @@ export interface EnumMemberDefault {
   readonly name: string;
 }
 
+/** A written `null`, as a nullable field's default or a list element, with its span. */
+export interface ParsedNullLiteral {
+  readonly kind: 'null';
+  readonly span: PslSpan;
+}
+
+/** An enum list default: its members and nulls. */
+export interface EnumMemberListDefault {
+  readonly kind: 'member-list';
+  readonly elements: readonly (EnumMemberDefault | ParsedNullLiteral)[];
+}
+
+function nullLiteral(): ArgType<ParsedNullLiteral, AttributeCtx> {
+  const nullIdentifier = identifier('null', {
+    documentation: 'A null list element or nullable scalar default.',
+  });
+  const nullArm: ArgType<null, AttributeCtx> = {
+    kind: 'null',
+    label: 'null',
+    parse: (arg, ctx) => {
+      const result = nullIdentifier.parse(arg, ctx);
+      return result.ok ? ok(null) : result;
+    },
+  };
+  return mapArg(nullArm, (_null, arg, ctx) => ({
+    kind: 'null',
+    span: nodePslSpan(arg.syntax, ctx.sources),
+  }));
+}
+
 /** A call to a registered default function, such as `uuid()`. Not the contract's `{ kind: 'function' }` storage default. */
 export interface DefaultFunctionCall {
   readonly kind: 'default-function';
@@ -269,9 +299,11 @@ export interface DefaultFunctionCall {
 
 type DefaultArgValue =
   | ParsedWrittenScalar
-  | ParsedWrittenList
+  | ParsedNullLiteral
+  | ParsedWrittenList<ParsedWrittenScalar | ParsedNullLiteral>
   | DefaultFunctionCall
-  | EnumMemberDefault;
+  | EnumMemberDefault
+  | EnumMemberListDefault;
 
 function defaultFunctionArm(
   name: string,
@@ -307,6 +339,7 @@ function scalarDefaultArms(
       writtenScalar(str()),
       writtenScalar(numLiteral()),
       writtenScalar(bool()),
+      nullLiteral(),
       ...tagArms((dataType) => dataType !== SQL_EXPRESSION_DATA_TYPE_ID),
     );
   const listArm = () => writtenList(literal());
@@ -319,14 +352,13 @@ function scalarDefaultArms(
       >(entry.signature),
     ),
   );
-  // A scalar column takes a list literal too: a codec such as `pg/vector@1` declares a list of
-  // element types, and its value is written as a PSL list on a column that is not a list.
   return isList
     ? [listArm(), ...funcArms, ...anyTag()]
     : [
         writtenScalar(str()),
         writtenScalar(numLiteral()),
         writtenScalar(bool()),
+        nullLiteral(),
         ...funcArms,
         ...anyTag(),
         listArm(),
@@ -344,7 +376,7 @@ function defaultValueArm(
   ],
   registry: ControlMutationDefaultRegistry,
 ) {
-  const value = oneOf(...arms);
+  const value = arms.length === 1 && arms[0].kind === 'list' ? arms[0] : oneOf(...arms);
   return {
     ...value,
     parse: (arg: Parameters<typeof value.parse>[0], ctx: AttributeCtx) =>
@@ -391,6 +423,7 @@ function enumMemberNames(ctx: FieldAttributeSpecContext): readonly string[] | un
 function enumDefaultArms(
   members: readonly string[],
   enumName: string,
+  isList: boolean,
 ): readonly [ArgType<DefaultArgValue, AttributeCtx>, ...ArgType<DefaultArgValue, AttributeCtx>[]] {
   const [first, ...rest] = members;
   if (first === undefined) return [noEnumMember()];
@@ -399,6 +432,14 @@ function enumDefaultArms(
       identifier(name, { documentation: `The \`${name}\` member of enum \`${enumName}\`.` }),
       (parsed) => ({ kind: 'member', name: parsed }),
     );
+  if (isList) {
+    return [
+      mapArg(
+        list(oneOf(member(first), ...rest.map(member), nullLiteral())),
+        (elements): EnumMemberListDefault => ({ kind: 'member-list', elements }),
+      ),
+    ];
+  }
   return [member(first), ...rest.map(member)];
 }
 
@@ -407,7 +448,7 @@ function defaultFieldSpec(ctx: FieldAttributeSpecContext) {
   const valueArms =
     members === undefined
       ? scalarDefaultArms(ctx.field.list, ctx.dataTypes, ctx.defaultFunctionRegistry)
-      : enumDefaultArms(members, ctx.field.typeName);
+      : enumDefaultArms(members, ctx.field.typeName, ctx.field.list);
   return fieldAttribute('default', {
     documentation: 'Supplies a default value when this field is omitted from a mutation.',
     positional: [

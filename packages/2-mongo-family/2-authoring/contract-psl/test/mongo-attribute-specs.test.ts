@@ -16,7 +16,6 @@ import { parse } from '@internal/psl-parser/syntax';
 import { describe, expect, expectTypeOf, it } from 'vitest';
 import {
   createMongoBinder,
-  findModelAttributeNode,
   interpretModelAttribute,
   mongoAttributeSpecs,
 } from '../src/mongo-attribute-specs';
@@ -98,7 +97,7 @@ model Base { id String }`,
     });
     const model = symbolTable.topLevel.models['Variant'];
     if (!model) throw new Error('missing variant');
-    const node = findModelAttributeNode(model, 'base');
+    const node = model.attributes.find((attr) => attr.name === 'base')?.node;
     if (!node) throw new Error('missing base');
     const diagnostics = createPslDiagnosticCollector(sources);
     const value = interpretModelAttribute({

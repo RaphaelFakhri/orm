@@ -16,6 +16,7 @@ import { parse } from '@internal/psl-parser/syntax';
 import { describe, expect, it } from 'vitest';
 import { classifyPslCompletionContext } from '../src/completion-context';
 import { providePslCompletionItems } from '../src/completion-provider';
+import { testBinder } from './helpers/binder';
 
 function recordingDescriptors(seen: BlockSpecContext[]): AuthoringPslBlockDescriptorNamespace {
   return {
@@ -50,6 +51,7 @@ function completeAt(markedSource: string, dataTypes: DataTypeSupport | undefined
   const { document, sources } = parse(source, 'block-spec-context.psl');
   const sourceFile = sources.sourceFileFor(document.syntax);
   const { symbolTable } = buildSymbolTable({ documents: [document], sources });
+  const pslBlockDescriptors = recordingDescriptors(seen);
   const items = providePslCompletionItems({
     context: classifyPslCompletionContext({
       document,
@@ -59,8 +61,14 @@ function completeAt(markedSource: string, dataTypes: DataTypeSupport | undefined
     sourceFile,
     candidates: {
       scalarTypes: [],
-      pslBlockDescriptors: recordingDescriptors(seen),
+      pslBlockDescriptors,
       symbolTable,
+      binder: testBinder({
+        sources,
+        symbolTable,
+        pslBlockDescriptors,
+        ...(dataTypes === undefined ? {} : { dataTypes }),
+      }),
       ...(dataTypes === undefined ? {} : { dataTypes }),
     },
     clientSupportsSnippets: false,

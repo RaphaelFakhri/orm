@@ -8,6 +8,7 @@ import {
   identifier,
   mapArg,
   numLiteral,
+  oneOf,
   str,
   taggedLiteral,
   writtenList,
@@ -114,6 +115,31 @@ describe('writtenList', () => {
         elements: [
           { kind: 'scalar', written: { kind: 'string', text: 'a' }, span: at(1, 3) },
           { kind: 'scalar', written: { kind: 'string', text: 'b' }, span: at(6, 3) },
+        ],
+        span: spanOf(source),
+      }),
+    );
+  });
+
+  it('holds elements of any parsed shape its element arm yields', () => {
+    const missing = mapArg(identifier('missing', { documentation: 'No value.' }), () => ({
+      kind: 'missing' as const,
+    }));
+    const source = '["a", missing]';
+    const { expr, ctx } = argOf(source);
+    expect(writtenList(oneOf(writtenScalar(str()), missing)).parse(expr, ctx)).toEqual(
+      ok({
+        kind: 'list',
+        elements: [
+          {
+            kind: 'scalar',
+            written: { kind: 'string', text: 'a' },
+            span: {
+              start: { offset: 4, line: 1, column: 5 },
+              end: { offset: 7, line: 1, column: 8 },
+            },
+          },
+          { kind: 'missing' },
         ],
         span: spanOf(source),
       }),

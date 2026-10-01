@@ -350,16 +350,27 @@ export function lowerDataTypeDefault(input: {
   readonly codecLookup: CodecLookupWithDescriptors | undefined;
   readonly dataTypes: DataTypeSupport;
   readonly fieldPath: string;
+  /** For a written list that leaves out the source list's `null` elements: the source index of each written element. */
+  readonly sourceElementIndexes: readonly number[] | undefined;
 }): DefaultDiagnosticResult {
   const read = readDataTypeDefault(input);
   return read.ok
     ? read
     : refusalDiagnostic(
-        read.refusal,
+        atSourceElement(read.refusal, input.sourceElementIndexes),
         input.fieldPath,
         formsOf(input.dataTypes, read.suggestedTypes),
         input.spans,
       );
+}
+
+function atSourceElement(
+  refusal: DefaultRefusal,
+  sourceElementIndexes: readonly number[] | undefined,
+): DefaultRefusal {
+  if (refusal.elementIndex === undefined) return refusal;
+  const elementIndex = sourceElementIndexes?.[refusal.elementIndex];
+  return elementIndex === undefined ? refusal : { ...refusal, elementIndex };
 }
 
 type DefaultDiagnostic = Extract<DefaultDiagnosticResult, { readonly ok: false }>;
