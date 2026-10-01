@@ -615,6 +615,23 @@ export function refuseUnwritableIndexOptions(entry: ModelWithTable, index: Index
   }
 }
 
+/**
+ * `@@fullTextIndex` writes the weight groups, the name, the language and the predicate. A full-text
+ * index that is unique, or that carries other options, has no `@@fullTextIndex` form.
+ */
+export function refuseUnwritableFullTextIndex(entry: ModelWithTable, index: Index): void {
+  const extraOptions = Object.keys(index.options ?? {}).filter(
+    (key) => key !== 'fields' && key !== 'language',
+  );
+  if (!index.unique && extraOptions.length === 0) return;
+  throw unsupported(
+    `full-text index "${index.name}" on "${entry.namespaceId}"."${entry.tableName}" is unique or carries options other than its fields and language, which \`@@fullTextIndex\` cannot write.`,
+    '`@@fullTextIndex` takes the fields, `name` or `map`, `language` and `where`, and nothing else.',
+    'Drop the extra options or the uniqueness, or keep authoring this contract in its current source.',
+    { namespaceId: entry.namespaceId, table: entry.tableName, index: index.name },
+  );
+}
+
 // Relations
 
 export function refuseToOneRelationWithoutForeignKey(modelName: string, fieldName: string): never {

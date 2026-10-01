@@ -328,7 +328,8 @@ A model declares an empty unique constraint (a unique with no fields), raised du
 - Keys, checks and indexes:
   - a check or index has a prefix, but its name is not that prefix followed by the hash of its content (meta: `namespaceId`, `table`, `name`, `prefix`);
   - a managed table lacks a check the PSL source derives for an enum or list column, or has a check with that check's name but not its prefix and expression (meta: `namespaceId`, `table`, `name`);
-  - an index has options but no type (meta: `namespaceId`, `table`, `index`), or an option whose value is not a string (meta: `namespaceId`, `table`, `index`, `key`).
+  - an index has options but no type (meta: `namespaceId`, `table`, `index`), or an option whose value is not a string (meta: `namespaceId`, `table`, `index`, `key`);
+  - a full-text index is unique, or carries options other than its fields and language, which `@@fullTextIndex` does not write (meta: `namespaceId`, `table`, `index`).
 - Relations:
   - a to-one relation has no foreign key behind it (meta: `model`, `field`);
   - a foreign key has no relation that travels it (meta: `namespaceId`, `table`, `columns`);

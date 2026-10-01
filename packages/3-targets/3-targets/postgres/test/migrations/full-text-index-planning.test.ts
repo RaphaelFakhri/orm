@@ -1,9 +1,10 @@
 /**
  * A GIN index over `to_tsvector(...)` reaches the planner as a
- * `PostgresCreateIndex` carrying the access method and the expression
- * verbatim — whether it came from `@@fullTextIndex`, which renders the
- * expression, or from a hand-written `@@index(expression:)`. The SQL bytes are
- * asserted beside the renderer in the adapter package.
+ * `PostgresCreateIndex` carrying the access method and the expression —
+ * whether it came from `@@fullTextIndex`, whose search document is rendered
+ * from the weight groups in its options, or from a hand-written
+ * `@@index(expression:)`. The SQL bytes are asserted beside the renderer in
+ * the adapter package.
  */
 
 import type { Contract } from '@internal/contract/types';
@@ -40,6 +41,15 @@ model Message {
   id   Int    @id
   text String
   @@fullTextIndex([text], name: "message_text_search")
+}
+`;
+
+const WEIGHTED_SCHEMA = `
+model Message {
+  id   Int     @id
+  text String
+  note String?
+  @@fullTextIndex([text, note], name: "message_search")
 }
 `;
 
@@ -106,6 +116,7 @@ function liveSchemaWithoutTheIndex(): PostgresDatabaseSchemaNode {
             columns: {
               id: { name: 'id', nativeType: 'int4', nullable: false },
               text: { name: 'text', nativeType: 'text', nullable: false },
+              note: { name: 'note', nativeType: 'text', nullable: true },
             },
             primaryKey: { columns: ['id'] },
             foreignKeys: [],
@@ -156,6 +167,17 @@ describe('a GIN index over to_tsvector, authored in PSL', () => {
     expect(node.elements).toEqual({ expression: `to_tsvector('english', "text")` });
     expect(node.table).toBe('Message');
     expect(node.name.startsWith('message_text_search')).toBe(true);
+  });
+
+  it('plans one CREATE INDEX over the weighted search document', async () => {
+    const nodes = await plannedCreateIndexNodes(WEIGHTED_SCHEMA);
+    expect(nodes).toHaveLength(1);
+    const node = nodes[0]!;
+    expect(node.type).toBe('gin');
+    expect(node.elements).toEqual({
+      expression: `(setweight(to_tsvector('english', "text"), 'A') || setweight(to_tsvector('english', coalesce("note", '')), 'B'))`,
+    });
+    expect(node.name.startsWith('message_search')).toBe(true);
   });
 
   it('plans the same CREATE INDEX from a hand-written @@index(expression:)', async () => {

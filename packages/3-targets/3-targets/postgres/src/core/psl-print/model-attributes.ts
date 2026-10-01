@@ -10,15 +10,21 @@ import {
 } from '@internal/sql-schema-ir/naming';
 import { postgresRenderCheckExpressions } from '../check-expressions';
 import { PG_ENUM_CODEC_ID } from '../codec-ids';
+import { fullTextIndexDefinitionOf } from '../full-text-index-expression';
 import {
   type AttributeNaming,
   buildCheckAttribute,
+  buildFullTextIndexAttribute,
   buildIndexAttribute,
   buildModelConstraintAttribute,
 } from '../psl-build/index-attributes';
 import { buildAttribute, buildMapAttribute, positionalArg } from '../psl-build/psl-literals';
 import type { ModelWithTable, VariantInfo } from './contract-model-index';
-import { refuseUnwritableIndexOptions, refuseUnwritableObjectName } from './refusals';
+import {
+  refuseUnwritableFullTextIndex,
+  refuseUnwritableIndexOptions,
+  refuseUnwritableObjectName,
+} from './refusals';
 
 /** A check the PSL source derives for a table, which the printer does not write. */
 export interface DerivedCheck {
@@ -169,20 +175,21 @@ export function buildModelAttributes(input: {
   }
   for (const index of entry.table.indexes) {
     if (!owns(index.columns)) continue;
+    const naming = attributeNaming({
+      kind: 'index',
+      entry,
+      name: index.name,
+      prefix: index.prefix,
+      contentHash: () => computeIndexContentHash(index),
+    });
+    const fullText = fullTextIndexDefinitionOf(index);
+    if (fullText !== undefined) {
+      refuseUnwritableFullTextIndex(entry, index);
+      attributes.push(buildFullTextIndexAttribute(index, fullText, fieldNameOf, naming));
+      continue;
+    }
     refuseUnwritableIndexOptions(entry, index);
-    attributes.push(
-      buildIndexAttribute(
-        index,
-        index.columns?.map(fieldNameOf),
-        attributeNaming({
-          kind: 'index',
-          entry,
-          name: index.name,
-          prefix: index.prefix,
-          contentHash: () => computeIndexContentHash(index),
-        }),
-      ),
-    );
+    attributes.push(buildIndexAttribute(index, index.columns?.map(fieldNameOf), naming));
   }
   if (entry.table.control !== undefined && variant?.singleTable !== true) {
     attributes.push(buildAttribute('model', 'control', [positionalArg(entry.table.control)]));
