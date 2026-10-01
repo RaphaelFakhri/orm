@@ -4,14 +4,10 @@ import {
   fullTextIndexDefinitionOf,
   renderFullTextDocument,
   renderFullTextIndexExpression,
-  storageOptionsOf,
 } from '../src/core/full-text-index-expression';
 
-const nullableColumns = new Set(['subtitle', 'body']);
-const isNullable = (column: string) => nullableColumns.has(column);
-
 function render(definition: FullTextIndexDefinition): string {
-  return renderFullTextIndexExpression(definition, isNullable);
+  return renderFullTextIndexExpression(definition);
 }
 
 describe('renderFullTextIndexExpression', () => {
@@ -21,27 +17,21 @@ describe('renderFullTextIndexExpression', () => {
     );
   });
 
-  it('does not coalesce a nullable field that is the whole document', () => {
-    expect(render({ fields: [['body']], language: 'german' })).toBe(
-      `to_tsvector('german', "body")`,
-    );
-  });
-
-  it('joins the fields of one group without weights, coalescing only nullable columns', () => {
+  it('coalesces every column of a document of several columns, and weighs none in one group', () => {
     expect(render({ fields: [['title', 'body']], language: 'english' })).toBe(
-      `(to_tsvector('english', "title") || to_tsvector('english', coalesce("body", '')))`,
+      `(to_tsvector('english', coalesce("title", '')) || to_tsvector('english', coalesce("body", '')))`,
     );
   });
 
   it('weights each group, A first, when there is more than one group', () => {
     expect(render({ fields: [['title', 'subtitle'], ['body']], language: 'english' })).toBe(
-      `(setweight(to_tsvector('english', "title"), 'A') || setweight(to_tsvector('english', coalesce("subtitle", '')), 'A') || setweight(to_tsvector('english', coalesce("body", '')), 'B'))`,
+      `(setweight(to_tsvector('english', coalesce("title", '')), 'A') || setweight(to_tsvector('english', coalesce("subtitle", '')), 'A') || setweight(to_tsvector('english', coalesce("body", '')), 'B'))`,
     );
   });
 
   it('uses the weights A to D for four groups', () => {
     expect(render({ fields: [['a'], ['b'], ['c'], ['d']], language: 'simple' })).toBe(
-      `(setweight(to_tsvector('simple', "a"), 'A') || setweight(to_tsvector('simple', "b"), 'B') || setweight(to_tsvector('simple', "c"), 'C') || setweight(to_tsvector('simple', "d"), 'D'))`,
+      `(setweight(to_tsvector('simple', coalesce("a", '')), 'A') || setweight(to_tsvector('simple', coalesce("b", '')), 'B') || setweight(to_tsvector('simple', coalesce("c", '')), 'C') || setweight(to_tsvector('simple', coalesce("d", '')), 'D'))`,
     );
   });
 
@@ -53,40 +43,55 @@ describe('renderFullTextIndexExpression', () => {
 });
 
 describe('fullTextIndexDefinitionOf', () => {
-  it('reads the definition of a gin index whose options name fields', () => {
-    expect(
-      fullTextIndexDefinitionOf({
-        type: 'gin',
-        options: { fields: [['title'], ['body']], language: 'german' },
-      }),
-    ).toEqual({ fields: [['title'], ['body']], language: 'german' });
+  const fullTextIndex = (overrides: Record<string, unknown> = {}) => ({
+    name: 'post_search',
+    type: 'fullText',
+    columns: ['title', 'body'],
+    options: { fields: [['title'], ['body']], language: 'german' },
+    ...overrides,
+  });
+
+  it('reads the definition of an index of type fullText', () => {
+    expect(fullTextIndexDefinitionOf(fullTextIndex())).toEqual({
+      fields: [['title'], ['body']],
+      language: 'german',
+    });
   });
 
   it.each([
     ['an index without a type', {}],
-    ['a btree index', { type: 'btree', options: { fields: [['title']], language: 'english' } }],
-    ['a gin index without fields', { type: 'gin', options: { fastupdate: 'off' } }],
-    ['a gin index without options', { type: 'gin' }],
+    ['a gin index, whatever its options', { type: 'gin', options: { fields: [['title']] } }],
+    ['a btree index', { type: 'btree', columns: ['title'] }],
   ])('reads nothing from %s', (_label, index) => {
     expect(fullTextIndexDefinitionOf(index)).toBeUndefined();
   });
 
-  it('refuses malformed full-text options', () => {
-    expect(() =>
-      fullTextIndexDefinitionOf({ type: 'gin', options: { fields: [[]], language: 'english' } }),
-    ).toThrow(expect.objectContaining({ code: 'CONTRACT.INDEX_INVALID' }));
+  it.each([
+    ['an empty weight group', { options: { fields: [['title'], []], language: 'english' } }],
+    ['a missing language', { options: { fields: [['title'], ['body']] } }],
+    [
+      'an option other than fields and language',
+      { options: { fields: [['title'], ['body']], language: 'english', fastupdate: 'off' } },
+    ],
+  ])('refuses %s', (_label, overrides) => {
+    expect(() => fullTextIndexDefinitionOf(fullTextIndex(overrides))).toThrow(
+      expect.objectContaining({ code: 'CONTRACT.INDEX_INVALID' }),
+    );
   });
-});
 
-describe('storageOptionsOf', () => {
-  it('keeps the options other than the full-text definition', () => {
-    expect(
-      storageOptionsOf({ fields: [['title']], language: 'english', fastupdate: 'off' }),
-    ).toEqual({ fastupdate: 'off' });
-  });
-
-  it('is undefined when only the full-text definition is left', () => {
-    expect(storageOptionsOf({ fields: [['title']], language: 'english' })).toBeUndefined();
+  it.each([
+    ['different columns', ['title', 'summary']],
+    ['the same columns in another order', ['body', 'title']],
+    ['fewer columns', ['title']],
+  ])('refuses columns that are not the fields of its weight groups: %s', (_label, columns) => {
+    expect(() => fullTextIndexDefinitionOf(fullTextIndex({ columns }))).toThrow(
+      expect.objectContaining({
+        code: 'CONTRACT.INDEX_INVALID',
+        message: expect.stringContaining('"post_search"'),
+        why: expect.stringContaining('columns'),
+        fix: expect.stringContaining('Re-emit'),
+      }),
+    );
   });
 });
 
@@ -95,11 +100,10 @@ describe('renderFullTextDocument', () => {
     expect(
       renderFullTextDocument([[0, 1], [2]], {
         column: (position) => `{{arg${position}}}`,
-        isNullable: (position) => position === 2,
         language: '{{arg9}}',
       }),
     ).toBe(
-      `(setweight(to_tsvector({{arg9}}, {{arg0}}), 'A') || setweight(to_tsvector({{arg9}}, {{arg1}}), 'A') || setweight(to_tsvector({{arg9}}, coalesce({{arg2}}, '')), 'B'))`,
+      `(setweight(to_tsvector({{arg9}}, coalesce({{arg0}}, '')), 'A') || setweight(to_tsvector({{arg9}}, coalesce({{arg1}}, '')), 'A') || setweight(to_tsvector({{arg9}}, coalesce({{arg2}}, '')), 'B'))`,
     );
   });
 
@@ -107,7 +111,6 @@ describe('renderFullTextDocument', () => {
     expect(() =>
       renderFullTextDocument([['a'], ['b'], ['c'], ['d'], ['e']], {
         column: (name) => name,
-        isNullable: () => false,
         language: `'english'`,
       }),
     ).toThrow(/at most 4/);
@@ -115,11 +118,7 @@ describe('renderFullTextDocument', () => {
 
   it('refuses an empty group', () => {
     expect(() =>
-      renderFullTextDocument([['a'], []], {
-        column: (name) => name,
-        isNullable: () => false,
-        language: `'english'`,
-      }),
+      renderFullTextDocument([['a'], []], { column: (name) => name, language: `'english'` }),
     ).toThrow(/empty/);
   });
 });

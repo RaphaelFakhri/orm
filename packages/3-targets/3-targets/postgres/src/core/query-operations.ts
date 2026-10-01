@@ -1,5 +1,5 @@
 import type { AnyExpression } from '@internal/sql-relational-core/ast';
-import { buildOperation, isExpression, toExpr } from '@internal/sql-relational-core/expression';
+import { buildOperation, toExpr } from '@internal/sql-relational-core/expression';
 import { assertDefined } from '@internal/utils/assertions';
 import type { QueryOperationTypes } from '../types/operation-types';
 import {
@@ -67,10 +67,6 @@ function searchDocument(method: string, document: unknown, fixedArgs: number) {
   const positions = groups.map((group) => group.map(() => position++));
   const template = renderFullTextDocument(positions, {
     column: (index) => (index === 0 ? '{{self}}' : `{{arg${fixedArgs + index - 1}}}`),
-    isNullable: (index) => {
-      const column = columns[index];
-      return isExpression(column) && column.returnType.nullable === true;
-    },
     language: '{{arg1}}',
   });
   const [self, ...rest] = columns.map((column): AnyExpression => toExpr(column));

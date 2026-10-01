@@ -19,10 +19,10 @@ type Query = (sql: string) => Promise<ReadonlyArray<Record<string, unknown>>>;
 
 const TABLE = 'textual_conformance';
 const COLUMN = 'value';
-const TO_TSVECTOR = renderFullTextIndexExpression(
-  { fields: [[COLUMN]], language: DEFAULT_FULL_TEXT_SEARCH_LANGUAGE },
-  () => false,
-);
+const TO_TSVECTOR = renderFullTextIndexExpression({
+  fields: [[COLUMN]],
+  language: DEFAULT_FULL_TEXT_SEARCH_LANGUAGE,
+});
 
 const TEXT_POSITIONS = [
   { position: 'ilike', sql: `SELECT "${COLUMN}" ILIKE '%a%' FROM "${TABLE}"` },

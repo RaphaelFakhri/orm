@@ -120,7 +120,7 @@ describe('@@fullTextIndex', () => {
     expect(indexes).toHaveLength(1);
     expect(indexes[0]).toMatchObject({
       columns: ['text'],
-      type: 'gin',
+      type: 'fullText',
       unique: false,
       prefix: 'message_text_search',
       options: { fields: [['text']], language: 'english' },

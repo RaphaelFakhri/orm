@@ -86,7 +86,7 @@ describe('full-text lowering', () => {
     });
   });
 
-  it('renders a weighted document over each column once, coalescing the nullable one', () => {
+  it('renders a weighted document over each column once, coalescing every column', () => {
     const body = {
       returnType: { codecId: 'pg/text@1', nullable: true },
       buildAst: () => ColumnRef.of('post', 'body'),
@@ -100,7 +100,7 @@ describe('full-text lowering', () => {
       .build();
 
     expect(renderLoweredSql(plan.ast, contract, postgresCodecDescriptorRegistry)).toEqual({
-      sql: `SELECT ts_rank((setweight(to_tsvector('german', "post"."title"), 'A') || setweight(to_tsvector('german', coalesce("post"."body", '')), 'B')), websearch_to_tsquery('english', $1)) AS rank FROM "post"`,
+      sql: `SELECT ts_rank((setweight(to_tsvector('german', coalesce("post"."title", '')), 'A') || setweight(to_tsvector('german', coalesce("post"."body", '')), 'B')), websearch_to_tsquery('english', $1)) AS rank FROM "post"`,
       params: [{ kind: 'literal', value: 'zebra' }],
     });
   });

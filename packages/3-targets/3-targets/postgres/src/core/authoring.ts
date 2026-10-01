@@ -60,6 +60,7 @@ import {
 import { postgresError } from './errors';
 import {
   describeWeightGroupProblem,
+  FULL_TEXT_INDEX_TYPE,
   type FullTextFieldsInput,
   type FullTextWeightGroupProblem,
   isFullTextIndexableCodec,
@@ -771,7 +772,7 @@ export const postgresAuthoringModelAttributes = {
       return {
         index: {
           columns: fields.flat(),
-          type: 'gin',
+          type: FULL_TEXT_INDEX_TYPE,
           options: {
             fields,
             language: parsed.language ?? DEFAULT_FULL_TEXT_SEARCH_LANGUAGE,

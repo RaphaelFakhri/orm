@@ -63,38 +63,34 @@ model Widgets {
 }
 
 describe('postgresIndexTypes', () => {
-  it('registers the six Postgres built-in access methods', () => {
-    expect(postgresIndexTypes.entries.map((e) => e.type)).toEqual([
-      'btree',
-      'hash',
-      'gin',
-      'gist',
-      'spgist',
-      'brin',
-    ]);
+  const accessMethods = ['btree', 'hash', 'gin', 'gist', 'spgist', 'brin'];
+
+  it('registers the six Postgres built-in access methods and the full-text index', () => {
+    expect(postgresIndexTypes.entries.map((e) => e.type)).toEqual([...accessMethods, 'fullText']);
   });
 
-  it('accepts an arbitrary options object for every registered method', () => {
-    for (const entry of postgresIndexTypes.entries) {
+  it('accepts an arbitrary options object for every access method', () => {
+    for (const entry of postgresIndexTypes.entries.filter((e) => accessMethods.includes(e.type))) {
       const result = entry.options({ anything: 'goes' });
       expect(result instanceof type.errors).toBe(false);
     }
   });
+
+  it('lets btree and hash back a foreign key, and nothing else', () => {
+    expect(postgresIndexTypes.entries.filter((e) => e.backsForeignKey).map((e) => e.type)).toEqual([
+      'btree',
+      'hash',
+    ]);
+  });
 });
 
-describe('gin full-text options', () => {
-  const gin = postgresIndexTypes.entries.find((entry) => entry.type === 'gin')!;
+describe('fullText options', () => {
+  const fullText = postgresIndexTypes.entries.find((entry) => entry.type === 'fullText')!;
   const accepts = (options: Record<string, unknown>) =>
-    !(gin.options(options) instanceof type.errors);
+    !(fullText.options(options) instanceof type.errors);
 
-  it('accepts weight groups and a language, beside other options', () => {
-    expect(
-      accepts({
-        fields: [['title', 'subtitle'], ['body']],
-        language: 'english',
-        fastupdate: 'off',
-      }),
-    ).toBe(true);
+  it('accepts weight groups and a language', () => {
+    expect(accepts({ fields: [['title', 'subtitle'], ['body']], language: 'english' })).toBe(true);
   });
 
   it.each([
@@ -110,6 +106,7 @@ describe('gin full-text options', () => {
     ['an empty field name', { fields: [['']], language: 'english' }],
     ['a field that is not a name', { fields: [[1]], language: 'english' }],
     ['a language Postgres does not ship', { fields: [['title']], language: 'klingon' }],
+    ['any other option', { fields: [['title']], language: 'english', fastupdate: 'off' }],
   ])('rejects %s', (_label, options) => {
     expect(accepts(options)).toBe(false);
   });

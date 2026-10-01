@@ -109,14 +109,14 @@ function indexesOf(indexes: (cols: MessageColumns) => readonly IndexConstraint[]
 }
 
 describe('fullTextIndex, the TypeScript twin of @@fullTextIndex', () => {
-  it('stores one field as a gin index whose options name its storage column', () => {
+  it('stores one field as a fullText index whose options name its storage column', () => {
     const [index] = indexesOf((cols) => [
       fullTextIndex(cols.text, { name: 'message_text_search' }),
     ]);
 
     expect(index).toMatchObject({
       columns: ['body_text'],
-      type: 'gin',
+      type: 'fullText',
       prefix: 'message_text_search',
       options: { fields: [['body_text']], language: 'english' },
     });
@@ -203,6 +203,25 @@ describe('fullTextIndex, the TypeScript twin of @@fullTextIndex', () => {
       expect.objectContaining({
         code: 'CONTRACT.INDEX_INVALID',
         message: expect.stringContaining('pg/enum@1'),
+      }),
+    );
+  });
+
+  it('refuses a fullText index whose columns are not the fields of its weight groups', () => {
+    expect(() =>
+      indexesOf(() => [
+        {
+          kind: 'index',
+          fields: ['title'],
+          type: 'fullText',
+          options: { fields: [['body_text']], language: 'english' },
+          name: 'message_search',
+        },
+      ]),
+    ).toThrow(
+      expect.objectContaining({
+        code: 'CONTRACT.INDEX_INVALID',
+        message: expect.stringContaining('[title]'),
       }),
     );
   });

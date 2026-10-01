@@ -91,7 +91,7 @@ describe('keys and indexes', () => {
       const index = {
         columns: ['title', 'body_text', 'id'],
         unique: false,
-        type: 'gin',
+        type: 'fullText',
         options: { fields: [['title'], ['body_text', 'id']], language: 'english' },
       };
       const name = formatWireName('post_search', computeIndexContentHash(index));
@@ -108,7 +108,7 @@ describe('keys and indexes', () => {
           columns: ['title'],
           where: 'id > 1',
           unique: false,
-          type: 'gin',
+          type: 'fullText',
           options: { fields: [['title']], language: 'german' },
         })?.attributes.map(attributeText),
       ).toEqual([
@@ -116,14 +116,14 @@ describe('keys and indexes', () => {
       ]);
     });
 
-    it('refuses a full-text index carrying options @@fullTextIndex does not write', () => {
+    it('refuses a unique full-text index, which @@fullTextIndex does not write', () => {
       expect(() =>
         fullTextModel({
           name: 'legacy_search',
           columns: ['title'],
-          unique: false,
-          type: 'gin',
-          options: { fields: [['title']], language: 'english', fastupdate: 'off' },
+          unique: true,
+          type: 'fullText',
+          options: { fields: [['title']], language: 'english' },
         }),
       ).toThrow(expect.objectContaining({ code: 'CONTRACT.PRINT_UNSUPPORTED' }));
     });

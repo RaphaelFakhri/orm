@@ -129,7 +129,7 @@ describe('postgres target query operations', () => {
 
       expect(ast.lowering?.template).toBe(
         wrap(
-          `(setweight(to_tsvector({{arg1}}, {{self}}), 'A') || setweight(to_tsvector({{arg1}}, coalesce({{arg2}}, '')), 'A') || setweight(to_tsvector({{arg1}}, coalesce({{arg3}}, '')), 'B'))`,
+          `(setweight(to_tsvector({{arg1}}, coalesce({{self}}, '')), 'A') || setweight(to_tsvector({{arg1}}, coalesce({{arg2}}, '')), 'A') || setweight(to_tsvector({{arg1}}, coalesce({{arg3}}, '')), 'B'))`,
         ),
       );
       expect(ast.self).toBe(title.buildAst());
@@ -140,7 +140,7 @@ describe('postgres target query operations', () => {
     it('takes a bare column as a group of one', () => {
       expect(buildOpAst(method, [title, body], 'prisma').lowering?.template).toBe(
         wrap(
-          `(setweight(to_tsvector({{arg1}}, {{self}}), 'A') || setweight(to_tsvector({{arg1}}, coalesce({{arg2}}, '')), 'B'))`,
+          `(setweight(to_tsvector({{arg1}}, coalesce({{self}}, '')), 'A') || setweight(to_tsvector({{arg1}}, coalesce({{arg2}}, '')), 'B'))`,
         ),
       );
     });
@@ -168,7 +168,7 @@ describe('postgres target query operations', () => {
     });
 
     expect(ast.lowering?.template).toBe(
-      `ts_rank((setweight(to_tsvector({{arg1}}, {{self}}), 'A') || setweight(to_tsvector({{arg1}}, {{arg3}}), 'B')), {{arg0}}, {{arg2}})`,
+      `ts_rank((setweight(to_tsvector({{arg1}}, coalesce({{self}}, '')), 'A') || setweight(to_tsvector({{arg1}}, coalesce({{arg3}}, '')), 'B')), {{arg0}}, {{arg2}})`,
     );
     expect((ast.args[2] as LiteralExpr).value).toBe(32);
   });

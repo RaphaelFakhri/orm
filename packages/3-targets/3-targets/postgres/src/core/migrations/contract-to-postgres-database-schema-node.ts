@@ -15,7 +15,6 @@ import { postgresError } from '../errors';
 import {
   fullTextIndexDefinitionOf,
   renderFullTextIndexExpression,
-  storageOptionsOf,
 } from '../full-text-index-expression';
 import type { PostgresRlsPolicy } from '../postgres-rls-policy';
 import type { PostgresContract } from '../postgres-schema';
@@ -206,13 +205,10 @@ export function contractToPostgresDatabaseSchemaNode(
             where: i.where,
             unique: i.unique,
             partial: i.partial,
-            type: i.type,
-            options: storageOptionsOf(i.options),
+            type: 'gin',
+            options: undefined,
             annotations: i.annotations,
-            expression: renderFullTextIndexExpression(
-              fullText,
-              (column) => sqlTable.columns[column]?.nullable === true,
-            ),
+            expression: renderFullTextIndexExpression(fullText),
             dependsOn: columnDependsOn(ddlSchema, tableName, fullText.fields.flat()),
           });
         }

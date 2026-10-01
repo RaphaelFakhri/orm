@@ -194,6 +194,48 @@ describe('a single-field index authored before full-text indexes were stored as 
   });
 });
 
+describe('a weighted full-text index over a column whose nullability changes', () => {
+  it('plans only the column change, because the search document does not depend on nullability', async () => {
+    const before = blindCast<
+      Parameters<typeof contractToPostgresDatabaseSchemaNode>[0],
+      'the authored contract targets Postgres'
+    >(authoredContract(WEIGHTED_SCHEMA));
+    const after = authoredContract(WEIGHTED_SCHEMA.replace('note String?', 'note String'));
+    const result = createPostgresMigrationPlanner({
+      lower: () => ({ sql: 'stub', params: [] }),
+      renderColumnDefault: async () => '',
+      lowerToExecuteRequest: async () => ({ sql: 'stub', params: [] }),
+    }).plan({
+      contract: after,
+      schema: contractToPostgresDatabaseSchemaNode(before, {
+        annotationNamespace: 'pg',
+        renderDefault: postgresRenderDefault,
+      }),
+      policy: { allowedOperationClasses: ['additive', 'widening', 'destructive'] },
+      fromContract: before,
+      frameworkComponents: [],
+      spaceId: APP_SPACE_ID,
+      snapshotsImportPath: '../../snapshots',
+    });
+
+    expect(result.kind).toBe('success');
+    if (result.kind !== 'success') return;
+    const operations = await Promise.all(result.plan.operations);
+    expect(operations.map((operation) => operation.label)).toEqual([
+      expect.stringMatching(/NOT NULL.*"note"|"note".*NOT NULL/),
+    ]);
+
+    const expressionOf = (contract: Parameters<typeof contractToPostgresDatabaseSchemaNode>[0]) =>
+      contractToPostgresDatabaseSchemaNode(contract, {
+        annotationNamespace: 'pg',
+        renderDefault: postgresRenderDefault,
+      }).namespaces['public']?.tables['Message']?.indexes[0]?.expression;
+    expect(expressionOf(blindCast<typeof before, 'a Postgres contract'>(after))).toBe(
+      expressionOf(before),
+    );
+  });
+});
+
 describe('a GIN index over to_tsvector, authored in PSL', () => {
   it('plans one CREATE INDEX from @@fullTextIndex', async () => {
     const nodes = await plannedCreateIndexNodes(TYPED_ATTRIBUTE_SCHEMA);
@@ -211,7 +253,7 @@ describe('a GIN index over to_tsvector, authored in PSL', () => {
     const node = nodes[0]!;
     expect(node.type).toBe('gin');
     expect(node.elements).toEqual({
-      expression: `(setweight(to_tsvector('english', "text"), 'A') || setweight(to_tsvector('english', coalesce("note", '')), 'B'))`,
+      expression: `(setweight(to_tsvector('english', coalesce("text", '')), 'A') || setweight(to_tsvector('english', coalesce("note", '')), 'B'))`,
     });
     expect(node.name.startsWith('message_search')).toBe(true);
   });

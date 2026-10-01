@@ -1,5 +1,6 @@
 export {
   describeWeightGroupProblem,
+  FULL_TEXT_INDEX_TYPE,
   type FullTextFieldsInput,
   type FullTextIndexDefinition,
   isFullTextIndexableCodec,

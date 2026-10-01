@@ -21,34 +21,25 @@ const fullTextLanguage = type.enumerated(...POSTGRES_TEXT_SEARCH_LANGUAGES);
 
 /** The options of a full-text index: its weight groups, as storage column names, and its language. */
 export const fullTextIndexOptions = type({
+  '+': 'reject',
   fields: fullTextFields,
   language: fullTextLanguage,
 });
 
-/**
- * A `gin` index is a full-text index when its options carry `fields`, and then they must also carry
- * `language`. Any other option is passed to `CREATE INDEX ... WITH (...)` as before.
- */
-const ginOptions = type({
-  '[string]': 'unknown',
-  'fields?': fullTextFields,
-  'language?': fullTextLanguage,
-}).narrow(
-  (options, ctx) =>
-    Object.hasOwn(options, 'fields') === Object.hasOwn(options, 'language') ||
-    ctx.mustBe('full-text options carrying both fields and language'),
-);
-
-// Postgres's built-in index access methods (`CREATE INDEX ... USING <method>`).
-// Only `gin` validates its options, for the full-text index; every other
-// method accepts any options object. btree and hash serve the equality
-// lookups a foreign key needs; the others do not.
+// Postgres's built-in index access methods (`CREATE INDEX ... USING <method>`),
+// which accept any options object, and the full-text index. btree and hash
+// serve the equality lookups a foreign key needs; the others do not.
+//
+// `fullText` is not an access method: its options are the index's definition
+// (weight groups and language), not storage parameters, and the target turns
+// them into a `gin` index over the rendered search document.
 export const postgresIndexTypes = defineIndexTypes()
   .add('btree', { options: type('object'), backsForeignKey: true })
   .add('hash', { options: type('object'), backsForeignKey: true })
-  .add('gin', { options: ginOptions, backsForeignKey: false })
+  .add('gin', { options: type('object'), backsForeignKey: false })
   .add('gist', { options: type('object'), backsForeignKey: false })
   .add('spgist', { options: type('object'), backsForeignKey: false })
-  .add('brin', { options: type('object'), backsForeignKey: false });
+  .add('brin', { options: type('object'), backsForeignKey: false })
+  .add('fullText', { options: fullTextIndexOptions, backsForeignKey: false });
 
 export type IndexTypes = typeof postgresIndexTypes.IndexTypes;

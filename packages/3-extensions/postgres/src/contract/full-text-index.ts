@@ -7,6 +7,7 @@ import type { FullTextSearchLanguage } from '@internal/target-postgres/operation
 import {
   DEFAULT_FULL_TEXT_SEARCH_LANGUAGE,
   describeWeightGroupProblem,
+  FULL_TEXT_INDEX_TYPE,
   type FullTextFieldsInput,
   isFullTextIndexableCodec,
   weightGroupProblems,
@@ -86,7 +87,7 @@ export function fullTextIndex(
   return {
     kind: 'index',
     fields: fieldNames,
-    type: 'gin',
+    type: FULL_TEXT_INDEX_TYPE,
     resolveOptions: (columns) => {
       const columnsByField = new Map(
         fieldNames.map((fieldName, position) => [fieldName, columns[position]]),

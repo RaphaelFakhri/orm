@@ -18,10 +18,9 @@ export interface FullTextIndexDefinition {
   readonly language: FullTextSearchLanguage;
 }
 
-/** How one producer writes a field, tells whether it is nullable, and writes the configuration. */
+/** How one producer writes a field and the configuration. */
 export interface FullTextDocumentSyntax<Field> {
   readonly column: (field: Field) => string;
-  readonly isNullable: (field: Field) => boolean;
   readonly language: string;
 }
 
@@ -32,9 +31,10 @@ export interface FullTextDocumentSyntax<Field> {
  * all render it here.
  *
  * One field alone is `to_tsvector(language, field)`. With more fields, each gets its own
- * `to_tsvector` and they are joined with `||`; a nullable field is wrapped in `coalesce`, since one
- * null would make the whole document null. With more than one group, each field is weighted with
- * its group's weight, `A` for the first.
+ * `to_tsvector`, wrapped in `coalesce(field, '')` since one null would make the whole document
+ * null, and they are joined with `||`. With more than one group, each field is weighted with its
+ * group's weight, `A` for the first. The document depends on the groups and the language only, so
+ * a column's nullability never changes it.
  */
 export function renderFullTextDocument<Field>(
   groups: FullTextWeightGroups<Field>,
@@ -53,7 +53,7 @@ export function renderFullTextDocument<Field>(
   const vectors = groups.flatMap((group, position) =>
     group.map((field) => {
       const column = syntax.column(field);
-      const text = fieldCount > 1 && syntax.isNullable(field) ? `coalesce(${column}, '')` : column;
+      const text = fieldCount > 1 ? `coalesce(${column}, '')` : column;
       const vector = `to_tsvector(${syntax.language}, ${text})`;
       return weighted ? `setweight(${vector}, '${FULL_TEXT_WEIGHTS[position]}')` : vector;
     }),
@@ -62,13 +62,9 @@ export function renderFullTextDocument<Field>(
 }
 
 /** The search document over storage columns, as the index DDL and the schema node carry it. */
-export function renderFullTextIndexExpression(
-  definition: FullTextIndexDefinition,
-  isNullable: (column: string) => boolean,
-): string {
+export function renderFullTextIndexExpression(definition: FullTextIndexDefinition): string {
   return renderFullTextDocument(definition.fields, {
     column: quoteIdentifier,
-    isNullable,
     language: `'${definition.language}'`,
   });
 }
@@ -129,48 +125,55 @@ export function describeWeightGroupProblem(
   }
 }
 
-interface IndexMethod {
+/** The index type a full-text index is registered under. Its DDL is a `gin` index over its search document. */
+export const FULL_TEXT_INDEX_TYPE = 'fullText';
+
+interface IndexDeclaration {
+  readonly name?: string | undefined;
   readonly type?: string | undefined;
+  readonly columns?: readonly string[] | undefined;
   readonly options?: Record<string, unknown> | undefined;
 }
 
+function invalidFullTextIndex(index: IndexDeclaration, problem: string, why: string) {
+  return postgresError(
+    'CONTRACT.INDEX_INVALID',
+    `Full-text index "${index.name ?? '<unnamed>'}" ${problem}`,
+    {
+      why,
+      fix: 'Re-emit the contract from its `@@fullTextIndex` or `fullTextIndex` source rather than editing the index by hand.',
+      meta: { index: index.name, columns: index.columns, options: index.options },
+    },
+  );
+}
+
 /**
- * The full-text definition an index carries, or `undefined` for any other index. A full-text index
- * is a `gin` index whose options name `fields`; the `gin` options schema has already checked them
- * when the contract was validated.
+ * The definition a full-text index carries, or `undefined` for an index of any other type. It is
+ * checked here, wherever it is read: the options must name one to four weight groups and a
+ * language, and the index's `columns` must be exactly the fields of the groups, in order.
  */
-export function fullTextIndexDefinitionOf(index: IndexMethod): FullTextIndexDefinition | undefined {
-  const { type: indexType, options } = index;
-  if (indexType !== 'gin' || options === undefined || !Object.hasOwn(options, 'fields')) {
-    return undefined;
-  }
-  const definition = fullTextIndexOptions({
-    fields: options['fields'],
-    language: options['language'],
-  });
+export function fullTextIndexDefinitionOf(
+  index: IndexDeclaration,
+): FullTextIndexDefinition | undefined {
+  if (index.type !== FULL_TEXT_INDEX_TYPE) return undefined;
+  const definition = fullTextIndexOptions(index.options ?? {});
   if (definition instanceof type.errors) {
-    throw postgresError(
-      'CONTRACT.INDEX_INVALID',
-      `A full-text index has invalid options: ${definition.summary}`,
-      {
-        why: 'A gin index whose options carry `fields` is a full-text index; its options must name its weight groups and its language.',
-        fix: 'Re-emit the contract from its source, or correct the index options.',
-        meta: { options },
-      },
+    throw invalidFullTextIndex(
+      index,
+      `has invalid options: ${definition.summary}`,
+      'The options of a full-text index are its definition: its weight groups and its language.',
+    );
+  }
+  const fields = definition.fields.flat();
+  const columns = index.columns ?? [];
+  if (columns.length !== fields.length || columns.some((column, i) => column !== fields[i])) {
+    throw invalidFullTextIndex(
+      index,
+      `covers the columns [${columns.join(', ')}], but its weight groups name [${fields.join(', ')}].`,
+      'The columns of a full-text index are the fields of its weight groups, in order. Foreign-key backing and the printer read the columns; the search document is rendered from the groups, so the two must agree.',
     );
   }
   return definition;
-}
-
-/** The options of an index other than its full-text definition: what `CREATE INDEX ... WITH (...)` receives. */
-export function storageOptionsOf(
-  options: Record<string, unknown> | undefined,
-): Record<string, unknown> | undefined {
-  if (options === undefined) return undefined;
-  const rest = Object.fromEntries(
-    Object.entries(options).filter(([key]) => key !== 'fields' && key !== 'language'),
-  );
-  return Object.keys(rest).length > 0 ? rest : undefined;
 }
 
 /** Widens a descriptor's trait tuple, so membership is a plain string test. */

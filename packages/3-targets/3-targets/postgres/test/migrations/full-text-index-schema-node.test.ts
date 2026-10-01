@@ -34,7 +34,7 @@ function contractWithIndex(index: {
         columns: index.columns,
         where: index.where,
         unique: false,
-        type: 'gin',
+        type: 'fullText',
         options: index.options,
       },
     ],
@@ -80,30 +80,44 @@ describe('a full-text index in the schema node', () => {
     const index = indexNodeOf(contract);
 
     expect(index.columns).toBeUndefined();
+    expect(index.expression).toBe(renderFullTextIndexExpression(fullTextOptions));
     expect(index.expression).toBe(
-      renderFullTextIndexExpression(fullTextOptions, (column) => column !== 'title'),
-    );
-    expect(index.expression).toBe(
-      `(setweight(to_tsvector('english', "title"), 'A') || setweight(to_tsvector('english', coalesce("subtitle", '')), 'A') || setweight(to_tsvector('english', coalesce("body", '')), 'B'))`,
+      `(setweight(to_tsvector('english', coalesce("title", '')), 'A') || setweight(to_tsvector('english', coalesce("subtitle", '')), 'A') || setweight(to_tsvector('english', coalesce("body", '')), 'B'))`,
     );
   });
 
-  it('keeps its name and gin type, and drops the full-text definition from the options', () => {
+  it('keeps its name, is a gin index, and carries no storage options', () => {
     const index = indexNodeOf(contract);
 
     expect(index).toMatchObject({ name: 'post_search_0a1b2c3d', type: 'gin', unique: false });
     expect(index.options).toBeUndefined();
   });
 
-  it('keeps the other options, for CREATE INDEX ... WITH', () => {
-    const index = indexNodeOf(
-      contractWithIndex({
-        columns: ['title', 'subtitle', 'body'],
-        options: { ...fullTextOptions, fastupdate: 'off' },
+  it('renders the same expression whatever the nullability of the covered columns', () => {
+    const allRequired = new StorageTable({
+      ...contract.storage.namespaces['public']!.entries.table!['post']!,
+      columns: {
+        id: { nativeType: 'int4', codecId: 'pg/int4@1', nullable: false },
+        title: { nativeType: 'text', codecId: 'pg/text@1', nullable: false },
+        subtitle: { nativeType: 'text', codecId: 'pg/text@1', nullable: false },
+        body: { nativeType: 'text', codecId: 'pg/text@1', nullable: false },
+        views: { nativeType: 'int4', codecId: 'pg/int4@1', nullable: false },
+      },
+    });
+    const required: PostgresContract = {
+      ...contract,
+      storage: new SqlStorage({
+        storageHash: contract.storage.storageHash,
+        namespaces: {
+          public: new PostgresSchema({
+            id: 'public',
+            entries: { table: { post: allRequired }, policy: {}, role: {}, rls: {} },
+          }),
+        },
       }),
-    );
+    };
 
-    expect(index.options).toEqual({ fastupdate: 'off' });
+    expect(indexNodeOf(required).expression).toBe(indexNodeOf(contract).expression);
   });
 
   it('depends on exactly the columns it covers', () => {
@@ -126,5 +140,13 @@ describe('a full-text index in the schema node', () => {
       where: 'views > 0',
       partial: true,
     });
+  });
+});
+
+describe('a full-text index whose columns are not the fields of its weight groups', () => {
+  it('is refused when the namespace is built', () => {
+    expect(() =>
+      contractWithIndex({ columns: ['title', 'body'], options: fullTextOptions }),
+    ).toThrow(expect.objectContaining({ code: 'CONTRACT.INDEX_INVALID' }));
   });
 });
