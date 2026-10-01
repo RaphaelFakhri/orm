@@ -1784,8 +1784,9 @@ export class CreatePostgresRlsPolicyCall extends PostgresOpFactoryCallNode {
 
   renderTypeScript(): string {
     const p = this.policy;
-    // Typed as the parameter `createRlsPolicy` accepts, so a drift between
-    // the renderer and the API is a compile error here rather than in the
+    // `input` and `sources` are typed against the parameter `createRlsPolicy`
+    // accepts, so a drift between the renderer and the API, including a field
+    // the renderer does not write, is a compile error here rather than in the
     // user's generated migration.
     const input: RenderedRlsPolicyLiteral = {
       naming: namingOf(p.name, p.prefix),
@@ -1797,18 +1798,21 @@ export class CreatePostgresRlsPolicyCall extends PostgresOpFactoryCallNode {
       ...ifDefined('withCheck', p.withCheck),
       permissive: p.permissive,
     };
-    const policy = tsObjectSource([
-      ['naming', jsonToTsSource(input.naming)],
-      ['tableName', jsonToTsSource(input.tableName)],
-      ['namespaceId', jsonToTsSource(input.namespaceId)],
-      ['operation', jsonToTsSource(input.operation)],
-      ['roles', jsonToTsSource(input.roles)],
-      ...(input.using === undefined ? [] : [['using', tsQuotedTextSource(input.using)] as const]),
-      ...(input.withCheck === undefined
-        ? []
-        : [['withCheck', tsQuotedTextSource(input.withCheck)] as const]),
-      ['permissive', jsonToTsSource(input.permissive)],
-    ]);
+    const sources: { readonly [K in keyof RenderedRlsPolicyLiteral]-?: string | undefined } = {
+      naming: jsonToTsSource(input.naming),
+      tableName: jsonToTsSource(input.tableName),
+      namespaceId: jsonToTsSource(input.namespaceId),
+      operation: jsonToTsSource(input.operation),
+      roles: jsonToTsSource(input.roles),
+      using: input.using === undefined ? undefined : tsQuotedTextSource(input.using),
+      withCheck: input.withCheck === undefined ? undefined : tsQuotedTextSource(input.withCheck),
+      permissive: jsonToTsSource(input.permissive),
+    };
+    const policy = tsObjectSource(
+      Object.entries(sources).flatMap(([key, source]) =>
+        source === undefined ? [] : [[key, source] as const],
+      ),
+    );
     return `this.createRlsPolicy({ schema: ${jsonToTsSource(this.schemaName)}, table: ${jsonToTsSource(this.tableName)}, policy: ${policy} })`;
   }
 
