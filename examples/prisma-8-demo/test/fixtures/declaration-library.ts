@@ -37,7 +37,7 @@ export class PostLibrary extends Collection<Contract, 'Post'> {
   }
 
   piped() {
-    return this.pipe((posts) => posts.filtered().ordered());
+    return this.pipe((posts) => posts.filtered().orderBy((post) => post.createdAt.desc()));
   }
 
   allRows() {
@@ -49,7 +49,7 @@ export class PostLibrary extends Collection<Contract, 'Post'> {
   }
 
   firstWithUser() {
-    return this.withUser().filtered().first();
+    return this.include('user').where({ title: 'x' }).first();
   }
 
   preparedRows() {
@@ -100,7 +100,45 @@ export class PostLibrary extends Collection<Contract, 'Post'> {
   }
 
   filteredAndOrdered() {
-    return this.filtered().ordered();
+    return this.filtered().orderBy((post) => post.createdAt.desc());
+  }
+
+  firstMatching(title: string) {
+    return this.first({ title });
+  }
+
+  withUserEmail() {
+    return this.include('user', (user) => user.select('id', 'email'));
+  }
+
+  firstWithUserEmail() {
+    return this.withUserEmail().first();
+  }
+
+  withTagCount() {
+    return this.include('tags', (tags) => tags.count());
+  }
+
+  firstWithTagCount() {
+    return this.withTagCount().first();
+  }
+
+  withTagSummary() {
+    return this.include('tags', (tags) =>
+      tags.combine({ total: tags.count(), first: tags.limit(1) }),
+    );
+  }
+
+  firstWithTagSummary() {
+    return this.withTagSummary().first();
+  }
+
+  countsByUser() {
+    return this.groupBy('userId').aggregate((aggregate) => ({ posts: aggregate.count() }));
+  }
+
+  totals() {
+    return this.aggregate((aggregate) => ({ posts: aggregate.count() }));
   }
 }
 
