@@ -113,6 +113,7 @@ describe('resolveTableRenameAgainst', () => {
       code: TABLE_RENAME_UNMATCHED_CODE,
       message:
         'renameTable "ghost" to "UserProfile" does not match the migration\'s contracts: table "ghost" does not exist at this point of the migration.',
+      why: "renameTable must name a table as the migration's earlier operations leave it, and a new name that the end contract has and that no earlier operation has already produced. Order the renameTable calls in the sequence the renames happen, make the rename its own schema change, and check the spelling, the table and the namespace.",
       meta: { from: 'ghost', to: 'UserProfile' },
     });
   });

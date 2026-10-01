@@ -287,7 +287,7 @@ describe('PostgresMigration.renameTable', () => {
     ]);
   });
 
-  it('refuses a table the start contract does not have', async () => {
+  it('refuses a table that does not exist at this point of the migration', async () => {
     expect(
       () =>
         renameMigration(
@@ -321,7 +321,7 @@ describe('PostgresMigration.renameTable', () => {
     );
   });
 
-  it('refuses a new name the start contract already has', async () => {
+  it('refuses a new name that already exists at this point of the migration', async () => {
     const withBoth = contractOf('userProfile', {}, 'from', () => ({
       UserProfile: new StorageTable({
         columns: { id: { nativeType: 'int4', codecId: 'pg/int4@1', nullable: false } },
