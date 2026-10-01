@@ -79,15 +79,18 @@ The registry resolves all three by giving the system one place that knows which 
 
 ## The registry primitive
 
-An entry names a `type` literal, carries a validator describing the entry's `options`, and says whether an index of the type can back a foreign key.
+An entry names a `type` literal, carries a validator describing the entry's `options`, and says whether an index of the type can back a foreign key. It may also name traits that the codec of every column an index of the type covers must carry.
 
 ```ts
 type IndexTypeEntry<TOptions> = {
   readonly type: string;
   readonly options: arktype.Type<TOptions>;
   readonly backsForeignKey: boolean;
+  readonly columnTraits?: readonly string[];
 };
 ```
+
+The contract build checks `columnTraits` through the contract's codec lookup, beside the options, and refuses an index over a column whose codec lacks one with `CONTRACT.INDEX_INVALID`. Postgres's `fullText` type requires `textual`, so a full-text index written through the general index API cannot cover a number column.
 
 Entries are produced by a small fluent builder. The builder is the only way an entry comes into existence; there is no other constructor:
 

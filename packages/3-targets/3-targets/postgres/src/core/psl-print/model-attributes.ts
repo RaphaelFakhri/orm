@@ -20,11 +20,7 @@ import {
 } from '../psl-build/index-attributes';
 import { buildAttribute, buildMapAttribute, positionalArg } from '../psl-build/psl-literals';
 import type { ModelWithTable, VariantInfo } from './contract-model-index';
-import {
-  refuseUnwritableFullTextIndex,
-  refuseUnwritableIndexOptions,
-  refuseUnwritableObjectName,
-} from './refusals';
+import { refuseUnwritableIndexOptions, refuseUnwritableObjectName } from './refusals';
 
 /** A check the PSL source derives for a table, which the printer does not write. */
 export interface DerivedCheck {
@@ -184,7 +180,6 @@ export function buildModelAttributes(input: {
     });
     const fullText = fullTextIndexDefinitionOf(index);
     if (fullText !== undefined) {
-      refuseUnwritableFullTextIndex(entry, index);
       attributes.push(buildFullTextIndexAttribute(index, fullText, fieldNameOf, naming));
       continue;
     }

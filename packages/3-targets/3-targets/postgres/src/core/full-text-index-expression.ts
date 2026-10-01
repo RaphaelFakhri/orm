@@ -1,12 +1,9 @@
 import { invariant } from '@internal/utils/assertions';
 import { type } from 'arktype';
 import { postgresError } from './errors';
-import { fullTextIndexOptions } from './index-types';
+import { FULL_TEXT_WEIGHTS, fullTextIndexOptions } from './index-types';
 import { quoteIdentifier } from './sql-utils';
 import type { FullTextSearchLanguage } from './text-search-languages';
-
-/** The weights Postgres's `setweight` takes, strongest first. Each weight group takes the next one. */
-export const FULL_TEXT_WEIGHTS = ['A', 'B', 'C', 'D'] as const;
 
 /** Fields in order of weight: each inner list is one weight group, every field a storage column name. */
 export type FullTextWeightGroups<Field> = readonly (readonly Field[])[];
@@ -130,6 +127,7 @@ export const FULL_TEXT_INDEX_TYPE = 'fullText';
 interface IndexDeclaration {
   readonly name?: string | undefined;
   readonly type?: string | undefined;
+  readonly unique?: boolean | undefined;
   readonly columns?: readonly string[] | undefined;
   readonly options?: Record<string, unknown> | undefined;
 }
@@ -155,6 +153,13 @@ export function fullTextIndexDefinitionOf(
   index: IndexDeclaration,
 ): FullTextIndexDefinition | undefined {
   if (index.type !== FULL_TEXT_INDEX_TYPE) return undefined;
+  if (index.unique === true) {
+    throw invalidFullTextIndex(
+      index,
+      'is unique.',
+      'A full-text index is a gin index over its search document, and Postgres builds no unique gin index.',
+    );
+  }
   const definition = fullTextIndexOptions(index.options ?? {});
   if (definition instanceof type.errors) {
     throw invalidFullTextIndex(

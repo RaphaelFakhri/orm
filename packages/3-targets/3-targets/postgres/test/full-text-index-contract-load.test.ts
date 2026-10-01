@@ -35,6 +35,14 @@ describe('loading a contract with a full-text index', () => {
     ).toThrow(expect.objectContaining({ code: 'CONTRACT.INDEX_INVALID' }));
   });
 
+  it('refuses a unique full-text index', () => {
+    expect(() =>
+      new PostgresContractSerializer().deserializeContract(
+        demoContractWithPostIndexes((index) => ({ ...index, unique: true })),
+      ),
+    ).toThrow(expect.objectContaining({ code: 'CONTRACT.INDEX_INVALID' }));
+  });
+
   it('refuses a full-text index whose options are not a full-text definition', () => {
     expect(() =>
       new PostgresContractSerializer().deserializeContract(

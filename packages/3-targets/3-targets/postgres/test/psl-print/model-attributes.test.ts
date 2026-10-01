@@ -115,18 +115,6 @@ describe('keys and indexes', () => {
         '@@fullTextIndex([title], map: "legacy_search", language: "german", where: "id > 1")',
       ]);
     });
-
-    it('refuses a unique full-text index, which @@fullTextIndex does not write', () => {
-      expect(() =>
-        fullTextModel({
-          name: 'legacy_search',
-          columns: ['title'],
-          unique: true,
-          type: 'fullText',
-          options: { fields: [['title']], language: 'english' },
-        }),
-      ).toThrow(expect.objectContaining({ code: 'CONTRACT.PRINT_UNSUPPORTED' }));
-    });
   });
 
   it('prints a unique constraint as @@unique, under the field names its columns carry', () => {

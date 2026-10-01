@@ -226,6 +226,40 @@ describe('fullTextIndex, the TypeScript twin of @@fullTextIndex', () => {
     );
   });
 
+  it('refuses a unique fullText index written through the general index API', () => {
+    expect(() =>
+      indexesOf(() => [
+        {
+          kind: 'index',
+          fields: ['title'],
+          type: 'fullText',
+          options: { fields: [['title']], language: 'english' },
+          unique: true,
+          name: 'message_search',
+        },
+      ]),
+    ).toThrow(expect.objectContaining({ code: 'CONTRACT.INDEX_INVALID' }));
+  });
+
+  it('refuses a fullText index over a column that is not text, written through the general index API', () => {
+    expect(() =>
+      indexesOf(() => [
+        {
+          kind: 'index',
+          fields: ['title', 'views'],
+          type: 'fullText',
+          options: { fields: [['title'], ['views']], language: 'english' },
+          name: 'message_search',
+        },
+      ]),
+    ).toThrow(
+      expect.objectContaining({
+        code: 'CONTRACT.INDEX_INVALID',
+        message: expect.stringMatching(/views.*pg\/int4@1/),
+      }),
+    );
+  });
+
   it('refuses a field the model does not declare', () => {
     const missing: ColumnRef<'missing'> = { kind: 'columnRef', fieldName: 'missing' };
 

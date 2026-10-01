@@ -328,8 +328,7 @@ A model declares an empty unique constraint (a unique with no fields), raised du
 - Keys, checks and indexes:
   - a check or index has a prefix, but its name is not that prefix followed by the hash of its content (meta: `namespaceId`, `table`, `name`, `prefix`);
   - a managed table lacks a check the PSL source derives for an enum or list column, or has a check with that check's name but not its prefix and expression (meta: `namespaceId`, `table`, `name`);
-  - an index has options but no type (meta: `namespaceId`, `table`, `index`), or an option whose value is not a string (meta: `namespaceId`, `table`, `index`, `key`);
-  - a full-text index is unique, which `@@fullTextIndex` does not write (meta: `namespaceId`, `table`, `index`).
+  - an index has options but no type (meta: `namespaceId`, `table`, `index`), or an option whose value is not a string (meta: `namespaceId`, `table`, `index`, `key`).
 - Relations:
   - a to-one relation has no foreign key behind it (meta: `model`, `field`);
   - a foreign key has no relation that travels it (meta: `namespaceId`, `table`, `columns`);
@@ -454,7 +453,7 @@ A SQL identifier or literal fails escaping-safety checks while rendering DDL/SQL
 
 A Mongo variant model declares an index that conflicts with the discriminator scope of its variant, or a SQL index option value is not a string, finite number, or boolean. Raised by the Mongo contract builder and the Postgres index DDL renderer. Payload: `variantName`, `indexLabel`, `reason`, `key`.
 
-The Postgres `fullTextIndex` helper also raises it when its fields are not one to four non-empty weight groups naming each field once (payload: `helper`, `fields`), or when a field is not stored through a textual codec (payload: `helper`, `fieldName`, `codecId`). Building or reading a Postgres contract raises it for an index of type `fullText` whose options are not one to four weight groups and a language, or whose `columns` are not exactly the fields of its weight groups in order (payload: `index`, `columns`, `options`).
+The Postgres `fullTextIndex` helper also raises it when its fields are not one to four non-empty weight groups naming each field once (payload: `helper`, `fields`), or when a field is not stored through a textual codec (payload: `helper`, `fieldName`, `codecId`). Building or reading a Postgres contract raises it for an index of type `fullText` that is unique, whose options are not one to four weight groups and a language, or whose `columns` are not exactly the fields of its weight groups in order (payload: `index`, `columns`, `options`). Building any SQL contract raises it for an index whose type requires column traits (`columnTraits` on its registration) over a column whose codec lacks one, such as a `fullText` index over a column that is not text (payload: `indexType`, `index`, `column`, `codecId`, `missingTraits`).
 
 ### CONTRACT.INFER_UNSUPPORTED
 

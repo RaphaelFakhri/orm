@@ -9,11 +9,7 @@ import {
   PG_TSQUERY_CODEC_ID,
 } from './codec-ids';
 import { postgresError } from './errors';
-import {
-  FULL_TEXT_WEIGHTS,
-  renderFullTextDocument,
-  weightGroupsOf,
-} from './full-text-index-expression';
+import { renderFullTextDocument, weightGroupsOf } from './full-text-index-expression';
 import {
   type FullTextHeadlineOptions,
   type FullTextMatchesOptions,
@@ -28,6 +24,7 @@ import {
   toTsquery,
   websearchToTsquery,
 } from './full-text-parsers';
+import { FULL_TEXT_WEIGHTS } from './index-types';
 import { DEFAULT_FULL_TEXT_SEARCH_LANGUAGE } from './text-search-languages';
 
 type CodecTypesBase = Record<string, { readonly input: unknown; readonly output: unknown }>;

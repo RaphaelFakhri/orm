@@ -79,6 +79,15 @@ describe('fullTextIndexDefinitionOf', () => {
     );
   });
 
+  it('refuses a unique full-text index, which Postgres cannot build as gin', () => {
+    expect(() => fullTextIndexDefinitionOf(fullTextIndex({ unique: true }))).toThrow(
+      expect.objectContaining({
+        code: 'CONTRACT.INDEX_INVALID',
+        message: expect.stringContaining('unique'),
+      }),
+    );
+  });
+
   it.each([
     ['different columns', ['title', 'summary']],
     ['the same columns in another order', ['body', 'title']],

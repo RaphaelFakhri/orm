@@ -615,20 +615,6 @@ export function refuseUnwritableIndexOptions(entry: ModelWithTable, index: Index
   }
 }
 
-/**
- * `@@fullTextIndex` writes the weight groups, the name, the language and the predicate. A unique
- * full-text index has no `@@fullTextIndex` form.
- */
-export function refuseUnwritableFullTextIndex(entry: ModelWithTable, index: Index): void {
-  if (!index.unique) return;
-  throw unsupported(
-    `full-text index "${index.name}" on "${entry.namespaceId}"."${entry.tableName}" is unique, which \`@@fullTextIndex\` cannot write.`,
-    '`@@fullTextIndex` takes the fields, `name` or `map`, `language` and `where`, and nothing else.',
-    'Drop the uniqueness, or keep authoring this contract in its current source.',
-    { namespaceId: entry.namespaceId, table: entry.tableName, index: index.name },
-  );
-}
-
 // Relations
 
 export function refuseToOneRelationWithoutForeignKey(modelName: string, fieldName: string): never {
