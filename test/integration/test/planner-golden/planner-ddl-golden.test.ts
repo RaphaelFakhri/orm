@@ -24,7 +24,6 @@
  * contract's full recording to `wip/planner-golden/` for diffing.
  */
 
-import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import postgresAdapterControl from '@internal/adapter-postgres/control';
@@ -47,6 +46,7 @@ import sqliteTargetControl from '@internal/target-sqlite/control';
 import { isStructuredError } from '@internal/utils/structured-error';
 import { join, relative, resolve } from 'pathe';
 import { afterAll, describe, expect, it } from 'vitest';
+import { trackedContractCandidateFiles } from '../utils/tracked-contract-files';
 
 const writeRecordings = process.env['PLANNER_GOLDEN_WRITE'] === '1';
 const repoRoot = resolve(import.meta.dirname, '../../../..');
@@ -93,15 +93,8 @@ function parseJson(path: string): unknown {
 }
 
 function listCommittedSqlContracts(): readonly CommittedContract[] {
-  const files = execFileSync('git', ['ls-files', '*.json', ':!upgrade-instructions'], {
-    cwd: repoRoot,
-    encoding: 'utf8',
-  })
-    .split('\n')
-    .filter((line) => line !== '')
-    .sort();
   const contracts: CommittedContract[] = [];
-  for (const path of files) {
+  for (const path of trackedContractCandidateFiles(repoRoot)) {
     const json = parseJson(path);
     if (typeof json !== 'object' || json === null) continue;
     const { target, targetFamily, extensions } = json as {

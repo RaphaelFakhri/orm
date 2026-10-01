@@ -1,4 +1,3 @@
-import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { canonicalizeContractToObject } from '@internal/contract/hashing';
@@ -19,6 +18,7 @@ import { PostgresContractSerializer } from '@internal/target-postgres/runtime';
 import { blindCast } from '@internal/utils/casts';
 import { dirname, join } from 'pathe';
 import { describe, expect, it } from 'vitest';
+import { trackedContractCandidateFiles } from '../utils/tracked-contract-files';
 import {
   composePostgresStack,
   type PostgresStack,
@@ -61,12 +61,9 @@ const packsOutsideThisPackage = new Set([
  * covered here.
  */
 function trackedPostgresContracts(): readonly string[] {
-  const files = execFileSync('git', ['ls-files', '-z', '--', '*.json'], {
-    cwd: repoRoot,
-    encoding: 'utf-8',
-  })
-    .split('\0')
-    .filter((file) => file.length > 0 && !file.includes('/migrations/snapshots/'));
+  const files = trackedContractCandidateFiles(repoRoot).filter(
+    (file) => !file.includes('/migrations/snapshots/'),
+  );
   return files.filter((file) => {
     let json: unknown;
     try {
