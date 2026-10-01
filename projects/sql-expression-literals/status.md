@@ -4,6 +4,8 @@ Read this first when you resume the project. It records where the work stands an
 
 ## State on 2026-09-30
 
+- Slice 3 (TML-3289) is built on branch `tml-3289-sql-expression-ts`, stacked on the 2b branch. Not pushed, no pull request. Next: `/drive-code-review` of slice 3. See "Slice 3" below.
+
 - Slice 2b (TML-3288) is on branch `tml-3288-sql-expression-places`, stacked on the 2t branch. Pull request: https://github.com/prisma/orm/pull/30550 (opened 2026-09-30, base `tml-3367-data-type-value`; retarget to `main` once #30539 merges). Two review rounds done, every finding fixed. Next: slice 3 (TML-3289); its "Carried over" list in plan.md holds the deferred items.
 
 - Slice 2t (TML-3367) is on branch `tml-3367-data-type-value`, stacked on the 2a branch. Pull request: https://github.com/prisma/orm/pull/30539 (opened 2026-09-30, base `main` since #30534 merged; approved for merge by Will, auto-merge on). Two review rounds done, every finding fixed. Next: slice 2b (TML-3288) once 2a merges; its "Carried over" list in plan.md holds the deferred items from both 2t reviews.
@@ -238,6 +240,40 @@ Brief: `dispatches/2b-round-2-fixes-brief.md`. Reviews: `slice-reviews/2b-round-
 
 Verification, logs in `wip/2b-round-2-fixes/`: `build`, `typecheck`, `lint`, `lint:deps`, `check:error-reference`, `lint:framework-vocabulary`, `lint:skills`, `fixtures:check` (tree clean) pass; `lint:casts` and `lint:throws` delta 0. `test:scripts`: 593 pass. `test:packages`: 1454 files pass, 5 fail: the three known tarball tests and two `cli-telemetry` files, which pass alone (`rerun-cli-telemetry.log`). Integration files: 44 files, 928 tests pass (`integration.log`). `check:upgrade-coverage` after committing: pass (`upgrade-coverage.log`).
 
+## Slice 3, 2026-10-01
+
+Branch `tml-3289-sql-expression-ts`, on top of slice 2b (`ed1df11285`). Not pushed; no pull request. Brief: `dispatches/3-implementer-brief.md`. Commits `7db66e9278` to the status commit. No findings file: nothing in the design was wrong against the code.
+
+### What was built
+
+- **The value and the tag** (`29aa1fb121`): `SqlExpression`, `isSqlExpression`, `sql`, `requireSqlExpression` in `@internal/sql-contract/sql-expression`; subcodes `SQL_EXPRESSION_INTERPOLATION` and `SQL_EXPRESSION_INVALID`; `describeTaggedLiteralFailure` and `resolveTemplateTagEscapes` exported from the framework's `authoring` entry. Tests: `sql-expression.test.ts` (extended), `sql-expression.test-d.ts`.
+- **contract-ts** (`49d5ee392e`): `sql-default-literal.ts` and `DEFAULT_SQL_INTERPOLATION` deleted; the entry exports `sql` and `type SqlExpression`. `.default()` takes a `SqlExpression` and runs the reserved-function and unsafe-SQL checks. Index `where`/`expression`, `IndexConstraint.where` and `check` `expression` are `SqlExpression`; lowering reads them through `requireSqlExpression`, testing `isSqlExpression` before `'render' in`. Tests: `raw-sql-fields.test-d.ts`, `contract-dsl.default-sql-expression.test.ts`, `contract-lowering.sql-expression.test.ts`. The old tag tests moved into the sql-contract test.
+- **Postgres** (`2af0096d89`): policy handles and descriptors, `fullTextIndex` `where`, and the target's `RlsPolicyHandleShape` hold `SqlExpression`; the target lowers predicates through `requireSqlExpression`. Both facades export `type SqlExpression`. `rls-handles.test-d.ts` and `full-text-index.test-d.ts` assert strings are type errors.
+- **Call sites** (`46fd2ddc68`, `8ebe465a9c`): every TypeScript test and fixture that passed a string, including the RLS parity fixture, `contract-expression-authored.ts`, the sql-builder fixture and the walking skeleton, which now composes its edited predicate by interpolation.
+- **Parity fixture** (`c80d9a8519`): `test/integration/test/authoring/parity/sql-expressions/` covers a partial index and a raw default over indented lines, an expression index, a full-text index with `where`, a check with a backslash, and a policy whose TypeScript `withCheck` interpolates its `using`.
+- **Carried over, registration** (`b4b8a95264`): `sqlExpressionRegistration = { dataTypes, authoring }`, used by the family descriptor and spread in the four fixtures.
+- **Carried over, defaults that do not read back** (`03a1daaada`): `contract print` refuses such a default through `refuseSqlTextThatDoesNotReadBack` with kind `default` and the column's coordinate. `contract infer` prints it and adds `// prisma: default of "<column>" holds text a sql literal cannot write back unchanged; check its string constants before applying a migration`. Tests in `refusals-sql-text.test.ts` and `infer-sql-expression-literals.test.ts`. Recorded in ADR 129, ADR 260, design 11.2, the error reference and the app fragment.
+- **Upgrade fragments** (`1dab1c6edb`): `upgrade-instructions/pending/sql-expression-literals-ts/{app,extension}` with the change ids of design 20.
+- **Docs** (`dfc4539e9b`): ADRs 129, 234, 236, 243, 244, 254, 260; the error reference; the contract-ts README; `skills/prisma-8/references/contract.md`; the adapters subsystem doc; design 11.2 and the plan's "Carried over" entries. The codec authoring guide has no TypeScript raw-SQL place.
+- **Manual QA** (`fdecb64281`): slice 3 script and run in `manual-qa.md`; every case gave the expected result.
+
+### Design corrections
+
+- `canonicalizeTaggedLiteralBody` returns `text`, not `body` (renamed in slice 2t); the constructor uses `canonical.text`.
+- `.default()` is typed through `DefaultArgumentOf<State>`, not one parameter type; `SqlExpression` joins its non-enum arm.
+- The default checks are `reservedSqlDefaultText` and `checkSqlDefaultText` (renamed in slice 2a).
+
+### Verification
+
+Logs in the gitignored `wip/3/`.
+
+- Pass: `build.log`, `typecheck.log`, `lint.log`, `lint:deps.log`, `lint:skills.log`, `check:error-reference.log` (362 codes), `fixtures:check.log` (tree clean). `lint:casts` and `lint:throws` delta 0. `lint:framework-vocabulary` 272 of 272. `test:scripts`: 593 pass.
+- `test:packages` (`test-packages.log`): 1453 files pass, 7 fail. The three tarball tests are the known failures. `render-typescript.roundtrip.test.ts`, the two `cli-telemetry` files and `cli` `lsp.test.ts` pass alone (`rerun-render-roundtrip.log`, `rerun-cli-telemetry.log`, `rerun-cli-lsp.log`).
+- Integration files alone (`integration.log`): `test/authoring`, `test/sql-builder`, the walking skeleton, the two journeys, `test/psl-print`, `rls-helper-invisibility`, `family.schema-verify.index-drift`: 92 files, 1276 tests pass. Postgres extension 25 files and Supabase 18 files pass (`ext-postgres.log`, `ext-supabase.log`). Adapter `check-lifecycle-e2e.integration.test.ts` passes (`check-lifecycle.log`).
+- Fragments (`fragment-validation.log`): the extension prose, applied to `packages/3-extensions/` restored to `ed1df11285`, reproduces every non-test change; tests stay at the base. No `examples/` change. Detection patterns: 62 true-positive and nearest-false-positive cases pass (`detection-check.mjs`).
+- Done-condition grep (`grep-done-condition.log`): empty.
+- `check:upgrade-coverage`: `upgrade-coverage.log`, run after the status commit.
+
 ## Slice 1, 2026-09-30
 
 Built in the linked worktree `wip/wt-1` from `main`, since it depends on no other slice. Briefs: `dispatches/1-implementer-brief.md`, `dispatches/1-review-fixes-brief.md`. Reviews: `slice-reviews/1/` and `slice-reviews/1-round-2/`. Round 1 found a real bug: the SQLite migration-file renderer passed the `OpaqueSql` object to the JSON printer. Round 2 corrected the app fragment: only the wire name changes, not a policy's stored body, and the plan drops and recreates the object. PR https://github.com/prisma/orm/pull/30546.
@@ -249,7 +285,7 @@ Built in the linked worktree `wip/wt-1` from `main`, since it depends on no othe
 | 1 | 2a: `sql` is the data type `sql/expression` | TML-3296 | Merged 2026-09-30 (#30534) |
 | 2 | 2t: an argument declares the data type it receives | TML-3367 | PR #30539 open against the 2a branch; two review rounds done, all findings fixed |
 | 3 | 2b: the six places take `sql` literals | TML-3288 | PR #30550 open against the 2t branch (2026-09-30); two review rounds done, all findings fixed; retarget to `main` when #30539 merges |
-| 4 | 3: the TypeScript builder takes `sql` values | TML-3289 | Waiting for 2b |
+| 4 | 3: the TypeScript builder takes `sql` values | TML-3289 | Built on `tml-3289-sql-expression-ts` (2026-10-01); review next |
 | On the side | 1: line comments in raw SQL | TML-3287 | PR #30546 open against `main` (2026-09-30); two review rounds done, all findings fixed; awaits Will's approval |
 | Last | 4: migration files write template literals | TML-3290 | Waiting for 1 |
 | Stretch | 5: migration files write `sql` values | TML-3297 | Waiting for 3 and 4 |
