@@ -36,6 +36,20 @@ export const sqlExpressionAuthoringEntry: DataTypeAuthoringEntry = {
   print: (value) => sqlTextFromCanonical(value),
   documentation: "A SQL expression in the target database's language. Prisma passes it to the database unchanged.",
 };
+// Slice 3 freezes both: the data type and its `casts`, and the entry and its `written` object.
+
+// Slice 3
+export interface SqlExpressionRegistration {
+  readonly dataTypes: readonly DataType[];
+  readonly authoring: {
+    readonly dataTypes: Readonly<Record<string, DataTypeAuthoringEntry>>;
+  };
+}
+
+/** The SQL family's registration of `sql/expression`, shaped as the family descriptor's `dataTypes` and `authoring.dataTypes`. */
+export const sqlExpressionRegistration: SqlExpressionRegistration;
+// `{ dataTypes: [sqlExpressionDataType], authoring: { dataTypes: { [SQL_EXPRESSION_DATA_TYPE_ID]: sqlExpressionAuthoringEntry } } }`,
+// frozen at every level.
 
 /** The SQL text held by the canonical form of a `sql/expression` value. */
 export function sqlTextFromCanonical(value: JsonValue): string;
@@ -75,7 +89,7 @@ export function isSqlExpression(value: unknown): value is SqlExpression;
 // `typeof value === 'object' && value !== null && Reflect.get(value, SQL_EXPRESSION_MARKER) === true`.
 // The `Symbol.for` marker makes the check work when two installed copies of this package meet at run time.
 
-/** Raw SQL written as a template literal: `` sql`"userId" = auth.uid()` ``. Other `sql` values may be interpolated. */
+/** Raw SQL written as a template literal: `` sql`"userId" = auth.uid()` ``. Other `sql` values may be interpolated; each later line of one takes the indentation of the template line it sits on. */
 export function sql(strings: TemplateStringsArray, ...values: readonly SqlExpression[]): SqlExpression;
 
 /** Returns `value` when it is a `SqlExpression`; throws for anything else. For callers that JavaScript cannot type-check. */
@@ -87,7 +101,7 @@ export function requireSqlExpression(value: unknown, what: string): SqlExpressio
 `sql` does, in order:
 
 1. For each `values[i]`: if `!isSqlExpression(values[i])`, throw `contractError('CONTRACT.SQL_EXPRESSION_INTERPOLATION', 'sql`...` only interpolates other sql`...` values; write any other text inside the template.', { meta: { index: i } })`.
-2. `joined` = `resolveTemplateTagEscapes(strings.raw[0])`, then for each `i`, `values[i].text` followed by `resolveTemplateTagEscapes(strings.raw[i + 1])`. Escapes are resolved per chunk. Each line of `values[i].text` after its first is prefixed with the leading whitespace of the template line in which the `${…}` sits (the spaces and tabs at the start of the last line of the text joined so far). The joined text is then what the author sees, so a multi-line value inside an indented template keeps the template's indentation on every line.
+2. `joined` = `resolveTemplateTagEscapes(strings.raw[0])`, then for each `i`, `values[i].text` followed by `resolveTemplateTagEscapes(strings.raw[i + 1])`. Escapes are resolved per chunk. Each line of `values[i].text` after its first is prefixed with the leading spaces and tabs of the template line on which the `${…}` sits. That indentation comes from the template's own pieces only: it is the leading whitespace of the last line of the most recent piece that holds a line break (or of `strings.raw[0]`), and text inserted from a value never changes it. So two values on one template line both take that line's indentation. The joined text is then what the author sees, so a multi-line value inside an indented template keeps the template's indentation on every line.
 3. Return `new SqlExpression(joined)`. The whole joined text is canonicalized once, so the result equals the canonical text of the same SQL written out as one PSL literal.
 
 It performs no other check. An empty text is allowed.
@@ -102,7 +116,7 @@ Imports: `dataType`, `dataTypeId`, `DataType`, `DataTypeId` from `@internal/fram
 
 ### 3.1 The family registers its type and entry
 
-- `packages/2-sql/9-family/src/core/control-descriptor.ts`: `SqlFamilyDescriptor` gets `readonly dataTypes: readonly DataType[] = [sqlExpressionDataType]` and `dataTypes: { [SQL_EXPRESSION_DATA_TYPE_ID]: sqlExpressionAuthoringEntry }` in its `authoring`. The owner of the type and the component that registers it are then one component, and a new SQL target has nothing to remember. ADR 254 allows a family to register only a type that is the same on every target and that nothing casts from.
+- `packages/2-sql/9-family/src/core/control-descriptor.ts`: `SqlFamilyDescriptor` gets `readonly dataTypes = sqlExpressionRegistration.dataTypes` and `dataTypes: sqlExpressionRegistration.authoring.dataTypes` in its `authoring`. `sqlExpressionRegistration` (section 2) holds `[sqlExpressionDataType]` and `{ [SQL_EXPRESSION_DATA_TYPE_ID]: sqlExpressionAuthoringEntry }`, frozen, so no importer can change what the family registers. The owner of the type and the component that registers it are then one component, and a new SQL target has nothing to remember. ADR 254 allows a family to register only a type that is the same on every target and that nothing casts from.
 - The targets' lists hold only their own types: `postgresDataTypes`, `postgresDataTypeEntries()`, `sqliteDataTypes` and `sqliteDataTypeEntries()` do not contain `sql/expression`. In `packages/3-targets/3-targets/postgres/src/core/data-type-entries.ts`, replace the doc sentence about `sql` and `pg.sql` with: "The `sql` tag is not here: it writes `sql/expression`, which the SQL family defines and registers itself."
 - Every production path that reads the stack's data types assembles the family with the target, the adapter and the extensions (`createControlStack`), so it sees the type and entry. `contract infer` does not read the stack (section 11.1), which changes no output.
 - The stack assembles the family first, so messages and completion list the tags in the order `sql, json`: `Unknown literal tag "pg.sql". Known tags: sql, json.`
