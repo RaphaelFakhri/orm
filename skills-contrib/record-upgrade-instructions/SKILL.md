@@ -100,7 +100,7 @@ Use a disposable checkout for the restoration steps so unrelated working changes
    git ls-files --others --exclude-standard -- 'examples/*/test/**'
    ```
 
-   The first command must exit 0 and the second print nothing. An entry must not mutate or create tests to make the next step pass.
+   The first command must exit 0 and the second print nothing. An entry must not mutate or create tests to make the next step pass. A file under a test directory that the entry's own script wrote passes when it equals `<head>` byte for byte.
 6. Run `pnpm --filter <example-package> test` for each touched example. The repo-wide `pnpm test:examples` also runs examples needing a database and `.env` (`pnpm db:up`, then copy `.env.example`); run it only with those in place.
 
 ### Extension entry (against `packages/3-extensions/`)
@@ -122,7 +122,7 @@ Use a disposable checkout for the restoration steps so unrelated working changes
    git ls-files --others --exclude-standard -- 'packages/3-extensions/*/test/**'
    ```
 
-   The first command must exit 0; the second must print nothing.
+   The first command must exit 0; the second must print nothing. A file under a test directory that the entry's own script wrote passes when it equals `<head>` byte for byte.
 6. Verify the matching test suite is green: `pnpm test --filter='./packages/3-extensions/*'`.
 
 If any check fails, iterate on the entry; do not merge. Classify failures before changing anything, per [CI failure classification](../../.agents/rules/ci-failure-classification.mdc). A timeout or connection error makes the environment a candidate cause, not a verdict.
