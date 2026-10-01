@@ -31,6 +31,7 @@ import {
   runDbVerify,
   runMigrate,
   runMigrationPlan,
+  selfEmitMigration,
   sqlitePslConfigFixture,
   swapPslContract,
   timeouts,
@@ -122,6 +123,14 @@ async function emitHinted(ctx: SqliteJourneyContext, label: string): Promise<voi
   expect(emit.exitCode, `${label}: emit Member with the hint: ${emit.stderr}`).toBe(0);
 }
 
+function packageFiles(ctx: JourneyContext, dirName: string) {
+  const dir = join(ctx.testDir, 'migrations', 'app', dirName);
+  return {
+    opsJson: readFileSync(join(dir, 'ops.json'), 'utf-8'),
+    migrationJson: readFileSync(join(dir, 'migration.json'), 'utf-8'),
+  };
+}
+
 function operationsBlock(ctx: JourneyContext, dirName: string): string {
   const source = readFileSync(
     join(ctx.testDir, 'migrations', 'app', dirName, 'migration.ts'),
@@ -183,7 +192,7 @@ withTempDir(({ createTempDir }) => {
         await seedProfile(ctx, 'H1', 'migrate');
         await emitHinted(ctx, 'H1.04');
 
-        const plan = await planMigrationAndSelfEmit(ctx, [
+        const plan = await runMigrationPlan(ctx, [
           '--name',
           'rename-profile',
           '--from',
@@ -192,6 +201,20 @@ withTempDir(({ createTempDir }) => {
         ]);
         expect(plan.exitCode, `H1.05: plan the rename: ${plan.stderr}`).toBe(0);
         const planned = parseJsonOutput<PlanDocument>(plan);
+        const plannedFiles = packageFiles(ctx, latestMigrationDirName(ctx));
+        const reEmit = await selfEmitMigration(ctx, [
+          '--dir',
+          `migrations/app/${latestMigrationDirName(ctx)}`,
+        ]);
+        expect(reEmit.exitCode, `H1.05: re-run migration.ts: ${reEmit.stderr}`).toBe(0);
+        expect(
+          packageFiles(ctx, latestMigrationDirName(ctx)),
+          'H1.05: re-running migration.ts writes the same ops.json and migration.json as the plan',
+        ).toEqual(plannedFiles);
+        expect(
+          JSON.parse(plannedFiles.opsJson).map((op: { readonly label: string }) => op.label),
+          'H1.05: the planned ops.json holds the rename',
+        ).toContain(planned.operations[0]?.label);
         expect(planned.consumedHints, 'H1.05: the plan reports the hint it used').toEqual([
           { hint: expect.objectContaining({ kind: 'renamed', from: 'Profile' }), text: HINT_TEXT },
         ]);
