@@ -25,6 +25,8 @@ import {
   type ImportRequirement,
   jsonToTsSource,
   TsExpression,
+  tsArraySource,
+  tsObjectSource,
   tsQuotedTextSource,
 } from '@internal/ts-render';
 import { ifDefined } from '@internal/utils/defined';
@@ -322,16 +324,16 @@ export class RecreateTableCall extends SqliteOpFactoryCallNode {
   }
 
   renderTypeScript(): string {
-    const args = {
-      tableName: this.tableName,
-      contractTable: this.contractTable,
-      schemaColumnNames: this.schemaColumnNames,
-      indexes: this.indexes,
-      summary: this.summary,
-      postchecks: this.postchecks,
-      operationClass: this.operationClass,
-    };
-    return `this.recreateTable(${jsonToTsSource(args)})`;
+    const args = tsObjectSource([
+      ['tableName', jsonToTsSource(this.tableName)],
+      ['contractTable', renderTableSpec(this.contractTable)],
+      ['schemaColumnNames', jsonToTsSource(this.schemaColumnNames)],
+      ['indexes', jsonToTsSource(this.indexes)],
+      ['summary', jsonToTsSource(this.summary)],
+      ['postchecks', tsArraySource(this.postchecks.map(renderPostcheck))],
+      ['operationClass', jsonToTsSource(this.operationClass)],
+    ]);
+    return `this.recreateTable(${args})`;
   }
 
   override importRequirements(): readonly ImportRequirement[] {
@@ -395,7 +397,7 @@ export class AddColumnCall extends SqliteOpFactoryCallNode {
   }
 
   renderTypeScript(): string {
-    return `this.addColumn({ table: ${jsonToTsSource(this.tableName)}, column: ${jsonToTsSource(this.column)} })`;
+    return `this.addColumn({ table: ${jsonToTsSource(this.tableName)}, column: ${renderColumnSpec(this.column)} })`;
   }
 
   override importRequirements(): readonly ImportRequirement[] {
@@ -699,3 +701,35 @@ export type SqliteOpFactoryCall =
   | DropIndexCall
   | DataTransformCall
   | RawSqlCall;
+
+type TsObjectEntry = readonly [key: string, source: string];
+
+function definedEntry(key: string, value: unknown): readonly TsObjectEntry[] {
+  return value === undefined ? [] : [[key, jsonToTsSource(value)]];
+}
+
+function renderColumnSpec(column: SqliteColumnSpec): string {
+  return tsObjectSource([
+    ['name', jsonToTsSource(column.name)],
+    ['typeSql', jsonToTsSource(column.typeSql)],
+    ['defaultSql', tsQuotedTextSource(column.defaultSql)],
+    ['nullable', jsonToTsSource(column.nullable)],
+    ...definedEntry('inlineAutoincrementPrimaryKey', column.inlineAutoincrementPrimaryKey),
+  ]);
+}
+
+function renderTableSpec(table: SqliteTableSpec): string {
+  return tsObjectSource([
+    ['columns', tsArraySource(table.columns.map(renderColumnSpec))],
+    ...definedEntry('primaryKey', table.primaryKey),
+    ...definedEntry('uniques', table.uniques),
+    ...definedEntry('foreignKeys', table.foreignKeys),
+  ]);
+}
+
+function renderPostcheck(postcheck: RecreateTableCall['postchecks'][number]): string {
+  return tsObjectSource([
+    ['description', jsonToTsSource(postcheck.description)],
+    ['sql', tsQuotedTextSource(postcheck.sql)],
+  ]);
+}

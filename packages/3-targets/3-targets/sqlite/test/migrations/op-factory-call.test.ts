@@ -183,6 +183,23 @@ describe('AddColumnCall', () => {
     const call = new AddColumnCall('user', colSpec({ name: 'bio' }));
     await expect(async () => call.toOp()).rejects.toThrow('createSqliteMigrationPlanner');
   });
+
+  it('renders a default holding both quote kinds as a template literal', () => {
+    const call = new AddColumnCall(
+      'user',
+      colSpec({ name: 'meta', typeSql: 'TEXT', defaultSql: `DEFAULT '{"a": 1}'`, nullable: false }),
+    );
+    expect(call.renderTypeScript()).toBe(
+      [
+        'this.addColumn({ table: "user", column: {',
+        '  name: "meta",',
+        '  typeSql: "TEXT",',
+        '  defaultSql: `DEFAULT \'{"a": 1}\'`,',
+        '  nullable: false,',
+        '} })',
+      ].join('\n'),
+    );
+  });
 });
 
 describe('DropColumnCall', () => {
@@ -345,6 +362,76 @@ describe('RecreateTableCall', () => {
       operationClass: 'widening',
     });
     await expect(call.toOp()).rejects.toThrow('createSqliteMigrationPlanner');
+  });
+
+  it('renders a column default and a postcheck holding both quote kinds as template literals', () => {
+    const call = new RecreateTableCall({
+      tableName: 'user',
+      contractTable: tableSpec(
+        [
+          colSpec({
+            name: 'id',
+            typeSql: 'INTEGER',
+            nullable: false,
+            inlineAutoincrementPrimaryKey: true,
+          }),
+          colSpec({
+            name: 'meta',
+            typeSql: 'TEXT',
+            defaultSql: `DEFAULT '{"a": 1}'`,
+            nullable: false,
+          }),
+        ],
+        { primaryKey: { columns: ['id'] } },
+      ),
+      schemaColumnNames: ['id', 'meta'],
+      indexes: [],
+      summary: 'Recreates table user',
+      postchecks: [
+        {
+          description: 'verify "meta" default on "user"',
+          sql: `SELECT COUNT(*) > 0 FROM pragma_table_info('user') WHERE "dflt_value" = '1'`,
+        },
+      ],
+      operationClass: 'widening',
+    });
+    expect(call.renderTypeScript()).toBe(
+      [
+        'this.recreateTable({',
+        '  tableName: "user",',
+        '  contractTable: {',
+        '  columns: [',
+        '  {',
+        '  name: "id",',
+        '  typeSql: "INTEGER",',
+        '  defaultSql: "",',
+        '  nullable: false,',
+        '  inlineAutoincrementPrimaryKey: true,',
+        '},',
+        '  {',
+        '  name: "meta",',
+        '  typeSql: "TEXT",',
+        '  defaultSql: `DEFAULT \'{"a": 1}\'`,',
+        '  nullable: false,',
+        '},',
+        '],',
+        '  primaryKey: { columns: ["id"] },',
+        '  uniques: [],',
+        '  foreignKeys: [],',
+        '},',
+        '  schemaColumnNames: ["id", "meta"],',
+        '  indexes: [],',
+        '  summary: "Recreates table user",',
+        '  postchecks: [',
+        '  {',
+        '  description: "verify \\"meta\\" default on \\"user\\"",',
+        "  sql: `SELECT COUNT(*) > 0 FROM pragma_table_info('user') WHERE \"dflt_value\" = '1'`,",
+        '},',
+        '],',
+        '  operationClass: "widening",',
+        '})',
+      ].join('\n'),
+    );
   });
 });
 
