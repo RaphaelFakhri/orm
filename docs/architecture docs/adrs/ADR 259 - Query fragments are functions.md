@@ -1,6 +1,6 @@
 # ADR 259 — Query fragments are functions
 
-**Status:** Proposed
+**Status:** Accepted
 **Date:** 2026-09-30
 **Builds on:** [ADR 258 — A collection keeps its class through the chain](ADR%20258%20-%20A%20collection%20keeps%20its%20class%20through%20the%20chain.md), [ADR 175 — Shared ORM Collection interface](ADR%20175%20-%20Shared%20ORM%20Collection%20interface.md)
 
@@ -40,7 +40,7 @@ A query is a chain of method calls on a collection. Each call returns a collecti
 
 Applications share parts of queries. The same filter for deleted rows belongs on every query of a model. The same conditional filters are built from every list request. The same `select` and `include` serve every endpoint that returns a summary. In a query language made of objects these are objects, spread into each query. In a query language made of calls they are functions, applied to each collection.
 
-A function can be applied with no support from the collection at all: `notDeleted(db.Post)`. `pipe` exists so that applying a fragment reads in the same order as the rest of the chain, and so that a fragment can be applied in the middle of one.
+A step can be called with no support from the collection at all: `step(db.Post)`. `pipe` exists so that applying a fragment reads in the same order as the rest of the chain, and so that a fragment can be applied in the middle of one.
 
 ## How it works
 
@@ -72,7 +72,7 @@ All of this is the subtyping rule of ADR 258. `pipe` adds nothing to it.
 ### 3. A row fragment names its fields by codec
 
 ```ts
-type DeletedAt = FieldExpression<Contract, 'pg/timestamptz@1', true>;
+type DeletedAt = FieldExpression<Contract, 'pg/timestamptz-temporal@1', true>;
 const notDeleted = (row: { deletedAt: DeletedAt }) => row.deletedAt.isNull();
 
 db.Post.where(notDeleted);
@@ -82,7 +82,9 @@ db.Tag.where(notDeleted); // error: Tag has no deletedAt
 
 `where` takes a function of the row accessor, an object with one member per field. TypeScript compares objects by their members, so a function whose parameter asks for one field accepts every row accessor that has it. All that a shared filter needs is a way to write that field's type without naming a model.
 
-`FieldExpression` is that type: an expression of the given codec, the comparison methods the codec's traits allow, and the query operations registered for the codec. It is built from the same parts as the field type on a model's row accessor, so the two are assignable to each other in both directions, and an operation a package contributes, such as `fullTextMatches`, is available on it. A fragment is rejected for a model without the field, for a field of another codec, and for a field of another nullability.
+`FieldExpression` is that type: an expression of the given codec, the comparison methods the codec's traits allow, and the query operations registered for the codec. It is built from the same parts as the field type on a model's row accessor, so the two are assignable to each other in both directions, and an operation a package contributes, such as `fullTextMatches`, is available on it. A fragment is rejected for a model without the field, for a field of another codec, and for a field of another nullability. The codec id must be one of the contract's codecs; a PSL `DateTime` field has the codec `pg/timestamptz-temporal@1`. `ModelFieldCodec<Contract, Model, Field>` gives a field's `codecId` and `nullable`, for a fragment written from an existing field.
+
+The error for a refused fragment names the field. For `db.Tag.where(notDeleted)` TypeScript reports each overload of `where`, and the first, the callback overload, ends with `Property 'deletedAt' is missing in type 'ModelAccessor<Contract, "Tag", "public">'`. TypeScript reports every overload only when a call has at most three; `where` had a fourth, a copy of the callback overload, and with four TypeScript reported only the last, the shorthand filter object, which does not mention the field. The copy is removed.
 
 ### 4. A step that changes the row is defined once per model
 
@@ -97,9 +99,9 @@ db.Comment.pipe(summary);                  // error: not a Post collection
 db.Post.select('id').pipe(summary);        // error: the rows no longer have every Post field
 ```
 
-A step that calls `select` produces a new row, so its type cannot be the caller's type. `rowFragment` types the body once, against the plain collection of the model, and returns a step that accepts any collection of that model whose row is the model's full row or wider: a root or filtered collection, a collection after `include`, an include refinement, `this` in a custom class.
+A step that calls `select` produces a new row, so its type cannot be the caller's type. `rowFragment` types the body once, against the plain collection of the model, and returns a `RowFragment<Contract, Model, Result>`: a step whose parameter is `FullRowCollection<Contract, Model>`, a collection of the model whose row is the model's full row or wider and that is not narrowed to a variant. It accepts a root or filtered collection, a custom class, a collection after `include`, an include refinement, and `this` in a custom class.
 
-It refuses a collection whose row was narrowed by `select` or `variant`. The body was typed against the full row, so on a narrowed collection its result would claim fields the query does not return: `(posts) => posts.include('user')` applied after `select('id')` would be typed with every field of a post. The rule is the row subtyping of ADR 258: a narrowed row is not assignable to the full row, a widened one is. On a widened collection the result can omit relations the caller included, which refuses more and never claims more.
+It refuses a collection whose row was narrowed by `select` or `variant`. The body was typed against the full row, so on a narrowed collection its result would claim fields the query does not return: `(posts) => posts.include('user')` applied after `select('id')` would be typed with every field of a post. For `select` the rule is the row subtyping of ADR 258: a narrowed row is not assignable to the model's row, `DefaultModelRow<Contract, Model>`, and a widened one is. On a widened collection the result can omit relations the caller included, which refuses more and never claims more. A variant's row has every field of the base model, so the row does not refuse it; the type state does. `FullRowCollection` requires `variantName: undefined`, and `variant` sets it to the variant's name.
 
 `CollectionRowOf` reads the row type off the result, so the application can name it.
 
@@ -111,25 +113,32 @@ The step's result has the default state. A filter or order applied before the st
 db.Post.orderBy(sortField(db.Post, input.sort, input.direction, ['title', 'createdAt']));
 ```
 
-`sortField` takes a collection, a field name from the request, a direction and an allowed list. The allowed list is typed against the fields of the model whose codec has the `order` trait, so a relation, an unknown field, or a field that cannot be ordered is a compile error in the list. The name from the request is checked at run time against the allowed list and the model, and `ORM.ARGUMENT_INVALID` is thrown for a name that is not allowed. The selector it returns fits any collection of a model that has the allowed fields, and `orderBy` records the order, so `cursor` is allowed afterwards.
+`sortField` takes a collection, a field name from the request, a direction and an allowed list. The direction defaults to `asc`; without a list, every field that can be ordered is allowed. The allowed list is typed against `SortableFieldName<Contract, Model>`, the fields of the model whose codec has the `order` trait, so a relation, an unknown field, or a field that cannot be ordered is a compile error in the list.
+
+The name from the request is checked when `sortField` is called, before the query runs. A name that is not a field of the model, a relation, a field whose codec has no `order` trait, or a name outside the allowed list throws `ORM.ARGUMENT_INVALID`, and so does a direction other than `asc` or `desc`. The error says why the name was refused and lists the names that are allowed. The trait is read from the codec descriptors of the execution context, the run-time counterpart of the codec types that `SortableFieldName` reads.
+
+The selector it returns fits any collection of a model that has the allowed fields, and `orderBy` records the order, so `cursor` is allowed afterwards.
 
 ## What it costs
 
-Measured as type instantiations on an application of about 750,000 instantiations.
+Measured as type instantiations, TypeScript 5.9.3, on `examples/prisma-8-demo`, an application of about 730,000 instantiations. A use is one of ten call sites in a probe: a root collection, a custom class, a filtered, ordered or included collection, an include refinement, and `this` in a class.
 
 | Feature | Present but unused | Per use |
 | --- | --- | --- |
 | `pipe` | +608 (+0.08%) | about 7 |
 | A conditional step | none | 10,000 to 14,000 once per pair of collection types, then under 10 |
-| `FieldExpression` row fragment | none | about 350 once, then under 3 |
-| `rowFragment` | none | less than the same `select` and `include` written inline |
-| `sortField` | none | about 1,250 once, then about 100 |
+| `FieldExpression` row fragment | none | about 20 once, then no more than the same `where` written inline |
+| `rowFragment` | none | about 700 less than the same `select` and `include` written inline |
+| `sortField` | none | about 550 once, then under 20 |
+
+With the three helpers present and unused, the application checks with 272 fewer instantiations than without them (−0.04%), because the copy of the `where` callback overload is gone.
 
 ## Consequences
 
 - **Any function is a step.** Control flow stays in the language. The query API gains no combinators.
 - **A package can offer a fragment for any model.** A row fragment typed with `FieldExpression` needs no knowledge of the application's models. A package that introduces a kind of index can offer a step built from the index definition, and the application applies it with `pipe`.
-- **The error for a missing field names the wrong overload.** `db.Tag.where(notDeleted)` fails, but the message reports the shorthand filter overload of `where` rather than the missing field.
+- **A refused row fragment is reported against each overload of `where`.** The message is long, but its first part names the missing or mismatched field.
+- **A row-changing step is written against one model.** `rowFragment` cannot serve two models that share fields; a filter that serves several models is a `FieldExpression` row fragment instead.
 
 ## Non-goals
 
@@ -140,5 +149,6 @@ Measured as type instantiations on an application of about 750,000 instantiation
 
 - **A `when(value, step)` combinator** whose result keeps the caller's type, as the way to write conditional steps. It moves control flow into the query API, and every construct would need its own combinator. The subtyping rule of ADR 258 makes the plain conditional sound.
 - **`where(undefined)` and `orderBy(undefined)` as no-ops**, so that a conditional filter is `posts.where(search ? (p) => ... : undefined)`. It adds an overload to every `where` and `orderBy`, costs about 7.5% more type checking in the client package when unused, and covers only those two methods.
+- **A plain function typed with `Pick<typeof db.Post, 'select'>`** as the row-changing step, with no helper. It is accepted wherever `rowFragment` is, but each use costs about 1,800 type instantiations in the demo application, because TypeScript compares the collection's `select` method with the picked one, where a `rowFragment` use saves about 700 over the same chain written inline. It also accepts a collection narrowed by `select` or `variant`, because the picked `select` does not depend on the row. A function typed with `Collection<Contract, 'Post'>` is refused on the client's root collections, whose type state names their namespace, and in include refinements; one typed with `Pick` of it is refused on the client's root collections.
 - **A `fragment` builder** that declares the fields a step needs by codec and applies it with `pipe`, keeping the caller's type. It works, but its result's state is not updated, and one definition costs about 10,000 instantiations for a reason not found. `FieldExpression` covers the same need as a plain function of the row.
 - **Query fragments as objects**, as in a query language made of objects. The chain is the query language here, and an object fragment would need a second way to express every method, kept in step with the first.
