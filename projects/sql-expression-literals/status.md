@@ -4,7 +4,7 @@ Read this first when you resume the project. It records where the work stands an
 
 ## State on 2026-09-30
 
-- Slice 3 (TML-3289) is built on branch `tml-3289-sql-expression-ts`, stacked on the 2b branch. Not pushed, no pull request. Next: `/drive-code-review` of slice 3. See "Slice 3" below.
+- Slice 3 (TML-3289) is on branch `tml-3289-sql-expression-ts`, stacked on the 2b branch. Pull request: https://github.com/prisma/orm/pull/30558 (opened 2026-10-01, base `tml-3288-sql-expression-places`; retarget to `main` once #30550 merges). Two review rounds done, every finding fixed. The 2b branch, with slice 2t and `main` merged in, was merged into it as `1937f9ef5f`. Next: wait for Will to approve #30539 and #30546, then retarget and merge the stack; slice 5 (TML-3297) is a stretch slice to confirm with Will; then the close-out. `handover.md` is out of date.
 
 - Slice 2b (TML-3288) is on branch `tml-3288-sql-expression-places`, stacked on the 2t branch. Pull request: https://github.com/prisma/orm/pull/30550 (opened 2026-09-30, base `tml-3367-data-type-value`; retarget to `main` once #30539 merges). Two review rounds done, every finding fixed. Next: slice 3 (TML-3289); its "Carried over" list in plan.md holds the deferred items.
 
