@@ -2222,7 +2222,7 @@ describe('interpretPslDocumentToMongoContract', () => {
           'schema.prisma',
         ),
         scalarTypeCodecIds: mongoScalarTypeDescriptors,
-        codecLookup: emptyCodecLookup,
+        codecLookup: { ...emptyCodecLookup, descriptorFor: () => undefined },
         dataTypeLookup: mongoDataTypeLookup,
         controlMutationDefaults: {
           dataTypeEntries: {},
@@ -2258,7 +2258,7 @@ describe('interpretPslDocumentToMongoContract', () => {
           'schema.prisma',
         ),
         scalarTypeCodecIds: mongoScalarTypeDescriptors,
-        codecLookup: emptyCodecLookup,
+        codecLookup: { ...emptyCodecLookup, descriptorFor: () => undefined },
         dataTypeLookup: mongoDataTypeLookup,
         controlMutationDefaults: {
           dataTypeEntries: {},
@@ -2286,7 +2286,7 @@ describe('interpretPslDocumentToMongoContract', () => {
           'schema.prisma',
         ),
         scalarTypeCodecIds: mongoScalarTypeDescriptors,
-        codecLookup: emptyCodecLookup,
+        codecLookup: { ...emptyCodecLookup, descriptorFor: () => undefined },
         dataTypeLookup: mongoDataTypeLookup,
         controlMutationDefaults: {
           dataTypeEntries: {},

@@ -7,7 +7,7 @@ import {
 } from '@internal/contract/types';
 import type {
   AnyCodecDescriptor,
-  CodecLookup,
+  CodecLookupWithDescriptors,
   DataType,
 } from '@internal/framework-components/codec';
 import { createDataTypeLookup, emptyCodecLookup } from '@internal/framework-components/codec';
@@ -87,7 +87,7 @@ const dataTypeOfCodec: Readonly<Record<string, DataType>> = {
   'pg/enum@1': enumType,
 };
 
-const testCodecLookup: CodecLookup = {
+const testCodecLookup: CodecLookupWithDescriptors = {
   ...emptyCodecLookup,
   descriptorFor: (id) => {
     const dataType = dataTypeOfCodec[id];

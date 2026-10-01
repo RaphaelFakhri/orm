@@ -20,7 +20,7 @@ function interpret(schema: string) {
     ]),
     dataTypeLookup: createDataTypeLookup([]),
     controlMutationDefaults: { dataTypeEntries: {}, defaultFunctionRegistry: new Map() },
-    codecLookup: emptyCodecLookup,
+    codecLookup: { ...emptyCodecLookup, descriptorFor: () => undefined },
   });
 }
 

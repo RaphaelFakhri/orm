@@ -41,7 +41,7 @@ export const sqlFamilyEnumEntityDescriptor = {
       }
       const { codecId, codecSpan } = resolved;
 
-      const descriptor = ctx.codecLookup.descriptorFor?.(codecId);
+      const descriptor = ctx.codecLookup.descriptorFor(codecId);
       const codec = ctx.codecLookup.get(codecId);
       if (descriptor === undefined || codec === undefined) {
         diagnostics?.push({

@@ -1,5 +1,8 @@
 import type { ContractField, ContractValueObject, JsonValue } from '@internal/contract/types';
-import type { CodecLookup, DataTypeLookup } from '@internal/framework-components/codec';
+import type {
+  CodecLookupWithDescriptors,
+  DataTypeLookup,
+} from '@internal/framework-components/codec';
 import { MongoValidator } from '@internal/mongo-contract';
 import { bsonTypesOfCodec } from '@internal/mongo-contract/data-type';
 
@@ -30,7 +33,7 @@ function fieldToBsonSchema(
   field: ContractField,
   dataTypeLookup: DataTypeLookup,
   valueObjects: Record<string, ContractValueObject> | undefined,
-  codecLookup: CodecLookup | undefined,
+  codecLookup: CodecLookupWithDescriptors | undefined,
   valueSets: FieldValueSets | undefined,
 ): Record<string, unknown> | undefined {
   if (field.type.kind === 'scalar') {
@@ -90,7 +93,7 @@ function deriveObjectSchema(
   fields: Record<string, ContractField>,
   dataTypeLookup: DataTypeLookup,
   valueObjects: Record<string, ContractValueObject> | undefined,
-  codecLookup: CodecLookup | undefined,
+  codecLookup: CodecLookupWithDescriptors | undefined,
   valueSets: FieldValueSets | undefined,
 ): Record<string, unknown> {
   const properties: Record<string, unknown> = {};
@@ -125,7 +128,7 @@ export function deriveJsonSchema(
   fields: Record<string, ContractField>,
   dataTypeLookup: DataTypeLookup,
   valueObjects?: Record<string, ContractValueObject>,
-  codecLookup?: CodecLookup,
+  codecLookup?: CodecLookupWithDescriptors,
   valueSets?: FieldValueSets,
 ): MongoValidator {
   return new MongoValidator({
@@ -146,7 +149,7 @@ export function derivePolymorphicJsonSchema(
   variants: readonly PolymorphicVariant[],
   dataTypeLookup: DataTypeLookup,
   valueObjects?: Record<string, ContractValueObject>,
-  codecLookup?: CodecLookup,
+  codecLookup?: CodecLookupWithDescriptors,
   valueSets?: FieldValueSets,
 ): MongoValidator {
   const baseSchema = deriveObjectSchema(

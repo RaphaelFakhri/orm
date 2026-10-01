@@ -1,4 +1,4 @@
-import type { CodecLookup } from '@internal/framework-components/codec';
+import type { CodecLookupWithDescriptors } from '@internal/framework-components/codec';
 import { createDataTypeLookup, dataType } from '@internal/framework-components/codec';
 import { InternalError } from '@internal/utils/internal-error';
 import { describe, expect, it } from 'vitest';
@@ -9,7 +9,7 @@ const plain = dataType('t/plain', {});
 
 describe('sqlDataTypeOfCodec', () => {
   const dataTypeLookup = createDataTypeLookup([int4, numeric, vector, enumType, plain]);
-  const codecLookup: Pick<CodecLookup, 'descriptorFor'> = {
+  const codecLookup: Pick<CodecLookupWithDescriptors, 'descriptorFor'> = {
     descriptorFor: (id) =>
       ({
         't/int4@1': { codecId: id, dataType: int4.id },

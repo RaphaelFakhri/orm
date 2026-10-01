@@ -1,7 +1,7 @@
 import sqlFamilyPack from '@internal/family-sql/pack';
 import {
   assembleDataTypes,
-  type CodecLookup,
+  type CodecLookupWithDescriptors,
   type DataTypeLookup,
 } from '@internal/framework-components/codec';
 import type { ExtensionPackRef, TargetPackRef } from '@internal/framework-components/components';
@@ -39,7 +39,7 @@ type SqliteResult<
       readonly models?: Models;
       readonly extensions?: Extensions;
       readonly createNamespace: (input: SqlNamespaceInput) => SqlNamespaceBase;
-      readonly codecLookup: CodecLookup;
+      readonly codecLookup: CodecLookupWithDescriptors;
       readonly dataTypeLookup: DataTypeLookup;
     }
   >
@@ -52,7 +52,7 @@ type SqliteBaseScaffold<
   'family' | 'target' | 'types' | 'models' | 'createNamespace' | 'codecLookup' | 'dataTypeLookup'
 > & {
   /** Overrides the codecs of the target and the extensions. */
-  readonly codecLookup?: CodecLookup;
+  readonly codecLookup?: CodecLookupWithDescriptors;
   /** Overrides the data types of the target and the extensions. */
   readonly dataTypeLookup?: DataTypeLookup;
 };

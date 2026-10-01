@@ -14,7 +14,7 @@ import { ifDefined } from '@internal/utils/defined';
 import { InternalError } from '@internal/utils/internal-error';
 import type { StandardSchemaV1 } from '@standard-schema/spec';
 import type { Type } from 'arktype';
-import type { CodecLookup } from './codec-types';
+import type { CodecLookupWithDescriptors } from './codec-types';
 import type { DataTypeId, DataTypeLookup } from './data-type';
 import type { AuthoringOption } from './option-descriptor';
 import type { ParsedPslExtensionBlock, PslSpan } from './psl-extension-block';
@@ -262,7 +262,7 @@ export interface AuthoringEntityContext {
   readonly family: string;
   readonly target: string;
   /** Codec registry available to factories that need to validate or decode values. */
-  readonly codecLookup: CodecLookup;
+  readonly codecLookup: CodecLookupWithDescriptors;
   /** The stack's data types, for factories that read the data type a codec represents. */
   readonly dataTypeLookup: DataTypeLookup;
   /** Source file identifier threaded into diagnostics emitted by the factory. */

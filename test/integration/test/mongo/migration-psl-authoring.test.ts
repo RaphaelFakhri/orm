@@ -2,7 +2,10 @@ import { MongoControlAdapterImpl } from '@internal/adapter-mongo/control';
 import type { JsonValue } from '@internal/contract/types';
 import mongoControlDriver from '@internal/driver-mongo/control';
 import { contractToMongoSchemaIR } from '@internal/family-mongo/control';
-import { type CodecLookup, createDataTypeLookup } from '@internal/framework-components/codec';
+import {
+  type CodecLookupWithDescriptors,
+  createDataTypeLookup,
+} from '@internal/framework-components/codec';
 import { UNBOUND_NAMESPACE_ID } from '@internal/framework-components/ir';
 import type { MongoContract } from '@internal/mongo-contract';
 import { interpretPslDocumentToMongoContract } from '@internal/mongo-contract-psl';
@@ -37,7 +40,7 @@ const bsonTypesByCodecId: Record<string, string> = {
   'mongo/double@1': 'double',
 };
 
-const mongoCodecLookup: CodecLookup = {
+const mongoCodecLookup: CodecLookupWithDescriptors = {
   get(id: string) {
     const bsonType = bsonTypesByCodecId[id];
     if (!bsonType) return undefined;

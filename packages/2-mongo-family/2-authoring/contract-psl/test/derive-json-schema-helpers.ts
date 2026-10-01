@@ -2,6 +2,7 @@ import type { ContractField } from '@internal/contract/types';
 import {
   type AnyCodecDescriptor,
   type CodecLookup,
+  type CodecLookupWithDescriptors,
   createDataTypeLookup,
   type DataTypeLookup,
 } from '@internal/framework-components/codec';
@@ -34,7 +35,7 @@ export const mongoDataTypeLookup: DataTypeLookup = createDataTypeLookup(
   ),
 );
 
-export const mongoCodecLookup: CodecLookup = {
+export const mongoCodecLookup: CodecLookupWithDescriptors = {
   get(id: string) {
     if (!(id in bsonTypesByCodecId)) return undefined;
     return {

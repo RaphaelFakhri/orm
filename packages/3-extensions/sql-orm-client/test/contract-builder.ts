@@ -1,7 +1,7 @@
 import sqlFamilyPack from '@internal/family-sql/pack';
 import {
   assembleDataTypes,
-  type CodecLookup,
+  type CodecLookupWithDescriptors,
   type DataTypeLookup,
 } from '@internal/framework-components/codec';
 import type {
@@ -53,7 +53,7 @@ type PostgresResult<
     PostgresPack,
     {
       readonly createNamespace: typeof postgresCreateNamespace;
-      readonly codecLookup: CodecLookup;
+      readonly codecLookup: CodecLookupWithDescriptors;
       readonly dataTypeLookup: DataTypeLookup;
       readonly types?: Types;
       readonly models?: Models;

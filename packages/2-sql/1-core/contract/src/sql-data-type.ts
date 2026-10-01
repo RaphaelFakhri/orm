@@ -9,7 +9,7 @@
  */
 
 import type {
-  CodecLookup,
+  CodecLookupWithDescriptors,
   DataType,
   DataTypeId,
   DataTypeLookup,
@@ -339,7 +339,7 @@ export function unquotedSqlBaseName<Params extends SqlTypeParams>(
 
 /** The lookups that find the data type a codec represents. */
 export interface SqlTypeLookups {
-  readonly codecLookup: Pick<CodecLookup, 'descriptorFor'>;
+  readonly codecLookup: Pick<CodecLookupWithDescriptors, 'descriptorFor'>;
   readonly dataTypeLookup: Pick<DataTypeLookup, 'get'>;
 }
 
@@ -348,7 +348,7 @@ const ADD_THE_CODEC_PACK =
 
 /** The SQL data type the codec `codecId` represents. */
 export function sqlDataTypeOfCodec(codecId: string, lookups: SqlTypeLookups): SqlDataType {
-  const descriptor = lookups.codecLookup.descriptorFor?.(codecId);
+  const descriptor = lookups.codecLookup.descriptorFor(codecId);
   if (descriptor === undefined) {
     throw contractError(
       'CONTRACT.CODEC_DESCRIPTOR_MISSING',

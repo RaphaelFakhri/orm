@@ -28,7 +28,7 @@ function diagnosticCodes(schema: string): readonly string[] {
   const result = interpretPslDocumentToMongoContract({
     ...symbolTableInput(schema),
     scalarTypeCodecIds,
-    codecLookup: emptyCodecLookup,
+    codecLookup: { ...emptyCodecLookup, descriptorFor: () => undefined },
     dataTypeLookup: createDataTypeLookup([]),
     controlMutationDefaults: {
       defaultFunctionRegistry: new Map(),

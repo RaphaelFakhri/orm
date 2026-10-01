@@ -16,7 +16,7 @@ function diagnosticsOf(schema: string): readonly ContractSourceDiagnostic[] {
     symbolTable,
     sources,
     scalarTypeCodecIds: new Map([['ObjectId', 'mongo/objectId@1']]),
-    codecLookup: emptyCodecLookup,
+    codecLookup: { ...emptyCodecLookup, descriptorFor: () => undefined },
     dataTypeLookup: createDataTypeLookup([]),
     controlMutationDefaults: { dataTypeEntries: {}, defaultFunctionRegistry: new Map() },
   });

@@ -1,6 +1,7 @@
 import { generateContractDts } from '@internal/emitter';
 import {
   type CodecLookup,
+  type CodecLookupWithDescriptors,
   createDataTypeLookup,
   renderTsLiteral,
 } from '@internal/framework-components/codec';
@@ -52,7 +53,7 @@ const contract = defineContract({
 
 const knownCodecIds = new Set(['mongo/string@1', 'mongo/objectId@1']);
 
-const codecLookup: CodecLookup = {
+const codecLookup: CodecLookupWithDescriptors = {
   get: (id: string) => {
     if (!knownCodecIds.has(id)) return undefined;
     return {

@@ -23,7 +23,7 @@ function interpret(schema: string) {
     symbolTable,
     sources,
     scalarTypeCodecIds,
-    codecLookup: emptyCodecLookup,
+    codecLookup: { ...emptyCodecLookup, descriptorFor: () => undefined },
     dataTypeLookup: createDataTypeLookup([]),
     controlMutationDefaults: {
       dataTypeEntries: {},

@@ -42,7 +42,7 @@ function read(values: Record<string, JsonValue | undefined>, codec: Codec = lowe
   const members = readEnumBlockMembers(enumBlock(values), codec.id, codec, {
     family: 'test',
     target: 'test',
-    codecLookup: emptyCodecLookup,
+    codecLookup: { ...emptyCodecLookup, descriptorFor: () => undefined },
     dataTypeLookup: createDataTypeLookup([]),
     sourceId: 'schema.prisma',
     diagnostics: { push: (d) => diagnostics.push(d) },
@@ -103,7 +103,7 @@ describe('readEnumBlockMembers', () => {
       readEnumBlockMembers(enumBlock({ A: 'a' }), 'test/lower-casing@1', codec, {
         family: 'test',
         target: 'test',
-        codecLookup: emptyCodecLookup,
+        codecLookup: { ...emptyCodecLookup, descriptorFor: () => undefined },
         dataTypeLookup: createDataTypeLookup([]),
       }),
     ).toThrow(failure);

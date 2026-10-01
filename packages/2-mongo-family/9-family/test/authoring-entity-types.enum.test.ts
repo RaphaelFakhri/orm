@@ -7,7 +7,7 @@ import type {
 import {
   type AnyCodecDescriptor,
   type Codec,
-  type CodecLookup,
+  type CodecLookupWithDescriptors,
   createDataTypeLookup,
 } from '@internal/framework-components/codec';
 import { mongoDataType } from '@internal/mongo-contract/data-type';
@@ -132,7 +132,7 @@ const testDataTypes = createDataTypeLookup([
   mongoDataType('test/folding-text', { bsonTypes: ['text'] }),
 ]);
 
-const testCodecLookup: CodecLookup = {
+const testCodecLookup: CodecLookupWithDescriptors = {
   get(id: string): Codec | undefined {
     if (id === TEXT_CODEC_ID) return textCodec;
     if (id === INT_CODEC_ID) return intCodec;

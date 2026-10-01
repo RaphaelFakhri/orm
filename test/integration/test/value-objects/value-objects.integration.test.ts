@@ -88,7 +88,7 @@ function interpretMongoPsl(schema: string) {
     symbolTable,
     sources,
     scalarTypeCodecIds: mongoScalarTypeDescriptors,
-    codecLookup: emptyCodecLookup,
+    codecLookup: { ...emptyCodecLookup, descriptorFor: () => undefined },
     dataTypeLookup: createDataTypeLookup(mongoDataTypes),
     controlMutationDefaults: {
       dataTypeEntries: {},

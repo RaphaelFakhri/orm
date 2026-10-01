@@ -7,7 +7,7 @@ import type {
 import type {
   AnyCodecDescriptor,
   Codec,
-  CodecLookup,
+  CodecLookupWithDescriptors,
   DataType,
 } from '@internal/framework-components/codec';
 import { createDataTypeLookup } from '@internal/framework-components/codec';
@@ -135,7 +135,7 @@ const dataTypeOfCodec: Readonly<Record<string, DataType>> = {
   [BROKEN_CODEC_ID]: textType,
 };
 
-const testCodecLookup: CodecLookup = {
+const testCodecLookup: CodecLookupWithDescriptors = {
   get(id: string): Codec | undefined {
     if (id === TEXT_CODEC_ID) return textCodec;
     if (id === INT_CODEC_ID) return intCodec;

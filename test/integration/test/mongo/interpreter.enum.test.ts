@@ -4,7 +4,11 @@ import {
   mongoFamilyEntityTypes,
   mongoFamilyPslBlockDescriptors,
 } from '@internal/family-mongo/pack';
-import { type CodecLookup, createDataTypeLookup } from '@internal/framework-components/codec';
+import {
+  type CodecLookup,
+  type CodecLookupWithDescriptors,
+  createDataTypeLookup,
+} from '@internal/framework-components/codec';
 import { createControlStack } from '@internal/framework-components/control';
 import { UNBOUND_NAMESPACE_ID } from '@internal/framework-components/ir';
 import {
@@ -41,7 +45,7 @@ const mongoTargetTypes: Record<string, readonly string[]> = {
   'mongo/int32@1': ['int'],
 };
 
-const mongoCodecLookup: CodecLookup = {
+const mongoCodecLookup: CodecLookupWithDescriptors = {
   get(id: string) {
     const targetTypes = mongoTargetTypes[id];
     if (!targetTypes) return undefined;

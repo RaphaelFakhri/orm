@@ -1,7 +1,7 @@
 import sqlFamilyPack from '@internal/family-sql/pack';
 import {
   assembleDataTypes,
-  type CodecLookup,
+  type CodecLookupWithDescriptors,
   type DataTypeLookup,
 } from '@internal/framework-components/codec';
 import type { ExtensionPackRef } from '@internal/framework-components/components';
@@ -45,7 +45,7 @@ type PostgresResult<
       readonly extensions?: Extensions;
       readonly enums?: Enums;
       readonly createNamespace: (input: SqlNamespaceInput) => SqlNamespaceBase;
-      readonly codecLookup: CodecLookup;
+      readonly codecLookup: CodecLookupWithDescriptors;
       readonly dataTypeLookup: DataTypeLookup;
     }
   >
@@ -66,7 +66,7 @@ type PostgresBaseScaffold<
   | 'dataTypeLookup'
 > & {
   /** Overrides the codecs of the target and the extensions. */
-  readonly codecLookup?: CodecLookup;
+  readonly codecLookup?: CodecLookupWithDescriptors;
   /** Overrides the data types of the target and the extensions. */
   readonly dataTypeLookup?: DataTypeLookup;
   /**

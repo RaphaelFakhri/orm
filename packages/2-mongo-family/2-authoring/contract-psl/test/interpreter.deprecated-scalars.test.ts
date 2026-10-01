@@ -56,7 +56,7 @@ function interpret(schema: string) {
     sources,
     scalarTypeCodecIds,
     authoringContributions,
-    codecLookup: emptyCodecLookup,
+    codecLookup: { ...emptyCodecLookup, descriptorFor: () => undefined },
     dataTypeLookup: createDataTypeLookup([]),
     controlMutationDefaults: { dataTypeEntries: {}, defaultFunctionRegistry: new Map() },
     formerScalarCodecIds,
@@ -113,7 +113,7 @@ describe('deprecated Mongo PSL scalar names', () => {
       sources,
       scalarTypeCodecIds,
       authoringContributions,
-      codecLookup: emptyCodecLookup,
+      codecLookup: { ...emptyCodecLookup, descriptorFor: () => undefined },
       dataTypeLookup: createDataTypeLookup([]),
       controlMutationDefaults: { dataTypeEntries: {}, defaultFunctionRegistry: new Map() },
     });
@@ -128,7 +128,7 @@ describe('deprecated Mongo PSL scalar names', () => {
       symbolTable,
       sources,
       scalarTypeCodecIds: new Map(),
-      codecLookup: emptyCodecLookup,
+      codecLookup: { ...emptyCodecLookup, descriptorFor: () => undefined },
       dataTypeLookup: createDataTypeLookup([]),
       controlMutationDefaults: { dataTypeEntries: {}, defaultFunctionRegistry: new Map() },
     });

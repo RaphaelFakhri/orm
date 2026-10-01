@@ -1,13 +1,10 @@
-import type { CodecLookup, DataTypeLookup } from '@internal/framework-components/codec';
 import type { AdapterDescriptor } from '@internal/framework-components/components';
+import type { SqlTypeLookups } from '@internal/sql-contract/data-type';
 import { createPostgresBuiltinCodecLookup } from '../src/core/codec-registry';
 import { codecDescriptors } from '../src/core/codecs';
 import { createPostgresBuiltinDataTypeLookup, postgresDataTypes } from '../src/core/data-types';
 
-export const postgresTypeLookups: {
-  readonly codecLookup: CodecLookup;
-  readonly dataTypeLookup: DataTypeLookup;
-} = {
+export const postgresTypeLookups: SqlTypeLookups = {
   codecLookup: createPostgresBuiltinCodecLookup(),
   dataTypeLookup: createPostgresBuiltinDataTypeLookup(),
 };
