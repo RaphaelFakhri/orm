@@ -11,6 +11,19 @@ import { createTestSqlNamespace } from '../../1-core/contract/test/test-support'
 import type { SqlRuntimeExtensionDescriptor } from '../src/sql-context';
 import { createStubAdapter, createTestContext } from './utils';
 
+const DATA_TYPE_OF_CODEC: Readonly<Record<string, string>> = {
+  'async/vector@1': 'async/vector',
+  'nope/missing@1': 'nope/missing',
+  'pgvector/vector@1': 'pgvector/vector',
+  'test/scalar@1': 'test/scalar',
+};
+
+function dataTypeOf(codecId: string): string {
+  const dataType = DATA_TYPE_OF_CODEC[codecId];
+  if (dataType === undefined) throw new Error(`no data type listed for codec ${codecId}`);
+  return dataType;
+}
+
 /**
  * Build-time integrity check that surfaces (codecId, isParameterized, typeParams) mismatches in `storage.tables[t].columns[c]` before any AST-bound codec resolution can mask them. The legacy "tolerate codec references without params" patterns silently skipped malformed columns; the integrity check throws explicit envelope codes instead.
  */
@@ -127,7 +140,7 @@ describe('createExecutionContext — column codec integrity', () => {
               Doc: {
                 columns: {
                   field: {
-                    dataType: column.codecId.replace(/@\d+$/, ''),
+                    dataType: dataTypeOf(column.codecId),
                     codecId: column.codecId,
                     nullable: false,
                     ...(column.typeParams ? { typeParams: column.typeParams } : {}),

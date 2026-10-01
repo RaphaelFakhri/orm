@@ -11,6 +11,24 @@ import { createTestSqlNamespace } from '../../../1-core/contract/test/test-suppo
 import type { AnyCodecDescriptor } from '../src/ast/codec-types';
 import { buildCodecDescriptorRegistry } from '../src/codec-descriptor-registry';
 
+const DATA_TYPE_OF_CODEC: Readonly<Record<string, string>> = {
+  'lib/a@1': 'lib/a',
+  'lib/b@1': 'lib/b',
+  'lib/c@1': 'lib/c',
+  'lib/dup@1': 'lib/dup',
+  'lib/missing@1': 'lib/missing',
+  'pg/int4@1': 'pg/int4',
+  'pg/text@1': 'pg/text',
+  'pg/varchar@1': 'pg/varchar',
+  'pg/vector@1': 'pgvector/vector',
+};
+
+function dataTypeOf(codecId: string): string {
+  const dataType = DATA_TYPE_OF_CODEC[codecId];
+  if (dataType === undefined) throw new Error(`no data type listed for codec ${codecId}`);
+  return dataType;
+}
+
 const stub = (codecId: string): AnyCodecDescriptor =>
   ({
     codecId,
@@ -219,7 +237,7 @@ describe('buildCodecDescriptorRegistry — codecRefForColumn namespace coordinat
       columns: Object.fromEntries(
         Object.entries(columns).map(([name, codecId]) => [
           name,
-          { dataType: codecId.replace(/@\d+$/, ''), codecId, nullable: false },
+          { dataType: dataTypeOf(codecId), codecId, nullable: false },
         ]),
       ),
       primaryKey: { columns: ['id'] },

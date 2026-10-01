@@ -11,6 +11,19 @@ import { createTestSqlNamespace } from '../../1-core/contract/test/test-support'
 import type { SqlRuntimeExtensionDescriptor } from '../src/sql-context';
 import { createStubAdapter, createTestContext } from './utils';
 
+const DATA_TYPE_OF_CODEC: Readonly<Record<string, string>> = {
+  'nope/missing@1': 'nope/missing',
+  'pgvector/vector@1': 'pgvector/vector',
+  'test/captures-ctx@1': 'test/captures-ctx',
+  'test/shared@1': 'test/shared',
+};
+
+function dataTypeOf(codecId: string): string {
+  const dataType = DATA_TYPE_OF_CODEC[codecId];
+  if (dataType === undefined) throw new Error(`no data type listed for codec ${codecId}`);
+  return dataType;
+}
+
 /**
  * `forColumn(table, column)` dispatch materializes a shared codec instance keyed by `(codecId, typeParams)` and exposes it through a `SqlCodecInstanceContext` whose `name` carries the shared marker (`<codec:codecId>`, `<col:Table.column>`, or the `storage.types` alias). Multiple columns whose `CodecRef`s canonicalize to the same key share that single instance and aggregate their sites into `usedAt`.
  */
@@ -63,7 +76,7 @@ describe('buildContractCodecRegistry — per-column codec instance context', () 
       tables[tableName] = {
         columns: {
           field: {
-            dataType: columnSpec.codecId.replace(/@\d+$/, ''),
+            dataType: dataTypeOf(columnSpec.codecId),
             codecId: columnSpec.codecId,
             nullable: false,
           },
@@ -420,7 +433,7 @@ describe('buildContractCodecRegistry — forColumn delegates to forCodecRef', ()
       tables[tableName] = {
         columns: {
           field: {
-            dataType: columnSpec.codecId.replace(/@\d+$/, ''),
+            dataType: dataTypeOf(columnSpec.codecId),
             codecId: columnSpec.codecId,
             nullable: false,
           },

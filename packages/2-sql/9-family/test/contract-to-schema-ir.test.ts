@@ -42,6 +42,22 @@ import {
   detectDestructiveChanges,
 } from '../src/core/migrations/contract-to-schema-ir';
 
+const DATA_TYPE_OF_CODEC: Readonly<Record<string, string>> = {
+  'pg/enum@1': 'pg/enum',
+  'pg/text@1': 'pg/text',
+  'pg/timestamptz@1': 'pg/timestamptz',
+  'pg/vector@1': 'pgvector/vector',
+  'pgvector/vector@1': 'pgvector/vector',
+  'sql/char@1': 'pg/char',
+  'test/unknown@1': 'test/unknown',
+};
+
+function dataTypeOf(codecId: string): string {
+  const dataType = DATA_TYPE_OF_CODEC[codecId];
+  if (dataType === undefined) throw new Error(`no data type listed for codec ${codecId}`);
+  return dataType;
+}
+
 const testRenderer: DefaultRenderer = (def: ColumnDefault, _column, { typeText }) => {
   if (def.kind === 'function') return def.expression;
   const { value } = def;
@@ -123,7 +139,7 @@ function col(overrides: Partial<StorageColumn>): StorageColumn {
   const codecId = overrides.codecId ?? 'pg/text@1';
   return {
     codecId,
-    dataType: codecId.replace(/@\d+$/, ''),
+    dataType: dataTypeOf(codecId),
     nullable: false,
     ...overrides,
   };
