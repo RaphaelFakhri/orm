@@ -99,10 +99,10 @@ export function mapFieldNamesToColumns(input: {
 }
 
 /**
- * The `PSL_DUPLICATE_ATTRIBUTE` diagnostic for a model attribute declared
- * more than once on one model. Shared by the built-in `@@control` and `@@hint`
- * paths and the contributed-model-attribute path so the code and wording stay
- * in one place. `name` is the bare attribute name (`control`, `rls`, …).
+ * The `PSL_DUPLICATE_ATTRIBUTE` diagnostic for a model attribute declared more than once on one
+ * model. Shared by the built-in `@@control` and `@@hint` paths and the contributed-model-attribute
+ * path so the code and wording stay in one place. `name` is the bare attribute name (`control`,
+ * `rls`, …).
  */
 export function duplicateModelAttributeDiagnostic(input: {
   readonly name: string;
