@@ -30,11 +30,11 @@ describe('a column typed by a named type', () => {
   const MONEY = {
     kind: 'codec-instance',
     codecId: 'pg/numeric@1',
-    nativeType: 'numeric',
+    dataType: 'pg/numeric',
     typeParams: { precision: 10, scale: 2 },
   };
   const moneyColumn = {
-    nativeType: 'numeric',
+    dataType: 'pg/numeric',
     codecId: 'pg/numeric@1',
     nullable: false,
     typeRef: 'Money',

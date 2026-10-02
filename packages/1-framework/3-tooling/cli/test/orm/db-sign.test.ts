@@ -369,7 +369,7 @@ describe('db sign', () => {
 
     it('reports a refused connection as every command does, with its driver code', async () => {
       const dir = await projectDir();
-      mocks.schemaVerify.mockRejectedValue(refusedConnection());
+      mocks.dbSign.mockRejectedValue(refusedConnection());
 
       const run = await harness(ormConfig()).run(['db', 'sign', '--json'], { cwd: dir });
 
@@ -379,7 +379,7 @@ describe('db sign', () => {
 
     it('keeps the diagnostics of a structured driver error, without the connection string', async () => {
       const dir = await projectDir();
-      mocks.schemaVerify.mockRejectedValue(refusedWithDiagnostics());
+      mocks.dbSign.mockRejectedValue(refusedWithDiagnostics());
 
       const run = await harness(ormConfig()).run(['db', 'sign', '--json'], { cwd: dir });
 

@@ -100,7 +100,7 @@ A type written by hand for such a contract changes the same way: `readonly nativ
 
 The upgrade gives every contract a new storage hash. Each database's marker still holds the old hash, so until you sign it:
 
-- `prisma migrate` refuses to run with `MIGRATION.MARKER_MISMATCH`;
+- `prisma db migrate` refuses to run with `MIGRATION.MARKER_MISMATCH`;
 - the running application logs `CONTRACT.MARKER_MISMATCH` when it starts;
 - `prisma migration status` does not label the migrations applied before the upgrade as applied.
 

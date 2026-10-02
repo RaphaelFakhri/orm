@@ -1,7 +1,7 @@
 import type { ContractModel, ContractValueObject } from '@internal/contract/types';
 import {
   type AnyCodecDescriptor,
-  type CodecLookup,
+  type CodecLookupWithDescriptors,
   createDataTypeLookup,
 } from '@internal/framework-components/codec';
 import { UNBOUND_NAMESPACE_ID } from '@internal/framework-components/ir';
@@ -24,7 +24,7 @@ const codecDataTypes: Readonly<Record<string, AnyCodecDescriptor['dataType']>> =
   't/text@1': text.id,
 };
 
-const codecLookup: CodecLookup = {
+const codecLookup: CodecLookupWithDescriptors = {
   get: () => undefined,
   renderOutputTypeFor: () => undefined,
   descriptorFor: (codecId) => {
@@ -59,6 +59,7 @@ function familyInstance(valueObjectStorageType: string | undefined) {
     extensionIds: [],
     codecLookup,
     dataTypeLookup: createDataTypeLookup([int4, jsonb, text]),
+    declaredDataTypes: [],
     authoringContributions: {
       type: {
         Jsonb: { kind: 'typeConstructor', output: { codecId: 't/jsonb@1' } },

@@ -80,11 +80,11 @@ import {
 } from '@internal/sql-contract/entity-handle-lowering-hook';
 import { isAuthoredIndexInput } from '@internal/sql-contract/index-naming';
 import {
+  type AuthoredStorageType,
   resolvedTypeParams,
   type SqlModelStorage,
   type SqlNamespaceBase,
   type SqlNamespaceInput,
-  type StorageTypeInstance,
 } from '@internal/sql-contract/types';
 import { deriveValueSetFromEntity } from '@internal/sql-contract/value-set-derivation-hook';
 import {
@@ -1504,7 +1504,7 @@ interface BuildValueObjectNodesInput {
   readonly enumHandles: ReadonlyMap<string, EnumTypeHandle>;
   readonly namedTypeDescriptors: ReadonlyMap<string, ColumnDescriptor>;
   /** The named types; a member typed by one takes its parameters inline. */
-  readonly namedTypes: Record<string, StorageTypeInstance>;
+  readonly namedTypes: Record<string, AuthoredStorageType>;
   readonly scalarColumnDescriptors: ReadonlyMap<string, ColumnDescriptor>;
   readonly composedExtensions: ReadonlySet<string>;
   readonly familyId: string;

@@ -41,7 +41,7 @@ const sqliteContract = new TestSqlContractSerializer().deserializeContract({
             post: {
               columns: {
                 id: { codecId: 'sqlite/integer@1', dataType: 'sqlite/integer', nullable: false },
-                price: { codecId: 'sqlite/bigint@1', dataType: 'sqlite/bigint', nullable: false },
+                price: { codecId: 'sqlite/bigint@1', dataType: 'sqlite/integer', nullable: false },
               },
               uniques: [],
               indexes: [],

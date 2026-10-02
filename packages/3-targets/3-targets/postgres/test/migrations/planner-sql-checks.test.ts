@@ -31,22 +31,19 @@ describe('buildExpectedFormatType', () => {
 
   it('names a fixed-length type without a length as format_type does, with a length of 1', () => {
     expect([
-      buildExpectedFormatType(
-        { nativeType: 'character', codecId: 'sql/char@1', nullable: false },
-        types,
-      ),
-      buildExpectedFormatType({ nativeType: 'bit', codecId: 'pg/bit@1', nullable: false }, types),
+      buildExpectedFormatType({ codecId: 'sql/char@1' }, types),
+      buildExpectedFormatType({ codecId: 'pg/bit@1' }, types),
     ]).toEqual(['character(1)', 'bit(1)']);
   });
 
   it('names a type written under another PostgreSQL name as format_type does', () => {
     expect(
       [
-        { nativeType: 'char', codecId: 'sql/char@1' },
-        { nativeType: 'varchar', codecId: 'sql/varchar@1' },
-        { nativeType: 'int', codecId: 'sql/int@1' },
-        { nativeType: 'float', codecId: 'sql/float@1' },
-      ].map((column) => buildExpectedFormatType({ ...column, nullable: false }, types)),
+        { codecId: 'sql/char@1' },
+        { codecId: 'sql/varchar@1' },
+        { codecId: 'sql/int@1' },
+        { codecId: 'sql/float@1' },
+      ].map((column) => buildExpectedFormatType(column, types)),
     ).toEqual(['character(1)', 'character varying', 'integer', 'double precision']);
   });
 
@@ -58,9 +55,7 @@ describe('buildExpectedFormatType', () => {
         { codecId: 'pg/time-temporal@1', typeParams: { precision: 0 } },
         { codecId: 'pg/timetz@1', typeParams: { precision: 2 } },
         { codecId: 'pg/numeric@1', typeParams: { precision: 10 } },
-      ].map((column) =>
-        buildExpectedFormatType({ ...column, nativeType: 'unused', nullable: false }, types),
-      ),
+      ].map((column) => buildExpectedFormatType(column, types)),
     ).toEqual([
       'timestamp(3) with time zone',
       'timestamp(6) without time zone',

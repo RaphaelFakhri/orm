@@ -60,7 +60,7 @@ const contract = new SqlContractSerializer().deserializeContract({
               columns: {
                 id: { codecId: 'sqlite/integer@1', dataType: 'sqlite/integer', nullable: false },
                 email: { codecId: 'sqlite/text@1', dataType: 'sqlite/text', nullable: false },
-                metadata: { codecId: 'sqlite/json@1', dataType: 'sqlite/json', nullable: true },
+                metadata: { codecId: 'sqlite/json@1', dataType: 'sqlite/text', nullable: true },
               },
               uniques: [],
               indexes: [],
