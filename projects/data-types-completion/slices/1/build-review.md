@@ -28,6 +28,7 @@ Reviewer-maintained. Contract: `projects/data-types-completion/design.md` sectio
 | review fixes 2 | 1 (`5a6f37bfaa..7bece37e1a`) | ANOTHER ROUND NEEDED: 1 must-fix, 2 low |
 | review fixes 2 | 2 (`9d4437193f`, `6b99abad7d`) | SATISFIED: S1-rf2-R1-1 to S1-rf2-R1-3 closed, no new finding |
 | review fixes 3 | 1 (`c3f36b3369..e5641a42ce`, after the merge of `main`) | ANOTHER ROUND NEEDED: 1 low |
+| review fixes 3 | 2 (`a8e36d4744`) | SATISFIED: S1-rf3-R1-1 closed, no new finding |
 
 ## Findings log
 
@@ -258,6 +259,10 @@ All 19 items of `wip/briefs/review-fixes-1.md` are built as written. Code review
 - Where: `docs/reference/codec-authoring-guide.md`, "Assembly is strict" (items 1 to 8), and the paragraph under "Declaring a data type" that ends "has no name to write".
 - What is wrong: `2e2bfb4018` makes assembly refuse a SQL stack in which a codec represents a data type that is not a `SqlDataType`. Extension authors read this guide to learn what assembly refuses, and its list stops at item 8. The earlier paragraph still describes the old failure, a column whose type has no name to write when a migration is planned, which the check now prevents.
 - Change: add item 9 to the second list: in a SQL stack, a codec represents a data type not declared with `sqlDataType`; `sql/expression` is the one data type no column has. Replace the "has no name to write" sentence with one saying that a SQL stack in which a codec represents such a type is refused at assembly.
+
+### Review fixes 3 round 2 status of the round 1 finding
+
+- S1-rf3-R1-1: closed by `a8e36d4744`. Item 9 of "Assembly is strict" says the error names the codec, its data type and the data type's contributor, which is what `enforceSqlDataTypeInvariants` throws (an `InternalError`, as the list's introduction says). The reworded sentence in "Declaring a data type" says assembly refuses a codec of a type declared with plain `dataType`, and that `sql/expression` is such a type, which matches `isSqlDataType` and `sql-expression.ts`. The commit also makes `slices/1/pr-body.md` identical to the published copy on the slice 2 branch, closing the round 1 referral. `lint:docs` exits 0 (`wip/rv3/lint-docs-r2.log`). Both sign-offs, no AI attribution.
 
 ## Round notes
 
