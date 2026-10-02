@@ -325,14 +325,15 @@ export async function runSqliteCodecProjection(
 
   let canonical: JsonValue;
   try {
-    const toCanonicalForm = dataTypes.get(descriptor.dataType)?.toCanonicalForm;
+    const toCanonicalForm =
+      descriptor.toCanonicalForm ?? dataTypes.get(descriptor.dataType)?.toCanonicalForm;
     canonical = toCanonicalForm === undefined ? projected : toCanonicalForm(projected);
   } catch (error) {
     return {
       ...base,
       failure: {
         kind: 'mismatch',
-        detail: `the data type ${descriptor.dataType} refuses the projected ${JSON.stringify(projected)}: ${describeError(error)}`,
+        detail: `the canonical form of ${descriptor.codecId} refuses the projected ${JSON.stringify(projected)}: ${describeError(error)}`,
       },
     };
   }

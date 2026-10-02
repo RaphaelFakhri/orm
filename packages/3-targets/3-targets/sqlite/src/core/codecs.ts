@@ -26,6 +26,7 @@ import {
   INT64_RANGE,
   refuseJsonValue,
   SAFE_INTEGER_BIGINT_RANGE,
+  type ToCanonicalForm,
 } from '@internal/framework-components/codec';
 import { canonicalizeJson } from '@internal/framework-components/utils';
 import {
@@ -45,6 +46,7 @@ import {
   sqlVarcharDescriptor,
 } from '@internal/sql-relational-core/ast';
 import { blindCast } from '@internal/utils/casts';
+import { structuredError } from '@internal/utils/structured-error';
 import { defineSqliteCodecs, SqliteCodecDescriptor, sqliteCodec } from './codec-descriptor';
 import {
   SQLITE_BIGINT_CODEC_ID,
@@ -573,10 +575,23 @@ export class SqliteDatetimeCodec extends CodecImpl<
   }
 }
 
+/**
+ * `sqlite/text` stores this codec's values as text and declares no canonical form for them, so the
+ * codec declares it: written text with a UTC offset becomes the instant in UTC.
+ */
+const datetimeCanonicalForm: ToCanonicalForm = (value) => {
+  if (typeof value === 'string') return sqliteDatetimeCanonical(value);
+  throw structuredError('CONTRACT.CAST_REFUSED', `Expected text, got ${JSON.stringify(value)}.`, {
+    why: 'A SQLite datetime is stored as text.',
+    fix: 'Write the date and time as text with a UTC offset, as in "2024-01-01T12:34:56Z".',
+  });
+};
+
 export class SqliteDatetimeDescriptor extends SqliteCodecDescriptor<void> {
   protected override jsonProjection(expression: ProjectionExpr): ProjectionExpr {
     return expression;
   }
+  override readonly toCanonicalForm = datetimeCanonicalForm;
   override readonly dataType = sqliteText.id;
   override readonly codecId = SQLITE_DATETIME_CODEC_ID;
   override readonly traits = ['equality', 'order'] as const;

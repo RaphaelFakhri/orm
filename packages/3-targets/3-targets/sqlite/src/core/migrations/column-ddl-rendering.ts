@@ -1,4 +1,4 @@
-import { type SqlTypeLookups, sqlDataTypeOfCodec } from '@internal/sql-contract/data-type';
+import type { SqlTypeLookups } from '@internal/sql-contract/data-type';
 import type { StorageColumn } from '@internal/sql-contract/types';
 import {
   DdlColumn,
@@ -30,6 +30,7 @@ import { buildColumnTypeSql } from './planner-ddl-builders';
  */
 function columnLike(
   column: SqlColumnIR,
+  types: SqlTypeLookups,
 ): Pick<StorageColumn, 'codecId' | 'nullable' | 'many' | 'typeParams' | 'default'> {
   if (column.codecRef === undefined || column.codecBaseNativeType === undefined) {
     throw new InternalError(
@@ -54,19 +55,23 @@ function columnLike(
         }
       : {}),
     // DDL writes the default as authored; `resolvedDefault` exists for the diff comparison only.
-    ...ifDefined('default', plannableDefault(column)),
+    ...ifDefined('default', plannableDefault(column, types)),
   };
 }
 
 /**
- * The default DDL writes. A contract default the column's data type refuses, which a contract
- * emitted by an earlier version can hold, is refused rather than written.
+ * The default DDL writes. A contract default the column's codec or data type refuses, which a
+ * contract emitted by an earlier version can hold, is refused rather than written.
  */
-function plannableDefault(column: SqlColumnIR): StorageColumn['default'] {
+function plannableDefault(column: SqlColumnIR, types: SqlTypeLookups): StorageColumn['default'] {
   const columnDefault = column.authoredDefault ?? column.resolvedDefault;
+  const codecCanonicalForm =
+    column.codecRef === undefined
+      ? undefined
+      : types.codecLookup.descriptorFor(column.codecRef.codecId)?.toCanonicalForm;
   const refusal = contractDefaultRefusal(
     columnDefault,
-    column.dataType?.toCanonicalForm,
+    codecCanonicalForm ?? column.dataType?.toCanonicalForm,
     (column.many ?? column.codecRef?.many) === true,
   );
   if (refusal !== undefined) {
@@ -107,7 +112,7 @@ export function columnSpecFromNode(
   inline: boolean,
   types: SqlTypeLookups,
 ): SqliteColumnSpec {
-  const like = columnLike(column);
+  const like = columnLike(column, types);
   const typeSql = buildColumnTypeSql(like, types);
   return {
     name: column.name,
@@ -129,7 +134,7 @@ export function ddlColumnFromNode(
   inline: boolean,
   types: SqlTypeLookups,
 ): DdlColumn {
-  const like = columnLike(column);
+  const like = columnLike(column, types);
   const typeSql = buildColumnTypeSql(like, types);
   if (inline) {
     // `DdlColumn` has no SQLite-specific autoincrement flag, so the full

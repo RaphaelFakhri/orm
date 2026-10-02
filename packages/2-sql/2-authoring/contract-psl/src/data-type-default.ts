@@ -243,6 +243,21 @@ function codecRefTypeParams(
       );
 }
 
+/** A value in the canonical form the column's codec declares, when it declares one. */
+function inCodecCanonicalForm(
+  descriptor: AnyCodecDescriptor,
+  value: JsonValue,
+  elementIndex: number | undefined,
+): ReadDefaultResult {
+  if (descriptor.toCanonicalForm === undefined) return { ok: true, value };
+  try {
+    return { ok: true, value: descriptor.toCanonicalForm(value) };
+  } catch (error) {
+    if (isInternalError(error)) throw error;
+    return { ok: false, refusal: { kind: 'unreadable', message: messageOf(error), elementIndex } };
+  }
+}
+
 /**
  * The column's codec descriptor, and `read`, which reads a value in its stored JSON form with the column's codec, built with the column's type parameters.
  */
@@ -269,7 +284,10 @@ function storedValueReader(input: {
       `Field "${input.fieldPath}": no codec descriptor is registered for "${input.column.codecId}", but the column was resolved from one.`,
     );
   }
-  const read = (value: JsonValue, elementIndex: number | undefined): ReadDefaultResult => {
+  const read = (written: JsonValue, elementIndex: number | undefined): ReadDefaultResult => {
+    const canonical = inCodecCanonicalForm(descriptor, written, elementIndex);
+    if (!canonical.ok) return canonical;
+    const { value } = canonical;
     try {
       codec.decodeJson(value);
       return { ok: true, value };

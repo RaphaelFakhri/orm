@@ -45,22 +45,16 @@ changes:
       glob: "**/*.{ts,mts,cts}"
       matches:
         - '\bControlFamilyInstance\s*<'
-  - id: value-object-storage-type-on-target
-    summary: |
-      `authoring.valueObjectStorageType` is contributed by the target descriptor, not the adapter
-      descriptor: the contract build reads it from the target.
-    detection:
-      glob: "**/*.{ts,mts,cts}"
-      matches:
-        - '\bvalueObjectStorageType\s*:'
   - id: sqlite-data-types-are-stored-types
     summary: |
       The SQLite target declares only the types SQLite stores, plus the two character types:
       `sqlite/text`, `sqlite/integer`, `sqlite/real`, `sqlite/blob`, `sqlite/character` and
       `sqlite/character-varying`. `sqlite/json`, `sqlite/datetime` and `sqlite/bigint` are deleted:
       a codec, cast or authoring entry that names one fails assembly. The JSON and date-time codecs
-      represent `sqlite/text`, the big integer codecs `sqlite/integer`. On SQLite a `BigInt` literal
-      default is written `DEFAULT 42` instead of `DEFAULT '42'`.
+      represent `sqlite/text`, the big integer codecs `sqlite/integer`. The date-time canonical form
+      moves from `sqlite/datetime` to the codec `sqlite/datetime@1`, whose descriptor declares
+      `toCanonicalForm`. On SQLite a `BigInt` literal default is written `DEFAULT 42` instead of
+      `DEFAULT '42'`.
     detection:
       glob: "**/*.{ts,mts,cts}"
       matches:
@@ -195,18 +189,6 @@ signSpaces(options: {
 
 `SpaceToSign` is `{ space, contract }`. The method writes each space's marker with its contract's hashes and returns one `SpaceSignature` per space: `{ space, contract: { storageHash, profileHash }, marker: { created, updated, previous? } }`. It does not verify the schema; `db sign` verifies every space before it calls the method. A family whose database has transactions writes every marker in one transaction, so a failed write leaves every marker as it was.
 
-## `value-object-storage-type-on-target`
-
-Move `valueObjectStorageType` from the adapter descriptor's `authoring` to the target descriptor's `authoring`:
-
-```ts
-// before: the adapter's control descriptor
-authoring: { valueObjectStorageType: 'Jsonb' },
-
-// after: the target's descriptor metadata
-authoring: { type: postgresAuthoringTypes, valueObjectStorageType: 'Jsonb', field: postgresAuthoringFieldPresets },
-```
-
 ## `sqlite-data-types-are-stored-types`
 
 A codec, cast or authoring entry that named one of the deleted types names the type SQLite stores instead: `sqlite/text` for JSON and date-time values, `sqlite/integer` for big integers. The data types are exported from `@internal/target-sqlite/data-types`.
@@ -221,7 +203,21 @@ override readonly dataType = sqliteText.id;        // 'sqlite/text'
 override readonly dataType = sqliteInteger.id;     // 'sqlite/integer'
 ```
 
-The canonical forms follow the stored type: `sqlite/integer` stores digit text and `sqlite/text` a string. A JSON codec on SQLite stores the JSON text of the document, and a date-time codec its text. Because both big integer codecs store digit text, a migration planned for a SQLite `BigInt` column with a literal default writes `DEFAULT 42` instead of `DEFAULT '42'`; tests that assert planned SQLite SQL change to match. A database created with `DEFAULT '42'` still verifies.
+The canonical forms follow the stored type: `sqlite/integer` stores digit text and `sqlite/text` a string. A JSON codec on SQLite stores the JSON text of the document, and a date-time codec its text. `sqlite/text` declares no canonical form, so a codec whose values have several written forms declares one on its descriptor: `sqlite/datetime@1` does, with `toCanonicalForm` (the function that was `sqliteDatetime.toCanonicalForm`). A contract source, `db verify` and DDL use a codec's canonical form before its data type's.
+
+```ts
+import type { ToCanonicalForm } from '@internal/framework-components/codec';
+
+// your function: written text in, the one text the contract stores out; it throws
+// CONTRACT.CAST_REFUSED for text the codec does not hold
+declare const datetimeCanonicalForm: ToCanonicalForm;
+
+export class MyDatetimeDescriptor extends SqliteCodecDescriptor<void> {
+  override readonly dataType = sqliteText.id;
+  override readonly toCanonicalForm = datetimeCanonicalForm;
+  // codecId, traits, the JSON projection and the factory follow
+}
+``` Because both big integer codecs store digit text, a migration planned for a SQLite `BigInt` column with a literal default writes `DEFAULT 42` instead of `DEFAULT '42'`; tests that assert planned SQLite SQL change to match. A database created with `DEFAULT '42'` still verifies.
 
 ## `authoring-entry-key-checked`
 
