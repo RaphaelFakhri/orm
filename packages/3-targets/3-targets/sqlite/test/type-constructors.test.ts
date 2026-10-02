@@ -2,9 +2,10 @@ import { collectScalarTypeConstructors } from '@internal/framework-components/au
 import { createDataTypeLookup } from '@internal/framework-components/codec';
 import { unquotedSqlBaseNameOfCodec } from '@internal/sql-contract/data-type';
 import { describe, expect, it } from 'vitest';
-import { sqliteAuthoringTypes, sqliteScalarAuthoringTypes } from '../src/core/authoring';
+import { sqliteAuthoringTypes } from '../src/core/authoring';
 import { createSqliteBuiltinCodecLookup } from '../src/core/codec-registry';
 import { sqliteDataTypes } from '../src/core/data-types';
+import { sqliteScalarAuthoringTypes } from '../src/core/type-constructors';
 import sqliteTargetPack from '../src/exports/pack';
 
 describe('the type constructors the SQLite target contributes', () => {

@@ -8,14 +8,14 @@ Related: [ADR 171 — Parameterized native types in contracts](ADR%20171%20-%20P
 
 ## At a glance
 
-Every PSL storage type comes from one contributed authoring namespace. A scalar is a type constructor that can be called with no arguments, so bare `String` means `String()`. Parameterized storage types such as `VarChar(191)` use the same constructor descriptor and the same resolution path. Targets and extension packs contribute both forms through `AuthoringContributions.type`; there is no separate scalar-descriptor map or database-attribute channel.
+Every PSL storage type comes from one contributed authoring namespace. A scalar is a type constructor that can be called with no arguments, so bare `String` means `String()`. Parameterized storage types such as `VarChar(191)` use the same constructor descriptor and the same resolution path. Both forms are contributed through `AuthoringContributions.type`: a target's by its adapter, an extension pack's by the pack. There is no separate scalar-descriptor map or database-attribute channel.
 
 ## Grounding example
 
-A target contributes ordinary scalars and parameterized storage types with the same descriptor shape:
+A target defines ordinary scalars and parameterized storage types with the same descriptor shape, and its adapter contributes them:
 
 ```ts
-const postgresAuthoringTypes = {
+const postgresPslTypeConstructors = {
   String: {
     kind: 'typeConstructor',
     output: { codecId: 'pg/text@1' },
@@ -60,7 +60,7 @@ A bare type name `T` is semantically the zero-argument instantiation `T()`. The 
 
 Parameterized storage types use the same descriptor and resolver. Their argument declarations validate the authoring call, and their output templates place resolved values in structured `typeParams`. The data type the codec represents writes the type's name from those parameters and bounds them, as decided by [ADR 254](ADR%20254%20-%20Data%20types%20and%20casts.md), which supersedes ADR 171's expansion hooks.
 
-Storage-type ownership follows the component boundary. Targets contribute their base and native storage types; extension packs contribute namespaced constructors unless the short-name policy permits otherwise. The SQL family interpreter resolves the assembled namespace generically and contains no PostgreSQL-native mapping table.
+Storage-type ownership follows the component boundary. A target defines its base and native storage types, next to the codecs they name, and its adapter contributes them. The reason is the TypeScript contract builder: it builds its `type.*` helpers from the family, the target and the extension packs, so a target contribution would add PSL type names such as `type.String()` to the builder. Extension packs contribute namespaced constructors unless the short-name policy permits otherwise. The SQL family interpreter resolves the assembled namespace generically and contains no PostgreSQL-native mapping table.
 
 PSL storage is selected only in type position. The former `@db.X(args)` channel is removed. Remaining source using that spelling fails with actionable migration guidance: rewrite `@db.X` as `X` and `@db.X(args)` as `X(args)` in type position.
 
@@ -76,7 +76,7 @@ Deriving scalar names from constructors keeps tooling aligned with interpretatio
 
 - Components contribute scalar and parameterized storage types through `AuthoringContributions.type` only. The `scalarTypeDescriptors` contribution and assembly surfaces are retired.
 - Bare type syntax and constructor-call syntax share precedence, collision handling, argument validation, and lowering.
-- Targets own native storage names and codec bindings. Family interpreters remain generic across targets.
+- Targets define native storage names and codec bindings, and their adapters contribute them. Family interpreters remain generic across targets.
 - `ControlStack.scalarTypes` remains a derived convenience view for consumers that need names, while `collectScalarTypeConstructors` provides the derived name-to-storage-output map.
 - TypeScript and PSL authoring helpers can be generated from the same descriptor namespace.
 - The contract representation does not change: storage entries still contain codec ids, base native types, and structured type parameters.
