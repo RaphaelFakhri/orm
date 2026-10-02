@@ -55,11 +55,11 @@ embedding pgvector.Vector(1536)
 ## Cross-cutting requirements
 
 1. **One source per fact.** After the project no production code holds a table of database type names, and no type name is written in two places. The grep checks in each slice enforce this.
-2. **Migration SQL does not change** for any existing column. A data type's written name is the name contracts store today. The one exception is a fix: a `typeRef` column whose type has no parameters is no longer written as a quoted name (design 3.6).
+2. **Migration SQL does not change** for any existing column. A data type's written name is the name contracts store today. Two exceptions, both fixes: a `typeRef` column whose type has no parameters is no longer written as a quoted name (design 3.6); and on SQLite a `BigInt` column's literal default is written as bare digits (`DEFAULT 42`), like an `Int` column's, because both codecs store digit text after slice 2 (design 9.3).
 3. **Exact comparison.** `db verify` compares a data type id and normalised parameters by equality. Other names are used only while reading a database.
 4. **Extensible by declaration.** An extension's data type is recognised by introspection, verify and infer with no change outside the extension. No production code names a type it does not own.
 5. **No SQL words in the framework layer.** Names, texts and rendering live in the SQL family's data type; the framework `DataType` gains only the parameter schema. `pnpm lint:framework-vocabulary` must not rise.
-6. **Targets declare types; the family declares none** and exports shared helpers.
+6. **Targets declare column types; the family declares none** and exports shared helpers. The SQL family's `sql/expression` (TML-3296) is the type of a written SQL expression value, never a column's type: it has no texts and is neither written nor reported.
 7. **A data type is what the database stores.** On SQLite that is `text`, `integer`, `real`, `blob`, and the two character types.
 8. **No backward-compatibility shims.** An old-format contract is refused. The refusal does not mention the upgrade script.
 9. **Tests against a real database** for everything that reads or writes database text.
