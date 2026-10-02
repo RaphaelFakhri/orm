@@ -6,8 +6,8 @@ The work is four slices, in this order: slice 1 (TML-3386, sections 2 to 6), sli
 
 ## 1. Terms
 
-- **Data type**: a database type, registered by id (`pg/int8`). A data type is what the database stores.
-- **Codec**: one representation of a data type's values in memory, on the wire and in `contract.json`. Every codec names exactly one data type. Values are the codec's job and never the data type's.
+- **Data type**: the type of a value Prisma stores or passes to the database, registered by id (`pg/int8`), as ADR 254 defines it. A column's data type is what the database stores; in SQL it is a `SqlDataType`. `sql/expression` is the one data type no column has.
+- **Codec**: one representation of a data type's values in memory, on the wire and in `contract.json`. Every codec names exactly one data type. The data type owns its canonical form and its casts (ADR 254); the codec reads, writes and checks values. A data type never parses or prints SQL value literals.
 - **Text**: one way a database type is written or reported, possibly with parameters: `timestamp(3) with time zone`.
 - **Written text**: the text a migration writes. **Catalog text**: the text the database catalog prints (`format_type` on Postgres, `PRAGMA table_info` on SQLite). **Claiming text**: a text that is `catalog` or carries neither mark; only claiming texts are used to recognise a reported type.
 - **Base name**: the name of a data type with no parameters, used where parameters must not appear (section 2.3).
@@ -60,6 +60,7 @@ Rules, enforced by `sqlDataType` when called, with an `InternalError` naming the
 3. `display`, when present, equals `text` compared without regard to letter case.
 4. `render` and `fromReported` are allowed only together with `claimsKind`, and then `texts` must be absent.
 5. A text marked only `written` never claims. A text marked `catalog`, or with neither mark, claims.
+6. Every normal form has a written text, because the contract side of verify writes the normal form (3.4). The check: for no parameters, and for each text's placeholders set to `1`, parameters that `params` accepts are normalised, and a `written` text must have exactly the normalised keys. A type with no written text (`pg/text-array`) or with `claimsKind` is exempt.
 
 ### 2.3 Writing a name
 
@@ -168,9 +169,9 @@ Every text below is complete: no other text is declared. `W` marks written, `C` 
 ## 3. Who registers, readers, and what is deleted
 
 1. The Postgres and SQLite targets' descriptor metadata register `dataTypes`, in the control and runtime planes; the adapters stop. The scalar type constructors are defined in each target (`src/core/type-constructors.ts`) and contributed by the adapter, as `main` does since TML-3278: the TypeScript builder's `type.*` helpers are built from the family, the target and the extensions, so a target that contributed them would add `type.String()` and similar helpers to the builder's public surface. The data type authoring entries (`authoring.dataTypes`: the tags, the plain entries and the number classifier) are contributed by the target, because the pack that owns a data type contributes its PSL support. TypeScript column helpers keep their public import paths.
-2. Each SQL target exports its data types from `./data-types`, which both targets have. Slice 1 adds the Postgres target's shared files (`src/core/data-types.ts`, `src/core/data-type-entries.ts` and what they import) and both targets' `src/exports/data-types.ts` to `architecture.config.json` with plane `shared`; the rest of `src/core/**` stays unmapped. Runtime target and extension descriptors register the same `dataTypes`. `createSqlExecutionContext` assembles a `DataTypeLookup` with the owner check of `assembleDataTypes` and passes it to the Postgres SQL renderer next to `codecDescriptorRegistry`.
+2. Each SQL target exports its data types from `./data-types`, which both targets have. Slice 1 adds the Postgres target's shared files (`src/core/data-types.ts`, `src/core/data-type-entries.ts` and what they import) and both targets' `src/exports/data-types.ts` to `architecture.config.json` with plane `shared`; the rest of `src/core/**` stays unmapped. The helpers both targets' declarations and entries use (the number classifier, the JSON body reader and printer, `escapePslString`, the 64-bit integer canonical form and `canonicalDateTime`) live in `@internal/sql-contract/data-type-support`, in the shared plane. Runtime target and extension descriptors register the same `dataTypes`. `createSqlExecutionContext` assembles a `DataTypeLookup` with the owner check of `assembleDataTypes` and passes it to the Postgres SQL renderer next to `codecDescriptorRegistry`.
 3. Deleted, with every reader moved to the data type: `targetTypes` on `CodecDescriptorTemplate` and every declaration; `targetTypesFor`; `byTargetType`; the Postgres codec hook `nativeType(params)` and `nativeTypeFor`; `controlPlaneHooks[codecId].expandNativeType`, `expandLength`, `expandPrecision`, `expandNumeric`, the pgvector, postgis and arktype-json hooks; `buildNativeTypeExpander`; `buildSqlTypeMetadataRegistry` and `typeMetadataRegistry`; `ControlAdapter.normalizeNativeType`; `deriveAnnotations`' `storageTypes`; `validateScalarTypeCodecIds`. Pack metadata `types.storage[].nativeType` stays until slice 2, because it is copied into 15 committed contracts. `inventory/change-list.md`'s "Becomes" text binds for every file it lists, including `examples/prisma-8-demo/src/app/ContractView.tsx` and the language server. The released `stamp-storage-types-kind.ts` upgrade scripts are not changed.
-4. `ContractToSchemaIROptions` replaces `expandNativeType` with `dataTypeLookup: DataTypeLookup` and `codecLookup: CodecLookup`, both required. The contract side's type text is `renderSqlTypeName` of the column's data type and `dataTypeParams`, plus `[]` for lists.
+4. `ContractToSchemaIROptions` replaces `expandNativeType` with `dataTypeLookup: DataTypeLookup` and `codecLookup: CodecLookup`, both required. The contract side's type text is `renderSqlTypeName` of the column's data type and the normal form of its `dataTypeParams`, plus `[]` for lists. It uses the normal form because verify compares it with what the catalog prints, and the catalog prints the normal form: a `Numeric(10)` column is written `numeric(10)` and reported `numeric(10,0)`, and a bare `Char` is reported `character(1)`. A type with `claimsKind` gives its `typeName` unquoted.
 5. Readers after the change:
    - Both planners' `buildColumnTypeSql` call `renderSqlTypeName` with the column's data type, found through `codecLookup.descriptorFor(codecId).dataType`.
    - The Postgres planner chooses `SERIAL`, `BIGSERIAL`, `SMALLSERIAL` for data type ids `pg/int4`, `pg/int8`, `pg/int2`. Identity values and `renderDefaultLiteral`'s JSON branch test data type ids.
@@ -195,7 +196,7 @@ One contract change follows for users only: the five shared column packagers in 
 ## 5. Assembly checks
 
 1. In `enforceDataTypeInvariants` (framework, `control-stack.ts`), each an `InternalError` naming the contributor and the id: a type constructor or field preset names a codec for which `codecLookup.descriptorFor` returns nothing; a constructor maps an argument onto a key that neither the codec's data type's `params` nor the codec's own keys declare; two constructors of one data type are both marked `inferred`.
-2. In a new `enforceSqlDataTypeInvariants(stack)` in `packages/2-sql/9-family/src/core/assembly.ts`, called at the start of `createSqlControlFamilyInstance`: two SQL data types in the stack have claiming texts that collide, or claim the same kind. Two texts collide when either text's pattern matches the other text with each placeholder replaced by `1`.
+2. In one SQL family check, `enforceSqlDataTypeInvariants(stack.declaredDataTypes, stack.codecDescriptors)` in `packages/2-sql/9-family/src/core/assembly.ts`, called at the start of `createSqlControlFamilyInstance`, each naming the contributor: two SQL data types in the stack have claiming texts that collide, or claim the same kind; a data type casts from `sql/expression` (`CONTRACT.DATA_TYPE_CASTS_FROM_SQL_EXPRESSION`, from TML-3296); a codec represents a data type that is not a `SqlDataType`, because a codec represents a column's type and `sql/expression` is the one data type no column has. Two texts collide when either text's pattern matches the other text with each placeholder replaced by `1`.
 
 ## 6. Tests and docs for slice 1
 
@@ -263,7 +264,7 @@ Regeneration order is inventory `upgrade-rewrite.md` section 7. The proof requir
 
 ### 10.4 ADR and docs for slice 2
 
-ADR 254: status Accepted; "Data types" rewritten to the declaration of section 2 and the rule "a data type is what the database stores", replacing the paragraph that begins "Where a database's storage classes are shared"; "How PSL writes a value": the SQLite classifier paragraph rewritten to 9.4; "Columns and type constructors" states the stored column; "Assembly" gains the checks of section 5. `CONTRACT-FIDELITY.md` and the package READMEs named in inventory `change-list.md` part (c) are updated. `docs/reference/error-reference.md` loses `CONTRACT.NATIVE_TYPE_INVALID`.
+ADR 254: status Accepted; "Data types" rewritten to the declaration of section 2 and the rule "a column's data type is what the database stores; in SQL it is a `SqlDataType`, and `sql/expression` is the one data type no column has", replacing the paragraph that begins "Where a database's storage classes are shared"; "How PSL writes a value": the SQLite classifier paragraph rewritten to 9.4; "Columns and type constructors" states the stored column; "Assembly" gains the checks of section 5. `CONTRACT-FIDELITY.md` and the package READMEs named in inventory `change-list.md` part (c) are updated. `docs/reference/error-reference.md` loses `CONTRACT.NATIVE_TYPE_INVALID`.
 
 # Slice 3: tools recognise a column's type from declarations (TML-3387)
 
@@ -303,11 +304,11 @@ The function contains no type name, no target name and no branch on the data typ
 
 ### 12.1 Schema IR
 
-`SqlColumnIR` (`packages/2-sql/1-core/schema-ir`) gains `dataType: DataTypeId | undefined`; `typeParams` holds normalised `dataTypeParams`. `nativeType` is renamed `typeText`: the reported text on the database side, the written name on the contract side, used for display and DDL only. `resolvedNativeType` and `codecBaseNativeType` are deleted; `codecRef` stays.
+`SqlColumnIR` (`packages/2-sql/1-core/schema-ir`) keeps `main`'s field `dataType`, which holds the `DataType` object. Today only the contract side sets it, from `sqlDataTypeOfCodec`, and equality ignores it. Slice 3 sets it on both sides: the contract side as today, the introspected side from `resolveReportedSqlType` and the stack's `DataTypeLookup`, undefined when no data type claims the reported type. `typeParams` holds normalised `dataTypeParams`. Both fields become part of equality (12.2). `nativeType` is renamed `typeText`: the reported text on the database side, the written name on the contract side, used for display and DDL only. `resolvedNativeType` and `codecBaseNativeType` are deleted; `codecRef` stays. The DDL builders' paths that take a schema IR column (`renderColumnDdl` in both targets' `column-ddl-rendering.ts`) render the type from `column.dataType` and `codecRef.typeParams`, without `SqlTypeLookups` or `codecBaseNativeType`. The path that takes a contract column (`planner-recipes.ts`) keeps the lookups.
 
 ### 12.2 Equality
 
-Two columns have the same type when both `dataType` values are defined and equal, their `typeParams` are equal as canonical JSON, and their `many` flags are equal. Every string comparison of type names becomes this function: `sql-column-ir.ts:182-195`, the Postgres and SQLite issue planners, `sqlite/.../operations/tables.ts:225-226`, `planner-strategies.ts:85`. A column with `dataType` undefined never equals another. The reported text is shown in the mismatch message.
+Two columns have the same type when both `dataType` values are defined and their ids are equal, their `typeParams` are equal as canonical JSON, and their `many` flags are equal. Every string comparison of type names becomes this function: `sql-column-ir.ts:182-195`, the Postgres and SQLite issue planners, `sqlite/.../operations/tables.ts:225-226`, `planner-strategies.ts:85`. A column with `dataType` undefined never equals another. The reported text is shown in the mismatch message.
 
 ### 12.3 `ALTER COLUMN TYPE` postcheck
 
