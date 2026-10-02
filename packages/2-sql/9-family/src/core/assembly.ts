@@ -1,7 +1,8 @@
-import type { DataType, DataTypeLookup } from '@internal/framework-components/codec';
+import type { AnyCodecDescriptor, DataType } from '@internal/framework-components/codec';
 import type { TargetBoundComponentDescriptor } from '@internal/framework-components/components';
 import { assertUniqueCodecOwner } from '@internal/framework-components/control';
-import { findSqlDataTypeCollision } from '@internal/sql-contract/data-type';
+import { findSqlDataTypeCollision, isSqlDataType } from '@internal/sql-contract/data-type';
+import { assertNothingCastsFromSqlExpression } from '@internal/sql-contract/sql-expression';
 import { blindCast } from '@internal/utils/casts';
 import { InternalError } from '@internal/utils/internal-error';
 import type { CodecControlHooks } from './migrations/types';
@@ -57,41 +58,46 @@ export function extractCodecControlHooks(
   return hooks;
 }
 
-interface DataTypeContributor {
-  readonly id: string;
-  readonly dataTypes?: ReadonlyArray<DataType>;
+interface DeclaredDataType {
+  readonly type: DataType;
+  readonly contributedBy: string;
 }
 
 /**
- * Refuses two SQL data types in the stack's data type lookup that would both recognise one reported type: their claiming texts collide, or they claim the same kind. Each error names both data types and their contributors.
+ * The SQL family's checks of the stack's data types and codecs, each naming the contributor:
+ * no two SQL data types would both recognise one reported type, by colliding claiming texts or by
+ * claiming the same kind; no data type casts from `sql/expression`; and every codec represents a
+ * SQL data type, because a codec represents a column's type and `sql/expression` is the one data
+ * type no column has.
  */
-export function enforceSqlDataTypeInvariants(stack: {
-  readonly family: DataTypeContributor;
-  readonly target: DataTypeContributor;
-  readonly adapter?: DataTypeContributor | undefined;
-  readonly extensions: ReadonlyArray<DataTypeContributor>;
-  readonly dataTypeLookup: Pick<DataTypeLookup, 'all'>;
-}): void {
-  const collision = findSqlDataTypeCollision(stack.dataTypeLookup.all());
-  if (collision === undefined) return;
+export function enforceSqlDataTypeInvariants(
+  declaredDataTypes: ReadonlyArray<DeclaredDataType>,
+  codecDescriptors: ReadonlyArray<Pick<AnyCodecDescriptor, 'codecId' | 'dataType'>>,
+): void {
+  const declaredById = new Map(declaredDataTypes.map((declared) => [declared.type.id, declared]));
+  const describe = (type: DataType): string =>
+    `data type "${type.id}" contributed by "${declaredById.get(type.id)?.contributedBy ?? '<unknown>'}"`;
 
-  const contributors = [
-    stack.family,
-    stack.target,
-    ...(stack.adapter === undefined ? [] : [stack.adapter]),
-    ...stack.extensions,
-  ];
-  const describe = (type: DataType): string => {
-    const contributor = contributors.find((candidate) => candidate.dataTypes?.includes(type));
-    return `data type "${type.id}" contributed by "${contributor?.id ?? '<unknown>'}"`;
-  };
-  const { first, second, claims } = collision;
-  if (claims.by === 'kind') {
+  const collision = findSqlDataTypeCollision(declaredDataTypes.map(({ type }) => type));
+  if (collision !== undefined) {
+    const { first, second, claims } = collision;
+    if (claims.by === 'kind') {
+      throw new InternalError(
+        `The ${describe(first)} and the ${describe(second)} both claim the kind "${claims.kind}".`,
+      );
+    }
     throw new InternalError(
-      `The ${describe(first)} and the ${describe(second)} both claim the kind "${claims.kind}".`,
+      `The ${describe(first)} claims the text "${claims.first}", which collides with the text "${claims.second}" claimed by the ${describe(second)}.`,
     );
   }
-  throw new InternalError(
-    `The ${describe(first)} claims the text "${claims.first}", which collides with the text "${claims.second}" claimed by the ${describe(second)}.`,
-  );
+
+  assertNothingCastsFromSqlExpression(declaredDataTypes);
+
+  for (const codec of codecDescriptors) {
+    const represented = declaredById.get(codec.dataType)?.type;
+    if (represented === undefined || isSqlDataType(represented)) continue;
+    throw new InternalError(
+      `Codec "${codec.codecId}" represents ${describe(represented)}, which is not a SQL data type. In a SQL stack a codec represents a column's type, so its data type is declared with sqlDataType.`,
+    );
+  }
 }

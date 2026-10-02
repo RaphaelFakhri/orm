@@ -234,6 +234,7 @@ export function sqlDataType<Params extends SqlTypeParams = SqlTypeParams>(
   return type;
 }
 
+/** Whether `type` is a data type a SQL column can have. `sql/expression` is the one data type no column has. */
 export function isSqlDataType(type: DataType): type is SqlDataType {
   return 'sql' in type;
 }

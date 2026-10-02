@@ -1,6 +1,5 @@
 import type { SqlControlAdapterDescriptor } from '@internal/family-sql/control';
 import type { SqlControlAdapter } from '@internal/family-sql/control-adapter';
-import { assembleDataTypes } from '@internal/framework-components/codec';
 import { assemblePostgresCodecRegistry } from '@internal/target-postgres/codecs';
 import { escapeLiteral, qualifyName, quoteIdentifier } from '@internal/target-postgres/sql-utils';
 import { PostgresControlAdapter } from '../core/control-adapter';
@@ -27,9 +26,8 @@ const postgresAdapterDescriptor: SqlControlAdapterDescriptor<'postgres'> = {
       ...(stack.adapter === undefined ? [] : [stack.adapter]),
       ...stack.extensions,
     ];
-    const dataTypeLookup = assembleDataTypes(components).lookup;
-    const codecRegistry = assemblePostgresCodecRegistry(components, dataTypeLookup);
-    return new PostgresControlAdapter(codecRegistry, dataTypeLookup);
+    const codecRegistry = assemblePostgresCodecRegistry(components, stack.dataTypeLookup);
+    return new PostgresControlAdapter(codecRegistry, stack.dataTypeLookup);
   },
 };
 
