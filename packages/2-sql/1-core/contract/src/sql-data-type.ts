@@ -213,18 +213,15 @@ export function sqlDataType<Params extends SqlTypeParams = SqlTypeParams>(
   id: string,
   spec: SqlDataTypeSpec<Params>,
 ): SqlDataType<Params> {
-  const declared = dataType(id, spec);
+  const { params: _untypedParams, ...declared } = dataType(id, spec);
   const texts = spec.texts ?? [];
   const paramKeys = paramKeysOf(declared.id, spec.params);
   for (const text of texts) checkText(declared.id, text, paramKeys);
   checkMarks(declared.id, texts);
   checkKindClaim(declared.id, spec);
   const type: SqlDataType<Params> = {
-    id: declared.id,
+    ...declared,
     ...ifDefined('params', spec.params),
-    casts: declared.casts,
-    ...ifDefined('listCast', declared.listCast),
-    ...ifDefined('toCanonicalForm', declared.toCanonicalForm),
     sql: {
       texts,
       claimsKind: spec.claimsKind,

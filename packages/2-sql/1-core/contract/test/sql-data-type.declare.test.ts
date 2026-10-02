@@ -1,3 +1,4 @@
+import type { JsonValue } from '@internal/contract/types';
 import { dataType } from '@internal/framework-components/codec';
 import { InternalError } from '@internal/utils/internal-error';
 import { type } from 'arktype';
@@ -57,6 +58,19 @@ describe('sqlDataType', () => {
     expect(declared.params).toBe(params);
     expect(declared.casts[int4.id]?.(1)).toBe('1');
     expect(declared.listCast?.of).toEqual(['t/int4']);
+  });
+
+  it('keeps every field of the framework declaration', () => {
+    const casts = { [int4.id]: (value: JsonValue) => value };
+    const toCanonicalForm = (value: JsonValue) => value;
+    const declared = sqlDataType('t/kept', {
+      casts,
+      toCanonicalForm,
+      texts: [{ text: 'kept', written: true, catalog: true }],
+    });
+    expect(Object.fromEntries(Object.entries(declared).filter(([key]) => key !== 'sql'))).toEqual(
+      dataType('t/kept', { casts, toCanonicalForm }),
+    );
   });
 
   it('validates its id like every data type', () => {

@@ -13,7 +13,7 @@ import type {
 } from '@internal/framework-components/codec';
 import { dataType } from '@internal/framework-components/codec';
 
-export interface MongoDataTypeSpec extends Pick<DataTypeSpec, 'params' | 'casts'> {
+export interface MongoDataTypeSpec extends DataTypeSpec {
   readonly bsonTypes: readonly string[];
 }
 
