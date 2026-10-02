@@ -182,7 +182,7 @@ describe('sqlDataType', () => {
 
     it('allows a display that differs in case only', () => {
       const declared = sqlDataType('t/ok', {
-        params: type({ 'srid?': 'number' }),
+        params: type({ srid: 'number' }),
         texts: [
           {
             text: 'geometry(geometry,{srid})',
@@ -221,6 +221,43 @@ describe('sqlDataType', () => {
           name: 'status',
         }),
       ).toEqual({ typeName: 'status' });
+    });
+  });
+
+  describe('rule 6: every normal form has a written text', () => {
+    const lengthParams = type({ 'length?': 'number.integer >= 1' });
+    const lengthOneWhenBare = (params: { readonly length?: number }) =>
+      params.length === undefined ? { ...params, length: 1 } : params;
+
+    it('refuses a normal form whose parameters only a catalog text takes, naming them', () => {
+      expect(() =>
+        sqlDataType('t/bad', {
+          params: lengthParams,
+          texts: [
+            { text: 'bit', written: true },
+            { text: 'bit({length})', catalog: true },
+          ],
+          normalize: lengthOneWhenBare,
+        }),
+      ).toThrow(/t\/bad.*\[length\]/);
+    });
+
+    it('accepts a normal form that a written text takes', () => {
+      const declared = sqlDataType('t/ok', {
+        params: lengthParams,
+        texts: [
+          { text: 'bit', written: true },
+          { text: 'bit({length})', written: true, catalog: true },
+        ],
+        normalize: lengthOneWhenBare,
+      });
+      expect(declared.sql.normalize({})).toEqual({ length: 1 });
+    });
+
+    it('exempts a type that is never written', () => {
+      expect(sqlDataType('t/never-written', { texts: [{ text: 'anyarray' }] }).sql.texts).toEqual([
+        { text: 'anyarray' },
+      ]);
     });
   });
 });

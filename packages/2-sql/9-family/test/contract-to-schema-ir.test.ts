@@ -72,6 +72,24 @@ const bareVectorType = sqlDataType('test/bare-vector', {
 const timestamptzType = sqlDataType('test/timestamptz', {
   texts: [{ text: 'timestamptz', written: true }],
 });
+const numericType = sqlDataType('test/numeric', {
+  params: type({ 'precision?': 'number.integer >= 1', 'scale?': 'number.integer' }),
+  texts: [
+    { text: 'numeric', written: true },
+    { text: 'numeric({precision})', written: true },
+    { text: 'numeric({precision},{scale})', written: true },
+  ],
+  normalize: (params) =>
+    params.precision !== undefined && params.scale === undefined ? { ...params, scale: 0 } : params,
+});
+const fixedCharacterType = sqlDataType('test/fixed-character', {
+  params: type({ 'length?': 'number.integer >= 1' }),
+  texts: [
+    { text: 'character', written: true },
+    { text: 'character({length})', written: true },
+  ],
+  normalize: (params) => (params.length === undefined ? { ...params, length: 1 } : params),
+});
 const enumType = sqlDataType('test/enum', {
   params: type({ typeName: 'string > 0' }),
   claimsKind: 'enum',
@@ -84,6 +102,8 @@ const dataTypeOfCodec: Readonly<Record<string, DataType>> = {
   'pg/vector@1': vectorType,
   'pgvector/vector@1': bareVectorType,
   'pg/timestamptz@1': timestamptzType,
+  'pg/numeric@1': numericType,
+  'pg/char@1': fixedCharacterType,
   'pg/enum@1': enumType,
 };
 
@@ -103,6 +123,8 @@ const testDataTypes = createDataTypeLookup([
   vectorType,
   bareVectorType,
   timestamptzType,
+  numericType,
+  fixedCharacterType,
   enumType,
 ]);
 
@@ -311,6 +333,40 @@ describe('contractToSchemaIR', () => {
       code: columns['code']!.nativeType,
       name: columns['name']!.nativeType,
     }).toEqual({ id: 'character(36)', code: 'character', name: 'text' });
+  });
+
+  it('writes each column type with its parameters in normal form, as the catalog reports them', () => {
+    const storage = unboundStorage('test' as StorageHashBase<string>, {
+      T: table({
+        columns: {
+          whole: col({
+            nativeType: 'numeric',
+            codecId: 'pg/numeric@1',
+            typeParams: { precision: 10 },
+          }),
+          scaled: col({
+            nativeType: 'numeric',
+            codecId: 'pg/numeric@1',
+            typeParams: { precision: 10, scale: 2 },
+          }),
+          bare: col({ nativeType: 'character', codecId: 'pg/char@1' }),
+        },
+      }),
+    });
+
+    const columns = contractToSchemaIR(wrap(storage)).tables['T']!.columns;
+    expect(
+      Object.fromEntries(
+        Object.entries(columns).map(([name, column]) => [
+          name,
+          { nativeType: column.nativeType, resolvedNativeType: column.resolvedNativeType },
+        ]),
+      ),
+    ).toEqual({
+      whole: { nativeType: 'numeric(10,0)', resolvedNativeType: 'numeric(10,0)' },
+      scaled: { nativeType: 'numeric(10,2)', resolvedNativeType: 'numeric(10,2)' },
+      bare: { nativeType: 'character(1)', resolvedNativeType: 'character(1)' },
+    });
   });
 
   it('writes an enum column as its type name, unquoted', () => {
