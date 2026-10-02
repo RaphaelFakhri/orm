@@ -1,9 +1,13 @@
 import { ContractValidationError } from '@internal/contract/contract-validation-error';
 import paradedbPack from '@internal/extension-paradedb/pack';
-import { createDataTypeLookup } from '@internal/framework-components/codec';
-import { buildSymbolTable } from '@internal/psl-parser';
+import type { AuthoringTypeConstructorDescriptor } from '@internal/framework-components/authoring';
+import { createDataTypeLookup, emptyCodecLookup } from '@internal/framework-components/codec';
 import { parse } from '@internal/psl-parser/syntax';
-import { interpretPslDocumentToSqlContract } from '@internal/sql-contract-psl';
+import { interpretPslSqlSources } from '@internal/sql-contract-psl';
+import {
+  describeUnsupportedSqlAttribute,
+  sqlAttributeSpecs,
+} from '@internal/sql-contract-psl/attribute-specs';
 import { postgresDataTypes } from '@internal/target-postgres/data-types';
 // postgresPack is used directly in interpretPslDocumentToSqlContract (not in defineContract).
 import postgresPack from '@internal/target-postgres/pack';
@@ -15,24 +19,43 @@ const scalarColumnDescriptors = new Map<string, { codecId: string; nativeType: s
   ['String', { codecId: 'pg/text@1', nativeType: 'text' }],
 ]);
 
+const scalarTypeConstructors: Record<string, AuthoringTypeConstructorDescriptor> =
+  Object.fromEntries(
+    [...scalarColumnDescriptors].map(([name, output]) => [
+      name,
+      { kind: 'typeConstructor' as const, output },
+    ]),
+  );
+
+const postgresDataTypeLookup = createDataTypeLookup(postgresDataTypes);
+
 function interpret(schema: string) {
   const { document, sources } = parse(schema, 'index-type-options.prisma');
-  const { symbolTable } = buildSymbolTable({
+  return interpretPslSqlSources({
     documents: [document],
     sources,
-  });
-  return interpretPslDocumentToSqlContract({
-    documents: [document],
-    dataTypeLookup: createDataTypeLookup(postgresDataTypes),
-    symbolTable,
-    sources,
+    context: {
+      composedExtensions: [paradedbPack.id],
+      composedExtensionContracts: new Map(),
+      authoringContributions: {
+        field: {},
+        type: scalarTypeConstructors,
+        entityTypes: {},
+        pslBlockDescriptors: {},
+        modelAttributes: {},
+        attributeSpecs: sqlAttributeSpecs,
+        dataTypes: {},
+      },
+      pslDiagnostics: { describeUnsupportedAttribute: describeUnsupportedSqlAttribute },
+      codecLookup: { ...emptyCodecLookup, descriptorFor: () => undefined },
+      controlMutationDefaults: { defaultFunctionRegistry: new Map(), generatorDescriptors: [] },
+      dataTypeLookup: postgresDataTypeLookup,
+      resolvedInputs: [],
+      capabilities: { sql: { scalarList: true } },
+    },
     target: postgresPack,
-    scalarColumnDescriptors,
-    composedExtensionContracts: new Map(),
-    composedExtensions: [paradedbPack.id],
     composedExtensionPackRefs: [paradedbPack],
     createNamespace: postgresCreateNamespace,
-    capabilities: { sql: { scalarList: true } },
   });
 }
 

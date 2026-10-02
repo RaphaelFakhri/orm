@@ -1,12 +1,10 @@
 import type { AuthoringContributions } from '@internal/framework-components/authoring';
-import { checkUncomposedNamespace } from '@internal/framework-components/authoring';
 import type {
   DiagnosticSource,
   NamedTypeSymbol,
   PslDiagnosticCollector,
 } from '@internal/psl-parser';
 import { diagnosticSource } from '@internal/psl-parser';
-import { reportUncomposedNamespace } from '@internal/psl-parser/interpret';
 import type { StorageTypeInstance } from '@internal/sql-contract/types';
 import { formatDbAttributeMigrationMessage } from './psl-attribute-parsing';
 import {
@@ -21,9 +19,6 @@ export interface ResolveNamedTypeDeclarationsInput {
   readonly source: DiagnosticSource;
   readonly enumTypeDescriptors: ReadonlyMap<string, ColumnDescriptor>;
   readonly scalarColumnDescriptors: ReadonlyMap<string, ColumnDescriptor>;
-  readonly composedExtensions: ReadonlySet<string>;
-  readonly familyId: string;
-  readonly targetId: string;
   readonly authoringContributions: AuthoringContributions | undefined;
   readonly diagnostics: PslDiagnosticCollector;
 }
@@ -32,10 +27,6 @@ function validateNamedTypeAttributes(input: {
   readonly declaration: NamedTypeSymbol;
   readonly source: DiagnosticSource;
   readonly diagnostics: PslDiagnosticCollector;
-  readonly composedExtensions: ReadonlySet<string>;
-  readonly authoringContributions: AuthoringContributions | undefined;
-  readonly familyId: string;
-  readonly targetId: string;
 }): boolean {
   let hasUnsupportedNamedTypeAttribute = false;
 
@@ -45,23 +36,6 @@ function validateNamedTypeAttributes(input: {
         code: 'PSL_UNSUPPORTED_NAMED_TYPE_ATTRIBUTE',
         message: formatDbAttributeMigrationMessage(attribute),
         ...input.source.at(attribute.span),
-      });
-      hasUnsupportedNamedTypeAttribute = true;
-      continue;
-    }
-
-    const uncomposedNamespace = checkUncomposedNamespace(attribute.name, input.composedExtensions, {
-      familyId: input.familyId,
-      targetId: input.targetId,
-      authoringContributions: input.authoringContributions,
-    });
-    if (uncomposedNamespace) {
-      reportUncomposedNamespace({
-        subjectLabel: `Attribute "@${attribute.name}"`,
-        namespace: uncomposedNamespace,
-        source: input.source,
-        span: attribute.span,
-        diagnostics: input.diagnostics,
       });
       hasUnsupportedNamedTypeAttribute = true;
       continue;
@@ -102,10 +76,6 @@ export function resolveNamedTypeDeclarations(input: ResolveNamedTypeDeclarations
         declaration,
         source,
         diagnostics: input.diagnostics,
-        composedExtensions: input.composedExtensions,
-        authoringContributions: input.authoringContributions,
-        familyId: input.familyId,
-        targetId: input.targetId,
       });
       if (hasUnsupportedNamedTypeAttribute) {
         continue;
@@ -115,9 +85,6 @@ export function resolveNamedTypeDeclarations(input: ResolveNamedTypeDeclarations
       const descriptor = resolvePslTypeConstructorDescriptor({
         call: typeConstructor,
         authoringContributions: input.authoringContributions,
-        composedExtensions: input.composedExtensions,
-        familyId: input.familyId,
-        targetId: input.targetId,
         diagnostics: input.diagnostics,
         source,
         unsupportedCode: 'PSL_UNSUPPORTED_NAMED_TYPE_CONSTRUCTOR',
@@ -179,10 +146,6 @@ export function resolveNamedTypeDeclarations(input: ResolveNamedTypeDeclarations
       declaration,
       source,
       diagnostics: input.diagnostics,
-      composedExtensions: input.composedExtensions,
-      authoringContributions: input.authoringContributions,
-      familyId: input.familyId,
-      targetId: input.targetId,
     });
     if (hasUnsupportedNamedTypeAttribute) {
       continue;

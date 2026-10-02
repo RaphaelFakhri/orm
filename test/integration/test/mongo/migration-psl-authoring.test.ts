@@ -2,12 +2,16 @@ import { MongoControlAdapterImpl } from '@internal/adapter-mongo/control';
 import type { JsonValue } from '@internal/contract/types';
 import mongoControlDriver from '@internal/driver-mongo/control';
 import { contractToMongoSchemaIR } from '@internal/family-mongo/control';
-import type { CodecLookup } from '@internal/framework-components/codec';
+import type { AuthoringTypeConstructorDescriptor } from '@internal/framework-components/authoring';
+import type { CodecLookupWithDescriptors } from '@internal/framework-components/codec';
 import { UNBOUND_NAMESPACE_ID } from '@internal/framework-components/ir';
 import type { MongoContract } from '@internal/mongo-contract';
-import { interpretPslDocumentToMongoContract } from '@internal/mongo-contract-psl';
+import {
+  describeUnsupportedMongoAttribute,
+  interpretPslMongoSources,
+  mongoAttributeSpecs,
+} from '@internal/mongo-contract-psl';
 import type { MongoMigrationPlanOperation } from '@internal/mongo-query-ast/control';
-import { buildSymbolTable } from '@internal/psl-parser';
 import { parse } from '@internal/psl-parser/syntax';
 import {
   MongoMigrationPlanner,
@@ -33,7 +37,7 @@ const bsonTypesByCodecId: Record<string, string> = {
   'mongo/double@1': 'double',
 };
 
-const mongoCodecLookup: CodecLookup = {
+const mongoCodecLookup: CodecLookupWithDescriptors = {
   get(id: string) {
     const bsonType = bsonTypesByCodecId[id];
     if (!bsonType) return undefined;
@@ -50,6 +54,7 @@ const mongoCodecLookup: CodecLookup = {
     return bsonType ? [bsonType] : undefined;
   },
   renderOutputTypeFor: () => undefined,
+  descriptorFor: () => undefined,
 };
 
 function pslToContract(schema: string): MongoContract {
@@ -62,20 +67,35 @@ function pslToContract(schema: string): MongoContract {
     ['Double', 'mongo/double@1'],
   ]);
   const { document, sources } = parse(schema, 'mongo-migration-schema.prisma');
-  const { symbolTable } = buildSymbolTable({
+  const scalarTypeConstructors: Record<string, AuthoringTypeConstructorDescriptor> =
+    Object.fromEntries(
+      [...scalarTypeCodecIds].map(([name, codecId]) => [
+        name,
+        { kind: 'typeConstructor' as const, output: { codecId, nativeType: codecId } },
+      ]),
+    );
+  const result = interpretPslMongoSources({
     documents: [document],
     sources,
-  });
-  const result = interpretPslDocumentToMongoContract({
-    documents: [document],
-    symbolTable,
-    sources,
-    scalarTypeCodecIds,
-    controlMutationDefaults: {
-      dataTypeEntries: {},
-      defaultFunctionRegistry: new Map(),
+    context: {
+      composedExtensions: [],
+      composedExtensionContracts: new Map(),
+      authoringContributions: {
+        field: {},
+        type: scalarTypeConstructors,
+        entityTypes: {},
+        pslBlockDescriptors: {},
+        modelAttributes: {},
+        attributeSpecs: mongoAttributeSpecs,
+        dataTypes: {},
+      },
+      pslDiagnostics: { describeUnsupportedAttribute: describeUnsupportedMongoAttribute },
+      codecLookup: mongoCodecLookup,
+      controlMutationDefaults: { defaultFunctionRegistry: new Map(), generatorDescriptors: [] },
+      dataTypeLookup: { has: () => false, get: () => undefined },
+      resolvedInputs: [],
+      capabilities: {},
     },
-    codecLookup: mongoCodecLookup,
   });
   if (!result.ok) {
     throw new Error(`PSL interpretation failed: ${JSON.stringify(result)}`);

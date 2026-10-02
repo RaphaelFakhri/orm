@@ -5,6 +5,7 @@ import {
   type BinderResult,
   buildSymbolTable,
   createBinder,
+  createProjectBinder,
   isPrismaNextSchema,
   type PslDiagnostic,
   type SymbolTable,
@@ -78,9 +79,13 @@ export class ProjectArtifacts {
     const symbolDiagnostics = (projectSymbolDiagnostics ?? this.symbolDiagnostics()).filter(
       (diagnostic) => diagnostic.filename === snapshot.uri,
     );
+    const binderDiagnostics = this.#binderDiagnostics().filter(
+      (diagnostic) => diagnostic.filename === snapshot.uri,
+    );
     return [
       ...mapParseDiagnostics(snapshot.parse().diagnostics),
       ...mapParseDiagnostics(symbolDiagnostics),
+      ...mapParseDiagnostics(binderDiagnostics),
       ...this.#interpretDiagnostics(snapshot.uri),
     ];
   };
@@ -92,9 +97,19 @@ export class ProjectArtifacts {
   binder = (): Binder => this.#readBinderResult().binder;
 
   #readBinderResult(): BinderResult {
-    const symbolTable = this.#readSymbolTable();
+    if (this.#binderResult !== undefined) return this.#binderResult;
+    const symbolTable = (this.#symbolTableResult ?? this.#readSymbolTableResult()).symbolTable;
+    const interpretation = this.#interpretation;
+    if (interpretation !== undefined) {
+      this.#binderResult = createProjectBinder({
+        symbolTable,
+        sources: this.sources,
+        context: interpretation.context,
+      });
+      return this.#binderResult;
+    }
     const stack = this.#options.controlStack;
-    this.#binderResult ??= createBinder({
+    this.#binderResult = createBinder({
       sources: this.sources,
       symbolTable,
       typeConstructors: stack.authoringContributions?.type ?? {},
@@ -139,15 +154,7 @@ export class ProjectArtifacts {
   }
 
   #projectInterpretDiagnostics(): ReadonlyMap<string, readonly LspDiagnostic[]> {
-    if (this.#interpretation === undefined) {
-      const bySourceId = new Map<string, LspDiagnostic[]>();
-      for (const diagnostic of this.#readBinderResult().diagnostics) {
-        const group = bySourceId.get(diagnostic.filename) ?? [];
-        group.push(...mapParseDiagnostics([diagnostic]));
-        bySourceId.set(diagnostic.filename, group);
-      }
-      return bySourceId;
-    }
+    if (this.#interpretation === undefined) return new Map();
     this.#interpretMemo ??= this.#computeInterpretDistribution(this.#interpretation);
     return this.#interpretMemo;
   }
@@ -162,8 +169,14 @@ export class ProjectArtifacts {
       (snapshot) => snapshot.parse().document,
     );
     const warnings: ContractSourceDiagnostic[] = [];
+    const binderResult = this.#readBinderResult();
     const result = activeInterpretation.source.interpret(
-      { documents: allDocuments, sources: this.sources, symbolTable: currentSymbolTable },
+      {
+        documents: allDocuments,
+        sources: this.sources,
+        symbolTable: currentSymbolTable,
+        binder: binderResult.binder,
+      },
       {
         ...activeInterpretation.context,
         reportWarning: (diagnostic) => {
@@ -269,5 +282,9 @@ export class ProjectArtifacts {
 
   #readSymbolTable(): SymbolTable {
     return this.#readSymbolTableResult().symbolTable;
+  }
+
+  #binderDiagnostics(): readonly PslDiagnostic[] {
+    return this.#readBinderResult().diagnostics;
   }
 }

@@ -15,8 +15,10 @@ import type {
 } from '../src/attribute-spec/spec-context';
 import {
   createBinder,
+  type DescribeUnresolvedType,
   type DescribeUnsupportedAttribute,
   typeReferenceNode,
+  type UnresolvedTypeReference,
   type UnsupportedAttribute,
 } from '../src/binder';
 import { contributedTypeScope } from '../src/contributed-type-scope';
@@ -263,6 +265,24 @@ function bindWithUnsupportedDescriber(
       attributeSpecs: ATTRIBUTE_SPECS,
       controlMutationDefaults: NO_CONTROL_DEFAULTS,
       describeUnsupportedAttribute,
+    }),
+  };
+}
+
+function bindWithUnresolvedTypeDescriber(
+  describeUnresolvedType: DescribeUnresolvedType,
+  ...texts: string[]
+) {
+  const { sources, symbolTable } = build(...texts);
+  return {
+    symbolTable,
+    ...createBinder({
+      sources,
+      symbolTable,
+      typeConstructors: TYPE_CONSTRUCTORS,
+      attributeSpecs: ATTRIBUTE_SPECS,
+      controlMutationDefaults: NO_CONTROL_DEFAULTS,
+      describeUnresolvedType,
     }),
   };
 }
@@ -786,6 +806,60 @@ describe('createBinder — describeUnsupportedAttribute', () => {
 
     expect(binder.symbolForNode(attributeNameNode(user.fields['id']!, 'bogus'))).toBeUndefined();
     expect(binder.symbolForNode(attributeNameNode(user, 'nope'))).toBeUndefined();
+  });
+});
+
+describe('createBinder — describeUnresolvedType', () => {
+  function record(): {
+    readonly seen: UnresolvedTypeReference[];
+    readonly describe: DescribeUnresolvedType;
+  } {
+    const seen: UnresolvedTypeReference[] = [];
+    return {
+      seen,
+      describe: (unresolved) => {
+        seen.push(unresolved);
+        return undefined;
+      },
+    };
+  }
+
+  it('calls back with the field, owner, and written name of an unresolved type reference', () => {
+    const { seen, describe } = record();
+    bindWithUnresolvedTypeDescriber(describe, 'model Cart {\n  pet Dog\n}');
+
+    expect(
+      seen.map(({ field, owner, written }) => ({ field: field.name, owner: owner.name, written })),
+    ).toEqual([{ field: 'pet', owner: 'Cart', written: 'Dog' }]);
+  });
+
+  it('uses the contributed message in place of the default', () => {
+    const { diagnostics } = bindWithUnresolvedTypeDescriber(
+      ({ written }) => `custom: cannot find "${written}"`,
+      'model Cart {\n  pet Dog\n}',
+    );
+
+    expect(diagnostics.map(({ message }) => message)).toEqual(['custom: cannot find "Dog"']);
+  });
+
+  it('falls back to the default message when the callback returns undefined', () => {
+    const { diagnostics } = bindWithUnresolvedTypeDescriber(
+      () => undefined,
+      'model Cart {\n  pet Dog\n}',
+    );
+
+    expect(diagnostics.map(({ message }) => message)).toEqual(['Cannot find type "Dog"']);
+  });
+
+  it('keeps the default message when no callback is supplied', () => {
+    const { diagnostics } = bind('model Cart {\n  pet Dog\n}');
+    expect(diagnostics.map(({ message }) => message)).toEqual(['Cannot find type "Dog"']);
+  });
+
+  it('does not call back for a resolved type reference', () => {
+    const { seen, describe } = record();
+    bindWithUnresolvedTypeDescriber(describe, 'model Cart {\n  id Int\n}');
+    expect(seen).toEqual([]);
   });
 });
 

@@ -12,12 +12,16 @@
  *  3. Nullable variant (`pg.enum(E)?`).
  */
 
+import type { AuthoringTypeConstructorDescriptor } from '@internal/framework-components/authoring';
 import type { Codec, CodecLookupWithDescriptors } from '@internal/framework-components/codec';
 import { createDataTypeLookup } from '@internal/framework-components/codec';
 import { assembleAuthoringContributions } from '@internal/framework-components/control';
-import { buildSymbolTable } from '@internal/psl-parser';
 import { parse } from '@internal/psl-parser/syntax';
-import { interpretPslDocumentToSqlContract } from '@internal/sql-contract-psl';
+import { interpretPslSqlSources } from '@internal/sql-contract-psl';
+import {
+  describeUnsupportedSqlAttribute,
+  sqlAttributeSpecs,
+} from '@internal/sql-contract-psl/attribute-specs';
 import { postgresDataTypes } from '@internal/target-postgres/data-types';
 import { describe, expect, it } from 'vitest';
 import {
@@ -94,24 +98,36 @@ const scalarColumnDescriptors = new Map<string, { codecId: string; nativeType: s
   ['Int', { codecId: 'pg/int4@1', nativeType: 'int4' }],
 ]);
 
+const scalarTypeConstructors: Record<string, AuthoringTypeConstructorDescriptor> =
+  Object.fromEntries(
+    [...scalarColumnDescriptors].map(([name, output]) => [
+      name,
+      { kind: 'typeConstructor' as const, output },
+    ]),
+  );
+
 function interpret(source: string, capabilities: Record<string, Record<string, boolean>> = {}) {
   const { document, sources } = parse(source, 'psl-pg-enum-column.test.psl');
-  const { symbolTable } = buildSymbolTable({
+  return interpretPslSqlSources({
     documents: [document],
     sources,
-  });
-  return interpretPslDocumentToSqlContract({
-    documents: [document],
-    dataTypeLookup: postgresDataTypeLookup,
-    symbolTable,
-    sources,
-    capabilities,
+    context: {
+      composedExtensions: [],
+      composedExtensionContracts: new Map(),
+      authoringContributions: {
+        ...assembled,
+        type: { ...scalarTypeConstructors, ...assembled.type },
+        attributeSpecs: sqlAttributeSpecs,
+      },
+      pslDiagnostics: { describeUnsupportedAttribute: describeUnsupportedSqlAttribute },
+      codecLookup,
+      controlMutationDefaults: { defaultFunctionRegistry: new Map(), generatorDescriptors: [] },
+      dataTypeLookup: postgresDataTypeLookup,
+      resolvedInputs: [],
+      capabilities,
+    },
     target: postgresTarget,
-    scalarColumnDescriptors,
-    authoringContributions: assembled,
-    composedExtensionContracts: new Map(),
     createNamespace: postgresCreateNamespace,
-    codecLookup,
   });
 }
 

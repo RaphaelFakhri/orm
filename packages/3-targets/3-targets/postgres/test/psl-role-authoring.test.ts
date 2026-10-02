@@ -14,13 +14,17 @@
  */
 
 import type { Contract } from '@internal/contract/types';
-import { createDataTypeLookup } from '@internal/framework-components/codec';
+import { createDataTypeLookup, emptyCodecLookup } from '@internal/framework-components/codec';
 import { assembleAuthoringContributions } from '@internal/framework-components/control';
 import { UNBOUND_NAMESPACE_ID } from '@internal/framework-components/ir';
 import { buildSymbolTable } from '@internal/psl-parser';
 import { parse } from '@internal/psl-parser/syntax';
 import type { SqlStorage } from '@internal/sql-contract/types';
-import { interpretPslDocumentToSqlContract } from '@internal/sql-contract-psl';
+import { interpretPslSqlSources } from '@internal/sql-contract-psl';
+import {
+  describeUnsupportedSqlAttribute,
+  sqlAttributeSpecs,
+} from '@internal/sql-contract-psl/attribute-specs';
 import { postgresDataTypes } from '@internal/target-postgres/data-types';
 import { describe, expect, it } from 'vitest';
 import {
@@ -59,25 +63,41 @@ const scalarTypeDescriptors = new Map<string, { codecId: string; nativeType: str
   ['Int', { codecId: 'pg/int4@1', nativeType: 'int4' }],
 ]);
 
+const scalarTypeConstructors = Object.fromEntries(
+  [...scalarTypeDescriptors].map(([name, output]) => [
+    name,
+    { kind: 'typeConstructor' as const, output },
+  ]),
+);
+
 function interpret(source: string) {
   const { document, sources } = parse(source, 'psl-role-authoring.test.psl');
-  const { symbolTable, diagnostics } = buildSymbolTable({
+  const { diagnostics } = buildSymbolTable({
     documents: [document],
     sources,
   });
   expect(diagnostics).toEqual([]);
 
-  return interpretPslDocumentToSqlContract({
+  return interpretPslSqlSources({
     documents: [document],
-    dataTypeLookup: postgresDataTypeLookup,
-    symbolTable,
     sources,
+    context: {
+      composedExtensions: [],
+      composedExtensionContracts: new Map(),
+      authoringContributions: {
+        ...assembled,
+        type: { ...scalarTypeConstructors, ...assembled.type },
+        attributeSpecs: sqlAttributeSpecs,
+      },
+      pslDiagnostics: { describeUnsupportedAttribute: describeUnsupportedSqlAttribute },
+      codecLookup: { ...emptyCodecLookup, descriptorFor: () => undefined },
+      controlMutationDefaults: { defaultFunctionRegistry: new Map(), generatorDescriptors: [] },
+      dataTypeLookup: postgresDataTypeLookup,
+      resolvedInputs: [],
+      capabilities: { sql: { scalarList: true } },
+    },
     target: postgresTarget,
-    scalarColumnDescriptors: scalarTypeDescriptors,
-    authoringContributions: assembled,
-    composedExtensionContracts: new Map(),
     createNamespace: postgresCreateNamespace,
-    capabilities: { sql: { scalarList: true } },
   });
 }
 

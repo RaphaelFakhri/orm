@@ -1,15 +1,12 @@
 import sqliteAdapter from '@internal/adapter-sqlite/control';
 import sqliteDriver from '@internal/driver-sqlite/control';
 import sql from '@internal/family-sql/control';
-import {
-  collectScalarTypeConstructors,
-  type ScalarTypeConstructorOutput,
-} from '@internal/framework-components/authoring';
+import { collectScalarTypeConstructors } from '@internal/framework-components/authoring';
 import { createDataTypeLookup } from '@internal/framework-components/codec';
 import { createControlStack } from '@internal/framework-components/control';
-import { buildSymbolTable } from '@internal/psl-parser';
 import { parse } from '@internal/psl-parser/syntax';
-import { interpretPslDocumentToSqlContract } from '@internal/sql-contract-psl';
+import { interpretPslSqlSources } from '@internal/sql-contract-psl';
+import { contractSourceContextFromControlStack } from '@internal/sql-contract-psl/test';
 import sqlite, { sqliteCreateNamespace } from '@internal/target-sqlite/control';
 import { sqliteDataTypes } from '@internal/target-sqlite/data-types';
 import sqlitePackRef from '@internal/target-sqlite/pack';
@@ -37,25 +34,16 @@ const REPRESENTATIVE_SCHEMA = `model sample {
 }
 `;
 
-function emit(scalarColumnDescriptors: ReadonlyMap<string, ScalarTypeConstructorOutput>) {
+function emit() {
   const { document, sources } = parse(REPRESENTATIVE_SCHEMA, 'scalar-type-parity.test.psl');
-  const { symbolTable } = buildSymbolTable({
+  return interpretPslSqlSources({
     documents: [document],
     sources,
-  });
-  return interpretPslDocumentToSqlContract({
-    documents: [document],
-    dataTypeLookup: sqliteDataTypeLookup,
-    symbolTable,
-    sources,
+    context: contractSourceContextFromControlStack(stack, {
+      dataTypeLookup: sqliteDataTypeLookup,
+    }),
     target: sqlitePackRef,
-    scalarColumnDescriptors,
-    authoringContributions: stack.authoringContributions,
-    controlMutationDefaults: stack.controlMutationDefaults,
-    composedExtensionContracts: new Map(),
     createNamespace: sqliteCreateNamespace,
-    codecLookup: stack.codecLookup,
-    capabilities: stack.capabilities,
   });
 }
 
@@ -94,7 +82,7 @@ describe('sqlite scalar types derived from the unified namespace', () => {
   });
 
   it('emits a contract whose columns pin the namespace-derived {codecId, nativeType}', () => {
-    const result = emit(collectScalarTypeConstructors(stack.authoringContributions.type));
+    const result = emit();
 
     expect(result.ok).toBe(true);
     if (!result.ok) return;

@@ -7,12 +7,20 @@ import {
   UNBOUND_DOMAIN_NAMESPACE_ID,
 } from '@internal/contract/types';
 import { MongoContractSerializer } from '@internal/family-mongo/ir';
-import { createDataTypeLookup } from '@internal/framework-components/codec';
-import { interpretPslDocumentToMongoContract } from '@internal/mongo-contract-psl';
+import type { AuthoringTypeConstructorDescriptor } from '@internal/framework-components/authoring';
+import { createDataTypeLookup, emptyCodecLookup } from '@internal/framework-components/codec';
+import {
+  describeUnsupportedMongoAttribute,
+  interpretPslMongoSources,
+  mongoAttributeSpecs,
+} from '@internal/mongo-contract-psl';
 import { mongoOrm } from '@internal/mongo-orm';
-import { buildSymbolTable } from '@internal/psl-parser';
 import { parse } from '@internal/psl-parser/syntax';
-import { interpretPslDocumentToSqlContract } from '@internal/sql-contract-psl';
+import { interpretPslSqlSources } from '@internal/sql-contract-psl';
+import {
+  describeUnsupportedSqlAttribute,
+  sqlAttributeSpecs,
+} from '@internal/sql-contract-psl/attribute-specs';
 import { postgresDataTypes } from '@internal/target-postgres/data-types';
 import { postgresCreateNamespace } from '@internal/target-postgres/types';
 import { describe, expect, it } from 'vitest';
@@ -76,19 +84,35 @@ function interpretMongoPsl(schema: string) {
     ['ObjectId', 'mongo/objectId@1'],
     ['Double', 'mongo/double@1'],
   ]);
+  const scalarTypeConstructors: Record<string, AuthoringTypeConstructorDescriptor> =
+    Object.fromEntries(
+      [...mongoScalarTypeDescriptors].map(([name, codecId]) => [
+        name,
+        { kind: 'typeConstructor' as const, output: { codecId, nativeType: codecId } },
+      ]),
+    );
   const { document, sources } = parse(schema, 'mongo-value-objects.prisma');
-  const { symbolTable } = buildSymbolTable({
+  return interpretPslMongoSources({
     documents: [document],
     sources,
-  });
-  return interpretPslDocumentToMongoContract({
-    documents: [document],
-    symbolTable,
-    sources,
-    scalarTypeCodecIds: mongoScalarTypeDescriptors,
-    controlMutationDefaults: {
-      dataTypeEntries: {},
-      defaultFunctionRegistry: new Map(),
+    context: {
+      composedExtensions: [],
+      composedExtensionContracts: new Map(),
+      authoringContributions: {
+        field: {},
+        type: scalarTypeConstructors,
+        entityTypes: {},
+        pslBlockDescriptors: {},
+        modelAttributes: {},
+        attributeSpecs: mongoAttributeSpecs,
+        dataTypes: {},
+      },
+      pslDiagnostics: { describeUnsupportedAttribute: describeUnsupportedMongoAttribute },
+      codecLookup: { ...emptyCodecLookup, descriptorFor: () => undefined },
+      controlMutationDefaults: { defaultFunctionRegistry: new Map(), generatorDescriptors: [] },
+      dataTypeLookup: { has: () => false, get: () => undefined },
+      resolvedInputs: [],
+      capabilities: {},
     },
   });
 }
@@ -105,25 +129,33 @@ const postgresScalarAuthoringTypes = Object.fromEntries(
 
 function interpretSqlPsl(schema: string) {
   const { document, sources } = parse(schema, 'sql-value-objects.prisma');
-  const { symbolTable } = buildSymbolTable({
+  const postgresDataTypeLookup = createDataTypeLookup(postgresDataTypes);
+  return interpretPslSqlSources({
     documents: [document],
     sources,
-  });
-  return interpretPslDocumentToSqlContract({
-    documents: [document],
-    dataTypeLookup: createDataTypeLookup(postgresDataTypes),
-    symbolTable,
-    sources,
-    target: postgresTarget,
-    scalarColumnDescriptors: postgresScalarTypeDescriptors,
-    // Mirrors the real postgres adapter declaration.
-    authoringContributions: {
-      type: postgresScalarAuthoringTypes,
-      valueObjectStorageType: 'Jsonb',
+    context: {
+      composedExtensions: [],
+      composedExtensionContracts: new Map(),
+      // Mirrors the real postgres adapter declaration.
+      authoringContributions: {
+        field: {},
+        type: postgresScalarAuthoringTypes,
+        entityTypes: {},
+        pslBlockDescriptors: {},
+        modelAttributes: {},
+        attributeSpecs: sqlAttributeSpecs,
+        dataTypes: {},
+        valueObjectStorageType: 'Jsonb',
+      },
+      pslDiagnostics: { describeUnsupportedAttribute: describeUnsupportedSqlAttribute },
+      codecLookup: { ...emptyCodecLookup, descriptorFor: () => undefined },
+      controlMutationDefaults: { defaultFunctionRegistry: new Map(), generatorDescriptors: [] },
+      dataTypeLookup: postgresDataTypeLookup,
+      resolvedInputs: [],
+      capabilities: { sql: { scalarList: true } },
     },
-    composedExtensionContracts: new Map(),
+    target: postgresTarget,
     createNamespace: postgresCreateNamespace,
-    capabilities: { sql: { scalarList: true } },
   });
 }
 

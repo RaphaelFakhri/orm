@@ -3,7 +3,6 @@ import type {
   ExecutionMutationDefaultPhases,
 } from '@internal/contract/types';
 import type { AuthoringContributions } from '@internal/framework-components/authoring';
-import { checkUncomposedNamespace } from '@internal/framework-components/authoring';
 import type { CodecLookupWithDescriptors } from '@internal/framework-components/codec';
 import type { CapabilityMatrix } from '@internal/framework-components/components';
 import type {
@@ -23,7 +22,6 @@ import {
   type PslDiagnosticCollector,
   typeReferenceNode,
 } from '@internal/psl-parser';
-import { uncomposedNamespaceDiagnostic } from '@internal/psl-parser/interpret';
 import type { PslSources } from '@internal/psl-parser/syntax';
 import {
   type AuthoredColumnDefault,
@@ -238,36 +236,12 @@ const REMOVED_ATTRIBUTE_RULES: ReadonlyMap<string, RemovedAttributeRule> = new M
   }
 }
 
-export function describeUnsupportedSqlAttribute(input: {
-  readonly composedExtensions: ReadonlySet<string>;
-  readonly authoringContributions: AuthoringContributions | undefined;
-  readonly sources: PslSources;
-  readonly familyId: string | undefined;
-  readonly targetId: string | undefined;
-}): DescribeUnsupportedAttribute {
-  const namespaceContext = {
-    ...ifDefined('familyId', input.familyId),
-    ...ifDefined('targetId', input.targetId),
-    authoringContributions: input.authoringContributions,
-  };
+export function describeUnsupportedSqlAttribute(sources: PslSources): DescribeUnsupportedAttribute {
   return ({ attribute, level, owner, field }) => {
     // A composite type takes no attributes at all; `buildValueObjectNodes` refuses each one once.
     if (owner.kind === 'compositeType') return undefined;
     if (level === 'model') {
-      const source = diagnosticSource(input.sources, owner.node.syntax);
-      const uncomposedNamespace = checkUncomposedNamespace(
-        attribute.name,
-        input.composedExtensions,
-        namespaceContext,
-      );
-      if (uncomposedNamespace) {
-        return uncomposedNamespaceDiagnostic({
-          subjectLabel: `Attribute "@@${attribute.name}"`,
-          namespace: uncomposedNamespace,
-          source,
-          span: attribute.span,
-        });
-      }
+      const source = diagnosticSource(sources, owner.node.syntax);
       return {
         code: 'PSL_UNSUPPORTED_MODEL_ATTRIBUTE',
         message: `Model "${owner.name}" uses unsupported attribute "@@${attribute.name}"`,
@@ -276,7 +250,7 @@ export function describeUnsupportedSqlAttribute(input: {
     }
 
     if (field === undefined) return undefined;
-    const source = diagnosticSource(input.sources, field.node.syntax);
+    const source = diagnosticSource(sources, field.node.syntax);
 
     if (attribute.name.startsWith('db.')) {
       return {
@@ -284,20 +258,6 @@ export function describeUnsupportedSqlAttribute(input: {
         message: formatDbAttributeMigrationMessage(attribute),
         ...source.at(attribute.span),
       };
-    }
-
-    const uncomposedNamespace = checkUncomposedNamespace(
-      attribute.name,
-      input.composedExtensions,
-      namespaceContext,
-    );
-    if (uncomposedNamespace) {
-      return uncomposedNamespaceDiagnostic({
-        subjectLabel: `Attribute "@${attribute.name}"`,
-        namespace: uncomposedNamespace,
-        source,
-        span: attribute.span,
-      });
     }
 
     const baseMessage = `Field "${owner.name}.${field.name}" uses unsupported attribute "@${attribute.name}"`;
@@ -441,10 +401,8 @@ export function collectResolvedFields(input: CollectResolvedFieldsInput): Resolv
     enumTypeDescriptors,
     namedTypeDescriptors,
     valueObjectTypes,
-    composedExtensions,
     authoringContributions,
     binder,
-    familyId,
     targetId,
     defaultFunctionRegistry,
     dataTypeSupport,
@@ -524,9 +482,6 @@ export function collectResolvedFields(input: CollectResolvedFieldsInput): Resolv
       namedTypeDescriptors,
       scalarColumnDescriptors,
       authoringContributions,
-      composedExtensions,
-      familyId,
-      targetId,
       diagnostics,
       sources,
       entityLabel: `Field "${model.name}.${field.name}"`,

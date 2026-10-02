@@ -2,27 +2,20 @@ import type { ContractField, ExecutionMutationDefaultPhases } from '@internal/co
 import {
   type AuthoringContributions,
   type AuthoringFieldPresetDescriptor,
-  checkUncomposedNamespace,
   getAuthoringFieldPreset,
-  hasRegisteredFieldNamespace,
 } from '@internal/framework-components/authoring';
 import {
   diagnosticSource,
   type FieldSymbol,
   type PslDiagnosticCollector,
 } from '@internal/psl-parser';
-import {
-  instantiatePslFieldPreset,
-  reportUncomposedNamespace,
-  reportUnknownFieldPreset,
-} from '@internal/psl-parser/interpret';
+import { instantiatePslFieldPreset } from '@internal/psl-parser/interpret';
 import type { PslSources } from '@internal/psl-parser/syntax';
 import { ifDefined } from '@internal/utils/defined';
 import { getAttribute } from './psl-helpers';
 
 export interface FieldPresetContext {
   readonly authoringContributions: AuthoringContributions | undefined;
-  readonly composedExtensions: ReadonlySet<string>;
   readonly sources: PslSources;
   readonly diagnostics: PslDiagnosticCollector;
   readonly warnPresetWithoutEffect: (preset: PresetWithoutEffect) => void;
@@ -79,34 +72,6 @@ export function resolveFieldPreset(input: {
 
   const descriptor = getAuthoringFieldPreset(context.authoringContributions, call.path);
   if (!descriptor) {
-    const namespace = call.path.length > 1 ? call.path[0] : undefined;
-    if (namespace && hasRegisteredFieldNamespace(context.authoringContributions, namespace)) {
-      reportUnknownFieldPreset({
-        entityLabel,
-        namespace,
-        helperPath,
-        authoringContributions: context.authoringContributions,
-        source,
-        span: call.span,
-        diagnostics,
-      });
-      return INVALID;
-    }
-    const uncomposedNamespace = checkUncomposedNamespace(helperPath, context.composedExtensions, {
-      familyId: 'mongo',
-      targetId: 'mongo',
-      authoringContributions: context.authoringContributions,
-    });
-    if (uncomposedNamespace) {
-      reportUncomposedNamespace({
-        subjectLabel: `Type constructor "${helperPath}"`,
-        namespace: uncomposedNamespace,
-        source,
-        span: call.span,
-        diagnostics,
-      });
-      return INVALID;
-    }
     return NONE;
   }
 

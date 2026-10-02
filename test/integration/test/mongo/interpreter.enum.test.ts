@@ -4,14 +4,15 @@ import {
   mongoFamilyEntityTypes,
   mongoFamilyPslBlockDescriptors,
 } from '@internal/family-mongo/pack';
-import type { CodecLookup } from '@internal/framework-components/codec';
+import type { AuthoringTypeConstructorDescriptor } from '@internal/framework-components/authoring';
+import type { CodecLookup, CodecLookupWithDescriptors } from '@internal/framework-components/codec';
 import { createControlStack } from '@internal/framework-components/control';
 import { UNBOUND_NAMESPACE_ID } from '@internal/framework-components/ir';
 import {
-  type InterpretPslDocumentToMongoContractInput,
-  interpretPslDocumentToMongoContract,
+  describeUnsupportedMongoAttribute,
+  interpretPslMongoSources,
+  mongoAttributeSpecs,
 } from '@internal/mongo-contract-psl';
-import { buildSymbolTable } from '@internal/psl-parser';
 import { parse } from '@internal/psl-parser/syntax';
 import { MONGO_INT32_CODEC_ID, MONGO_STRING_CODEC_ID } from '@internal/target-mongo/codec-ids';
 import { mongoTargetDescriptor } from '@internal/target-mongo/control';
@@ -37,7 +38,7 @@ const mongoTargetTypes: Record<string, readonly string[]> = {
   'mongo/int32@1': ['int'],
 };
 
-const mongoCodecLookup: CodecLookup = {
+const mongoCodecLookup: CodecLookupWithDescriptors = {
   get(id: string) {
     const targetTypes = mongoTargetTypes[id];
     if (!targetTypes) return undefined;
@@ -55,41 +56,51 @@ const mongoCodecLookup: CodecLookup = {
   },
   targetTypesFor: (id: string) => mongoTargetTypes[id],
   renderOutputTypeFor: () => undefined,
+  descriptorFor: () => undefined,
 };
+
+const scalarTypeConstructors: Record<string, AuthoringTypeConstructorDescriptor> =
+  Object.fromEntries(
+    [...mongoScalarTypeDescriptors].map(([name, codecId]) => [
+      name,
+      { kind: 'typeConstructor' as const, output: { codecId, nativeType: codecId } },
+    ]),
+  );
 
 function interpret(
   schema: string,
-  overrides?: Partial<
-    Omit<InterpretPslDocumentToMongoContractInput, 'document' | 'symbolTable' | 'sources'>
-  >,
+  overrides?: { readonly codecLookup?: CodecLookupWithDescriptors },
 ) {
-  const contributions = overrides?.['authoringContributions'] ?? authoringContributions;
   const { document, sources } = parse(schema, 'mongo-enum-schema.prisma');
-  const { symbolTable } = buildSymbolTable({
+  return interpretPslMongoSources({
     documents: [document],
     sources,
-  });
-  return interpretPslDocumentToMongoContract({
-    documents: [document],
-    symbolTable,
-    sources,
-    scalarTypeCodecIds: mongoScalarTypeDescriptors,
-    controlMutationDefaults: {
-      dataTypeEntries: {},
-      defaultFunctionRegistry: new Map(),
+    context: {
+      composedExtensions: [],
+      composedExtensionContracts: new Map(),
+      authoringContributions: {
+        field: authoringContributions.field ?? {},
+        type: { ...scalarTypeConstructors, ...authoringContributions.type },
+        entityTypes: authoringContributions.entityTypes ?? {},
+        pslBlockDescriptors: authoringContributions.pslBlockDescriptors ?? {},
+        modelAttributes: {},
+        attributeSpecs: mongoAttributeSpecs,
+        dataTypes: {},
+      },
+      pslDiagnostics: { describeUnsupportedAttribute: describeUnsupportedMongoAttribute },
+      codecLookup: overrides?.codecLookup ?? mongoCodecLookup,
+      controlMutationDefaults: { defaultFunctionRegistry: new Map(), generatorDescriptors: [] },
+      dataTypeLookup: { has: () => false, get: () => undefined },
+      resolvedInputs: [],
+      capabilities: {},
     },
-    codecLookup: mongoCodecLookup,
-    authoringContributions: contributions,
     enumInferenceCodecs: { text: MONGO_STRING_CODEC_ID, int: MONGO_INT32_CODEC_ID },
-    ...overrides,
   });
 }
 
 function interpretOk(
   schema: string,
-  overrides?: Partial<
-    Omit<InterpretPslDocumentToMongoContractInput, 'document' | 'symbolTable' | 'sources'>
-  >,
+  overrides?: { readonly codecLookup?: CodecLookupWithDescriptors },
 ) {
   const result = interpret(schema, overrides);
   expect(result.ok).toBe(true);

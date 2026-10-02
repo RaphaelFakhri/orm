@@ -1,3 +1,4 @@
+import type { ContractSourceContext } from '@internal/config/config-types';
 import type {
   ArgType,
   AttributeCtx,
@@ -6,15 +7,49 @@ import type {
   ModelSymbol,
   Param,
   ResolvedEntityReference,
+  SymbolTable,
 } from '@internal/psl-parser';
-import { buildSymbolTable, createPslDiagnosticCollector } from '@internal/psl-parser';
+import {
+  buildSymbolTable,
+  createProjectBinder,
+  createPslDiagnosticCollector,
+} from '@internal/psl-parser';
+import type { PslSources } from '@internal/psl-parser/syntax';
 import { parse } from '@internal/psl-parser/syntax';
 import { describe, expect, expectTypeOf, it } from 'vitest';
 import {
-  createMongoBinder,
+  describeUnsupportedMongoAttribute,
   interpretModelAttribute,
   mongoAttributeSpecs,
 } from '../src/mongo-attribute-specs';
+
+function createBinderFor(symbolTable: SymbolTable, sources: PslSources) {
+  const context: ContractSourceContext = {
+    composedExtensions: [],
+    composedExtensionContracts: new Map(),
+    authoringContributions: {
+      type: {},
+      field: {},
+      entityTypes: {},
+      pslBlockDescriptors: {},
+      modelAttributes: {},
+      attributeSpecs: mongoAttributeSpecs,
+      dataTypes: {},
+    },
+    pslDiagnostics: { describeUnsupportedAttribute: describeUnsupportedMongoAttribute },
+    codecLookup: {
+      get: () => undefined,
+      targetTypesFor: () => undefined,
+      renderOutputTypeFor: () => undefined,
+      descriptorFor: () => undefined,
+    },
+    controlMutationDefaults: { defaultFunctionRegistry: new Map(), generatorDescriptors: [] },
+    dataTypeLookup: { has: () => false, get: () => undefined },
+    resolvedInputs: [],
+    capabilities: {},
+  };
+  return createProjectBinder({ symbolTable, sources, context }).binder;
+}
 
 function listMetadata<Ctx extends AttributeCtx>(type: ArgType<unknown, Ctx>) {
   if (type.kind !== 'list') throw new Error('argument is a list');
@@ -104,12 +139,7 @@ model Base { id String }`,
       spec: mongoAttributeSpecs.model.base(),
       model,
       sources,
-      binder: createMongoBinder({
-        symbolTable,
-        sources,
-        scalarTypeCodecIds: new Map(),
-        controlMutationDefaults: { defaultFunctionRegistry: new Map(), dataTypeEntries: {} },
-      }).binder,
+      binder: createBinderFor(symbolTable, sources),
       diagnostics,
     });
     expectTypeOf(value).toEqualTypeOf<

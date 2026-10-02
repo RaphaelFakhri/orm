@@ -13,11 +13,16 @@
  *     factory chain (no test-side hand-lowering).
  */
 
-import { createDataTypeLookup } from '@internal/framework-components/codec';
+import type { AuthoringTypeConstructorDescriptor } from '@internal/framework-components/authoring';
+import { createDataTypeLookup, emptyCodecLookup } from '@internal/framework-components/codec';
 import { assembleAuthoringContributions } from '@internal/framework-components/control';
 import { buildSymbolTable, createBinder, interpretExtensionBlocks } from '@internal/psl-parser';
 import { parse } from '@internal/psl-parser/syntax';
-import { interpretPslDocumentToSqlContract } from '@internal/sql-contract-psl';
+import { interpretPslSqlSources } from '@internal/sql-contract-psl';
+import {
+  describeUnsupportedSqlAttribute,
+  sqlAttributeSpecs,
+} from '@internal/sql-contract-psl/attribute-specs';
 import { postgresDataTypes } from '@internal/target-postgres/data-types';
 import { createSqlContract } from '@repo/test-utils';
 import { describe, expect, it } from 'vitest';
@@ -217,23 +222,40 @@ namespace public {
     ['Bytes', { codecId: 'pg/bytea@1', nativeType: 'bytea' }],
   ]);
 
+  const scalarTypeConstructors: Record<string, AuthoringTypeConstructorDescriptor> =
+    Object.fromEntries(
+      [...scalarColumnDescriptors].map(([name, output]) => [
+        name,
+        { kind: 'typeConstructor' as const, output },
+      ]),
+    );
+
+  function contextFor(): Parameters<typeof interpretPslSqlSources>[0]['context'] {
+    return {
+      composedExtensions: [],
+      composedExtensionContracts: new Map(),
+      authoringContributions: {
+        ...assembled,
+        type: { ...scalarTypeConstructors, ...assembled.type },
+        attributeSpecs: sqlAttributeSpecs,
+      },
+      pslDiagnostics: { describeUnsupportedAttribute: describeUnsupportedSqlAttribute },
+      codecLookup: { ...emptyCodecLookup, descriptorFor: () => undefined },
+      controlMutationDefaults: { defaultFunctionRegistry: new Map(), generatorDescriptors: [] },
+      dataTypeLookup: postgresDataTypeLookup,
+      resolvedInputs: [],
+      capabilities: { sql: { scalarList: true } },
+    };
+  }
+
   function interpret(text: string) {
     const { document, sources } = parse(text, 'psl-policy-authoring.test.psl');
-    const { symbolTable } = buildSymbolTable({
+    return interpretPslSqlSources({
       documents: [document],
       sources,
-    });
-    return interpretPslDocumentToSqlContract({
-      dataTypeLookup: postgresDataTypeLookup,
-      documents: [document],
-      symbolTable,
-      sources,
+      context: contextFor(),
       target: postgresTarget,
-      scalarColumnDescriptors,
-      authoringContributions: assembled,
-      composedExtensionContracts: new Map(),
       createNamespace: postgresCreateNamespace,
-      capabilities: { sql: { scalarList: true } },
     });
   }
 
@@ -253,21 +275,16 @@ namespace public {
 
   it('lowers a policy_select block to entries.policy without test-side hand-lowering', () => {
     const { document, sources } = parse(source, 'psl-policy-authoring.test.psl');
-    const { symbolTable, diagnostics } = buildSymbolTable({ documents: [document], sources });
+    const { diagnostics } = buildSymbolTable({ documents: [document], sources });
 
     expect(diagnostics).toEqual([]);
 
-    const result = interpretPslDocumentToSqlContract({
+    const result = interpretPslSqlSources({
       documents: [document],
-      dataTypeLookup: postgresDataTypeLookup,
-      symbolTable,
       sources,
+      context: contextFor(),
       target: postgresTarget,
-      scalarColumnDescriptors,
-      authoringContributions: assembled,
-      composedExtensionContracts: new Map(),
       createNamespace: postgresCreateNamespace,
-      capabilities: { sql: { scalarList: true } },
     });
 
     expect(result.ok).toBe(true);

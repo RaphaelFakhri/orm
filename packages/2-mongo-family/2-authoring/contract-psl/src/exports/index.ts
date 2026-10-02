@@ -4,13 +4,21 @@ export {
   type FieldValueSets,
 } from '../derive-json-schema';
 export {
+  describeUnresolvedMongoType,
+  mongoUnsupportedScalarTypeMessage,
+} from '../describe-unresolved-type';
+export {
   type InterpretPslDocumentToMongoContractInput,
   interpretPslDocumentToMongoContract,
 } from '../interpreter';
-export { mongoAttributeSpecs } from '../mongo-attribute-specs';
+export {
+  describeUnsupportedMongoAttribute,
+  mongoAttributeSpecs,
+} from '../mongo-attribute-specs';
 export {
   type MongoBackRelationCandidate,
   type MongoForeignKeyRelation,
   type PairedMongoBackRelation,
   pairMongoBackRelations,
 } from '../pair-back-relations';
+export { type InterpretPslMongoSourcesInput, interpretPslMongoSources } from '../provider';

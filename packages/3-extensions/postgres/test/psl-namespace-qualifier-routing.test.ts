@@ -1,10 +1,15 @@
-import { createDataTypeLookup } from '@internal/framework-components/codec';
+import type { AuthoringTypeConstructorDescriptor } from '@internal/framework-components/authoring';
+import { createDataTypeLookup, emptyCodecLookup } from '@internal/framework-components/codec';
 import type { TargetPackRef } from '@internal/framework-components/components';
+import { assembleAuthoringContributions } from '@internal/framework-components/control';
 import { UNBOUND_NAMESPACE_ID } from '@internal/framework-components/ir';
-import { buildSymbolTable } from '@internal/psl-parser';
 import { parse } from '@internal/psl-parser/syntax';
 import type { SqlStorage } from '@internal/sql-contract/types';
-import { interpretPslDocumentToSqlContract } from '@internal/sql-contract-psl';
+import { interpretPslSqlSources } from '@internal/sql-contract-psl';
+import {
+  describeUnsupportedSqlAttribute,
+  sqlAttributeSpecs,
+} from '@internal/sql-contract-psl/attribute-specs';
 import { postgresDataTypes } from '@internal/target-postgres/data-types';
 import {
   PostgresSchema,
@@ -28,13 +33,39 @@ const postgresScalarTypeDescriptors = new Map([
   ['Int', { codecId: 'pg/int4@1', nativeType: 'int4' }],
 ] as const);
 
-function symbolTableInput(schema: string) {
+const scalarTypeConstructors: Record<string, AuthoringTypeConstructorDescriptor> =
+  Object.fromEntries(
+    [...postgresScalarTypeDescriptors].map(([name, output]) => [
+      name,
+      { kind: 'typeConstructor' as const, output },
+    ]),
+  );
+
+const emptyAuthoringContributions = assembleAuthoringContributions([]);
+
+function emit(schema: string) {
   const { document, sources } = parse(schema, 'psl-namespace-qualifier-routing.test.psl');
-  const { symbolTable } = buildSymbolTable({
+  return interpretPslSqlSources({
     documents: [document],
     sources,
+    context: {
+      composedExtensions: [],
+      composedExtensionContracts: new Map(),
+      authoringContributions: {
+        ...emptyAuthoringContributions,
+        type: { ...scalarTypeConstructors, ...emptyAuthoringContributions.type },
+        attributeSpecs: sqlAttributeSpecs,
+      },
+      pslDiagnostics: { describeUnsupportedAttribute: describeUnsupportedSqlAttribute },
+      codecLookup: { ...emptyCodecLookup, descriptorFor: () => undefined },
+      controlMutationDefaults: { defaultFunctionRegistry: new Map(), generatorDescriptors: [] },
+      dataTypeLookup: postgresDataTypeLookup,
+      resolvedInputs: [],
+      capabilities: { sql: { scalarList: true } },
+    },
+    target: postgresTargetPackRef,
+    createNamespace: postgresCreateNamespace,
   });
-  return { documents: [document], sources, symbolTable };
 }
 
 /**
@@ -59,22 +90,12 @@ describe('PSL → SqlStorage.namespaces qualifier routing (FR15 slice 3 + FR16a 
   // target-specific concretions (PostgresUnboundSchema / PostgresSchema)
   // that carry the assembled tables and dispatch qualifyTable correctly.
   it('`namespace unbound { … }` lowers to PostgresUnboundSchema, whose qualifyTable elides the schema prefix', () => {
-    const document = symbolTableInput(`namespace unbound {
+    const result = emit(`namespace unbound {
   model Tenant {
     id Int @id
   }
 }
 `);
-
-    const result = interpretPslDocumentToSqlContract({
-      dataTypeLookup: postgresDataTypeLookup,
-      ...document,
-      target: postgresTargetPackRef,
-      scalarColumnDescriptors: postgresScalarTypeDescriptors,
-      composedExtensionContracts: new Map(),
-      createNamespace: postgresCreateNamespace,
-      capabilities: { sql: { scalarList: true } },
-    });
     expect(result.ok).toBe(true);
     if (!result.ok) {
       return;
@@ -97,22 +118,12 @@ describe('PSL → SqlStorage.namespaces qualifier routing (FR15 slice 3 + FR16a 
   });
 
   it('`namespace auth { … }` lowers to PostgresSchema("auth"), whose qualifyTable emits `"auth"."<table>"`', () => {
-    const document = symbolTableInput(`namespace auth {
+    const result = emit(`namespace auth {
   model User {
     id Int @id
   }
 }
 `);
-
-    const result = interpretPslDocumentToSqlContract({
-      dataTypeLookup: postgresDataTypeLookup,
-      ...document,
-      target: postgresTargetPackRef,
-      scalarColumnDescriptors: postgresScalarTypeDescriptors,
-      composedExtensionContracts: new Map(),
-      createNamespace: postgresCreateNamespace,
-      capabilities: { sql: { scalarList: true } },
-    });
     expect(result.ok).toBe(true);
     if (!result.ok) {
       return;
@@ -130,20 +141,10 @@ describe('PSL → SqlStorage.namespaces qualifier routing (FR15 slice 3 + FR16a 
   });
 
   it('top-level (implicit) models lower to the public namespace with schema-qualified DDL', () => {
-    const document = symbolTableInput(`model Post {
+    const result = emit(`model Post {
   id Int @id
 }
 `);
-
-    const result = interpretPslDocumentToSqlContract({
-      dataTypeLookup: postgresDataTypeLookup,
-      ...document,
-      target: postgresTargetPackRef,
-      scalarColumnDescriptors: postgresScalarTypeDescriptors,
-      composedExtensionContracts: new Map(),
-      createNamespace: postgresCreateNamespace,
-      capabilities: { sql: { scalarList: true } },
-    });
     expect(result.ok).toBe(true);
     if (!result.ok) {
       return;

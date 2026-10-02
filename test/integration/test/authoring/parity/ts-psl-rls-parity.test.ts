@@ -13,7 +13,6 @@ import { int4Column, textColumn } from '@internal/adapter-postgres/column-types'
 import postgresAdapter from '@internal/adapter-postgres/control';
 import { anon, authenticated } from '@internal/extension-supabase/contract';
 import sqlFamilyControl from '@internal/family-sql/control';
-import { collectScalarTypeConstructors } from '@internal/framework-components/authoring';
 import { createControlStack } from '@internal/framework-components/control';
 import {
   defineContract,
@@ -27,9 +26,9 @@ import {
   rlsEnabled,
   role,
 } from '@internal/postgres/contract-builder';
-import { buildSymbolTable } from '@internal/psl-parser';
 import { parse } from '@internal/psl-parser/syntax';
-import { interpretPslDocumentToSqlContract } from '@internal/sql-contract-psl';
+import { interpretPslSqlSources } from '@internal/sql-contract-psl';
+import { contractSourceContextFromControlStack } from '@internal/sql-contract-psl/test';
 import postgresControl from '@internal/target-postgres/control';
 import postgresPack from '@internal/target-postgres/pack';
 import type { PostgresSchema } from '@internal/target-postgres/types';
@@ -43,30 +42,14 @@ const stack = createControlStack({
   extensions: [],
 });
 
-function buildColumnDescriptorMap() {
-  return collectScalarTypeConstructors(stack.authoringContributions.type);
-}
-
 function interpretWithRealPacks(schema: string) {
-  const scalarColumnDescriptors = buildColumnDescriptorMap();
   const { document, sources } = parse(schema, 'rls-parity.prisma');
-  const { symbolTable } = buildSymbolTable({
+  return interpretPslSqlSources({
     documents: [document],
     sources,
-  });
-  return interpretPslDocumentToSqlContract({
-    documents: [document],
-    symbolTable,
-    sources,
+    context: contractSourceContextFromControlStack(stack),
     target: postgresPack,
-    scalarColumnDescriptors,
-    dataTypeLookup: stack.dataTypeLookup,
-    controlMutationDefaults: stack.controlMutationDefaults,
-    authoringContributions: stack.authoringContributions,
-    composedExtensionContracts: new Map(),
     createNamespace: postgresCreateNamespace,
-    capabilities: stack.capabilities,
-    codecLookup: stack.codecLookup,
   });
 }
 

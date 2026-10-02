@@ -1,6 +1,6 @@
 import type { Contract } from '@internal/contract/types';
 import { crossRef } from '@internal/contract/types';
-import type { CodecLookup } from '@internal/framework-components/codec';
+import type { CodecLookup, CodecLookupWithDescriptors } from '@internal/framework-components/codec';
 import { UNBOUND_NAMESPACE_ID } from '@internal/framework-components/ir';
 import { MongoIndex } from '@internal/mongo-contract';
 
@@ -8,14 +8,11 @@ function modelsOf(ir: Contract): Record<string, unknown> {
   return ir.domain.namespaces[UNBOUND_NAMESPACE_ID]!.models;
 }
 
-import { buildSymbolTable, type SymbolTable } from '@internal/psl-parser';
-import type { DocumentAst, PslSources } from '@internal/psl-parser/syntax';
-import { parse } from '@internal/psl-parser/syntax';
 import { describe, expect, it } from 'vitest';
-import { interpretPslDocumentToMongoContract } from '../src/interpreter';
 import {
   expectInvalidAttributeSyntax,
   expectUnresolvedReference,
+  interpretMongoContract,
 } from './interpreter-test-helpers';
 
 const mongoScalarTypeDescriptors: ReadonlyMap<string, string> = new Map([
@@ -36,7 +33,7 @@ const mongoTargetTypes: Record<string, readonly string[]> = {
   'mongo/double@1': ['double'],
 };
 
-const mongoCodecLookup: CodecLookup = {
+const mongoCodecLookup: CodecLookupWithDescriptors = {
   get(id: string) {
     const targetTypes = mongoTargetTypes[id];
     if (!targetTypes) return undefined;
@@ -50,6 +47,7 @@ const mongoCodecLookup: CodecLookup = {
   },
   targetTypesFor: (id: string) => mongoTargetTypes[id],
   renderOutputTypeFor: () => undefined,
+  descriptorFor: () => undefined,
 };
 
 function mongoCollectionsOf(ir: { readonly storage: unknown }): Record<string, unknown> {
@@ -59,29 +57,19 @@ function mongoCollectionsOf(ir: { readonly storage: unknown }): Record<string, u
   return storage.namespaces[UNBOUND_NAMESPACE_ID]!.entries.collection;
 }
 
-function buildSymbolTableInput(schema: string): {
-  documents: readonly DocumentAst[];
-  symbolTable: SymbolTable;
-  sources: PslSources;
-} {
-  const { document, sources } = parse(schema, 'test.prisma');
-  const { symbolTable } = buildSymbolTable({
-    documents: [document],
-    sources,
-  });
-  return { documents: [document], symbolTable, sources };
-}
-
 function interpret(schema: string) {
-  return interpretPslDocumentToMongoContract({
-    ...buildSymbolTableInput(schema),
-    scalarTypeCodecIds: mongoScalarTypeDescriptors,
-    controlMutationDefaults: {
-      dataTypeEntries: {},
-      defaultFunctionRegistry: new Map(),
+  return interpretMongoContract(
+    schema,
+    {
+      scalarTypeCodecIds: mongoScalarTypeDescriptors,
+      controlMutationDefaults: {
+        dataTypeEntries: {},
+        defaultFunctionRegistry: new Map(),
+      },
+      codecLookup: mongoCodecLookup,
     },
-    codecLookup: mongoCodecLookup,
-  });
+    'test.prisma',
+  );
 }
 
 function interpretOk(schema: string) {

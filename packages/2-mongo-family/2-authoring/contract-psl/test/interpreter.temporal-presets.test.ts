@@ -5,12 +5,10 @@ import {
   temporalAuthoringPresets,
   temporalCodecPreset,
 } from '@internal/framework-components/authoring';
-import type { CodecLookup } from '@internal/framework-components/codec';
+import type { CodecLookup, CodecLookupWithDescriptors } from '@internal/framework-components/codec';
 import { UNBOUND_NAMESPACE_ID } from '@internal/framework-components/ir';
-import { buildSymbolTable } from '@internal/psl-parser';
-import { parse } from '@internal/psl-parser/syntax';
 import { describe, expect, it } from 'vitest';
-import { interpretPslDocumentToMongoContract } from '../src/interpreter';
+import { interpretMongoContract } from './interpreter-test-helpers';
 
 const mongoDate = { codecId: 'mongo/date@1', nativeType: 'date' } as const;
 
@@ -35,7 +33,7 @@ const targetTypes: Record<string, readonly string[]> = {
   'mongo/date@1': ['date'],
 };
 
-const codecLookup: CodecLookup = {
+const codecLookup: CodecLookupWithDescriptors = {
   get(id: string) {
     if (!targetTypes[id]) return undefined;
     return {
@@ -48,30 +46,21 @@ const codecLookup: CodecLookup = {
   },
   targetTypesFor: (id: string) => targetTypes[id],
   renderOutputTypeFor: () => undefined,
+  descriptorFor: () => undefined,
 };
 
 function interpret(
   schema: string,
   options?: {
-    readonly composedExtensions?: readonly string[];
     readonly authoringContributions?: AuthoringContributions;
     readonly reportWarning?: (diagnostic: ContractSourceDiagnostic) => void;
   },
 ) {
-  const { document, sources } = parse(schema, 'schema.prisma');
-  const { symbolTable } = buildSymbolTable({
-    documents: [document],
-    sources,
-  });
-  return interpretPslDocumentToMongoContract({
-    documents: [document],
-    symbolTable,
-    sources,
+  return interpretMongoContract(schema, {
     scalarTypeCodecIds,
     controlMutationDefaults: { dataTypeEntries: {}, defaultFunctionRegistry: new Map() },
     codecLookup,
     authoringContributions: options?.authoringContributions ?? authoringContributions,
-    ...(options?.composedExtensions ? { composedExtensions: options.composedExtensions } : {}),
     ...(options?.reportWarning ? { reportWarning: options.reportWarning } : {}),
   });
 }
@@ -281,7 +270,7 @@ model Post {
     });
   });
 
-  it('rejects a misspelled preset with PSL_UNKNOWN_FIELD_PRESET', () => {
+  it('reports a misspelled preset name as a single unresolved reference', () => {
     expect(
       diagnosticsOf(`model Post {
   id        ObjectId              @id @map("_id")
@@ -290,15 +279,14 @@ model Post {
 `),
     ).toEqual([
       expect.objectContaining({
-        code: 'PSL_UNKNOWN_FIELD_PRESET',
-        message:
-          'Field "Post.createdAt" references unknown field preset "temporal.createdAtt". The "temporal" namespace has temporal.createdAt(), temporal.updatedAt() and temporal.timestamp(onCreate, onUpdate).',
-        data: { namespace: 'temporal', helperPath: 'temporal.createdAtt' },
+        code: 'PSL_UNRESOLVED_REFERENCE',
+        message: 'Cannot find type "temporal.createdAtt"',
+        data: { reference: 'type', name: 'temporal.createdAtt', constructorCall: true },
       }),
     ]);
   });
 
-  it('rejects an uncomposed extension namespace with PSL_EXTENSION_NAMESPACE_NOT_COMPOSED', () => {
+  it('rejects a field-preset call with an unregistered namespace with PSL_UNRESOLVED_REFERENCE', () => {
     expect(
       diagnosticsOf(`model Post {
   id ObjectId            @id @map("_id")
@@ -307,8 +295,9 @@ model Post {
 `),
     ).toEqual([
       expect.objectContaining({
-        code: 'PSL_EXTENSION_NAMESPACE_NOT_COMPOSED',
-        data: { namespace: 'weather', suggestedPack: 'weather' },
+        code: 'PSL_UNRESOLVED_REFERENCE',
+        message: 'Cannot find type "weather.updatedAt"',
+        data: { reference: 'type', name: 'weather.updatedAt', constructorCall: true },
       }),
     ]);
   });

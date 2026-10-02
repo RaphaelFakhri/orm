@@ -8,11 +8,15 @@
  * per-build batch as indexes (one flush covering both).
  */
 
-import { createDataTypeLookup } from '@internal/framework-components/codec';
+import { createDataTypeLookup, emptyCodecLookup } from '@internal/framework-components/codec';
 import { assembleAuthoringContributions } from '@internal/framework-components/control';
 import { buildSymbolTable, createBinder, interpretExtensionBlocks } from '@internal/psl-parser';
 import { parse } from '@internal/psl-parser/syntax';
-import { interpretPslDocumentToSqlContract } from '@internal/sql-contract-psl';
+import { interpretPslSqlSources } from '@internal/sql-contract-psl';
+import {
+  describeUnsupportedSqlAttribute,
+  sqlAttributeSpecs,
+} from '@internal/sql-contract-psl/attribute-specs';
 import { postgresDataTypes } from '@internal/target-postgres/data-types';
 import {
   afterAll,
@@ -93,24 +97,40 @@ function parsePsl(source: string) {
   };
 }
 
+const scalarTypeConstructors = Object.fromEntries(
+  [...scalarColumnDescriptors].map(([name, output]) => [
+    name,
+    { kind: 'typeConstructor' as const, output },
+  ]),
+);
+
 function interpret(source: string) {
   const { document, sources } = parse(source, 'psl-policy-map-authoring.test.psl');
-  const { symbolTable, diagnostics } = buildSymbolTable({
+  const { diagnostics } = buildSymbolTable({
     documents: [document],
     sources,
   });
   expect(diagnostics).toEqual([]);
-  return interpretPslDocumentToSqlContract({
+  return interpretPslSqlSources({
     documents: [document],
-    dataTypeLookup: postgresDataTypeLookup,
-    symbolTable,
     sources,
+    context: {
+      composedExtensions: [],
+      composedExtensionContracts: new Map(),
+      authoringContributions: {
+        ...assembled,
+        type: { ...scalarTypeConstructors, ...assembled.type },
+        attributeSpecs: sqlAttributeSpecs,
+      },
+      pslDiagnostics: { describeUnsupportedAttribute: describeUnsupportedSqlAttribute },
+      codecLookup: { ...emptyCodecLookup, descriptorFor: () => undefined },
+      controlMutationDefaults: { defaultFunctionRegistry: new Map(), generatorDescriptors: [] },
+      dataTypeLookup: postgresDataTypeLookup,
+      resolvedInputs: [],
+      capabilities: { sql: { scalarList: true } },
+    },
     target: postgresTarget,
-    scalarColumnDescriptors,
-    authoringContributions: assembled,
-    composedExtensionContracts: new Map(),
     createNamespace: postgresCreateNamespace,
-    capabilities: { sql: { scalarList: true } },
   });
 }
 

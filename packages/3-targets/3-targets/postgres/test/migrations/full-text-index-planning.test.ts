@@ -8,15 +8,19 @@
 
 import type { Contract } from '@internal/contract/types';
 import type { ExecuteRequestLowerer } from '@internal/family-sql/control-adapter';
-import { createDataTypeLookup } from '@internal/framework-components/codec';
+import type { AuthoringTypeConstructorDescriptor } from '@internal/framework-components/authoring';
+import { createDataTypeLookup, emptyCodecLookup } from '@internal/framework-components/codec';
 import {
   APP_SPACE_ID,
   assembleAuthoringContributions,
 } from '@internal/framework-components/control';
-import { buildSymbolTable } from '@internal/psl-parser';
 import { parse } from '@internal/psl-parser/syntax';
 import type { SqlStorage } from '@internal/sql-contract/types';
-import { interpretPslDocumentToSqlContract } from '@internal/sql-contract-psl';
+import { interpretPslSqlSources } from '@internal/sql-contract-psl';
+import {
+  describeUnsupportedSqlAttribute,
+  sqlAttributeSpecs,
+} from '@internal/sql-contract-psl/attribute-specs';
 import { postgresDataTypes } from '@internal/target-postgres/data-types';
 import { blindCast } from '@internal/utils/casts';
 import { describe, expect, it } from 'vitest';
@@ -65,25 +69,40 @@ const assembled = assembleAuthoringContributions([
   },
 ]);
 
+const scalarTypeDescriptors = new Map<string, { codecId: string; nativeType: string }>([
+  ['Int', { codecId: 'pg/int4@1', nativeType: 'int4' }],
+  ['String', { codecId: 'pg/text@1', nativeType: 'text' }],
+]);
+
+const scalarTypeConstructors: Record<string, AuthoringTypeConstructorDescriptor> =
+  Object.fromEntries(
+    [...scalarTypeDescriptors].map(([name, output]) => [
+      name,
+      { kind: 'typeConstructor' as const, output },
+    ]),
+  );
+
 function authoredContract(schema: string): Contract<SqlStorage> {
   const { document, sources } = parse(schema, 'full-text-index-planning.test.psl');
-  const { symbolTable } = buildSymbolTable({
+  const result = interpretPslSqlSources({
     documents: [document],
     sources,
-  });
-  const result = interpretPslDocumentToSqlContract({
-    documents: [document],
-    symbolTable,
-    sources,
-    capabilities: {},
+    context: {
+      composedExtensions: [],
+      composedExtensionContracts: new Map(),
+      authoringContributions: {
+        ...assembled,
+        type: { ...scalarTypeConstructors, ...assembled.type },
+        attributeSpecs: sqlAttributeSpecs,
+      },
+      pslDiagnostics: { describeUnsupportedAttribute: describeUnsupportedSqlAttribute },
+      codecLookup: { ...emptyCodecLookup, descriptorFor: () => undefined },
+      controlMutationDefaults: { defaultFunctionRegistry: new Map(), generatorDescriptors: [] },
+      dataTypeLookup: postgresDataTypeLookup,
+      resolvedInputs: [],
+      capabilities: {},
+    },
     target: postgresTargetDescriptorMeta,
-    dataTypeLookup: postgresDataTypeLookup,
-    scalarColumnDescriptors: new Map([
-      ['Int', { codecId: 'pg/int4@1', nativeType: 'int4' }],
-      ['String', { codecId: 'pg/text@1', nativeType: 'text' }],
-    ]),
-    authoringContributions: assembled,
-    composedExtensionContracts: new Map(),
     createNamespace: postgresCreateNamespace,
   });
   expect(result.ok).toBe(true);

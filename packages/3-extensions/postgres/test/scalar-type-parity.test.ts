@@ -1,15 +1,12 @@
 import postgresAdapter from '@internal/adapter-postgres/control';
 import postgresDriver from '@internal/driver-postgres/control';
 import sql from '@internal/family-sql/control';
-import {
-  collectScalarTypeConstructors,
-  type ScalarTypeConstructorOutput,
-} from '@internal/framework-components/authoring';
+import { collectScalarTypeConstructors } from '@internal/framework-components/authoring';
 import { createDataTypeLookup } from '@internal/framework-components/codec';
 import { createControlStack } from '@internal/framework-components/control';
-import { buildSymbolTable } from '@internal/psl-parser';
 import { parse } from '@internal/psl-parser/syntax';
-import { interpretPslDocumentToSqlContract } from '@internal/sql-contract-psl';
+import { interpretPslSqlSources } from '@internal/sql-contract-psl';
+import { contractSourceContextFromControlStack } from '@internal/sql-contract-psl/test';
 import postgres from '@internal/target-postgres/control';
 import { postgresDataTypes } from '@internal/target-postgres/data-types';
 import postgresPackRef from '@internal/target-postgres/pack';
@@ -41,25 +38,16 @@ const REPRESENTATIVE_SCHEMA = `model sample {
 }
 `;
 
-function emit(scalarColumnDescriptors: ReadonlyMap<string, ScalarTypeConstructorOutput>) {
+function emit() {
   const { document, sources } = parse(REPRESENTATIVE_SCHEMA, 'scalar-type-parity.test.psl');
-  const { symbolTable } = buildSymbolTable({
+  return interpretPslSqlSources({
     documents: [document],
     sources,
-  });
-  return interpretPslDocumentToSqlContract({
-    documents: [document],
-    dataTypeLookup: postgresDataTypeLookup,
-    symbolTable,
-    sources,
+    context: contractSourceContextFromControlStack(stack, {
+      dataTypeLookup: postgresDataTypeLookup,
+    }),
     target: postgresPackRef,
-    scalarColumnDescriptors,
-    authoringContributions: stack.authoringContributions,
-    controlMutationDefaults: stack.controlMutationDefaults,
-    composedExtensionContracts: new Map(),
     createNamespace: postgresCreateNamespace,
-    codecLookup: stack.codecLookup,
-    capabilities: stack.capabilities,
   });
 }
 
@@ -135,7 +123,7 @@ describe('postgres scalar types derived from the unified namespace', () => {
   });
 
   it('emits a contract whose columns pin the namespace-derived {codecId, nativeType}', () => {
-    const result = emit(collectScalarTypeConstructors(stack.authoringContributions.type));
+    const result = emit();
 
     expect(result.ok).toBe(true);
     if (!result.ok) return;

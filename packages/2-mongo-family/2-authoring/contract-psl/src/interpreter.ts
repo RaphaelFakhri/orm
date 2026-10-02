@@ -24,6 +24,7 @@ import type {
   ParsedPslExtensionBlock,
 } from '@internal/framework-components/authoring';
 import {
+  getAuthoringFieldPreset,
   instantiateAuthoringEntityType,
   isAuthoringEntityTypeDescriptor,
   isAuthoringTypeConstructorDescriptor,
@@ -93,7 +94,6 @@ import {
   resolveFieldPreset,
 } from './field-presets';
 import {
-  createMongoBinder,
   interpretFieldAttribute,
   interpretModelAttribute,
   mongoAttributeSpecs,
@@ -109,18 +109,16 @@ export interface InterpretPslDocumentToMongoContractInput {
   readonly documents: readonly DocumentAst[];
   readonly symbolTable: SymbolTable;
   readonly sources: PslSources;
+  readonly binder: Binder;
   readonly scalarTypeCodecIds: ReadonlyMap<string, string>;
   readonly controlMutationDefaults: ControlDefaultRegistries;
   readonly codecLookup?: CodecLookup;
   readonly seedDiagnostics?: readonly ContractSourceDiagnostic[];
   readonly authoringContributions?: AuthoringContributions;
-  readonly composedExtensions?: readonly string[];
   /** The target's default codec ids for an `enum` block that omits `@@type`. */
   readonly enumInferenceCodecs?: { readonly text: string; readonly int: string };
   /** Receives a warning for each field typed with a deprecated scalar name. */
   readonly reportWarning?: (diagnostic: ContractSourceDiagnostic) => void;
-  /** Scalar names an earlier Prisma schema used that this schema does not accept, with the codec each maps to; a field typed with one is refused with the name that stores the same way. */
-  readonly formerScalarCodecIds?: ReadonlyMap<string, string>;
 }
 
 /**
@@ -160,44 +158,8 @@ function deprecatedScalarWarner(input: {
 
 interface ScalarNames {
   readonly warnDeprecated: (field: FieldSymbol) => void;
-  readonly unknownTypeMessage: (field: FieldSymbol, ownerName: string) => string;
-}
-
-/**
- * The words for a field type the schema cannot resolve: a name from an earlier Prisma that maps to a codec gets the current name for that codec; any other name gets the list of scalar types.
- */
-function unknownTypeMessages(input: {
-  readonly types: AuthoringTypeNamespace | undefined;
-  readonly scalarTypeCodecIds: ReadonlyMap<string, string>;
-  readonly formerScalarCodecIds: ReadonlyMap<string, string>;
-}): ScalarNames['unknownTypeMessage'] {
-  const current = [...input.scalarTypeCodecIds].filter(([name]) => {
-    const type = input.types?.[name];
-    return !(
-      type !== undefined &&
-      isAuthoringTypeConstructorDescriptor(type) &&
-      type.deprecated !== undefined
-    );
-  });
-  const names = current.map(([name]) => name);
-  const scalarTypes =
-    names.length === 0
-      ? 'No Mongo scalar types are registered.'
-      : `The Mongo scalar types are ${names.length === 1 ? names.join('') : `${names.slice(0, -1).join(', ')} and ${names.at(-1)}`}.`;
-  return (field, ownerName) => {
-    const subject = `Field "${ownerName}.${field.name}" has type "${field.typeName}"`;
-    const codecId = input.formerScalarCodecIds.get(field.typeName);
-    const replacement = current.find(([, id]) => id === codecId)?.[0];
-    if (replacement === undefined) {
-      return `${subject}, which is not a scalar type, an enum, a composite type or a model. ${scalarTypes}`;
-    }
-    const type = input.types?.[replacement];
-    const stored =
-      type !== undefined && isAuthoringTypeConstructorDescriptor(type)
-        ? ` (stored as BSON ${type.output.nativeType})`
-        : '';
-    return `${subject}, which is not a Mongo scalar type; use "${replacement}"${stored}.`;
-  };
+  /** Every enum the schema declares, including one whose own declaration failed and was already reported. */
+  readonly declaredEnums: ReadonlySet<string>;
 }
 
 /**
@@ -1154,8 +1116,6 @@ function resolveNonRelationField(
   codecIdByEnumName: ReadonlyMap<string, string>,
   presetContext: FieldPresetContext,
   scalarNames: ScalarNames,
-  onPresetHandled: (field: FieldSymbol) => void,
-  onUnresolvedType: (field: FieldSymbol, ownerName: string) => void,
 ): ResolvedNonRelationField | undefined {
   const ownerName = owner.name;
   if (resolution?.kind === 'compositeType') {
@@ -1204,25 +1164,54 @@ function resolveNonRelationField(
     return undefined;
   }
 
-  if (resolution.kind === 'unresolved') {
-    if (field.typeConstructor === undefined) {
-      if (resolution.name === field.typeName) onUnresolvedType(field, ownerName);
-      return undefined;
+  if (resolution.kind === 'contributedType') {
+    const isPreset =
+      getAuthoringFieldPreset(presetContext.authoringContributions, resolution.symbol.path) !==
+      undefined;
+    if (isPreset) {
+      if (field.typeConstructor === undefined) {
+        presetContext.diagnostics.push({
+          code: 'PSL_UNRESOLVED_REFERENCE',
+          message: `Cannot find type "${resolution.symbol.path.join('.')}"`,
+          ...diagnosticSource(presetContext.sources, field.node.syntax).at(field.span),
+        });
+        return undefined;
+      }
+      const preset = resolveFieldPreset({
+        field,
+        ownerName,
+        ownerKind: owner.kind,
+        context: presetContext,
+      });
+      if (preset.kind === 'invalid') return undefined;
+      if (preset.kind === 'preset') {
+        return {
+          field: preset.field,
+          ...ifDefined('executionDefaults', preset.executionDefaults),
+        };
+      }
     }
-    if (resolution.name !== field.typeConstructor.path.join('.')) return undefined;
+  } else if (
+    field.typeConstructor !== undefined &&
+    resolution.name === field.typeConstructor.path.join('.')
+  ) {
     const preset = resolveFieldPreset({
       field,
       ownerName,
       ownerKind: owner.kind,
       context: presetContext,
     });
-    if (preset.kind === 'none') return undefined;
-    onPresetHandled(field);
+    if (preset.kind === 'preset') {
+      return {
+        field: preset.field,
+        ...ifDefined('executionDefaults', preset.executionDefaults),
+      };
+    }
     if (preset.kind === 'invalid') return undefined;
-    return {
-      field: preset.field,
-      ...ifDefined('executionDefaults', preset.executionDefaults),
-    };
+  }
+
+  if (resolution.kind === 'unresolved') {
+    return undefined;
   }
   const codecId = resolution.symbol.descriptor.output.codecId;
 
@@ -1302,7 +1291,6 @@ export function interpretPslDocumentToMongoContract(
   const diagnostics = createPslDiagnosticCollector(sources);
   const presetContext: FieldPresetContext = {
     authoringContributions: input.authoringContributions,
-    composedExtensions: new Set(input.composedExtensions ?? []),
     sources,
     diagnostics,
     warnPresetWithoutEffect: presetWithoutEffectWarner({
@@ -1319,45 +1307,13 @@ export function interpretPslDocumentToMongoContract(
       sources,
       reportWarning: input.reportWarning,
     }),
-    unknownTypeMessage: unknownTypeMessages({
-      types: input.authoringContributions?.type,
-      scalarTypeCodecIds,
-      formerScalarCodecIds: input.formerScalarCodecIds ?? new Map(),
-    }),
+    declaredEnums: new Set(
+      Object.values(symbolTable.topLevel.blocks)
+        .filter((block) => block.keyword === 'enum')
+        .map((block) => block.name),
+    ),
   };
-  const { binder, diagnostics: binderDiagnostics } = createMongoBinder({
-    symbolTable,
-    sources,
-    scalarTypeCodecIds,
-    controlMutationDefaults: input.controlMutationDefaults,
-    authoringContributions: input.authoringContributions,
-  });
-  const replacedTypeDiagnostics = new Set<PslDiagnostic>();
-  const unresolvedTypeMessages = new Map<PslDiagnostic, string>();
-  const typeDiagnosticsFor = (field: FieldSymbol): readonly PslDiagnostic[] => {
-    const node = typeReferenceNode(field);
-    if (node === undefined) return [];
-    const { filename, range } = diagnosticSource(sources, node).at();
-    return binderDiagnostics.filter(
-      (diagnostic) =>
-        diagnostic.code === 'PSL_UNRESOLVED_REFERENCE' &&
-        diagnostic.filename === filename &&
-        diagnostic.range.start.line === range.start.line &&
-        diagnostic.range.start.character === range.start.character &&
-        diagnostic.range.end.line === range.end.line &&
-        diagnostic.range.end.character === range.end.character,
-    );
-  };
-  const onPresetHandled = (field: FieldSymbol): void => {
-    for (const diagnostic of typeDiagnosticsFor(field)) {
-      replacedTypeDiagnostics.add(diagnostic);
-    }
-  };
-  const onUnresolvedType = (field: FieldSymbol, ownerName: string): void => {
-    for (const diagnostic of typeDiagnosticsFor(field)) {
-      unresolvedTypeMessages.set(diagnostic, scalarNames.unknownTypeMessage(field, ownerName));
-    }
-  };
+  const { binder } = input;
   const { parsedBlocks, diagnostics: blockDiagnostics } = interpretExtensionBlocks({
     symbolTable,
     sources,
@@ -1529,8 +1485,6 @@ export function interpretPslDocumentToMongoContract(
         codecIdByEnumName,
         presetContext,
         scalarNames,
-        onPresetHandled,
-        onUnresolvedType,
       );
       if (!resolved) continue;
 
@@ -1628,8 +1582,6 @@ export function interpretPslDocumentToMongoContract(
         codecIdByEnumName,
         presetContext,
         scalarNames,
-        onPresetHandled,
-        onUnresolvedType,
       );
       if (!resolved) continue;
       fields[field.name] = resolved.field;
@@ -1675,14 +1627,7 @@ export function interpretPslDocumentToMongoContract(
     diagnostics,
   });
 
-  const remainingBinderDiagnostics = binderDiagnostics
-    .filter((diagnostic) => !replacedTypeDiagnostics.has(diagnostic))
-    .map((diagnostic) => {
-      const message = unresolvedTypeMessages.get(diagnostic);
-      return message === undefined ? diagnostic : { ...diagnostic, message };
-    });
   if (
-    remainingBinderDiagnostics.length > 0 ||
     diagnostics.length > 0 ||
     polyResult.diagnostics.length > 0 ||
     (input.seedDiagnostics?.length ?? 0) > 0
@@ -1691,7 +1636,6 @@ export function interpretPslDocumentToMongoContract(
       summary: 'PSL to Mongo contract interpretation failed',
       diagnostics: [
         ...(input.seedDiagnostics ?? []),
-        ...mapPslDiagnostics(remainingBinderDiagnostics, sources),
         ...diagnostics.toExternal(),
         ...polyResult.diagnostics.toExternal(),
       ],

@@ -2,12 +2,11 @@ import postgresAdapter from '@internal/adapter-postgres/control';
 import pgvectorControl from '@internal/extension-pgvector/control';
 import pgvectorPack from '@internal/extension-pgvector/pack';
 import sqlFamilyControl from '@internal/family-sql/control';
-import { collectScalarTypeConstructors } from '@internal/framework-components/authoring';
 import { createControlStack } from '@internal/framework-components/control';
 import { defineContract, field, model, nativeEnum, pg } from '@internal/postgres/contract-builder';
-import { buildSymbolTable } from '@internal/psl-parser';
 import { parse } from '@internal/psl-parser/syntax';
-import { interpretPslDocumentToSqlContract } from '@internal/sql-contract-psl';
+import { interpretPslSqlSources } from '@internal/sql-contract-psl';
+import { contractSourceContextFromControlStack } from '@internal/sql-contract-psl/test';
 import postgresControl from '@internal/target-postgres/control';
 import postgresPack from '@internal/target-postgres/pack';
 import { postgresCreateNamespace } from '@internal/target-postgres/types';
@@ -25,32 +24,15 @@ const stack = createControlStack({
   extensions: [pgvectorControl],
 });
 
-function buildColumnDescriptorMap() {
-  return collectScalarTypeConstructors(stack.authoringContributions.type);
-}
-
 function interpretWithRealPacks(schema: string) {
-  const scalarColumnDescriptors = buildColumnDescriptorMap();
   const { document, sources } = parse(schema, 'real-packs-parity.prisma');
-  const { symbolTable } = buildSymbolTable({
+  return interpretPslSqlSources({
     documents: [document],
     sources,
-  });
-  return interpretPslDocumentToSqlContract({
-    documents: [document],
-    symbolTable,
-    sources,
+    context: contractSourceContextFromControlStack(stack),
     target: postgresPack,
-    scalarColumnDescriptors,
-    dataTypeLookup: stack.dataTypeLookup,
-    controlMutationDefaults: stack.controlMutationDefaults,
-    authoringContributions: stack.authoringContributions,
-    composedExtensionContracts: new Map(),
-    composedExtensions: [pgvectorControl.id],
     composedExtensionPackRefs: [pgvectorPack],
     createNamespace: postgresCreateNamespace,
-    capabilities: stack.capabilities,
-    codecLookup: stack.codecLookup,
   });
 }
 

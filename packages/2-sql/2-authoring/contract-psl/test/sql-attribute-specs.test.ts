@@ -7,11 +7,10 @@ import type {
   ModelSymbol,
   Param,
 } from '@internal/psl-parser';
-import { createPslDiagnosticCollector } from '@internal/psl-parser';
+import { createProjectBinder, createPslDiagnosticCollector } from '@internal/psl-parser';
 import { describe, expect, it } from 'vitest';
 import { getAttribute } from '../src/psl-attribute-parsing';
 import {
-  createSqlBinder,
   fieldSpecContext,
   interpretFieldAttribute,
   interpretModelAttribute,
@@ -19,7 +18,11 @@ import {
   sqlAttributeSpecs,
 } from '../src/sql-attribute-specs';
 import { fixtureDataTypeSupport } from './fixture-data-types';
-import { buildSymbolTableInput, createBuiltinLikeControlMutationDefaults } from './fixtures';
+import {
+  buildSymbolTableInput,
+  createBuiltinLikeControlMutationDefaults,
+  createPostgresTestContext,
+} from './fixtures';
 
 const controlMutationDefaults = {
   ...createBuiltinLikeControlMutationDefaults(),
@@ -91,7 +94,8 @@ function interpretDefault(schema: string, fieldName: string) {
     model,
     field: target,
     sources,
-    binder: createSqlBinder({ symbolTable, sources }).binder,
+    binder: createProjectBinder({ symbolTable, sources, context: createPostgresTestContext() })
+      .binder,
     diagnostics,
   });
   return { value, diagnostics: diagnostics.toExternal() };
@@ -116,7 +120,11 @@ namespace scoped {
       spec: sqlAttributeSpecs.model.base(),
       model,
       sources: input.sources,
-      binder: createSqlBinder({ symbolTable: input.symbolTable, sources: input.sources }).binder,
+      binder: createProjectBinder({
+        symbolTable: input.symbolTable,
+        sources: input.sources,
+        context: createPostgresTestContext(),
+      }).binder,
       diagnostics,
     });
     expect(diagnostics.toExternal()).toEqual([]);
