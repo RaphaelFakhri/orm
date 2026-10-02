@@ -60,6 +60,7 @@ function familyInstance(valueObjectStorageType: string | undefined) {
     codecLookup,
     dataTypeLookup: createDataTypeLookup([int4, jsonb, text]),
     declaredDataTypes: [],
+    codecDescriptors: [],
     authoringContributions: {
       type: {
         Jsonb: { kind: 'typeConstructor', output: { codecId: 't/jsonb@1' } },

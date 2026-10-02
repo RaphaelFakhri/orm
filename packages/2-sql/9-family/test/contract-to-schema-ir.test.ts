@@ -344,17 +344,9 @@ describe('contractToSchemaIR', () => {
     const storage = unboundStorage('test' as StorageHashBase<string>, {
       T: table({
         columns: {
-          whole: col({
-            nativeType: 'numeric',
-            codecId: 'pg/numeric@1',
-            typeParams: { precision: 10 },
-          }),
-          scaled: col({
-            nativeType: 'numeric',
-            codecId: 'pg/numeric@1',
-            typeParams: { precision: 10, scale: 2 },
-          }),
-          bare: col({ nativeType: 'character', codecId: 'pg/char@1' }),
+          whole: col({ codecId: 'pg/numeric@1', typeParams: { precision: 10 } }),
+          scaled: col({ codecId: 'pg/numeric@1', typeParams: { precision: 10, scale: 2 } }),
+          bare: col({ codecId: 'pg/char@1' }),
         },
       }),
     });
