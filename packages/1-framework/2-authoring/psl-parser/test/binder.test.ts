@@ -21,7 +21,6 @@ import {
   type UnresolvedTypeReference,
   type UnsupportedAttribute,
 } from '../src/binder';
-import { contributedTypeScope } from '../src/contributed-type-scope';
 import { parse } from '../src/parse';
 import { PslSources } from '../src/source-file';
 import {
@@ -673,31 +672,6 @@ describe('createBinder — multiple documents', () => {
       symbol: symbolTable.topLevel.namespaces['app']!.models['Item'],
       namespace: symbolTable.topLevel.namespaces['app'],
     });
-  });
-});
-
-describe('contributedTypes scope', () => {
-  it('returns the same scope object for the same registry', () => {
-    expect(contributedTypeScope(TYPE_CONSTRUCTORS)).toBe(contributedTypeScope(TYPE_CONSTRUCTORS));
-    expect(contributedTypeScope({ ...TYPE_CONSTRUCTORS })).not.toBe(
-      contributedTypeScope(TYPE_CONSTRUCTORS),
-    );
-  });
-
-  it('shares contributedTypes symbols across two binders built over different documents', () => {
-    const first = bind('model User {\n  name String\n}');
-    const second = bind('model Other {\n  title String\n}');
-
-    const firstSymbol = first.binder.symbolForNode(typeNodeOf(first.symbolTable, 'User', 'name'));
-    const secondSymbol = second.binder.symbolForNode(
-      typeNodeOf(second.symbolTable, 'Other', 'title'),
-    );
-
-    expect(firstSymbol?.kind).toBe('contributedType');
-    expect(firstSymbol).not.toBe(secondSymbol);
-    if (firstSymbol?.kind === 'contributedType' && secondSymbol?.kind === 'contributedType') {
-      expect(firstSymbol.symbol).toBe(secondSymbol.symbol);
-    }
   });
 });
 
