@@ -56,15 +56,11 @@ export function mergeContributedTypes(
   return merged;
 }
 
-const scopes = new WeakMap<ContributedTypeNamespace, ContributedTypeScope>();
-
 export function contributedTypeScope(
   contributedTypes: ContributedTypeNamespace,
 ): ContributedTypeScope {
-  const existing = scopes.get(contributedTypes);
-  if (existing !== undefined) return existing;
   const members = collect(contributedTypes, []);
-  const created: ContributedTypeScope = {
+  return {
     lookup(name) {
       return members.get(name);
     },
@@ -72,8 +68,6 @@ export function contributedTypeScope(
       return members.entries();
     },
   };
-  scopes.set(contributedTypes, created);
-  return created;
 }
 
 function collect(
