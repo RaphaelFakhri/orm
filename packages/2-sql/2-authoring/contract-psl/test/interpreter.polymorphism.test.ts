@@ -850,6 +850,78 @@ model Bug {
       );
     });
 
+    it('accepts a discriminator field typed by a named type based on String', () => {
+      const result = interpretPostgresSchema(
+        `types {
+  Kind = String
+}
+
+model Task {
+  id    Int    @id @default(autoincrement())
+  type  Kind
+
+  @@discriminator(type)
+}
+
+model Bug {
+  severity String
+
+  @@base(Task, "bug")
+}`,
+        {
+          controlMutationDefaults: builtinControlMutationDefaults,
+        },
+      );
+
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+      expect(modelsOf(result.value)['Task']).toMatchObject({
+        discriminator: { field: 'type' },
+        variants: { Bug: { value: 'bug' } },
+      });
+    });
+
+    it('diagnoses a discriminator field typed by a user model named String', () => {
+      const result = interpretPostgresSchema(
+        `model String {
+  id    Int    @id
+  tasks Task[]
+}
+
+model Task {
+  id     Int    @id @default(autoincrement())
+  typeId Int
+  type   String @relation(fields: [typeId], references: [id])
+
+  @@discriminator(type)
+}
+
+model Bug {
+  severity Int
+
+  @@base(Task, "bug")
+}`,
+        {
+          controlMutationDefaults: builtinControlMutationDefaults,
+        },
+      );
+
+      expect(result.ok).toBe(false);
+      if (result.ok) return;
+      expect(result.failure.diagnostics).toEqual([
+        {
+          code: 'PSL_INVALID_ATTRIBUTE_ARGUMENT',
+          message:
+            'Discriminator field "type" on model "Task" must be of type String, but is "String"',
+          sourceId: 'schema.prisma',
+          span: {
+            start: { line: 11, column: 3, offset: 189 },
+            end: { line: 11, column: 24, offset: 210 },
+          },
+        },
+      ]);
+    });
+
     it('diagnoses model with both @@discriminator and @@base', () => {
       const result = interpretPostgresSchema(
         `model Task {

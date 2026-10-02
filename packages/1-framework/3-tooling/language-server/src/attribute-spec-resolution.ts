@@ -10,6 +10,7 @@ import {
   type BlockAttributeSpecFactory,
   findBlockDescriptor,
   type SymbolTable,
+  typeReferenceNode,
 } from '@internal/psl-parser';
 import type {
   FieldDeclarationAst,
@@ -91,7 +92,9 @@ export function attributeSpecResolver(
           dataTypeEntries: source.authoringContributions.dataTypes ?? {},
         },
       };
-      return (name) => specs.field[name]?.({ ...specContext, field });
+      const node = typeReferenceNode(field);
+      const typeResolution = node === undefined ? undefined : source.binder.symbolForNode(node);
+      return (name) => specs.field[name]?.({ ...specContext, field, typeResolution });
     }
   }
 }

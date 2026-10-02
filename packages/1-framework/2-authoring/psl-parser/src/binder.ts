@@ -25,6 +25,7 @@ import {
   documentScope,
   isNamespaceLike,
   lookupMember,
+  namedTypeBaseScope,
   namespaceScope,
   type Scope,
   type ScopeResolution,
@@ -218,17 +219,13 @@ export function createBinder(options: CreateBinderOptions): BinderResult {
   const diagnostics: ParseDiagnostic[] = [];
   const binder = new PslBinder(declarations, references, document, scopes);
 
+  const baseScope = namedTypeBaseScope(symbolTable.topLevel, contributed);
   for (const symbol of Object.values(symbolTable.topLevel.namedTypes)) {
     declarations.set(symbol.node.syntax, symbol);
     const name = symbol.node.typeAnnotation()?.name();
-    const outcome = resolveTypeReference(name, document);
+    const outcome = resolveTypeReference(name, baseScope);
     if (name === undefined || outcome === undefined) continue;
-    const refersToItself =
-      outcome.resolution.kind === 'namedType' && outcome.resolution.symbol === symbol;
-    const resolution = refersToItself
-      ? (resolveTypeReference(name, contributed)?.resolution ?? outcome.resolution)
-      : outcome.resolution;
-    references.set(name.syntax, resolution);
+    references.set(name.syntax, outcome.resolution);
   }
   for (const symbol of Object.values(symbolTable.topLevel.blocks)) {
     declarations.set(symbol.node.syntax, symbol);
@@ -301,7 +298,12 @@ export function createBinder(options: CreateBinderOptions): BinderResult {
         field,
         field.attributes,
         attributeSpecs.field,
-        (factory) => (specContext === undefined ? undefined : factory({ ...specContext, field })),
+        (factory) => {
+          if (specContext === undefined) return undefined;
+          const node = typeReferenceNode(field);
+          const typeResolution = node === undefined ? undefined : references.get(node);
+          return factory({ ...specContext, field, typeResolution });
+        },
         { ...context, field },
       );
     }

@@ -80,6 +80,7 @@ function lowerEnumDefaultForField(input: {
       symbols: input.symbolTable,
       model,
       field,
+      binder: input.binder,
       controlMutationDefaults: {
         defaultFunctionRegistry: input.defaultFunctionRegistry,
         dataTypeEntries: input.dataTypeSupport.entries,

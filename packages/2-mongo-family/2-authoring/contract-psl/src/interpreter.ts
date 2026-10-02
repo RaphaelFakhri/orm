@@ -273,7 +273,11 @@ function resolvePhysicalNames(input: {
       ? interpretFieldAttribute({
           symbols: specContext.symbols,
           node: fieldMap.node,
-          spec: mongoAttributeSpecs.field.map({ ...specContext, field }),
+          spec: mongoAttributeSpecs.field.map({
+            ...specContext,
+            field,
+            typeResolution: fieldTypeResolution(field, binder),
+          }),
           model,
           field,
           sources,
@@ -321,12 +325,29 @@ function mongoCrossRef(modelName: string): CrossReference {
   return crossRef(modelName, UNBOUND_NAMESPACE_ID);
 }
 
+function isStringTyped(
+  field: FieldSymbol,
+  stringCodecId: string | undefined,
+  binder: Binder,
+): boolean {
+  const resolution = fieldTypeResolution(field, binder);
+  const base = resolution?.kind === 'namedType' ? typeReferenceNode(resolution.symbol) : undefined;
+  const scalar = base === undefined ? resolution : binder.symbolForNode(base);
+  return (
+    stringCodecId !== undefined &&
+    scalar?.kind === 'contributedType' &&
+    scalar.symbol.descriptor.kind === 'typeConstructor' &&
+    scalar.symbol.descriptor.output.codecId === stringCodecId
+  );
+}
+
 function collectPolymorphismDeclarations(
   models: readonly ModelSymbol[],
   specContextFor: (model: ModelSymbol) => AttributeSpecContext,
   physicalNames: ReadonlyMap<ModelSymbol | FieldSymbol, string>,
   sources: PslSources,
   binder: Binder,
+  stringCodecId: string | undefined,
   diagnostics: PslDiagnosticCollector,
 ): {
   discriminatorDeclarations: Map<ModelSymbol, DiscriminatorDeclaration>;
@@ -352,7 +373,7 @@ function collectPolymorphismDeclarations(
         const fieldName = parsed.field;
         const discField = model.fields[fieldName];
         // Semantic check — stays: the discriminator field must be a String.
-        if (discField && discField.typeName !== 'String') {
+        if (discField && !isStringTyped(discField, stringCodecId, binder)) {
           diagnostics.push({
             code: 'PSL_INVALID_ATTRIBUTE_ARGUMENT',
             message: `Discriminator field "${fieldName}" on model "${model.name}" must be of type String, but is "${discField.typeName}"`,
@@ -947,7 +968,11 @@ function collectIndexes(
     const unique = interpretFieldAttribute({
       symbols: specContext.symbols,
       node: uniqueNode,
-      spec: mongoAttributeSpecs.field.unique({ ...specContext, field }),
+      spec: mongoAttributeSpecs.field.unique({
+        ...specContext,
+        field,
+        typeResolution: fieldTypeResolution(field, binder),
+      }),
       model: pslModel,
       field,
       sources,
@@ -1399,7 +1424,11 @@ export function interpretPslDocumentToMongoContract(
           ? interpretFieldAttribute({
               symbols: specContext.symbols,
               node: relationNode,
-              spec: mongoAttributeSpecs.field.relation({ ...specContext, field }),
+              spec: mongoAttributeSpecs.field.relation({
+                ...specContext,
+                field,
+                typeResolution: fieldTypeResolution(field, binder),
+              }),
               model: pslModel,
               field,
               sources,
@@ -1496,7 +1525,11 @@ export function interpretPslDocumentToMongoContract(
           interpretFieldAttribute({
             symbols: specContext.symbols,
             node: idNode,
-            spec: mongoAttributeSpecs.field.id({ ...specContext, field }),
+            spec: mongoAttributeSpecs.field.id({
+              ...specContext,
+              field,
+              typeResolution: fieldTypeResolution(field, binder),
+            }),
             model: pslModel,
             field,
             sources,
@@ -1593,6 +1626,7 @@ export function interpretPslDocumentToMongoContract(
     physicalNames,
     sources,
     binder,
+    scalarTypeCodecIds.get('String'),
     diagnostics,
   );
   const polyResult = resolvePolymorphism({

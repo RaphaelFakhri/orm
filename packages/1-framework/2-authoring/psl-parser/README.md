@@ -92,7 +92,7 @@ That third scope holds names nobody declared in a schema: the scalars, type cons
 
 **Sibling namespaces are never consulted.** Lookup is kind-blind: any nearer declaration hides an outer declaration of the same name, including a contributed type, without a shadowing diagnostic. Validate the required kind only after lookup; completion filters `entries()` only after that same shadowing has selected the visible names.
 
-A named type's base that is the named type's own name (`Uuid = Uuid` in `types { }`) resolves in the contributed types, so a named type can refine the contributed type it hides; when no contributed type has that name, the base is `unresolved`.
+A named type's base (`Uuid = Uuid` in `types { }`) is resolved without the named types in scope.
 
 For `ns.Name`, first resolve `ns` through the lexical scope chain and require a user or contributed namespace. Then look up `Name` only within that selected namespace. A user namespace hides a contributed namespace of the same name without fallthrough; a missing member never falls back to a top-level or contributed type.
 

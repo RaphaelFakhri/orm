@@ -113,7 +113,7 @@ function contexts(): { model: AttributeSpecContext; field: FieldAttributeSpecCon
       defaultFunctionRegistry: new Map(),
     },
   };
-  return { model: modelContext, field: { ...modelContext, field } };
+  return { model: modelContext, field: { ...modelContext, field, typeResolution: undefined } };
 }
 
 describe('mongoAttributeSpecs', () => {

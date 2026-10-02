@@ -426,6 +426,51 @@ namespace scoped {
       );
     });
 
+    it('diagnoses a discriminator field typed by a user composite type named String', () => {
+      const result = interpret(`
+        type String {
+          value Int32
+        }
+
+        model Task {
+          id   ObjectId @id @map("_id")
+          type String
+
+          @@discriminator(type)
+        }
+
+        model Bug {
+          severity Int32
+
+          @@base(Task, "bug")
+        }
+      `);
+
+      expect(result.ok).toBe(false);
+      if (result.ok) return;
+      expect(result.failure.diagnostics).toEqual([
+        {
+          code: 'PSL_INVALID_ATTRIBUTE_ARGUMENT',
+          message:
+            'Discriminator field "type" on model "Task" must be of type String, but is "String"',
+          sourceId: 'test.prisma',
+          span: {
+            start: { line: 10, column: 11, offset: 150 },
+            end: { line: 10, column: 32, offset: 171 },
+          },
+        },
+        {
+          code: 'PSL_ORPHANED_BASE',
+          message: 'Model "Bug" declares @@base(Task, ...) but "Task" has no @@discriminator',
+          sourceId: 'test.prisma',
+          span: {
+            start: { line: 16, column: 11, offset: 239 },
+            end: { line: 16, column: 30, offset: 258 },
+          },
+        },
+      ]);
+    });
+
     it('diagnoses model with both @@discriminator and @@base', () => {
       const result = interpret(`
         model Task {

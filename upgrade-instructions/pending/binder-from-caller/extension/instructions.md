@@ -51,6 +51,14 @@ changes:
       glob: "**/*.{ts,mts,cts}"
       matches:
         - '\bformerScalarCodecIds\b'
+  - id: field-attribute-spec-context-carries-type-resolution
+    summary: |
+      `FieldAttributeSpecContext` (from `@internal/psl-parser`) requires `typeResolution: Resolution | undefined`, the binder's resolution of the field's type. Code that builds the context passes `binder.symbolForNode(typeReferenceNode(field))`; a field-attribute spec factory that looked up the field's type by `field.typeName` in `symbols` reads `ctx.typeResolution` instead.
+    detection:
+      glob: "**/*.{ts,mts,cts}"
+      matches:
+        - '\bFieldAttributeSpecContext\b'
+        - '\bFieldAttributeSpecFactory\b'
 ---
 
 # The binder is built once, by the caller
@@ -206,3 +214,30 @@ A field typed with a type constructor that needs an argument, written without a 
 ```
 
 A field still typed with `BigInt`, `Bytes`, or `Decimal` is refused the same way as before: `Field "Post.value" has type "BigInt", which is not a Mongo scalar type; use "Int64" (stored as BSON long).`
+
+## A field-attribute spec context carries the field's type resolution
+
+`FieldAttributeSpecContext` gained a required `typeResolution: Resolution | undefined` field: the binder's resolution of the field's written type, or `undefined` when the field has no type reference. Code that builds the context passes it from the binder:
+
+```diff
++import { typeReferenceNode } from '@internal/psl-parser';
+
++const node = typeReferenceNode(field);
+ const spec = factory({
+   symbols,
+   model,
+   field,
++  typeResolution: node === undefined ? undefined : binder.symbolForNode(node),
+   controlMutationDefaults,
+ });
+```
+
+A field-attribute spec factory that found the field's type by its written name in `ctx.symbols` reads `ctx.typeResolution` instead:
+
+```diff
+-const block = ctx.symbols.topLevel.blocks[ctx.field.typeName];
+-if (block === undefined || block.keyword !== 'enum') return undefined;
++const resolution = ctx.typeResolution;
++if (resolution?.kind !== 'block' || resolution.symbol.keyword !== 'enum') return undefined;
++const block = resolution.symbol;
+```

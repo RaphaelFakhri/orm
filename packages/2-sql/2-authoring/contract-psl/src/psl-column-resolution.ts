@@ -635,6 +635,7 @@ export function lowerDefaultForField(input: {
       symbols: input.symbolTable,
       model: input.model,
       field: input.field,
+      binder: input.binder,
       controlMutationDefaults: {
         defaultFunctionRegistry: input.defaultFunctionRegistry,
         dataTypeEntries: input.dataTypeSupport.entries,

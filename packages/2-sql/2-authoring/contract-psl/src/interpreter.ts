@@ -1615,11 +1615,29 @@ type BaseDeclaration = {
   readonly span: ContractSourceDiagnosticSpan;
 };
 
+function isStringTyped(
+  field: FieldSymbol,
+  stringCodecId: string | undefined,
+  binder: Binder,
+): boolean {
+  const node = typeReferenceNode(field);
+  const resolution = node === undefined ? undefined : binder.symbolForNode(node);
+  const base = resolution?.kind === 'namedType' ? typeReferenceNode(resolution.symbol) : undefined;
+  const scalar = base === undefined ? resolution : binder.symbolForNode(base);
+  return (
+    stringCodecId !== undefined &&
+    scalar?.kind === 'contributedType' &&
+    scalar.symbol.descriptor.kind === 'typeConstructor' &&
+    scalar.symbol.descriptor.output.codecId === stringCodecId
+  );
+}
+
 function collectPolymorphismDeclarations(
   identities: ReadonlyMap<ModelSymbol, ModelIdentity>,
   symbols: SymbolTable,
   sources: PslSources,
   binder: Binder,
+  stringCodecId: string | undefined,
   diagnostics: PslDiagnosticCollector,
 ): {
   discriminatorDeclarations: Map<string, DiscriminatorDeclaration>;
@@ -1644,7 +1662,7 @@ function collectPolymorphismDeclarations(
       if (parsed !== undefined) {
         const span = nodePslSpan(discriminatorNode.syntax, sources);
         const discField = model.fields[parsed.field];
-        if (discField && discField.typeName !== 'String') {
+        if (discField && !isStringTyped(discField, stringCodecId, binder)) {
           diagnostics.push({
             code: 'PSL_INVALID_ATTRIBUTE_ARGUMENT',
             message: `Discriminator field "${parsed.field}" on model "${model.name}" must be of type String, but is "${discField.typeName}"`,
@@ -2539,6 +2557,7 @@ export function interpretPslDocumentToSqlContract(
     input.symbolTable,
     input.sources,
     binder,
+    input.scalarColumnDescriptors.get('String')?.codecId,
     diagnostics,
   );
 

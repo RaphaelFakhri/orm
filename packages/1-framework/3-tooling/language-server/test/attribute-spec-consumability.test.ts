@@ -204,6 +204,7 @@ describe('assembled attribute specs are consumable from a resolved project', () 
       symbols: pipeline.symbolTable,
       model,
       field,
+      typeResolution: undefined,
       controlMutationDefaults: {
         ...interpretation.context.controlMutationDefaults,
         dataTypeEntries: interpretation.context.authoringContributions.dataTypes,

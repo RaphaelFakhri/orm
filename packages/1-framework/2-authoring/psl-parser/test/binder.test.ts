@@ -171,7 +171,7 @@ types {
       PlainQualified: 'contributedType',
       Missing: 'unresolved',
       QualifiedMiss: 'unresolved',
-      Indirect: 'namedType',
+      Indirect: 'unresolved',
     };
     expect(
       Object.fromEntries(
@@ -203,6 +203,28 @@ describe('a named type named like its base', () => {
       },
     });
     expect(resolutionOf('Loop')).toEqual({ kind: 'unresolved', name: 'Loop' });
+    expect(diagnostics).toEqual([]);
+  });
+
+  it('binds a base named like another named type without that named type in scope', () => {
+    const { binder, symbolTable, diagnostics } = bind(
+      'types {\n  Ref = Uuid\n  Uuid = String\n  Alias = Other\n  Other = Int\n}',
+    );
+    const resolutionOf = (name: string) =>
+      binder.symbolForNode(
+        symbolTable.topLevel.namedTypes[name]!.node.typeAnnotation()!.name()!.syntax,
+      );
+
+    expect(resolutionOf('Ref')).toEqual({
+      kind: 'contributedType',
+      symbol: {
+        kind: 'contributedType',
+        name: 'Uuid',
+        path: ['Uuid'],
+        descriptor: TYPE_CONSTRUCTORS['Uuid'],
+      },
+    });
+    expect(resolutionOf('Alias')).toEqual({ kind: 'unresolved', name: 'Other' });
     expect(diagnostics).toEqual([]);
   });
 });

@@ -45,6 +45,7 @@ import {
   referencedFieldRef,
   str,
   taggedLiteral,
+  typeReferenceNode,
 } from '@internal/psl-parser';
 import type {
   AstNode,
@@ -270,12 +271,9 @@ function noEnumMember(): RejectingArgType<never, AttributeCtx> {
 }
 
 function enumMemberNames(ctx: FieldAttributeSpecContext): readonly string[] | undefined {
-  const scope =
-    ctx.field.typeNamespaceId === undefined
-      ? ctx.symbols.topLevel
-      : ctx.symbols.topLevel.namespaces[ctx.field.typeNamespaceId];
-  const block = scope?.blocks[ctx.field.typeName];
-  if (block === undefined || block.keyword !== 'enum') return undefined;
+  const resolution = ctx.typeResolution;
+  if (resolution?.kind !== 'block' || resolution.symbol.keyword !== 'enum') return undefined;
+  const block = resolution.symbol;
   const names: string[] = [];
   const seen = new Set<string>();
   for (const entry of block.node.entries()) {
@@ -709,12 +707,15 @@ export function fieldSpecContext(input: {
   readonly symbols: SymbolTable;
   readonly model: ModelSymbol;
   readonly field: FieldSymbol;
+  readonly binder: Binder;
   readonly controlMutationDefaults: ControlDefaultRegistries;
 }): FieldAttributeSpecContext {
+  const node = typeReferenceNode(input.field);
   return {
     symbols: input.symbols,
     model: input.model,
     field: input.field,
+    typeResolution: node === undefined ? undefined : input.binder.symbolForNode(node),
     controlMutationDefaults: input.controlMutationDefaults,
   };
 }
