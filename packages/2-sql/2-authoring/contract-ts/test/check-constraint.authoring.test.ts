@@ -571,7 +571,7 @@ describe('check emission — guards', () => {
     (many) => {
       const Level = enumType(
         'Level',
-        { codecId: 'pg/int8@1', nativeType: 'int8' },
+        { codecId: 'pg/int8@1' },
         member('Low', 1n),
         member('High', 10n),
       );

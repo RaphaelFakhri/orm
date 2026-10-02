@@ -96,10 +96,10 @@ describe('written values on SQLite', () => {
       2,
     ],
     [
-      'an instant on a DateTime column, as its text',
+      'an instant on a DateTime column, as the canonical text its codec declares',
       'DateTime @default("2020-01-02T03:04:05.000Z")',
       'sqlite/datetime@1',
-      '2020-01-02T03:04:05.000Z',
+      '2020-01-02T03:04:05Z',
     ],
   ])('stores %s', async (_name, field, codecId, value) => {
     expect(await storedDefault(field)).toEqual({ codecId, default: { kind: 'literal', value } });
@@ -129,7 +129,7 @@ describe('written values on SQLite', () => {
   it('refuses a number with a fraction on an Int column, which casts from no real', async () => {
     expect(await diagnostics('Int @default(1.5)')).toEqual([
       expect.objectContaining({
-        code: 'PSL_DEFAULT_TYPE_INCOMPATIBLE',
+        code: 'PSL_VALUE_TYPE_INCOMPATIBLE',
         message:
           'Field "Row.value": sqlite/integer has no cast from sqlite/real; it casts from nothing',
       }),
@@ -139,7 +139,7 @@ describe('written values on SQLite', () => {
   it('refuses a whole number past 64 bits, which no SQLite type holds', async () => {
     expect(await diagnostics('BigInt @default(9223372036854775808)')).toEqual([
       expect.objectContaining({
-        code: 'PSL_INVALID_DEFAULT_LITERAL',
+        code: 'PSL_INVALID_LITERAL',
         message: expect.stringContaining('no data type of this target holds the number'),
       }),
     ]);
@@ -150,7 +150,7 @@ describe('written values on SQLite', () => {
       expect.objectContaining({
         code: 'PSL_INVALID_DEFAULT_LITERAL',
         message: expect.stringContaining(
-          'sqlite/integer@1 value must be an integer within the safe integer range',
+          'sqlite/integer@1 JSON value must be a decimal integer string from -9007199254740991 to 9007199254740991',
         ),
       }),
     ]);

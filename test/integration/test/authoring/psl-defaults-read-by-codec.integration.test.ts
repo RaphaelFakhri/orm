@@ -217,7 +217,7 @@ model Tag {
       ],
       [
         'a bit default of two bits on a bit column with no length, which holds one',
-        () => field.column({ codecId: 'pg/bit@1', nativeType: 'bit' } as const).default('01'),
+        () => field.column({ codecId: 'pg/bit@1' } as const).default('01'),
         'pg/bit@1',
         'Field "Reading.value" has a default that its codec refuses: pg/bit@1 JSON value must be a string of exactly 1 bit',
       ],
