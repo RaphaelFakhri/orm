@@ -11,9 +11,11 @@ import type {
 } from '@internal/framework-components/control';
 import type {
   Binder,
+  BlockSymbol,
   DescribeUnsupportedAttribute,
   FieldSymbol,
   ModelSymbol,
+  NamedTypeSymbol,
   ResolvedAttribute,
   SymbolTable,
 } from '@internal/psl-parser';
@@ -149,6 +151,7 @@ export type ResolvedField = {
   readonly noCheck?: readonly ('membership' | 'elementNotNull')[];
   readonly elementNullable?: true;
   readonly valueObjectTypeName?: string;
+  readonly enumTypeHandle?: EnumTypeHandle;
 };
 
 /**
@@ -173,8 +176,8 @@ export interface CollectResolvedFieldsInput {
   readonly model: ModelSymbol;
   readonly physicalNames: ReadonlyMap<ModelSymbol | FieldSymbol, string>;
   readonly symbolTable: SymbolTable;
-  readonly enumTypeDescriptors: Map<string, ColumnDescriptor>;
-  readonly namedTypeDescriptors: Map<string, ColumnDescriptor>;
+  readonly enumTypeDescriptors: ReadonlyMap<BlockSymbol, ColumnDescriptor>;
+  readonly namedTypeDescriptors: ReadonlyMap<NamedTypeSymbol, ColumnDescriptor>;
   /** The value objects the composite types declare, by name. */
   readonly valueObjectTypes: ValueObjectTypes;
   readonly composedExtensions: Set<string>;
@@ -188,7 +191,7 @@ export interface CollectResolvedFieldsInput {
   readonly sources: PslSources;
   readonly binder: Binder;
   readonly scalarColumnDescriptors: ReadonlyMap<string, ColumnDescriptor>;
-  readonly enumHandles?: ReadonlyMap<string, EnumTypeHandle>;
+  readonly enumHandles: ReadonlyMap<BlockSymbol, EnumTypeHandle>;
   readonly capabilities: CapabilityMatrix;
   /** The model's resolved namespace id — forwarded to `resolveFieldTypeDescriptor` for entity-ref value-set scoping. */
   readonly namespaceId?: string;
@@ -477,14 +480,9 @@ export function collectResolvedFields(input: CollectResolvedFieldsInput): Resolv
     let presetContributions: FieldPresetContributions | undefined;
     const resolveInput = {
       field,
-      typeReferenceResolved:
-        fieldTypeResolution === undefined
-          ? fieldTypeReference === undefined
-          : fieldTypeResolution.kind !== 'unresolved',
+      resolution: fieldTypeResolution,
       enumTypeDescriptors,
       namedTypeDescriptors,
-      scalarColumnDescriptors,
-      authoringContributions,
       diagnostics,
       sources,
       entityLabel: `Field "${model.name}.${field.name}"`,
@@ -519,13 +517,6 @@ export function collectResolvedFields(input: CollectResolvedFieldsInput): Resolv
       }
       const resolved = resolveFieldTypeDescriptor(resolveInput);
       if (!resolved.ok) {
-        if (!resolved.alreadyReported && fieldTypeResolution?.kind !== 'unresolved') {
-          diagnostics.push({
-            code: 'PSL_UNSUPPORTED_FIELD_TYPE',
-            message: `Field "${model.name}.${field.name}" type "${field.typeName}" is not supported in SQL PSL provider v1`,
-            ...source.at(field.span),
-          });
-        }
         continue;
       }
       // Field presets are complete declarations — they carry their own codec
@@ -542,13 +533,6 @@ export function collectResolvedFields(input: CollectResolvedFieldsInput): Resolv
     } else {
       const resolved = resolveFieldTypeDescriptor(resolveInput);
       if (!resolved.ok) {
-        if (!resolved.alreadyReported && fieldTypeResolution?.kind !== 'unresolved') {
-          diagnostics.push({
-            code: 'PSL_UNSUPPORTED_FIELD_TYPE',
-            message: `Field "${model.name}.${field.name}" type "${field.typeName}" is not supported in SQL PSL provider v1`,
-            ...source.at(field.span),
-          });
-        }
         continue;
       }
       descriptor = resolved.descriptor;
@@ -581,7 +565,10 @@ export function collectResolvedFields(input: CollectResolvedFieldsInput): Resolv
       });
       continue;
     }
-    const enumHandle = enumHandles?.get(field.typeName);
+    const enumHandle =
+      fieldTypeResolution?.kind === 'block'
+        ? enumHandles.get(fieldTypeResolution.symbol)
+        : undefined;
     const loweredDefault: LoweredFieldDefault = defaultAttribute
       ? enumHandle
         ? lowerEnumDefaultForField({
@@ -727,6 +714,7 @@ export function collectResolvedFields(input: CollectResolvedFieldsInput): Resolv
       ...ifDefined('noCheck', noCheckKinds),
       ...ifDefined('elementNullable', field.elementOptional ? (true as const) : undefined),
       ...ifDefined('valueObjectTypeName', valueObjectName),
+      ...ifDefined('enumTypeHandle', enumHandle),
     });
   }
 

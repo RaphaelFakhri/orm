@@ -84,7 +84,7 @@ function build(source: string) {
   const { binder, diagnostics: binderDiagnostics } = createBinder({
     sources,
     symbolTable,
-    typeConstructors: {
+    contributedTypes: {
       Int: { kind: 'typeConstructor', output: { codecId: 'fixture/scalar@1' } },
       String: { kind: 'typeConstructor', output: { codecId: 'fixture/scalar@1' } },
     },

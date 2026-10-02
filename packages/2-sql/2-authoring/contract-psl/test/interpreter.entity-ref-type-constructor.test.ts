@@ -276,6 +276,31 @@ namespace docs {
     });
   });
 
+  it('refuses a field typed by a non-enum block', () => {
+    const result = interpretWith(`
+namespace docs {
+  native_enum AalLevel {
+    aal1
+  }
+
+  model AuthSession {
+    id Int @id
+    aal AalLevel
+  }
+}
+`);
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.failure.diagnostics.map(({ code, message }) => ({ code, message }))).toEqual([
+      {
+        code: 'PSL_UNSUPPORTED_FIELD_TYPE',
+        message:
+          'Field "AuthSession.aal" is typed by the native_enum "AalLevel", which is not a column type.',
+      },
+    ]);
+  });
+
   it('does not set a typeRef on an entity-ref-resolved column', () => {
     const result = interpretWith(`
 namespace docs {
@@ -491,11 +516,21 @@ model AuthSession {
     const diagnostics = createPslDiagnosticCollector(sources);
     const result = resolveFieldTypeDescriptor({
       field,
-      typeReferenceResolved: true,
+      resolution: {
+        kind: 'contributedType',
+        symbol: {
+          kind: 'contributedType',
+          name: 'enum',
+          path: ['pg', 'enum'],
+          descriptor: {
+            kind: 'typeConstructor',
+            entityRefArg: { index: 0, entityKind: NATIVE_ENUM_DISCRIMINATOR },
+            output: { codecId: nativeEnumCodec.codecId },
+          },
+        },
+      },
       enumTypeDescriptors: new Map(),
       namedTypeDescriptors: new Map(),
-      scalarColumnDescriptors: postgresScalarTypeDescriptors,
-      authoringContributions,
       diagnostics,
       sources,
       entityLabel: 'Field "AuthSession.aal"',

@@ -30,7 +30,7 @@ function build(text: string) {
   const { binder } = createBinder({
     sources,
     symbolTable,
-    typeConstructors: {},
+    contributedTypes: {},
     attributeSpecs: { model: {}, field: {} },
     controlMutationDefaults: {
       defaultFunctionRegistry: new Map(),

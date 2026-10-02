@@ -9,4 +9,5 @@ export {
   fkRelationPairKey,
   requiredOneToOneBackrelationDiagnostic,
 } from '../relation-backrelations';
+export { isBareTypeConstructor, reportTypeConstructorNotCalled } from '../type-constructor-calls';
 export { claimedBlockKeywords, unsupportedBlockDiagnostic } from '../unclaimed-blocks';

@@ -9,7 +9,7 @@ function build(source: string) {
   const { binder } = createBinder({
     sources,
     symbolTable: result.symbolTable,
-    typeConstructors: {},
+    contributedTypes: {},
     attributeSpecs: { model: {}, field: {} },
     controlMutationDefaults: { defaultFunctionRegistry: new Map(), dataTypeEntries: {} },
     pslBlockDescriptors: sqlFamilyPslBlockDescriptors,

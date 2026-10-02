@@ -112,7 +112,7 @@ export class ProjectArtifacts {
     this.#binderResult = createBinder({
       sources: this.sources,
       symbolTable,
-      typeConstructors: stack.authoringContributions?.type ?? {},
+      contributedTypes: stack.authoringContributions?.type ?? {},
       attributeSpecs:
         stack.authoringContributions === undefined
           ? { model: {}, field: {} }

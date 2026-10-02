@@ -22,7 +22,7 @@ function makeCtx(sources: PslSources): FieldAttributeCtx {
   const { binder } = createBinder({
     sources: modelSources,
     symbolTable,
-    typeConstructors: {},
+    contributedTypes: {},
     attributeSpecs: { model: {}, field: {} },
     controlMutationDefaults: {
       defaultFunctionRegistry: new Map(),

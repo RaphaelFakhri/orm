@@ -1,7 +1,4 @@
-import type {
-  AuthoringPslBlockDescriptorNamespace,
-  AuthoringTypeNamespace,
-} from '@internal/framework-components/authoring';
+import type { AuthoringPslBlockDescriptorNamespace } from '@internal/framework-components/authoring';
 import type { ControlDefaultRegistries } from '@internal/framework-components/control';
 import type { ContributedPslDiagnosticCode } from '@internal/framework-components/psl-ast';
 import { blindCast } from '@internal/utils/casts';
@@ -18,7 +15,7 @@ import type {
   PositionalParam,
 } from './attribute-spec/types';
 import { blockSpecFactoryOf } from './block-spec/descriptor';
-import { contributedTypeScope } from './contributed-type-scope';
+import { type ContributedTypeNamespace, contributedTypeScope } from './contributed-type-scope';
 import { diagnosticSource } from './diagnostic';
 import { findBlockDescriptor } from './extension-block';
 import type { ParseDiagnostic } from './parse';
@@ -114,7 +111,7 @@ export type DescribeUnresolvedType = (unresolved: UnresolvedTypeReference) => st
 export interface CreateBinderOptions {
   readonly sources: PslSources;
   readonly symbolTable: SymbolTable;
-  readonly typeConstructors: AuthoringTypeNamespace;
+  readonly contributedTypes: ContributedTypeNamespace;
   readonly attributeSpecs: AttributeSpecNamespace;
   readonly controlMutationDefaults: ControlDefaultRegistries;
   readonly pslBlockDescriptors?: AuthoringPslBlockDescriptorNamespace | undefined;
@@ -205,17 +202,15 @@ export function createBinder(options: CreateBinderOptions): BinderResult {
   const {
     sources,
     symbolTable,
-    typeConstructors,
+    contributedTypes,
     attributeSpecs,
     controlMutationDefaults,
     describeUnsupportedAttribute,
     describeUnresolvedType,
   } = options;
   const pslBlockDescriptors = options.pslBlockDescriptors ?? {};
-  const document = documentScope(
-    symbolTable.topLevel,
-    contributedScope(contributedTypeScope(typeConstructors)),
-  );
+  const contributed = contributedScope(contributedTypeScope(contributedTypes));
+  const document = documentScope(symbolTable.topLevel, contributed);
   const stack = new ScopeStack(document);
   const scopes = new WeakMap<SyntaxNode, Scope>();
   const declarations = new WeakMap<SyntaxNode, PslSymbol>();
@@ -227,9 +222,13 @@ export function createBinder(options: CreateBinderOptions): BinderResult {
     declarations.set(symbol.node.syntax, symbol);
     const name = symbol.node.typeAnnotation()?.name();
     const outcome = resolveTypeReference(name, document);
-    if (name !== undefined && outcome !== undefined) {
-      references.set(name.syntax, outcome.resolution);
-    }
+    if (name === undefined || outcome === undefined) continue;
+    const refersToItself =
+      outcome.resolution.kind === 'namedType' && outcome.resolution.symbol === symbol;
+    const resolution = refersToItself
+      ? (resolveTypeReference(name, contributed)?.resolution ?? outcome.resolution)
+      : outcome.resolution;
+    references.set(name.syntax, resolution);
   }
   for (const symbol of Object.values(symbolTable.topLevel.blocks)) {
     declarations.set(symbol.node.syntax, symbol);

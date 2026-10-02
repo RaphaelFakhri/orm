@@ -41,7 +41,7 @@ function bind(
     ...createBinder({
       sources,
       symbolTable,
-      typeConstructors: {},
+      contributedTypes: {},
       controlMutationDefaults: { defaultFunctionRegistry: new Map(), dataTypeEntries: {} },
       attributeSpecs: { model: { refs: () => modelAttribute('refs', parameters) }, field: {} },
       pslBlockDescriptors: {
@@ -358,7 +358,7 @@ it('resolves a field after an entity lookup fails', () => {
   const result = createBinder({
     sources,
     symbolTable,
-    typeConstructors: {},
+    contributedTypes: {},
     controlMutationDefaults: { defaultFunctionRegistry: new Map(), dataTypeEntries: {} },
     attributeSpecs: {
       model: {},

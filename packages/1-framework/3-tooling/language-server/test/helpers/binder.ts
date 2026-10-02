@@ -27,7 +27,11 @@ export function testBinder(
   return createBinder({
     sources: input.sources,
     symbolTable: input.symbolTable,
-    typeConstructors: { ...scalarTypes, ...input.authoringContributions?.type },
+    contributedTypes: {
+      ...scalarTypes,
+      ...input.authoringContributions?.field,
+      ...input.authoringContributions?.type,
+    },
     attributeSpecs:
       input.authoringContributions === undefined
         ? { model: {}, field: {} }

@@ -1,14 +1,16 @@
 import mongoAdapter, { MongoControlAdapterImpl } from '@internal/adapter-mongo/control';
 import { MongoControlDriver } from '@internal/driver-mongo/control';
 import { mongoFamilyDescriptor } from '@internal/family-mongo/control';
-import { collectScalarTypeConstructors } from '@internal/framework-components/authoring';
 import { createControlStack } from '@internal/framework-components/control';
 import { buildFabricatedMigrationEdge } from '@internal/migration-tools/aggregate';
 import type { MongoContract } from '@internal/mongo-contract';
 import { interpretPslDocumentToMongoContract } from '@internal/mongo-contract-psl';
+import {
+  bindPslSchema,
+  contractSourceContextFromControlStack,
+} from '@internal/mongo-contract-psl/test';
 import { MongoSchemaIR } from '@internal/mongo-schema-ir';
-import { buildSymbolTable } from '@internal/psl-parser';
-import { parse } from '@internal/psl-parser/syntax';
+import { withSeedDiagnostics } from '@internal/psl-parser/interpret';
 import {
   MongoMigrationPlanner,
   MongoMigrationRunner,
@@ -49,25 +51,20 @@ beforeAll(async () => {
     target: mongoTargetDescriptor,
     adapter: mongoAdapter,
   });
-  const { document, sources } = parse(schema, 'nullable-lists.prisma');
-  const { symbolTable } = buildSymbolTable({ documents: [document], sources });
-  const interpreted = interpretPslDocumentToMongoContract({
-    documents: [document],
-    symbolTable,
-    sources,
-    scalarTypeCodecIds: new Map(
-      [...collectScalarTypeConstructors(stack.authoringContributions.type)].map(([name, type]) => [
-        name,
-        type.codecId,
-      ]),
-    ),
-    authoringContributions: stack.authoringContributions,
-    codecLookup: stack.codecLookup,
-    controlMutationDefaults: {
-      ...stack.controlMutationDefaults,
-      dataTypeEntries: stack.authoringContributions.dataTypes,
-    },
+  const bound = bindPslSchema(schema, {
+    sourceId: 'nullable-lists.prisma',
+    context: contractSourceContextFromControlStack(stack),
   });
+  const interpreted = withSeedDiagnostics(
+    interpretPslDocumentToMongoContract({
+      documents: bound.documents,
+      symbolTable: bound.symbolTable,
+      sources: bound.sources,
+      binder: bound.binder,
+      ...bound.contextInput,
+    }),
+    bound.seedDiagnostics,
+  );
   if (!interpreted.ok) {
     throw new Error(JSON.stringify(interpreted.failure));
   }

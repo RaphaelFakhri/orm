@@ -41,7 +41,7 @@ function foreignArg(source: string): { arg: ExpressionAst; ctx: ModelAttributeCt
   const { binder } = createBinder({
     sources,
     symbolTable,
-    typeConstructors: {},
+    contributedTypes: {},
     attributeSpecs: { model: {}, field: {} },
     controlMutationDefaults: {
       defaultFunctionRegistry: new Map(),

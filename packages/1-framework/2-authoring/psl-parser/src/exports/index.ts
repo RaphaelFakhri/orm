@@ -138,6 +138,8 @@ export type {
 export type {
   ContributedMember,
   ContributedNamespaceSymbol,
+  ContributedTypeDescriptor,
+  ContributedTypeNamespace,
   ContributedTypeScope,
   ContributedTypeSymbol,
 } from '../contributed-type-scope';
@@ -157,7 +159,7 @@ export type {
 export { entityReference, matchesSelector } from '../entity-reference';
 export { findBlockDescriptor } from '../extension-block';
 export { NAME_THE_PSL_SOURCE_LOSES } from '../name-the-psl-source-loses';
-export { createProjectBinder, fieldPresetsAsTypeNames } from '../project-binder';
+export { createProjectBinder } from '../project-binder';
 export {
   keywordPslSpan,
   nodePslSpan,

@@ -20,11 +20,11 @@ import { type EnumTypeHandle, resolveToOneRelationNullable } from '@internal/con
 import type {
   AuthoringContributions,
   AuthoringEntityContext,
+  AuthoringTypeConstructorDescriptor,
   AuthoringTypeNamespace,
   ParsedPslExtensionBlock,
 } from '@internal/framework-components/authoring';
 import {
-  getAuthoringFieldPreset,
   instantiateAuthoringEntityType,
   isAuthoringEntityTypeDescriptor,
   isAuthoringTypeConstructorDescriptor,
@@ -72,7 +72,9 @@ import {
   enumMemberAttributeDiagnostics,
   fkRelationPairKey,
   type InvalidFkPairing,
+  isBareTypeConstructor,
   reportPresetNotCalled,
+  reportTypeConstructorNotCalled,
   unsupportedBlockDiagnostic,
 } from '@internal/psl-parser/interpret';
 import {
@@ -126,20 +128,13 @@ export interface InterpretPslDocumentToMongoContractInput {
  * Reports `PSL_DEPRECATED_SCALAR_NAME` at the type of a field whose scalar name is a deprecated alias, naming the replacement. The alias resolves to the same codec, so the contract does not change.
  */
 function deprecatedScalarWarner(input: {
-  readonly types: AuthoringTypeNamespace | undefined;
   readonly sources: PslSources;
   readonly reportWarning: ((diagnostic: ContractSourceDiagnostic) => void) | undefined;
-}): (field: FieldSymbol) => void {
+}): (field: FieldSymbol, descriptor: AuthoringTypeConstructorDescriptor) => void {
   const { reportWarning } = input;
   if (reportWarning === undefined) return () => {};
-  return (field) => {
-    if (field.typeConstructor !== undefined) return;
-    const descriptor = input.types?.[field.typeName];
-    if (
-      descriptor === undefined ||
-      !isAuthoringTypeConstructorDescriptor(descriptor) ||
-      descriptor.deprecated === undefined
-    ) {
+  return (field, descriptor) => {
+    if (descriptor.deprecated === undefined) {
       return;
     }
     const typeNode = field.node.typeAnnotation()?.name()?.syntax ?? field.node.syntax;
@@ -158,7 +153,10 @@ function deprecatedScalarWarner(input: {
 }
 
 interface ScalarNames {
-  readonly warnDeprecated: (field: FieldSymbol) => void;
+  readonly warnDeprecated: (
+    field: FieldSymbol,
+    descriptor: AuthoringTypeConstructorDescriptor,
+  ) => void;
   /** Every enum the schema declares, including one whose own declaration failed and was already reported. */
   readonly declaredEnums: ReadonlySet<string>;
 }
@@ -1161,67 +1159,54 @@ function resolveNonRelationField(
     });
     return undefined;
   }
-  if (resolution?.kind !== 'contributedType' && resolution?.kind !== 'unresolved') {
+  if (resolution?.kind !== 'contributedType') {
     return undefined;
   }
-
-  if (resolution.kind === 'contributedType') {
-    const isPreset =
-      getAuthoringFieldPreset(presetContext.authoringContributions, resolution.symbol.path) !==
-      undefined;
-    if (isPreset) {
-      if (field.typeConstructor === undefined) {
-        reportPresetNotCalled({
-          entityLabel: `Field "${ownerName}.${field.name}"`,
-          presetPath: resolution.symbol.path.join('.'),
-          source: diagnosticSource(presetContext.sources, field.node.syntax),
-          span: field.span,
-          diagnostics: presetContext.diagnostics,
-        });
-        return undefined;
-      }
-      const preset = resolveFieldPreset({
-        field,
-        ownerName,
-        ownerKind: owner.kind,
-        context: presetContext,
+  const { descriptor, path } = resolution.symbol;
+  const call = field.typeConstructor;
+  const entityLabel = `Field "${ownerName}.${field.name}"`;
+  const source = diagnosticSource(presetContext.sources, field.node.syntax);
+  if (descriptor.kind === 'fieldPreset') {
+    if (call === undefined) {
+      reportPresetNotCalled({
+        entityLabel,
+        presetPath: path.join('.'),
+        source,
+        span: field.span,
+        diagnostics: presetContext.diagnostics,
       });
-      if (preset.kind === 'invalid') return undefined;
-      if (preset.kind === 'preset') {
-        return {
-          field: preset.field,
-          ...ifDefined('executionDefaults', preset.executionDefaults),
-        };
-      }
+      return undefined;
     }
-  } else if (
-    field.typeConstructor !== undefined &&
-    resolution.name === field.typeConstructor.path.join('.')
-  ) {
     const preset = resolveFieldPreset({
       field,
+      call,
+      descriptor,
       ownerName,
       ownerKind: owner.kind,
       context: presetContext,
     });
-    if (preset.kind === 'preset') {
-      return {
-        field: preset.field,
-        ...ifDefined('executionDefaults', preset.executionDefaults),
-      };
-    }
     if (preset.kind === 'invalid') return undefined;
+    return {
+      field: preset.field,
+      ...ifDefined('executionDefaults', preset.executionDefaults),
+    };
   }
-
-  if (resolution.kind === 'unresolved') {
+  if (call === undefined && !isBareTypeConstructor(descriptor)) {
+    reportTypeConstructorNotCalled({
+      entityLabel,
+      path: path.join('.'),
+      descriptor,
+      source,
+      span: field.span,
+      diagnostics: presetContext.diagnostics,
+    });
     return undefined;
   }
-  const codecId = resolution.symbol.descriptor.output.codecId;
 
-  scalarNames.warnDeprecated(field);
+  if (call === undefined) scalarNames.warnDeprecated(field, descriptor);
   return {
     field: {
-      type: { kind: 'scalar', codecId },
+      type: { kind: 'scalar', codecId: descriptor.output.codecId },
       nullable: field.optional,
       many: field.list ? { elementNullable: field.elementOptional } : false,
     },
@@ -1306,7 +1291,6 @@ export function interpretPslDocumentToMongoContract(
   const presetExecutionDefaults: PresetExecutionDefault[] = [];
   const scalarNames: ScalarNames = {
     warnDeprecated: deprecatedScalarWarner({
-      types: input.authoringContributions?.type,
       sources,
       reportWarning: input.reportWarning,
     }),

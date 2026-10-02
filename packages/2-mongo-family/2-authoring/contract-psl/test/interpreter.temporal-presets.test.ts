@@ -283,6 +283,36 @@ model Post {
     ]);
   });
 
+  it('rejects a type constructor with a required argument written without a call', () => {
+    expect(
+      diagnosticsOf(
+        `model Post {
+  id   ObjectId @id @map("_id")
+  code Sized
+}
+`,
+        {
+          authoringContributions: {
+            ...authoringContributions,
+            type: {
+              Sized: {
+                kind: 'typeConstructor',
+                args: [{ kind: 'number', name: 'length' }],
+                output: { codecId: 'mongo/string@1', nativeType: 'string' },
+              },
+            },
+          },
+        },
+      ).map(({ code, message }) => ({ code, message })),
+    ).toEqual([
+      {
+        code: 'PSL_TYPE_CONSTRUCTOR_NOT_CALLED',
+        message:
+          'Field "Post.code" uses type constructor "Sized" without arguments. Write Sized(length).',
+      },
+    ]);
+  });
+
   it('reports a misspelled preset name as a single unresolved reference', () => {
     expect(
       diagnosticsOf(`model Post {

@@ -144,7 +144,7 @@ function bind(...texts: string[]) {
     ...createBinder({
       sources,
       symbolTable,
-      typeConstructors: TYPE_CONSTRUCTORS,
+      contributedTypes: TYPE_CONSTRUCTORS,
       attributeSpecs: ATTRIBUTE_SPECS,
       controlMutationDefaults: NO_CONTROL_DEFAULTS,
     }),
@@ -181,6 +181,28 @@ types {
         ]),
       ),
     ).toEqual(expected);
+    expect(diagnostics).toEqual([]);
+  });
+});
+
+describe('a named type named like its base', () => {
+  it('binds the base to the contributed type it shadows', () => {
+    const { binder, symbolTable, diagnostics } = bind('types {\n  Uuid = Uuid\n  Loop = Loop\n}');
+    const resolutionOf = (name: string) =>
+      binder.symbolForNode(
+        symbolTable.topLevel.namedTypes[name]!.node.typeAnnotation()!.name()!.syntax,
+      );
+
+    expect(resolutionOf('Uuid')).toEqual({
+      kind: 'contributedType',
+      symbol: {
+        kind: 'contributedType',
+        name: 'Uuid',
+        path: ['Uuid'],
+        descriptor: TYPE_CONSTRUCTORS['Uuid'],
+      },
+    });
+    expect(resolutionOf('Loop')).toEqual({ kind: 'unresolved', name: 'Loop' });
     expect(diagnostics).toEqual([]);
   });
 });
@@ -261,7 +283,7 @@ function bindWithUnsupportedDescriber(
     ...createBinder({
       sources,
       symbolTable,
-      typeConstructors: TYPE_CONSTRUCTORS,
+      contributedTypes: TYPE_CONSTRUCTORS,
       attributeSpecs: ATTRIBUTE_SPECS,
       controlMutationDefaults: NO_CONTROL_DEFAULTS,
       describeUnsupportedAttribute,
@@ -279,7 +301,7 @@ function bindWithUnresolvedTypeDescriber(
     ...createBinder({
       sources,
       symbolTable,
-      typeConstructors: TYPE_CONSTRUCTORS,
+      contributedTypes: TYPE_CONSTRUCTORS,
       attributeSpecs: ATTRIBUTE_SPECS,
       controlMutationDefaults: NO_CONTROL_DEFAULTS,
       describeUnresolvedType,
@@ -1271,7 +1293,7 @@ describe('attribute-spec registry shape', () => {
     const { binder, diagnostics } = createBinder({
       sources,
       symbolTable,
-      typeConstructors: TYPE_CONSTRUCTORS,
+      contributedTypes: TYPE_CONSTRUCTORS,
       attributeSpecs: registry,
       controlMutationDefaults: NO_CONTROL_DEFAULTS,
     });
@@ -1437,7 +1459,7 @@ describe('the binder calls the real spec factories', () => {
     const { binder, diagnostics } = createBinder({
       sources,
       symbolTable,
-      typeConstructors: TYPE_CONSTRUCTORS,
+      contributedTypes: TYPE_CONSTRUCTORS,
       attributeSpecs: registry,
       controlMutationDefaults: NO_CONTROL_DEFAULTS,
     });

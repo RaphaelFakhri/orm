@@ -59,7 +59,7 @@ function bind(text: string) {
   const { binder, diagnostics } = createBinder({
     sources,
     symbolTable,
-    typeConstructors: TYPE_CONSTRUCTORS,
+    contributedTypes: TYPE_CONSTRUCTORS,
     attributeSpecs: ATTRIBUTE_SPECS,
     controlMutationDefaults: {
       defaultFunctionRegistry: new Map(),

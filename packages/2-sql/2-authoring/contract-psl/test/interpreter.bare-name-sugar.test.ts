@@ -145,7 +145,7 @@ model Doc {
     });
   });
 
-  it('reports the unsupported-type diagnostic for a bare required-arg constructor in field position', () => {
+  it('reports a bare required-arg constructor in field position as not called', () => {
     const result = interpretSqlContract(
       `model Doc {
   id Int @id
@@ -156,14 +156,18 @@ model Doc {
     );
     expect(result.ok).toBe(false);
     if (result.ok) return;
-    expect(result.failure.diagnostics).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          code: 'PSL_UNSUPPORTED_FIELD_TYPE',
-          message: expect.stringContaining('"Vector"'),
-        }),
-      ]),
-    );
+    expect(result.failure.diagnostics).toEqual([
+      {
+        code: 'PSL_TYPE_CONSTRUCTOR_NOT_CALLED',
+        message:
+          'Field "Doc.v" uses type constructor "Vector" without arguments. Write Vector(length).',
+        sourceId: 'schema.prisma',
+        span: {
+          start: { offset: 27, line: 3, column: 3 },
+          end: { offset: 35, line: 3, column: 11 },
+        },
+      },
+    ]);
   });
 
   it('reports the unsupported-base diagnostic for a bare required-arg constructor in named-type position', () => {
@@ -191,7 +195,7 @@ model Doc {
     );
   });
 
-  it('reports the unsupported-type diagnostic for a bare entity-ref constructor in field position', () => {
+  it('reports a bare entity-ref constructor in field position as not called', () => {
     const result = interpretSqlContract(
       `model Doc {
   id Int @id
@@ -202,13 +206,17 @@ model Doc {
     );
     expect(result.ok).toBe(false);
     if (result.ok) return;
-    expect(result.failure.diagnostics).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          code: 'PSL_UNSUPPORTED_FIELD_TYPE',
-          message: expect.stringContaining('"EnumRef"'),
-        }),
-      ]),
-    );
+    expect(result.failure.diagnostics).toEqual([
+      {
+        code: 'PSL_TYPE_CONSTRUCTOR_NOT_CALLED',
+        message:
+          'Field "Doc.level" uses type constructor "EnumRef" without arguments. Write EnumRef(native_enum).',
+        sourceId: 'schema.prisma',
+        span: {
+          start: { offset: 27, line: 3, column: 3 },
+          end: { offset: 40, line: 3, column: 16 },
+        },
+      },
+    ]);
   });
 });

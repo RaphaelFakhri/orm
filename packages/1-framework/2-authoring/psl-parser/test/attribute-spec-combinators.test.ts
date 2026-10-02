@@ -43,7 +43,7 @@ function makeCtx(sources: PslSources): FieldAttributeCtx {
   const { binder } = createBinder({
     sources: modelSources,
     symbolTable,
-    typeConstructors: {},
+    contributedTypes: {},
     attributeSpecs: { model: {}, field: {} },
     controlMutationDefaults: {
       defaultFunctionRegistry: new Map(),
@@ -67,7 +67,7 @@ function schemaArg(schema: string, attribute: string, argName?: string) {
   const { binder } = createBinder({
     sources: registry,
     symbolTable,
-    typeConstructors: {},
+    contributedTypes: {},
     attributeSpecs: {
       model: {},
       field: {
@@ -764,7 +764,7 @@ describe('entityRef', () => {
     const { binder } = createBinder({
       sources,
       symbolTable,
-      typeConstructors: {},
+      contributedTypes: {},
       attributeSpecs: {
         model: {},
         field: {

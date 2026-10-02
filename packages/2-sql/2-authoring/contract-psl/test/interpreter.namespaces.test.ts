@@ -285,6 +285,31 @@ namespace auth {
 });
 
 describe('interpretPslDocumentToSqlContract cross-contract-space FK (PSL colon-prefix)', () => {
+  it('refuses a field typed by another contract space without @relation', () => {
+    const result = interpretSqlContract(
+      `model Profile {
+  id Int @id
+  user supabase:auth.User
+}
+`,
+      {
+        ...baseInput,
+        composedExtensions: ['supabase'],
+        composedExtensionContracts: new Map([['supabase', makeSupabaseExtensionContract()]]),
+      },
+    );
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.failure.diagnostics.map(({ code, message }) => ({ code, message }))).toEqual([
+      {
+        code: 'PSL_UNSUPPORTED_FIELD_TYPE',
+        message:
+          'Field "Profile.user" type "User" is a type of contract space "supabase"; only a relation field can name a type of another contract space.',
+      },
+    ]);
+  });
+
   it('lowers supabase:auth.User to a FK with spaceId=supabase and namespaceId=auth', () => {
     const result = interpretSqlContract(
       `model Profile {

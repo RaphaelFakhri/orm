@@ -28,7 +28,7 @@ function fields(
   const { binder } = createBinder({
     sources,
     symbolTable,
-    typeConstructors: {
+    contributedTypes: {
       ...Object.fromEntries(
         scalarTypes.map((name) => [
           name,

@@ -27,6 +27,23 @@ changes:
       matches:
         - '\breportUnknownFieldPreset\b'
         - '\bPSL_UNKNOWN_FIELD_PRESET\b'
+  - id: binder-binds-field-presets
+    summary: |
+      `createBinder`'s `typeConstructors` option is renamed `contributedTypes` and takes a `ContributedTypeNamespace`, which holds field presets as well as type constructors. `ContributedTypeSymbol.descriptor` is now a `ContributedTypeDescriptor`: an `AuthoringTypeConstructorDescriptor` or an `AuthoringFieldPresetDescriptor`, told apart by `kind`. Code that reads `descriptor.entityRefArg`, `descriptor.documentation` or `descriptor.deprecated`, which only a type constructor has, checks `descriptor.kind === 'typeConstructor'` first.
+    detection:
+      glob: "**/*.{ts,mts,cts}"
+      matches:
+        - '\btypeConstructors\s*:'
+        - '\bContributedTypeSymbol\b'
+        - "kind\\s*===\\s*'contributedType'"
+  - id: resolve-field-type-descriptor-removed
+    summary: |
+      `resolveFieldTypeDescriptor` is no longer exported from `@internal/sql-contract-psl/resolution`. A caller that builds a type-constructor call itself takes the descriptor from the registry and calls `instantiateFieldTypeConstructor({ call, descriptor, diagnostics, source, entityLabel, namespaceId, namespaceExtensionEntities, codecLookup })`. Its failure result is `{ ok: false }`, with no `alreadyReported` flag: every failure has been reported.
+    detection:
+      glob: "**/*.{ts,mts,cts}"
+      matches:
+        - '\bresolveFieldTypeDescriptor\b'
+        - '\balreadyReported\b'
   - id: mongo-former-scalar-codec-ids-option-removed
     summary: |
       `MongoContractOptions.formerScalarCodecIds` (passed to `mongoContract`) is removed. Mongo's family descriptor now contributes the same wording directly to the binder; the option has nothing left to configure.
@@ -99,6 +116,80 @@ Two helpers that produced their own diagnostic codes for an unrecognized name ar
   If custom attribute-spec or type-constructor resolution code called `checkUncomposedNamespace` to decide whether to report this case specially, delete that branch; the binder already reports every name it cannot resolve, including a dotted one.
 
 - **A misspelled field-preset call inside a registered namespace.** `reportUnknownFieldPreset` (`@internal/psl-parser/interpret`) is removed, along with `PSL_UNKNOWN_FIELD_PRESET`. A schema that calls `temporal.createdAtt()` (misspelling `temporal.createdAt()`) used to get `Field "Post.createdAt" references unknown field preset "temporal.createdAtt". Check the spelling against the available presets in the "temporal" namespace.`; it now gets `Cannot find type "temporal.createdAtt"`.
+
+## The binder binds a field preset to the preset
+
+`createBinder`'s `typeConstructors` option is renamed `contributedTypes`. It takes a `ContributedTypeNamespace` from `@internal/psl-parser`, which holds field presets alongside type constructors; `createProjectBinder` passes the stack's `type` and `field` contributions merged into one tree, so a preset name such as `temporal.createdAt` resolves to a symbol that carries the preset's own descriptor. Rename the option where you build a binder yourself:
+
+```diff
+ createBinder({
+   sources,
+   symbolTable,
+-  typeConstructors: authoringContributions.type,
++  contributedTypes: authoringContributions.type,
+   attributeSpecs,
+   controlMutationDefaults,
+ });
+```
+
+`ContributedTypeSymbol.descriptor` (the `symbol` of a `contributedType` resolution) is now `AuthoringTypeConstructorDescriptor | AuthoringFieldPresetDescriptor`. Branch on `descriptor.kind` before reading a property only a type constructor has, such as `entityRefArg`, `documentation` or `deprecated`:
+
+```diff
+ if (resolution.kind === 'contributedType') {
+   const { descriptor } = resolution.symbol;
+-  if (descriptor.entityRefArg !== undefined) { … }
++  if (descriptor.kind === 'typeConstructor' && descriptor.entityRefArg !== undefined) { … }
+ }
+```
+
+A name the binder resolved to a field preset no longer needs a lookup by its written path: take the preset descriptor from the resolution instead of calling `getAuthoringFieldPreset(contributions, path)`.
+
+## `resolveFieldTypeDescriptor` is no longer exported
+
+`@internal/sql-contract-psl/resolution` no longer exports `resolveFieldTypeDescriptor`; the SQL PSL interpreter now resolves a field's type from the binder's resolution of it. A caller without a binder that maps a type to a type-constructor call itself, as the Prisma 7 contract source does, takes the constructor's descriptor from the registry and instantiates it with `instantiateFieldTypeConstructor`:
+
+```diff
+-import { resolveFieldTypeDescriptor } from '@internal/sql-contract-psl/resolution';
++import { getAuthoringTypeConstructor } from '@internal/framework-components/authoring';
++import { instantiateFieldTypeConstructor } from '@internal/sql-contract-psl/resolution';
+
+-const resolved = resolveFieldTypeDescriptor({
+-  field: { ...field, typeConstructor: call },
+-  typeReferenceResolved: true,
+-  enumTypeDescriptors: new Map(),
+-  namedTypeDescriptors: new Map(),
+-  scalarColumnDescriptors,
+-  authoringContributions,
+-  diagnostics,
+-  sources,
+-  entityLabel,
+-  namespaceId,
+-  namespaceExtensionEntities,
+-  codecLookup,
+-});
+-if (!resolved.ok) {
+-  if (!resolved.alreadyReported) reportUnsupportedType();
+-  return;
+-}
++const descriptor = getAuthoringTypeConstructor(authoringContributions, call.path);
++if (descriptor === undefined) {
++  reportUnsupportedType();
++  return;
++}
++const resolved = instantiateFieldTypeConstructor({
++  call,
++  descriptor,
++  diagnostics,
++  source: diagnosticSource(sources, field.node.syntax),
++  entityLabel,
++  namespaceId,
++  namespaceExtensionEntities,
++  codecLookup,
++});
++if (!resolved.ok) return;
+```
+
+A field typed with a type constructor that needs an argument, written without a call (`embedding Vector`), is now reported as `PSL_TYPE_CONSTRUCTOR_NOT_CALLED` instead of `PSL_UNSUPPORTED_FIELD_TYPE`.
 
 ## Mongo's `formerScalarCodecIds` option is removed
 

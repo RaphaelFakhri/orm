@@ -1,13 +1,13 @@
 import type { ContractField, ExecutionMutationDefaultPhases } from '@internal/contract/types';
-import {
-  type AuthoringContributions,
-  type AuthoringFieldPresetDescriptor,
-  getAuthoringFieldPreset,
+import type {
+  AuthoringContributions,
+  AuthoringFieldPresetDescriptor,
 } from '@internal/framework-components/authoring';
 import {
   diagnosticSource,
   type FieldSymbol,
   type PslDiagnosticCollector,
+  type ResolvedTypeConstructorCall,
 } from '@internal/psl-parser';
 import { instantiatePslFieldPreset } from '@internal/psl-parser/interpret';
 import type { PslSources } from '@internal/psl-parser/syntax';
@@ -30,7 +30,6 @@ export interface PresetWithoutEffect {
 }
 
 export type FieldPresetResolution =
-  | { readonly kind: 'none' }
   | { readonly kind: 'invalid' }
   | {
       readonly kind: 'preset';
@@ -38,7 +37,6 @@ export type FieldPresetResolution =
       readonly executionDefaults?: ExecutionMutationDefaultPhases;
     };
 
-const NONE: FieldPresetResolution = { kind: 'none' };
 const INVALID: FieldPresetResolution = { kind: 'invalid' };
 
 function unsupportedContributions(
@@ -51,29 +49,19 @@ function unsupportedContributions(
   ];
 }
 
-/**
- * Resolves a field whose type is a field-preset call (`temporal.updatedAt()`) against the composed field presets. Returns `none` when the type is not a preset call, so the caller falls back to scalar resolution.
- */
 export function resolveFieldPreset(input: {
   readonly field: FieldSymbol;
+  readonly call: ResolvedTypeConstructorCall;
+  readonly descriptor: AuthoringFieldPresetDescriptor;
   readonly ownerName: string;
   readonly ownerKind: 'model' | 'compositeType';
   readonly context: FieldPresetContext;
 }): FieldPresetResolution {
-  const { field, ownerName, context } = input;
-  const call = field.typeConstructor;
-  if (!call) {
-    return NONE;
-  }
+  const { field, call, descriptor, ownerName, context } = input;
   const { diagnostics } = context;
   const source = diagnosticSource(context.sources, field.node.syntax);
   const entityLabel = `Field "${ownerName}.${field.name}"`;
   const helperPath = call.path.join('.');
-
-  const descriptor = getAuthoringFieldPreset(context.authoringContributions, call.path);
-  if (!descriptor) {
-    return NONE;
-  }
 
   if (input.ownerKind === 'compositeType') {
     diagnostics.push({

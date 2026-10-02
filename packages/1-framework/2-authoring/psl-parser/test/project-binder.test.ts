@@ -1,0 +1,119 @@
+import type { ContractSourceContext } from '@internal/config/config-types';
+import type {
+  AuthoringFieldPresetDescriptor,
+  AuthoringTypeConstructorDescriptor,
+} from '@internal/framework-components/authoring';
+import { describe, expect, it } from 'vitest';
+import { typeReferenceNode } from '../src/binder';
+import { parse } from '../src/parse';
+import { createProjectBinder } from '../src/project-binder';
+import { PslSources } from '../src/source-file';
+import { buildSymbolTable } from '../src/symbol-table';
+
+const createdAt: AuthoringFieldPresetDescriptor = {
+  kind: 'fieldPreset',
+  output: { codecId: 'fixture/timestamp@1', nativeType: 'timestamp' },
+};
+
+const uuid: AuthoringFieldPresetDescriptor = {
+  kind: 'fieldPreset',
+  args: [{ kind: 'number', name: 'version' }],
+  output: { codecId: 'fixture/uuid@1', nativeType: 'uuid', id: true },
+};
+
+const text: AuthoringTypeConstructorDescriptor = {
+  kind: 'typeConstructor',
+  output: { codecId: 'fixture/text@1', nativeType: 'text' },
+};
+
+const varchar: AuthoringTypeConstructorDescriptor = {
+  kind: 'typeConstructor',
+  args: [{ kind: 'number', name: 'length' }],
+  output: { codecId: 'fixture/varchar@1', nativeType: 'varchar' },
+};
+
+function context(): ContractSourceContext {
+  return {
+    authoringContributions: {
+      type: { String: text, db: { VarChar: varchar } },
+      field: { temporal: { createdAt }, db: { uuid } },
+      attributeSpecs: { model: {}, field: {} },
+      modelAttributes: {},
+      pslBlockDescriptors: {},
+      dataTypes: {},
+    },
+    controlMutationDefaults: { defaultFunctionRegistry: new Map() },
+  } as unknown as ContractSourceContext;
+}
+
+function bindProject(text: string) {
+  const { document, sources } = parse(text, 'schema.prisma');
+  const pslSources = new PslSources([[document.syntax, sources.sourceFileFor(document.syntax)]]);
+  const { symbolTable } = buildSymbolTable({ documents: [document], sources: pslSources });
+  const { binder, diagnostics } = createProjectBinder({
+    symbolTable,
+    sources: pslSources,
+    context: context(),
+  });
+  const resolve = (fieldName: string) => {
+    const field = symbolTable.topLevel.models['Post']?.fields[fieldName];
+    const node = field === undefined ? undefined : typeReferenceNode(field);
+    return node === undefined ? undefined : binder.symbolForNode(node);
+  };
+  return { resolve, diagnostics };
+}
+
+describe('createProjectBinder — contributed types', () => {
+  it('binds a field-preset name to the preset descriptor', () => {
+    const { resolve, diagnostics } = bindProject(
+      'model Post {\n  created temporal.createdAt()\n  bare temporal.createdAt\n}',
+    );
+
+    expect(diagnostics).toEqual([]);
+    for (const field of ['created', 'bare']) {
+      expect(resolve(field)).toEqual({
+        kind: 'contributedType',
+        symbol: {
+          kind: 'contributedType',
+          name: 'createdAt',
+          path: ['temporal', 'createdAt'],
+          descriptor: createdAt,
+        },
+      });
+    }
+  });
+
+  it('binds a type-constructor name to the type-constructor descriptor', () => {
+    const { resolve } = bindProject('model Post {\n  title String\n  slug db.VarChar(10)\n}');
+
+    expect(resolve('title')).toEqual({
+      kind: 'contributedType',
+      symbol: { kind: 'contributedType', name: 'String', path: ['String'], descriptor: text },
+    });
+    expect(resolve('slug')).toEqual({
+      kind: 'contributedType',
+      symbol: {
+        kind: 'contributedType',
+        name: 'VarChar',
+        path: ['db', 'VarChar'],
+        descriptor: varchar,
+      },
+    });
+  });
+
+  it('binds presets and type constructors that share a namespace', () => {
+    const { resolve, diagnostics } = bindProject(
+      'model Post {\n  id db.uuid(7)\n  slug db.VarChar(10)\n}',
+    );
+
+    expect(diagnostics).toEqual([]);
+    expect(resolve('id')).toEqual({
+      kind: 'contributedType',
+      symbol: { kind: 'contributedType', name: 'uuid', path: ['db', 'uuid'], descriptor: uuid },
+    });
+    expect(resolve('slug')).toMatchObject({
+      kind: 'contributedType',
+      symbol: { path: ['db', 'VarChar'], descriptor: varchar },
+    });
+  });
+});

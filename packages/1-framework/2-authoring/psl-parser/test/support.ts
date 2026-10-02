@@ -91,7 +91,7 @@ export function supportBinder(input: {
   return createBinder({
     sources: input.sources,
     symbolTable: input.symbolTable,
-    typeConstructors: {},
+    contributedTypes: {},
     attributeSpecs: { model: {}, field: {} },
     controlMutationDefaults: { defaultFunctionRegistry: new Map(), dataTypeEntries: {} },
     ...(input.pslBlockDescriptors === undefined

@@ -49,7 +49,7 @@ function fixture(value: string, local = true) {
   const { binder, diagnostics: binderDiagnostics } = createBinder({
     sources,
     symbolTable,
-    typeConstructors: {},
+    contributedTypes: {},
     attributeSpecs: {
       model: {
         test: () =>
@@ -113,7 +113,7 @@ describe('syntax-scoped entity resolution', () => {
     const { binder, diagnostics: binderDiagnostics } = createBinder({
       sources,
       symbolTable: result.symbolTable,
-      typeConstructors: {},
+      contributedTypes: {},
       attributeSpecs: { model: {}, field: {} },
       controlMutationDefaults: { defaultFunctionRegistry: new Map(), dataTypeEntries: {} },
       pslBlockDescriptors: { permission: descriptor },
@@ -207,7 +207,7 @@ describe('syntax-scoped entity resolution', () => {
       const { binder } = createBinder({
         sources,
         symbolTable,
-        typeConstructors: {},
+        contributedTypes: {},
         attributeSpecs: {
           model: {
             test: () =>
