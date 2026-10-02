@@ -17,7 +17,7 @@ import {
   parseJsonBody,
   printJsonBody,
   signedRange,
-} from '@internal/sql-relational-core/ast';
+} from '@internal/sql-contract/data-type-support';
 import { structuredError } from '@internal/utils/structured-error';
 import { pgBool, pgInt2, pgInt4, pgInt8, pgJson, pgNumeric, pgText } from './data-types';
 

@@ -8,16 +8,16 @@ import {
 } from '@internal/framework-components/codec';
 import { numeralText } from '@internal/sql-contract/data-type';
 import {
-  SQL_EXPRESSION_DATA_TYPE_ID,
-  sqlExpressionAuthoringEntry,
-  sqlExpressionDataType,
-} from '@internal/sql-contract/sql-expression';
-import {
   createNumberClassifier,
   parseJsonBody,
   printJsonBody,
   signedRange,
-} from '@internal/sql-relational-core/ast';
+} from '@internal/sql-contract/data-type-support';
+import {
+  SQL_EXPRESSION_DATA_TYPE_ID,
+  sqlExpressionAuthoringEntry,
+  sqlExpressionDataType,
+} from '@internal/sql-contract/sql-expression';
 import { describe, expect, expectTypeOf, it } from 'vitest';
 import {
   type DefaultMappingOptions,

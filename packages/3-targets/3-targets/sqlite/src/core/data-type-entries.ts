@@ -14,7 +14,7 @@ import {
   parseJsonBody,
   printJsonBody,
   signedRange,
-} from '@internal/sql-relational-core/ast';
+} from '@internal/sql-contract/data-type-support';
 import { sqliteBigint, sqliteInteger, sqliteJson, sqliteReal, sqliteText } from './data-types';
 
 /**

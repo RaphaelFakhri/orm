@@ -14,7 +14,10 @@
 import type { JsonValue } from '@internal/contract/types';
 import type { Cast, DataType, ToCanonicalForm } from '@internal/framework-components/codec';
 import { numeralText, sqlDataType } from '@internal/sql-contract/data-type';
-import { canonicalDateTime, integerTextCanonicalForm } from '@internal/sql-relational-core/ast';
+import {
+  canonicalDateTime,
+  integerTextCanonicalForm,
+} from '@internal/sql-contract/data-type-support';
 import { structuredError } from '@internal/utils/structured-error';
 import { type as arktype } from 'arktype';
 

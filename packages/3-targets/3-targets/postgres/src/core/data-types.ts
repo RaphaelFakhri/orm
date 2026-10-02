@@ -28,7 +28,7 @@ import {
   type CanonicalDateTimeOptions,
   canonicalDateTime,
   integerTextCanonicalForm,
-} from '@internal/sql-relational-core/ast';
+} from '@internal/sql-contract/data-type-support';
 import { structuredError } from '@internal/utils/structured-error';
 import { type as arktype } from 'arktype';
 import { canonicalUuid, fitsFloat4, pgIntervalCanonical } from './codec-helpers';

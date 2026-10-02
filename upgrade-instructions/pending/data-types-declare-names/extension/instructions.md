@@ -206,6 +206,27 @@ changes:
       glob: "**/*.{ts,mts,cts}"
       matches:
         - '\bnumeralText\b'
+  - id: data-type-support-moved
+    summary: |
+      The helpers SQL targets use to implement their data types and PSL entries move from
+      `@internal/sql-relational-core/ast` to `@internal/sql-contract/data-type-support`:
+      `escapePslString`, `isNumeralText`, `canonicalNumeralText`, `integerTextCanonicalForm`,
+      `signedRange`, `createNumberClassifier`, `parseJsonBody`, `printJsonBody`,
+      `canonicalDateTime`, and the types `NumberClassification`, `IntegerStep`,
+      `NumberClassifierSpec`, `DateTimeShape` and `CanonicalDateTimeOptions`.
+    detection:
+      glob: "**/*.{ts,mts,cts}"
+      matches:
+        - 'import\s+(?:type\s+)?\{[^}]*\b(?:escapePslString|isNumeralText|canonicalNumeralText|integerTextCanonicalForm|signedRange|createNumberClassifier|parseJsonBody|printJsonBody|canonicalDateTime|NumberClassification|IntegerStep|NumberClassifierSpec|DateTimeShape|CanonicalDateTimeOptions)\b[^}]*\}\s*from\s*[''"]@internal/sql-relational-core/ast[''"]'
+  - id: numeric-limits-removed
+    summary: |
+      `NUMERIC_PRECISION_RANGE` and `NUMERIC_SCALE_RANGE` are no longer exported from
+      `@internal/target-postgres/codecs`. The bounds of `numeric` are written in the `pg/numeric`
+      data type's parameter schema, `pgNumericParams` from `@internal/target-postgres/data-types`.
+    detection:
+      glob: "**/*.{ts,mts,cts}"
+      matches:
+        - '\bNUMERIC_(?:PRECISION|SCALE)_RANGE\b'
 ---
 
 After the edits below, delete imports and constants that are no longer used, and run the package's formatter so imports are sorted.
@@ -771,4 +792,31 @@ import { numeralText } from '@internal/sql-relational-core/ast';
 
 // after
 import { numeralText } from '@internal/sql-contract/data-type';
+```
+
+## `data-type-support-moved`
+
+Import each helper listed in the summary from `@internal/sql-contract/data-type-support`. Remove it from the `@internal/sql-relational-core/ast` import, and delete that import if nothing is left in it. Add `@internal/sql-contract` to the package's dependencies if it is not there:
+
+```ts
+// before
+import { escapePslString, createNumberClassifier } from '@internal/sql-relational-core/ast';
+
+// after
+import { createNumberClassifier, escapePslString } from '@internal/sql-contract/data-type-support';
+```
+
+## `numeric-limits-removed`
+
+Validate `numeric` parameters against `pgNumericParams` instead of reading the two ranges:
+
+```ts
+// before
+import { NUMERIC_PRECISION_RANGE } from '@internal/target-postgres/codecs';
+const fits = precision >= NUMERIC_PRECISION_RANGE.min && precision <= NUMERIC_PRECISION_RANGE.max;
+
+// after
+import { pgNumericParams } from '@internal/target-postgres/data-types';
+import { type as arktype } from 'arktype';
+const fits = !(pgNumericParams({ precision }) instanceof arktype.errors);
 ```

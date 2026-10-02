@@ -1,9 +1,6 @@
 import { InternalError } from '@internal/utils/internal-error';
 import { describe, expect, it } from 'vitest';
-import {
-  type CanonicalDateTimeOptions,
-  canonicalDateTime,
-} from '../../src/ast/date-time-canonical-form';
+import { type CanonicalDateTimeOptions, canonicalDateTime } from '../src/date-time-canonical-form';
 
 const date: CanonicalDateTimeOptions = { shape: 'date', dataTypeId: 'demo/date' };
 const time: CanonicalDateTimeOptions = { shape: 'time', dataTypeId: 'demo/time' };
