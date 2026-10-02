@@ -3,9 +3,12 @@ import postgresDriver from '@internal/driver-postgres/control';
 import sql from '@internal/family-sql/control';
 import { createDataTypeLookup } from '@internal/framework-components/codec';
 import { createControlStack } from '@internal/framework-components/control';
-import { parse } from '@internal/psl-parser/syntax';
-import { interpretPslSqlSources } from '@internal/sql-contract-psl';
-import { contractSourceContextFromControlStack } from '@internal/sql-contract-psl/test';
+import { withSeedDiagnostics } from '@internal/psl-parser/interpret';
+import { interpretPslDocumentToSqlContract } from '@internal/sql-contract-psl';
+import {
+  bindPslSchema,
+  contractSourceContextFromControlStack,
+} from '@internal/sql-contract-psl/test';
 import postgres from '@internal/target-postgres/control';
 import { postgresDataTypes } from '@internal/target-postgres/data-types';
 import postgresPackRef from '@internal/target-postgres/pack';
@@ -22,16 +25,24 @@ const stack = createControlStack({
 });
 
 function emit(schema: string) {
-  const { document, sources } = parse(schema, 'native-type-parity.test.psl');
-  return interpretPslSqlSources({
-    documents: [document],
-    sources,
+  const bound = bindPslSchema(schema, {
+    sourceId: 'native-type-parity.test.psl',
     context: contractSourceContextFromControlStack(stack, {
       dataTypeLookup: postgresDataTypeLookup,
     }),
-    target: postgresPackRef,
-    createNamespace: postgresCreateNamespace,
   });
+  return withSeedDiagnostics(
+    interpretPslDocumentToSqlContract({
+      documents: bound.documents,
+      sources: bound.sources,
+      symbolTable: bound.symbolTable,
+      binder: bound.binder,
+      ...bound.contextInput,
+      target: postgresPackRef,
+      createNamespace: postgresCreateNamespace,
+    }),
+    bound.seedDiagnostics,
+  );
 }
 
 interface StorageTypeShape {

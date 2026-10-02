@@ -2,9 +2,12 @@ import mongoAdapter from '@internal/adapter-mongo/control';
 import mongoDriver from '@internal/driver-mongo/control';
 import { mongoFamilyDescriptor } from '@internal/family-mongo/control';
 import { createControlStack } from '@internal/framework-components/control';
-import { interpretPslMongoSources } from '@internal/mongo-contract-psl';
-import { contractSourceContextFromControlStack } from '@internal/mongo-contract-psl/test';
-import { parse } from '@internal/psl-parser/syntax';
+import { interpretPslDocumentToMongoContract } from '@internal/mongo-contract-psl';
+import {
+  bindPslSchema,
+  contractSourceContextFromControlStack,
+} from '@internal/mongo-contract-psl/test';
+import { withSeedDiagnostics } from '@internal/psl-parser/interpret';
 import { mongoTargetDescriptor } from '@internal/target-mongo/control';
 import { describe, expect, it } from 'vitest';
 
@@ -16,12 +19,20 @@ const stack = createControlStack({
 });
 
 function interpret(schema: string) {
-  const { document, sources } = parse(schema, 'schema.prisma');
-  return interpretPslMongoSources({
-    documents: [document],
-    sources,
+  const bound = bindPslSchema(schema, {
+    sourceId: 'schema.prisma',
     context: contractSourceContextFromControlStack(stack),
   });
+  return withSeedDiagnostics(
+    interpretPslDocumentToMongoContract({
+      documents: bound.documents,
+      sources: bound.sources,
+      symbolTable: bound.symbolTable,
+      binder: bound.binder,
+      ...bound.contextInput,
+    }),
+    bound.seedDiagnostics,
+  );
 }
 
 describe('a Mongo enum over a codec without exactly one BSON type', () => {

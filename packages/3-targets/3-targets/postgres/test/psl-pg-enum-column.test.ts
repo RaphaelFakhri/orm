@@ -16,12 +16,13 @@ import type { AuthoringTypeConstructorDescriptor } from '@internal/framework-com
 import type { Codec, CodecLookupWithDescriptors } from '@internal/framework-components/codec';
 import { createDataTypeLookup } from '@internal/framework-components/codec';
 import { assembleAuthoringContributions } from '@internal/framework-components/control';
-import { parse } from '@internal/psl-parser/syntax';
-import { interpretPslSqlSources } from '@internal/sql-contract-psl';
+import { withSeedDiagnostics } from '@internal/psl-parser/interpret';
+import { interpretPslDocumentToSqlContract } from '@internal/sql-contract-psl';
 import {
   describeUnsupportedSqlAttribute,
   sqlAttributeSpecs,
 } from '@internal/sql-contract-psl/attribute-specs';
+import { bindPslSchema } from '@internal/sql-contract-psl/test';
 import { postgresDataTypes } from '@internal/target-postgres/data-types';
 import { describe, expect, it } from 'vitest';
 import {
@@ -107,10 +108,8 @@ const scalarTypeConstructors: Record<string, AuthoringTypeConstructorDescriptor>
   );
 
 function interpret(source: string, capabilities: Record<string, Record<string, boolean>> = {}) {
-  const { document, sources } = parse(source, 'psl-pg-enum-column.test.psl');
-  return interpretPslSqlSources({
-    documents: [document],
-    sources,
+  const bound = bindPslSchema(source, {
+    sourceId: 'psl-pg-enum-column.test.psl',
     context: {
       composedExtensions: [],
       composedExtensionContracts: new Map(),
@@ -126,9 +125,19 @@ function interpret(source: string, capabilities: Record<string, Record<string, b
       resolvedInputs: [],
       capabilities,
     },
-    target: postgresTarget,
-    createNamespace: postgresCreateNamespace,
   });
+  return withSeedDiagnostics(
+    interpretPslDocumentToSqlContract({
+      documents: bound.documents,
+      sources: bound.sources,
+      symbolTable: bound.symbolTable,
+      binder: bound.binder,
+      ...bound.contextInput,
+      target: postgresTarget,
+      createNamespace: postgresCreateNamespace,
+    }),
+    bound.seedDiagnostics,
+  );
 }
 
 const aalLevelSource = `

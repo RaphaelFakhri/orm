@@ -14,13 +14,14 @@ import {
   APP_SPACE_ID,
   assembleAuthoringContributions,
 } from '@internal/framework-components/control';
-import { parse } from '@internal/psl-parser/syntax';
+import { withSeedDiagnostics } from '@internal/psl-parser/interpret';
 import type { SqlStorage } from '@internal/sql-contract/types';
-import { interpretPslSqlSources } from '@internal/sql-contract-psl';
+import { interpretPslDocumentToSqlContract } from '@internal/sql-contract-psl';
 import {
   describeUnsupportedSqlAttribute,
   sqlAttributeSpecs,
 } from '@internal/sql-contract-psl/attribute-specs';
+import { bindPslSchema } from '@internal/sql-contract-psl/test';
 import { postgresDataTypes } from '@internal/target-postgres/data-types';
 import { blindCast } from '@internal/utils/casts';
 import { describe, expect, it } from 'vitest';
@@ -83,10 +84,8 @@ const scalarTypeConstructors: Record<string, AuthoringTypeConstructorDescriptor>
   );
 
 function authoredContract(schema: string): Contract<SqlStorage> {
-  const { document, sources } = parse(schema, 'full-text-index-planning.test.psl');
-  const result = interpretPslSqlSources({
-    documents: [document],
-    sources,
+  const bound = bindPslSchema(schema, {
+    sourceId: 'full-text-index-planning.test.psl',
     context: {
       composedExtensions: [],
       composedExtensionContracts: new Map(),
@@ -102,9 +101,19 @@ function authoredContract(schema: string): Contract<SqlStorage> {
       resolvedInputs: [],
       capabilities: {},
     },
-    target: postgresTargetDescriptorMeta,
-    createNamespace: postgresCreateNamespace,
   });
+  const result = withSeedDiagnostics(
+    interpretPslDocumentToSqlContract({
+      documents: bound.documents,
+      sources: bound.sources,
+      symbolTable: bound.symbolTable,
+      binder: bound.binder,
+      ...bound.contextInput,
+      target: postgresTargetDescriptorMeta,
+      createNamespace: postgresCreateNamespace,
+    }),
+    bound.seedDiagnostics,
+  );
   expect(result.ok).toBe(true);
   if (!result.ok) throw new Error('PSL interpretation failed');
   return blindCast<

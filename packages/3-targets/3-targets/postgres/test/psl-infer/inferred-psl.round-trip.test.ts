@@ -11,13 +11,14 @@ import {
   createDataTypeLookup,
 } from '@internal/framework-components/codec';
 import { assembleAuthoringContributions } from '@internal/framework-components/control';
-import { parse } from '@internal/psl-parser/syntax';
+import { withSeedDiagnostics } from '@internal/psl-parser/interpret';
 import type { SqlStorage } from '@internal/sql-contract/types';
-import { interpretPslSqlSources } from '@internal/sql-contract-psl';
+import { interpretPslDocumentToSqlContract } from '@internal/sql-contract-psl';
 import {
   describeUnsupportedSqlAttribute,
   sqlAttributeSpecs,
 } from '@internal/sql-contract-psl/attribute-specs';
+import { bindPslSchema } from '@internal/sql-contract-psl/test';
 import { type SqlColumnIRInput, SqlSchemaIR } from '@internal/sql-schema-ir/types';
 import { ifDefined } from '@internal/utils/defined';
 import { describe, expect, it } from 'vitest';
@@ -108,10 +109,8 @@ function roundTrippedDefaults(columns: readonly SqlColumnIRInput[]) {
       },
     }),
   );
-  const { document, sources } = parse(printed, 'schema.prisma');
-  const emitted = interpretPslSqlSources({
-    documents: [document],
-    sources,
+  const bound = bindPslSchema(printed, {
+    sourceId: 'schema.prisma',
     context: {
       composedExtensions: [],
       composedExtensionContracts: new Map(),
@@ -127,9 +126,19 @@ function roundTrippedDefaults(columns: readonly SqlColumnIRInput[]) {
       resolvedInputs: [],
       capabilities: { sql: { scalarList: true } },
     },
-    target,
-    createNamespace: postgresCreateNamespace,
   });
+  const emitted = withSeedDiagnostics(
+    interpretPslDocumentToSqlContract({
+      documents: bound.documents,
+      sources: bound.sources,
+      symbolTable: bound.symbolTable,
+      binder: bound.binder,
+      ...bound.contextInput,
+      target,
+      createNamespace: postgresCreateNamespace,
+    }),
+    bound.seedDiagnostics,
+  );
   if (!emitted.ok) {
     throw new Error(`${printed}\n\n${JSON.stringify(emitted.failure.diagnostics, null, 2)}`);
   }

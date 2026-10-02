@@ -9,7 +9,7 @@ import { fixtureDataTypeSupport } from './fixture-data-types';
 import { interpretSqlContract, postgresScalarTypeDescriptors, postgresTarget } from './fixtures';
 
 describe('composed mutation default registries', () => {
-  const interpretPslDocumentToSqlContract = (
+  const interpretPostgresSchema = (
     schema: string,
     input: Omit<
       InterpretPslDocumentToSqlContractInput,
@@ -37,7 +37,7 @@ describe('composed mutation default registries', () => {
     });
 
   it('rejects a default function call as invalid syntax when no components contribute handlers', () => {
-    const result = interpretPslDocumentToSqlContract(
+    const result = interpretPostgresSchema(
       `model User {
   id Int @id
   externalId String @default(uuid())
@@ -60,7 +60,7 @@ describe('composed mutation default registries', () => {
   });
 
   it('accepts a function contributed through component composition', () => {
-    const result = interpretPslDocumentToSqlContract(
+    const result = interpretPostgresSchema(
       `model User {
   id Int @id
   slug String @default(slugid())
@@ -118,7 +118,7 @@ describe('composed mutation default registries', () => {
   });
 
   it('emits applicability diagnostics for incompatible generator codec ids', () => {
-    const result = interpretPslDocumentToSqlContract(
+    const result = interpretPostgresSchema(
       `model User {
   id Int @id @default(slugid())
 }

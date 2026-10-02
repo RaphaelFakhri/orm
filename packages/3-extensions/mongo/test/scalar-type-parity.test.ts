@@ -4,9 +4,12 @@ import mongoDriver from '@internal/driver-mongo/control';
 import { mongoFamilyDescriptor } from '@internal/family-mongo/control';
 import { collectScalarTypeConstructors } from '@internal/framework-components/authoring';
 import { createControlStack } from '@internal/framework-components/control';
-import { interpretPslMongoSources } from '@internal/mongo-contract-psl';
-import { contractSourceContextFromControlStack } from '@internal/mongo-contract-psl/test';
-import { parse } from '@internal/psl-parser/syntax';
+import { interpretPslDocumentToMongoContract } from '@internal/mongo-contract-psl';
+import {
+  bindPslSchema,
+  contractSourceContextFromControlStack,
+} from '@internal/mongo-contract-psl/test';
+import { withSeedDiagnostics } from '@internal/psl-parser/interpret';
 import { mongoTargetDescriptor } from '@internal/target-mongo/control';
 import { describe, expect, it } from 'vitest';
 
@@ -40,12 +43,20 @@ const BSON_SCALARS_SCHEMA = `model post {
 `;
 
 function emit(schema: string = REPRESENTATIVE_SCHEMA) {
-  const { document, sources } = parse(schema, 'representative-schema.prisma');
-  return interpretPslMongoSources({
-    documents: [document],
-    sources,
+  const bound = bindPslSchema(schema, {
+    sourceId: 'representative-schema.prisma',
     context: contractSourceContextFromControlStack(stack),
   });
+  return withSeedDiagnostics(
+    interpretPslDocumentToMongoContract({
+      documents: bound.documents,
+      sources: bound.sources,
+      symbolTable: bound.symbolTable,
+      binder: bound.binder,
+      ...bound.contextInput,
+    }),
+    bound.seedDiagnostics,
+  );
 }
 
 // The legacy scalar-type map channel (name-to-codecId, retired in TML-2985) is gone; the pinned literals
@@ -197,14 +208,23 @@ describe('mongo scalar types derived from the unified namespace', () => {
 
 describe('deprecated Mongo scalar names through the PSL contract source', () => {
   function interpretWith(schema: string) {
-    const { document, sources } = parse(schema, 'schema.prisma');
     const warnings: ContractSourceDiagnostic[] = [];
     const context = contractSourceContextFromControlStack(stack, {
       reportWarning: (diagnostic: ContractSourceDiagnostic) => {
         warnings.push(diagnostic);
       },
     });
-    const result = interpretPslMongoSources({ documents: [document], sources, context });
+    const bound = bindPslSchema(schema, { sourceId: 'schema.prisma', context });
+    const result = withSeedDiagnostics(
+      interpretPslDocumentToMongoContract({
+        documents: bound.documents,
+        sources: bound.sources,
+        symbolTable: bound.symbolTable,
+        binder: bound.binder,
+        ...bound.contextInput,
+      }),
+      bound.seedDiagnostics,
+    );
     if (!result.ok) throw new Error(JSON.stringify(result.failure));
     const json = JSON.stringify(
       mongoTargetDescriptor.contractSerializer.serializeContract(

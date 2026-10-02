@@ -4,9 +4,12 @@ import sql from '@internal/family-sql/control';
 import { collectScalarTypeConstructors } from '@internal/framework-components/authoring';
 import { createDataTypeLookup } from '@internal/framework-components/codec';
 import { createControlStack } from '@internal/framework-components/control';
-import { parse } from '@internal/psl-parser/syntax';
-import { interpretPslSqlSources } from '@internal/sql-contract-psl';
-import { contractSourceContextFromControlStack } from '@internal/sql-contract-psl/test';
+import { withSeedDiagnostics } from '@internal/psl-parser/interpret';
+import { interpretPslDocumentToSqlContract } from '@internal/sql-contract-psl';
+import {
+  bindPslSchema,
+  contractSourceContextFromControlStack,
+} from '@internal/sql-contract-psl/test';
 import sqlite, { sqliteCreateNamespace } from '@internal/target-sqlite/control';
 import { sqliteDataTypes } from '@internal/target-sqlite/data-types';
 import sqlitePackRef from '@internal/target-sqlite/pack';
@@ -35,16 +38,24 @@ const REPRESENTATIVE_SCHEMA = `model sample {
 `;
 
 function emit() {
-  const { document, sources } = parse(REPRESENTATIVE_SCHEMA, 'scalar-type-parity.test.psl');
-  return interpretPslSqlSources({
-    documents: [document],
-    sources,
+  const bound = bindPslSchema(REPRESENTATIVE_SCHEMA, {
+    sourceId: 'scalar-type-parity.test.psl',
     context: contractSourceContextFromControlStack(stack, {
       dataTypeLookup: sqliteDataTypeLookup,
     }),
-    target: sqlitePackRef,
-    createNamespace: sqliteCreateNamespace,
   });
+  return withSeedDiagnostics(
+    interpretPslDocumentToSqlContract({
+      documents: bound.documents,
+      sources: bound.sources,
+      symbolTable: bound.symbolTable,
+      binder: bound.binder,
+      ...bound.contextInput,
+      target: sqlitePackRef,
+      createNamespace: sqliteCreateNamespace,
+    }),
+    bound.seedDiagnostics,
+  );
 }
 
 // The legacy scalar-type map channel (name-to-codecId, retired in TML-2985) is gone; the pinned literals

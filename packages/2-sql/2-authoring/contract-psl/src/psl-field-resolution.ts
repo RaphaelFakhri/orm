@@ -477,7 +477,10 @@ export function collectResolvedFields(input: CollectResolvedFieldsInput): Resolv
     let presetContributions: FieldPresetContributions | undefined;
     const resolveInput = {
       field,
-      binder,
+      typeReferenceResolved:
+        fieldTypeResolution === undefined
+          ? fieldTypeReference === undefined
+          : fieldTypeResolution.kind !== 'unresolved',
       enumTypeDescriptors,
       namedTypeDescriptors,
       scalarColumnDescriptors,

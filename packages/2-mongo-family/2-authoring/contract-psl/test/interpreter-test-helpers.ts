@@ -6,16 +6,17 @@ import type {
 import type { Contract } from '@internal/contract/types';
 import type { AuthoringTypeConstructorDescriptor } from '@internal/framework-components/authoring';
 import type { CodecLookupWithDescriptors } from '@internal/framework-components/codec';
-import { parse } from '@internal/psl-parser/syntax';
+import { withSeedDiagnostics } from '@internal/psl-parser/interpret';
 import type { Result } from '@internal/utils/result';
 import { expect } from 'vitest';
 import { describeUnresolvedMongoType } from '../src/describe-unresolved-type';
 import type { InterpretPslDocumentToMongoContractInput } from '../src/interpreter';
+import { interpretPslDocumentToMongoContract } from '../src/interpreter';
 import {
   describeUnsupportedMongoAttribute,
   mongoAttributeSpecs,
 } from '../src/mongo-attribute-specs';
-import { interpretPslMongoSources } from '../src/provider';
+import { bindPslSchema } from '../src/test';
 
 /**
  * Builds the `ContractSourceContext` `createProjectBinder` needs, from the
@@ -97,14 +98,18 @@ export function interpretMongoContract(
   > & { readonly codecLookup?: CodecLookupWithDescriptors },
   sourceId = 'schema.prisma',
 ): Result<Contract, ContractSourceDiagnostics> {
-  const { document, sources } = parse(schema, sourceId);
-  const context = contextForInterpretOptions(options);
-  return interpretPslMongoSources({
-    documents: [document],
-    sources,
-    context,
-    ...(options.enumInferenceCodecs ? { enumInferenceCodecs: options.enumInferenceCodecs } : {}),
-  });
+  const bound = bindPslSchema(schema, { sourceId, context: contextForInterpretOptions(options) });
+  return withSeedDiagnostics(
+    interpretPslDocumentToMongoContract({
+      documents: bound.documents,
+      sources: bound.sources,
+      symbolTable: bound.symbolTable,
+      binder: bound.binder,
+      ...bound.contextInput,
+      ...(options.enumInferenceCodecs ? { enumInferenceCodecs: options.enumInferenceCodecs } : {}),
+    }),
+    bound.seedDiagnostics,
+  );
 }
 
 export function expectInvalidAttributeSyntax<Success>(

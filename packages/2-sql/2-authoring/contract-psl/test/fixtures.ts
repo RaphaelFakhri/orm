@@ -37,6 +37,7 @@ import {
   optional,
   str,
 } from '@internal/psl-parser';
+import { withSeedDiagnostics } from '@internal/psl-parser/interpret';
 import type { DocumentAst, PslSources, SourceFile } from '@internal/psl-parser/syntax';
 import { parse } from '@internal/psl-parser/syntax';
 import type { SqlNamespaceBase, SqlNamespaceInput } from '@internal/sql-contract/types';
@@ -44,9 +45,10 @@ import { type EnumTypeHandle, enumType } from '@internal/sql-contract-ts/contrac
 import type { Result } from '@internal/utils/result';
 import { createTestSqlNamespace } from '../../../1-core/contract/test/test-support';
 import type { InterpretPslDocumentToSqlContractInput } from '../src/interpreter';
-import { interpretPslSqlSources } from '../src/provider';
+import { interpretPslDocumentToSqlContract } from '../src/interpreter';
 import { describeUnsupportedSqlAttribute } from '../src/psl-field-resolution';
 import { sqlAttributeSpecs } from '../src/sql-attribute-specs';
+import { bindPslSchema } from '../src/test';
 import { postgresCodecLookup } from './fixture-codec-descriptors';
 import { fixtureDataTypeSupport } from './fixture-data-types';
 
@@ -504,19 +506,26 @@ export function interpretSqlContract(
   >,
   sourceId?: string,
 ): Result<Contract, ContractSourceDiagnostics> {
-  const { document, sources } = parse(schema, sourceId ?? 'schema.prisma');
-  const context = contextForInterpretOptions(options);
-  return interpretPslSqlSources({
-    documents: [document],
-    sources,
-    context,
-    target: options.target,
-    createNamespace: options.createNamespace,
-    ...(options.composedExtensionPackRefs?.length
-      ? { composedExtensionPackRefs: options.composedExtensionPackRefs }
-      : {}),
-    enumInferenceCodecs: options.enumInferenceCodecs ?? postgresEnumInferenceCodecs,
+  const bound = bindPslSchema(schema, {
+    sourceId: sourceId ?? 'schema.prisma',
+    context: contextForInterpretOptions(options),
   });
+  return withSeedDiagnostics(
+    interpretPslDocumentToSqlContract({
+      documents: bound.documents,
+      sources: bound.sources,
+      symbolTable: bound.symbolTable,
+      binder: bound.binder,
+      ...bound.contextInput,
+      target: options.target,
+      createNamespace: options.createNamespace,
+      ...(options.composedExtensionPackRefs?.length
+        ? { composedExtensionPackRefs: options.composedExtensionPackRefs }
+        : {}),
+      enumInferenceCodecs: options.enumInferenceCodecs ?? postgresEnumInferenceCodecs,
+    }),
+    bound.seedDiagnostics,
+  );
 }
 
 export const sqliteScalarAuthoringTypes: AuthoringTypeNamespace = {

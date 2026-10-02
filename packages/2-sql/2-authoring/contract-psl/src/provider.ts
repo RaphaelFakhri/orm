@@ -1,11 +1,6 @@
 import { readFile } from 'node:fs/promises';
-import type {
-  ContractConfig,
-  ContractSourceContext,
-  ContractSourceDiagnostic,
-  ContractSourceDiagnostics,
-} from '@internal/config/config-types';
-import type { Contract, ControlPolicy } from '@internal/contract/types';
+import type { ContractConfig, ContractSourceDiagnostic } from '@internal/config/config-types';
+import type { ControlPolicy } from '@internal/contract/types';
 import { collectScalarTypeConstructors } from '@internal/framework-components/authoring';
 import type { ExtensionPackRef, TargetPackRef } from '@internal/framework-components/components';
 import {
@@ -16,13 +11,11 @@ import {
 } from '@internal/psl-parser';
 import type { PslInterpretCapable } from '@internal/psl-parser/interpret';
 import { withSeedDiagnostics } from '@internal/psl-parser/interpret';
-import type { DocumentAst, PslSources } from '@internal/psl-parser/syntax';
 import { parse } from '@internal/psl-parser/syntax';
 import type { SqlNamespaceBase, SqlNamespaceInput } from '@internal/sql-contract/types';
 import { applySqlSpecifierControlPolicy } from '@internal/sql-contract-ts/contract-builder';
 import { assertDefined } from '@internal/utils/assertions';
 import { ifDefined } from '@internal/utils/defined';
-import type { Result } from '@internal/utils/result';
 import { notOk, ok } from '@internal/utils/result';
 import { basename, extname } from 'pathe';
 import { isDynamicPattern } from 'tinyglobby';
@@ -37,73 +30,6 @@ export interface PrismaContractOptions {
   readonly defaultControlPolicy?: ControlPolicy;
   /** The target's default codec ids for an `enum` block that omits `@@type`. */
   readonly enumInferenceCodecs?: { readonly text: string; readonly int: string };
-}
-
-export interface InterpretPslSqlSourcesInput {
-  readonly documents: readonly DocumentAst[];
-  readonly sources: PslSources;
-  readonly context: ContractSourceContext;
-  readonly target: TargetPackRef<'sql', string>;
-  readonly createNamespace: (input: SqlNamespaceInput) => SqlNamespaceBase;
-  readonly composedExtensionPackRefs?: readonly ExtensionPackRef<'sql', string>[];
-  /** The target's default codec ids for an `enum` block that omits `@@type`. */
-  readonly enumInferenceCodecs?: { readonly text: string; readonly int: string };
-}
-
-/**
- * Builds the symbol table and binder for `documents`/`sources` against
- * `context`, folds their diagnostics in as seed diagnostics, and interprets
- * the result to a SQL contract. This is the sequence `prismaContract`'s
- * `load()` runs once it has read and parsed a schema's files; every other
- * caller that only needs the interpreter's output from PSL sources — rather
- * than from an already-open `ContractSourceProvider` — should call this
- * instead of assembling the sequence itself.
- */
-export function interpretPslSqlSources(
-  input: InterpretPslSqlSourcesInput,
-): Result<Contract, ContractSourceDiagnostics> {
-  const { documents, sources, context } = input;
-  const { symbolTable, diagnostics: symbolTableDiagnostics } = buildSymbolTable({
-    documents,
-    sources,
-  });
-  const { binder, diagnostics: binderDiagnostics } = createProjectBinder({
-    symbolTable,
-    sources,
-    context,
-  });
-  const scalarColumnDescriptors = collectScalarTypeConstructors(
-    context.authoringContributions.type,
-  );
-  const interpreted = interpretPslDocumentToSqlContract({
-    documents,
-    symbolTable,
-    sources,
-    binder,
-    seedDiagnostics: [],
-    target: input.target,
-    authoringContributions: context.authoringContributions,
-    scalarColumnDescriptors,
-    ...ifDefined(
-      'composedExtensions',
-      context.composedExtensions.length > 0 ? [...context.composedExtensions] : undefined,
-    ),
-    composedExtensionContracts: context.composedExtensionContracts,
-    ...ifDefined(
-      'composedExtensionPackRefs',
-      input.composedExtensionPackRefs?.length ? input.composedExtensionPackRefs : undefined,
-    ),
-    controlMutationDefaults: context.controlMutationDefaults,
-    createNamespace: input.createNamespace,
-    capabilities: context.capabilities,
-    codecLookup: context.codecLookup,
-    dataTypeLookup: context.dataTypeLookup,
-    ...ifDefined('enumInferenceCodecs', input.enumInferenceCodecs),
-  });
-  return withSeedDiagnostics(
-    interpreted,
-    mapPslDiagnostics([...symbolTableDiagnostics, ...binderDiagnostics], sources),
-  );
 }
 
 /**
@@ -252,22 +178,21 @@ export function prismaContract(schemaPath: string, options: PrismaContractOption
         ),
       ];
 
+      const { symbolTable, diagnostics: symbolTableDiagnostics } = buildSymbolTable({
+        documents,
+        sources,
+      });
+      const { binder, diagnostics: binderDiagnostics } = createProjectBinder({
+        symbolTable,
+        sources,
+        context,
+      });
       const interpreted = withSeedDiagnostics(
-        interpretPslSqlSources({
-          documents,
-          sources,
-          context,
-          target: options.target,
-          createNamespace: options.createNamespace,
-          ...ifDefined(
-            'composedExtensionPackRefs',
-            options.composedExtensionPackRefs?.length
-              ? options.composedExtensionPackRefs
-              : undefined,
-          ),
-          ...ifDefined('enumInferenceCodecs', options.enumInferenceCodecs),
-        }),
-        seedDiagnostics,
+        this.interpret({ documents, sources, symbolTable, binder }, context),
+        [
+          ...seedDiagnostics,
+          ...mapPslDiagnostics([...symbolTableDiagnostics, ...binderDiagnostics], sources),
+        ],
       );
       if (!interpreted.ok) {
         return interpreted;

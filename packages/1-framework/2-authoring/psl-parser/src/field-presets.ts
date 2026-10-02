@@ -3,9 +3,24 @@ import {
   instantiateAuthoringFieldPreset,
   validateAuthoringHelperArguments,
 } from '@internal/framework-components/authoring';
+import type { PslSpan } from '@internal/framework-components/psl-ast';
 import { mapPslHelperArgs } from './authoring-arguments';
 import type { DiagnosticSource, PslDiagnosticCollector } from './diagnostic';
 import type { ResolvedTypeConstructorCall } from './resolve';
+
+export function reportPresetNotCalled(input: {
+  readonly entityLabel: string;
+  readonly presetPath: string;
+  readonly source: DiagnosticSource;
+  readonly span: PslSpan;
+  readonly diagnostics: PslDiagnosticCollector;
+}): void {
+  input.diagnostics.push({
+    code: 'PSL_PRESET_NOT_CALLED',
+    message: `${input.entityLabel} uses field preset "${input.presetPath}" without calling it. Write ${input.presetPath}().`,
+    ...input.source.at(input.span),
+  });
+}
 
 /**
  * Instantiates a field-preset call against its descriptor, coercing PSL AST arguments into the descriptor's typed argument shape and returning the preset's full set of contract contributions.

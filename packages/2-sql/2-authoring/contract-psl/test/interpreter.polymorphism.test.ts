@@ -17,7 +17,7 @@ import {
 
 describe('interpretPslDocumentToSqlContract — polymorphism', () => {
   const builtinControlMutationDefaults = createBuiltinLikeControlMutationDefaults();
-  const interpretPslDocumentToSqlContract = (
+  const interpretPostgresSchema = (
     schema: string,
     input: Omit<
       InterpretPslDocumentToSqlContractInput,
@@ -64,7 +64,7 @@ describe('interpretPslDocumentToSqlContract — polymorphism', () => {
 }`;
     const standalone = 'model Bug {\n id Int @id\n @@map("standalone_bug")\n}';
     const interpret = (schema: string) => {
-      const result = interpretPslDocumentToSqlContract(schema, {
+      const result = interpretPostgresSchema(schema, {
         controlMutationDefaults: builtinControlMutationDefaults,
       });
       expect(result.ok).toBe(true);
@@ -135,7 +135,7 @@ describe('interpretPslDocumentToSqlContract — polymorphism', () => {
     ],
   ])('reports checked-reference failure for %s', (base, variant, message, code) => {
     const schema = `${base}\n${variant}`;
-    const result = interpretPslDocumentToSqlContract(schema, {
+    const result = interpretPostgresSchema(schema, {
       controlMutationDefaults: builtinControlMutationDefaults,
     });
     expect(result.ok).toBe(false);
@@ -153,7 +153,7 @@ describe('interpretPslDocumentToSqlContract — polymorphism', () => {
   });
 
   it('ignores polymorphism collection when the schema has no models', () => {
-    const result = interpretPslDocumentToSqlContract(
+    const result = interpretPostgresSchema(
       `types {
   Email = String
 }`,
@@ -177,7 +177,7 @@ describe('interpretPslDocumentToSqlContract — polymorphism', () => {
 
   describe('@@discriminator and @@base — happy paths', () => {
     it('emits discriminator on base model', () => {
-      const result = interpretPslDocumentToSqlContract(
+      const result = interpretPostgresSchema(
         `model Task {
   id    Int    @id @default(autoincrement())
   title String
@@ -206,7 +206,7 @@ model Bug {
     });
 
     it('emits base on variant model', () => {
-      const result = interpretPslDocumentToSqlContract(
+      const result = interpretPostgresSchema(
         `model Task {
   id    Int    @id @default(autoincrement())
   title String
@@ -234,7 +234,7 @@ model Bug {
     });
 
     it('variant without @@map inherits base table (STI)', () => {
-      const result = interpretPslDocumentToSqlContract(
+      const result = interpretPostgresSchema(
         `model Task {
   id    Int    @id @default(autoincrement())
   title String
@@ -261,7 +261,7 @@ model Bug {
     });
 
     it('variant with @@map gets own table (MTI)', () => {
-      const result = interpretPslDocumentToSqlContract(
+      const result = interpretPostgresSchema(
         `model Task {
   id    Int    @id @default(autoincrement())
   title String
@@ -289,7 +289,7 @@ model Feature {
     });
 
     it('MTI variant storage table carries the base PK column, primary key, and FK to the base', () => {
-      const result = interpretPslDocumentToSqlContract(
+      const result = interpretPostgresSchema(
         `model Task {
   id    Int    @id @default(autoincrement())
   title String
@@ -340,7 +340,7 @@ model Feature {
     });
 
     it('MTI variant FK carries the base namespace when the base lives in a non-default namespace', () => {
-      const result = interpretPslDocumentToSqlContract(
+      const result = interpretPostgresSchema(
         `namespace auth {
   model Task {
     id    Int    @id @default(autoincrement())
@@ -390,7 +390,7 @@ model Feature {
     });
 
     it('variant models contain only their own fields (thin)', () => {
-      const result = interpretPslDocumentToSqlContract(
+      const result = interpretPostgresSchema(
         `model Task {
   id    Int    @id @default(autoincrement())
   title String
@@ -417,7 +417,7 @@ model Bug {
     });
 
     it('assembles multiple variants on the base', () => {
-      const result = interpretPslDocumentToSqlContract(
+      const result = interpretPostgresSchema(
         `model Task {
   id    Int    @id @default(autoincrement())
   title String
@@ -458,7 +458,7 @@ model Feature {
     });
 
     it('variants are not included in roots', () => {
-      const result = interpretPslDocumentToSqlContract(
+      const result = interpretPostgresSchema(
         `model Task {
   id    Int    @id @default(autoincrement())
   title String
@@ -493,7 +493,7 @@ model Bug {
     }
 
     it('materializes an STI variant column onto the base table (nullable in storage)', () => {
-      const result = interpretPslDocumentToSqlContract(
+      const result = interpretPostgresSchema(
         `model Task {
   id    Int    @id @default(autoincrement())
   title String
@@ -535,7 +535,7 @@ model Bug {
     });
 
     it('does not leak the STI variant field onto the base domain model', () => {
-      const result = interpretPslDocumentToSqlContract(
+      const result = interpretPostgresSchema(
         `model Task {
   id    Int    @id @default(autoincrement())
   title String
@@ -569,7 +569,7 @@ model Bug {
     });
 
     it('keeps the STI variant domain field at its declared (required) nullability', () => {
-      const result = interpretPslDocumentToSqlContract(
+      const result = interpretPostgresSchema(
         `model Task {
   id    Int    @id @default(autoincrement())
   title String
@@ -597,7 +597,7 @@ model Bug {
     });
 
     it('does not emit an orphan storage table for an STI variant', () => {
-      const result = interpretPslDocumentToSqlContract(
+      const result = interpretPostgresSchema(
         `model Task {
   id    Int    @id @default(autoincrement())
   title String
@@ -627,7 +627,7 @@ model Bug {
     });
 
     it('materializes columns for two STI variants onto the same base table', () => {
-      const result = interpretPslDocumentToSqlContract(
+      const result = interpretPostgresSchema(
         `model Task {
   id    Int    @id @default(autoincrement())
   title String
@@ -663,7 +663,7 @@ model Chore {
     });
 
     it('leaves MTI variants untouched (own table keeps its own columns)', () => {
-      const result = interpretPslDocumentToSqlContract(
+      const result = interpretPostgresSchema(
         `model Task {
   id    Int    @id @default(autoincrement())
   title String
@@ -694,7 +694,7 @@ model Feature {
     });
 
     it('materializes the STI column and joins the MTI variant in a mixed hierarchy', () => {
-      const result = interpretPslDocumentToSqlContract(
+      const result = interpretPostgresSchema(
         `model Task {
   id    Int    @id @default(autoincrement())
   title String
@@ -734,7 +734,7 @@ model Feature {
 
   describe('@@discriminator and @@base — diagnostics', () => {
     it('diagnoses orphaned @@discriminator (no @@base declarations)', () => {
-      const result = interpretPslDocumentToSqlContract(
+      const result = interpretPostgresSchema(
         `model Task {
   id    Int    @id @default(autoincrement())
   title String
@@ -759,7 +759,7 @@ model Feature {
     });
 
     it('diagnoses orphaned @@base (target model has no @@discriminator)', () => {
-      const result = interpretPslDocumentToSqlContract(
+      const result = interpretPostgresSchema(
         `model Task {
   id    Int    @id @default(autoincrement())
   title String
@@ -788,7 +788,7 @@ model Bug {
     });
 
     it('diagnoses missing discriminator field on base model', () => {
-      const result = interpretPslDocumentToSqlContract(
+      const result = interpretPostgresSchema(
         `model Task {
   id    Int    @id @default(autoincrement())
   title String
@@ -819,7 +819,7 @@ model Bug {
     });
 
     it('diagnoses non-String discriminator field', () => {
-      const result = interpretPslDocumentToSqlContract(
+      const result = interpretPostgresSchema(
         `model Task {
   id    Int    @id @default(autoincrement())
   title String
@@ -851,7 +851,7 @@ model Bug {
     });
 
     it('diagnoses model with both @@discriminator and @@base', () => {
-      const result = interpretPslDocumentToSqlContract(
+      const result = interpretPostgresSchema(
         `model Task {
   id    Int    @id @default(autoincrement())
   title String
@@ -884,7 +884,7 @@ model Bug {
     });
 
     it('diagnoses @@base targeting non-existent model', () => {
-      const result = interpretPslDocumentToSqlContract(
+      const result = interpretPostgresSchema(
         `model Bug {
   id       Int    @id @default(autoincrement())
   severity String
@@ -909,7 +909,7 @@ model Bug {
     });
 
     it('diagnoses duplicate discriminator values', () => {
-      const result = interpretPslDocumentToSqlContract(
+      const result = interpretPostgresSchema(
         `model Task {
   id    Int    @id @default(autoincrement())
   title String
@@ -948,7 +948,7 @@ model OtherBug {
 
   describe('end-to-end: PSL → interpret → domain validation', () => {
     it('emitted polymorphic contract passes domain validation', () => {
-      const result = interpretPslDocumentToSqlContract(
+      const result = interpretPostgresSchema(
         `model Task {
   id    Int    @id @default(autoincrement())
   title String

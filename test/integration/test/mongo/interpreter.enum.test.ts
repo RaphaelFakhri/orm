@@ -10,10 +10,11 @@ import { createControlStack } from '@internal/framework-components/control';
 import { UNBOUND_NAMESPACE_ID } from '@internal/framework-components/ir';
 import {
   describeUnsupportedMongoAttribute,
-  interpretPslMongoSources,
+  interpretPslDocumentToMongoContract,
   mongoAttributeSpecs,
 } from '@internal/mongo-contract-psl';
-import { parse } from '@internal/psl-parser/syntax';
+import { bindPslSchema } from '@internal/mongo-contract-psl/test';
+import { withSeedDiagnostics } from '@internal/psl-parser/interpret';
 import { MONGO_INT32_CODEC_ID, MONGO_STRING_CODEC_ID } from '@internal/target-mongo/codec-ids';
 import { mongoTargetDescriptor } from '@internal/target-mongo/control';
 import { timeouts } from '@repo/test-utils';
@@ -71,10 +72,8 @@ function interpret(
   schema: string,
   overrides?: { readonly codecLookup?: CodecLookupWithDescriptors },
 ) {
-  const { document, sources } = parse(schema, 'mongo-enum-schema.prisma');
-  return interpretPslMongoSources({
-    documents: [document],
-    sources,
+  const bound = bindPslSchema(schema, {
+    sourceId: 'mongo-enum-schema.prisma',
     context: {
       composedExtensions: [],
       composedExtensionContracts: new Map(),
@@ -94,8 +93,18 @@ function interpret(
       resolvedInputs: [],
       capabilities: {},
     },
-    enumInferenceCodecs: { text: MONGO_STRING_CODEC_ID, int: MONGO_INT32_CODEC_ID },
   });
+  return withSeedDiagnostics(
+    interpretPslDocumentToMongoContract({
+      documents: bound.documents,
+      sources: bound.sources,
+      symbolTable: bound.symbolTable,
+      binder: bound.binder,
+      ...bound.contextInput,
+      enumInferenceCodecs: { text: MONGO_STRING_CODEC_ID, int: MONGO_INT32_CODEC_ID },
+    }),
+    bound.seedDiagnostics,
+  );
 }
 
 function interpretOk(

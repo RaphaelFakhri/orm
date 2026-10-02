@@ -5,7 +5,7 @@ import { interpretSqlContract, sqliteScalarColumnDescriptors, sqliteTarget } fro
 import { sqlStorageFromSuccessfulSqlInterpretation } from './interpret-sql-contract-storage';
 import {
   builtinControlMutationDefaults,
-  interpretPslDocumentToSqlContract,
+  interpretPostgresSchema,
   postgresTemporalContributions,
   sqliteTemporalContributions,
 } from './interpreter-defaults-support';
@@ -13,7 +13,7 @@ import { unboundTables } from './unbound-tables';
 
 describe('interpretPslDocumentToSqlContract field-preset default lowering', () => {
   it('lowers boolean literal defaults into the storage contract', () => {
-    const result = interpretPslDocumentToSqlContract(
+    const result = interpretPostgresSchema(
       `model Flags {
   id Int @id
   enabled Boolean @default(true)
@@ -39,7 +39,7 @@ describe('interpretPslDocumentToSqlContract field-preset default lowering', () =
   });
 
   it('lowers temporal.updatedAt() to create and update execution defaults', () => {
-    const result = interpretPslDocumentToSqlContract(
+    const result = interpretPostgresSchema(
       `model Timestamped {
   id Int @id
   createdAt DateTime @default(now())
@@ -106,7 +106,7 @@ describe('interpretPslDocumentToSqlContract field-preset default lowering', () =
   });
 
   it('emits a migration hint when @updatedAt is used (after attribute removal)', () => {
-    const result = interpretPslDocumentToSqlContract(
+    const result = interpretPostgresSchema(
       `model Stale {
   id Int @id
   updatedAt DateTime @updatedAt
@@ -137,7 +137,7 @@ describe('interpretPslDocumentToSqlContract field-preset default lowering', () =
     // they already did. The migration hint is suppressed; only the bare
     // unsupported-attribute message is emitted.
 
-    const result = interpretPslDocumentToSqlContract(
+    const result = interpretPostgresSchema(
       `model Migrated {
   id Int @id
   updatedAt temporal.updatedAt() @updatedAt
@@ -166,7 +166,7 @@ describe('interpretPslDocumentToSqlContract field-preset default lowering', () =
     // `authoringContributions.field` for any registered preset, not just the
     // real `temporal.{createdAt,updatedAt}` pair.
 
-    const result = interpretPslDocumentToSqlContract(
+    const result = interpretPostgresSchema(
       `model Synthetic {
   id Int @id
   example temporal.exampleField()
@@ -223,7 +223,7 @@ describe('interpretPslDocumentToSqlContract field-preset default lowering', () =
   });
 
   it('uses nullable from field presets when lowering storage columns', () => {
-    const result = interpretPslDocumentToSqlContract(
+    const result = interpretPostgresSchema(
       `model Synthetic {
   id Int @id
   maybe temporal.nullableField()
@@ -272,7 +272,7 @@ describe('interpretPslDocumentToSqlContract field-preset default lowering', () =
   });
 
   it('resolves a type constructor sharing a field-preset namespace', () => {
-    const result = interpretPslDocumentToSqlContract(
+    const result = interpretPostgresSchema(
       `model Synthetic {
   id Int @id
   example audit.Custom()

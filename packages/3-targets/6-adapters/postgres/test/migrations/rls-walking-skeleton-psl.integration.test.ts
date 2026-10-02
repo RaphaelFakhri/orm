@@ -7,13 +7,14 @@ import {
   APP_SPACE_ID,
   assembleAuthoringContributions,
 } from '@internal/framework-components/control';
-import { parse } from '@internal/psl-parser/syntax';
+import { withSeedDiagnostics } from '@internal/psl-parser/interpret';
 import type { SqlStorage } from '@internal/sql-contract/types';
-import { interpretPslSqlSources } from '@internal/sql-contract-psl';
+import { interpretPslDocumentToSqlContract } from '@internal/sql-contract-psl';
 import {
   describeUnsupportedSqlAttribute,
   sqlAttributeSpecs,
 } from '@internal/sql-contract-psl/attribute-specs';
+import { bindPslSchema } from '@internal/sql-contract-psl/test';
 import { postgresScalarAuthoringTypes } from '@internal/target-postgres/control';
 import { postgresDataTypes } from '@internal/target-postgres/data-types';
 import {
@@ -79,11 +80,8 @@ function buildPslContract() {
       ]),
     );
 
-  const { document, sources } = parse(PSL, 'rls-walking-skeleton-psl.integration.test.psl');
-
-  return interpretPslSqlSources({
-    documents: [document],
-    sources,
+  const bound = bindPslSchema(PSL, {
+    sourceId: 'rls-walking-skeleton-psl.integration.test.psl',
     context: {
       composedExtensions: [],
       composedExtensionContracts: new Map(),
@@ -99,17 +97,27 @@ function buildPslContract() {
       resolvedInputs: [],
       capabilities: { sql: { scalarList: true } },
     },
-    target: {
-      kind: 'target' as const,
-      familyId: 'sql' as const,
-      targetId: 'postgres' as const,
-      id: 'postgres',
-      version: postgresTargetDescriptor.version,
-      capabilities: {},
-      defaultNamespaceId: 'public',
-    },
-    createNamespace: postgresCreateNamespace,
   });
+  return withSeedDiagnostics(
+    interpretPslDocumentToSqlContract({
+      documents: bound.documents,
+      sources: bound.sources,
+      symbolTable: bound.symbolTable,
+      binder: bound.binder,
+      ...bound.contextInput,
+      target: {
+        kind: 'target' as const,
+        familyId: 'sql' as const,
+        targetId: 'postgres' as const,
+        id: 'postgres',
+        version: postgresTargetDescriptor.version,
+        capabilities: {},
+        defaultNamespaceId: 'public',
+      },
+      createNamespace: postgresCreateNamespace,
+    }),
+    bound.seedDiagnostics,
+  );
 }
 
 // ============================================================================

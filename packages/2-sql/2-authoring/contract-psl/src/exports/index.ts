@@ -7,4 +7,3 @@ export {
   type InterpretPslDocumentToSqlContractInput,
   interpretPslDocumentToSqlContract,
 } from '../interpreter';
-export { type InterpretPslSqlSourcesInput, interpretPslSqlSources } from '../provider';

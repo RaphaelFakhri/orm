@@ -21,4 +21,3 @@ export {
   type PairedMongoBackRelation,
   pairMongoBackRelations,
 } from '../pair-back-relations';
-export { type InterpretPslMongoSourcesInput, interpretPslMongoSources } from '../provider';

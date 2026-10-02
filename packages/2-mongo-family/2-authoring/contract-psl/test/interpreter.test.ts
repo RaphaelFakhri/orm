@@ -17,17 +17,25 @@ import {
   MongoStorage,
   MongoValidator,
 } from '@internal/mongo-contract';
-import { buildSymbolTable, jsonValue, mapBlock, type SymbolTable } from '@internal/psl-parser';
+import {
+  buildSymbolTable,
+  createProjectBinder,
+  jsonValue,
+  mapBlock,
+  mapPslDiagnostics,
+  type SymbolTable,
+} from '@internal/psl-parser';
+import { withSeedDiagnostics } from '@internal/psl-parser/interpret';
 import type { DocumentAst, PslSources, SyntaxNode } from '@internal/psl-parser/syntax';
 import { parse } from '@internal/psl-parser/syntax';
 import type { JsonObject } from '@internal/utils/json';
 import { describe, expect, it, vi } from 'vitest';
 import type { InterpretPslDocumentToMongoContractInput } from '../src/interpreter';
+import { interpretPslDocumentToMongoContract } from '../src/interpreter';
 import {
   describeUnsupportedMongoAttribute,
   mongoAttributeSpecs,
 } from '../src/mongo-attribute-specs';
-import { interpretPslMongoSources } from '../src/provider';
 import {
   expectInvalidAttributeSyntax,
   expectUnresolvedReference,
@@ -267,11 +275,31 @@ model Item {
       resolvedInputs: [],
       capabilities: {},
     };
-    const result = interpretPslMongoSources({
+    const { symbolTable, diagnostics: symbolTableDiagnostics } = buildSymbolTable({
       documents: input.documents,
+      sources: input.sources,
+    });
+    const { binder, diagnostics: binderDiagnostics } = createProjectBinder({
+      symbolTable,
       sources: input.sources,
       context,
     });
+    const result = withSeedDiagnostics(
+      interpretPslDocumentToMongoContract({
+        documents: input.documents,
+        sources: input.sources,
+        symbolTable,
+        binder,
+        scalarTypeCodecIds: new Map(),
+        controlMutationDefaults: {
+          ...context.controlMutationDefaults,
+          dataTypeEntries: context.authoringContributions.dataTypes,
+        },
+        codecLookup: context.codecLookup,
+        authoringContributions: context.authoringContributions,
+      }),
+      mapPslDiagnostics([...symbolTableDiagnostics, ...binderDiagnostics], input.sources),
+    );
 
     expect(result.ok).toBe(false);
     if (result.ok) return;

@@ -10,6 +10,7 @@
  * dropped and recreated on a maintenance connection; skips (does not fail)
  * when no real Postgres is reachable.
  */
+
 import type { Contract, ControlPolicy } from '@internal/contract/types';
 import { INIT_ADDITIVE_POLICY } from '@internal/family-sql/control';
 import type { AuthoringTypeConstructorDescriptor } from '@internal/framework-components/authoring';
@@ -20,13 +21,14 @@ import {
   assembleAuthoringContributions,
   type MigrationOperationPolicy,
 } from '@internal/framework-components/control';
-import { parse } from '@internal/psl-parser/syntax';
+import { withSeedDiagnostics } from '@internal/psl-parser/interpret';
 import type { SqlStorage } from '@internal/sql-contract/types';
-import { interpretPslSqlSources } from '@internal/sql-contract-psl';
+import { interpretPslDocumentToSqlContract } from '@internal/sql-contract-psl';
 import {
   describeUnsupportedSqlAttribute,
   sqlAttributeSpecs,
 } from '@internal/sql-contract-psl/attribute-specs';
+import { bindPslSchema } from '@internal/sql-contract-psl/test';
 import type { SqlSchemaIRNode } from '@internal/sql-schema-ir/types';
 import { createPostgresBuiltinCodecLookup } from '@internal/target-postgres/codecs';
 import { postgresScalarAuthoringTypes } from '@internal/target-postgres/control';
@@ -109,14 +111,8 @@ function buildContractFromPsl(psl: string, control: ControlPolicy): Contract<Sql
       ]),
     );
 
-  const { document, sources } = parse(
-    psl,
-    'native-enum-add-value.real-postgres.integration.test.psl',
-  );
-
-  const result = interpretPslSqlSources({
-    documents: [document],
-    sources,
+  const bound = bindPslSchema(psl, {
+    sourceId: 'native-enum-add-value.real-postgres.integration.test.psl',
     context: {
       composedExtensions: [],
       composedExtensionContracts: new Map(),
@@ -132,18 +128,28 @@ function buildContractFromPsl(psl: string, control: ControlPolicy): Contract<Sql
       resolvedInputs: [],
       capabilities: { sql: { scalarList: true } },
     },
-    target: {
-      kind: 'target' as const,
-      familyId: 'sql' as const,
-      targetId: 'postgres' as const,
-      id: 'postgres',
-      version: postgresTargetDescriptor.version,
-      capabilities: {},
-      defaultNamespaceId: 'public',
-      ...ifDefined('authoring', postgresTargetDescriptor.authoring),
-    },
-    createNamespace: postgresCreateNamespace,
   });
+  const result = withSeedDiagnostics(
+    interpretPslDocumentToSqlContract({
+      documents: bound.documents,
+      sources: bound.sources,
+      symbolTable: bound.symbolTable,
+      binder: bound.binder,
+      ...bound.contextInput,
+      target: {
+        kind: 'target' as const,
+        familyId: 'sql' as const,
+        targetId: 'postgres' as const,
+        id: 'postgres',
+        version: postgresTargetDescriptor.version,
+        capabilities: {},
+        defaultNamespaceId: 'public',
+        ...ifDefined('authoring', postgresTargetDescriptor.authoring),
+      },
+      createNamespace: postgresCreateNamespace,
+    }),
+    bound.seedDiagnostics,
+  );
 
   if (!result.ok) throw new Error(`PSL interpretation failed: ${JSON.stringify(result)}`);
   return { ...(result.value as Contract<SqlStorage>), defaultControlPolicy: control };

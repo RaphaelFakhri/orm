@@ -12,6 +12,7 @@
  * recovery, a later slice, is the first producer — so the tests below pass
  * the blocks in directly.
  */
+
 import sqlFamilyPack from '@internal/family-sql/pack';
 import type { AuthoringTypeNamespace } from '@internal/framework-components/authoring';
 import { createDataTypeLookup } from '@internal/framework-components/codec';
@@ -29,13 +30,15 @@ import {
   UNSPECIFIED_PSL_NAMESPACE_ID,
 } from '@internal/framework-components/psl-ast';
 import { buildSymbolTable } from '@internal/psl-parser';
+import { withSeedDiagnostics } from '@internal/psl-parser/interpret';
 import { parse } from '@internal/psl-parser/syntax';
 import { printPsl } from '@internal/psl-printer';
-import { interpretPslSqlSources } from '@internal/sql-contract-psl';
+import { interpretPslDocumentToSqlContract } from '@internal/sql-contract-psl';
 import {
   describeUnsupportedSqlAttribute,
   sqlAttributeSpecs,
 } from '@internal/sql-contract-psl/attribute-specs';
+import { bindPslSchema } from '@internal/sql-contract-psl/test';
 import { SqlSchemaIR } from '@internal/sql-schema-ir/types';
 import { postgresDataTypes } from '@internal/target-postgres/data-types';
 import { assert, describe, expect, it } from 'vitest';
@@ -106,9 +109,8 @@ function parseAndInterpret(source: string) {
     documents: [document],
     sources,
   });
-  const interpreted = interpretPslSqlSources({
-    documents: [document],
-    sources,
+  const bound = bindPslSchema(source, {
+    sourceId: 'print-psl.top-level-blocks.test.psl',
     context: {
       composedExtensions: [],
       composedExtensionContracts: new Map(),
@@ -124,9 +126,19 @@ function parseAndInterpret(source: string) {
       resolvedInputs: [],
       capabilities: {},
     },
-    target,
-    createNamespace: postgresCreateNamespace,
   });
+  const interpreted = withSeedDiagnostics(
+    interpretPslDocumentToSqlContract({
+      documents: bound.documents,
+      sources: bound.sources,
+      symbolTable: bound.symbolTable,
+      binder: bound.binder,
+      ...bound.contextInput,
+      target,
+      createNamespace: postgresCreateNamespace,
+    }),
+    bound.seedDiagnostics,
+  );
   return { interpreted, sourceDiagnostics: [...parseDiagnostics, ...symbolTableDiagnostics] };
 }
 

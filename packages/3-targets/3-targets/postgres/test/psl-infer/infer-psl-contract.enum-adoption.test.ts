@@ -6,6 +6,7 @@
  * design — a top-level `native_enum` never lowers), subtracts pack-owned
  * enum types by TYPE NAME, and leaves enum-free output flat and byte-identical.
  */
+
 import { type Contract, coreHash, profileHash } from '@internal/contract/types';
 import type { SqlDescribedContractSpace } from '@internal/family-sql/control';
 import type { AuthoringTypeConstructorDescriptor } from '@internal/framework-components/authoring';
@@ -13,14 +14,15 @@ import type { Codec, CodecLookupWithDescriptors } from '@internal/framework-comp
 import { createDataTypeLookup } from '@internal/framework-components/codec';
 import { assembleAuthoringContributions } from '@internal/framework-components/control';
 import { UNSPECIFIED_PSL_NAMESPACE_ID } from '@internal/framework-components/psl-ast';
-import { parse } from '@internal/psl-parser/syntax';
+import { withSeedDiagnostics } from '@internal/psl-parser/interpret';
 import { printPsl } from '@internal/psl-printer';
 import { SqlStorage } from '@internal/sql-contract/types';
-import { interpretPslSqlSources } from '@internal/sql-contract-psl';
+import { interpretPslDocumentToSqlContract } from '@internal/sql-contract-psl';
 import {
   describeUnsupportedSqlAttribute,
   sqlAttributeSpecs,
 } from '@internal/sql-contract-psl/attribute-specs';
+import { bindPslSchema } from '@internal/sql-contract-psl/test';
 import type { SqlColumnIRInput } from '@internal/sql-schema-ir/types';
 import { postgresDataTypes } from '@internal/target-postgres/data-types';
 import { applicationDomainOf } from '@repo/test-utils';
@@ -239,10 +241,8 @@ const scalarTypeConstructors: Record<string, AuthoringTypeConstructorDescriptor>
   );
 
 function interpret(source: string) {
-  const { document, sources } = parse(source, 'infer-psl-contract.enum-adoption.test.psl');
-  return interpretPslSqlSources({
-    documents: [document],
-    sources,
+  const bound = bindPslSchema(source, {
+    sourceId: 'infer-psl-contract.enum-adoption.test.psl',
     context: {
       composedExtensions: [],
       composedExtensionContracts: new Map(),
@@ -258,9 +258,19 @@ function interpret(source: string) {
       resolvedInputs: [],
       capabilities: {},
     },
-    target: postgresTarget,
-    createNamespace: postgresCreateNamespace,
   });
+  return withSeedDiagnostics(
+    interpretPslDocumentToSqlContract({
+      documents: bound.documents,
+      sources: bound.sources,
+      symbolTable: bound.symbolTable,
+      binder: bound.binder,
+      ...bound.contextInput,
+      target: postgresTarget,
+      createNamespace: postgresCreateNamespace,
+    }),
+    bound.seedDiagnostics,
+  );
 }
 
 // ---------------------------------------------------------------------------

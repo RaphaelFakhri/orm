@@ -9,6 +9,7 @@
  * `role('app_role')` in `entities` vs PSL `namespace unbound { role app_role {} }`
  * — and lands the same `PostgresRole` in `__unbound__.entries.role`.
  */
+
 import { int4Column, textColumn } from '@internal/adapter-postgres/column-types';
 import postgresAdapter from '@internal/adapter-postgres/control';
 import { anon, authenticated } from '@internal/extension-supabase/contract';
@@ -26,9 +27,12 @@ import {
   rlsEnabled,
   role,
 } from '@internal/postgres/contract-builder';
-import { parse } from '@internal/psl-parser/syntax';
-import { interpretPslSqlSources } from '@internal/sql-contract-psl';
-import { contractSourceContextFromControlStack } from '@internal/sql-contract-psl/test';
+import { withSeedDiagnostics } from '@internal/psl-parser/interpret';
+import { interpretPslDocumentToSqlContract } from '@internal/sql-contract-psl';
+import {
+  bindPslSchema,
+  contractSourceContextFromControlStack,
+} from '@internal/sql-contract-psl/test';
 import postgresControl from '@internal/target-postgres/control';
 import postgresPack from '@internal/target-postgres/pack';
 import type { PostgresSchema } from '@internal/target-postgres/types';
@@ -43,14 +47,22 @@ const stack = createControlStack({
 });
 
 function interpretWithRealPacks(schema: string) {
-  const { document, sources } = parse(schema, 'rls-parity.prisma');
-  return interpretPslSqlSources({
-    documents: [document],
-    sources,
+  const bound = bindPslSchema(schema, {
+    sourceId: 'rls-parity.prisma',
     context: contractSourceContextFromControlStack(stack),
-    target: postgresPack,
-    createNamespace: postgresCreateNamespace,
   });
+  return withSeedDiagnostics(
+    interpretPslDocumentToSqlContract({
+      documents: bound.documents,
+      sources: bound.sources,
+      symbolTable: bound.symbolTable,
+      binder: bound.binder,
+      ...bound.contextInput,
+      target: postgresPack,
+      createNamespace: postgresCreateNamespace,
+    }),
+    bound.seedDiagnostics,
+  );
 }
 
 const OWNER_PREDICATE = '"userId"::uuid = auth.uid()';

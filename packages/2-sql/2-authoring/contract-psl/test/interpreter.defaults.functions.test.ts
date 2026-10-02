@@ -2,12 +2,12 @@ import { describe, expect, it } from 'vitest';
 import { sqlStorageFromSuccessfulSqlInterpretation } from './interpret-sql-contract-storage';
 import {
   builtinControlMutationDefaults,
-  interpretPslDocumentToSqlContract,
+  interpretPostgresSchema,
 } from './interpreter-defaults-support';
 
 describe('interpretPslDocumentToSqlContract default function lowering', () => {
   it('lowers supported default functions into execution and storage contract shapes', () => {
-    const result = interpretPslDocumentToSqlContract(
+    const result = interpretPostgresSchema(
       `model Defaults {
   id Int @id
   idCuid2 String @default(cuid(2))
@@ -100,7 +100,7 @@ describe('interpretPslDocumentToSqlContract default function lowering', () => {
   });
 
   it('accepts uuid() and uuid(7) defaults on bare Uuid columns, preserving native uuid storage type', () => {
-    const result = interpretPslDocumentToSqlContract(
+    const result = interpretPostgresSchema(
       `types {
   UuidNativeId = Uuid
 }
@@ -145,7 +145,7 @@ model UuidNative {
   });
 
   it('accepts uuid() default on a named Uuid type field (e.g. id Uuid @id @default(uuid())), preserving native uuid storage type', () => {
-    const result = interpretPslDocumentToSqlContract(
+    const result = interpretPostgresSchema(
       `types {
   Uuid = Uuid
 }
@@ -182,7 +182,7 @@ model Profile {
   });
 
   it('rejects non-uuid generators on bare Uuid columns with PSL_INVALID_DEFAULT_APPLICABILITY', () => {
-    const result = interpretPslDocumentToSqlContract(
+    const result = interpretPostgresSchema(
       `types {
   UuidNativeId = Uuid
 }
@@ -209,7 +209,7 @@ model UuidNativeBad {
   });
 
   it('returns diagnostics for unsupported default functions and invalid arguments', () => {
-    const result = interpretPslDocumentToSqlContract(
+    const result = interpretPostgresSchema(
       `model InvalidDefaults {
   id Int @id
   cuidValue String @default(cuid())
@@ -235,7 +235,7 @@ model UuidNativeBad {
   });
 
   it('reports dbgenerated as removed and names the tagged literal that replaces it', () => {
-    const result = interpretPslDocumentToSqlContract(
+    const result = interpretPostgresSchema(
       `model Removed {
   id Int @id
   token String @default(dbgenerated("gen_random_uuid()"))
@@ -264,7 +264,7 @@ model UuidNativeBad {
   });
 
   it('returns diagnostics for optional fields with execution defaults', () => {
-    const result = interpretPslDocumentToSqlContract(
+    const result = interpretPostgresSchema(
       `model OptionalDefaults {
   id Int @id
   token String? @default(nanoid())
@@ -291,7 +291,7 @@ model UuidNativeBad {
   });
 
   it('preserves raw sql defaults for timestamp columns', () => {
-    const result = interpretPslDocumentToSqlContract(
+    const result = interpretPostgresSchema(
       `model Defaults {
   id Int @id
   touchedAt DateTime @default(sql\`clock_timestamp()\`)

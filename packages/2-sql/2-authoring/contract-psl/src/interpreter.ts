@@ -1552,7 +1552,10 @@ function buildValueObjectNodes(input: BuildValueObjectNodesInput): ValueObjectNo
       }
       const resolved = resolveFieldTypeDescriptor({
         field,
-        binder: input.binder,
+        typeReferenceResolved:
+          fieldTypeResolution === undefined
+            ? fieldTypeReference === undefined
+            : fieldTypeResolution.kind !== 'unresolved',
         enumTypeDescriptors: input.enumTypeDescriptors,
         namedTypeDescriptors: input.namedTypeDescriptors,
         scalarColumnDescriptors: input.scalarColumnDescriptors,

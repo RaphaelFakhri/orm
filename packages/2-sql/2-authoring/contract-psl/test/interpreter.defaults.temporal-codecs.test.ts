@@ -10,7 +10,7 @@ import {
 import { sqlStorageFromSuccessfulSqlInterpretation } from './interpret-sql-contract-storage';
 import {
   builtinControlMutationDefaults,
-  interpretPslDocumentToSqlContract,
+  interpretPostgresSchema,
   postgresTemporalContributions,
   sqliteTemporalContributions,
 } from './interpreter-defaults-support';
@@ -23,7 +23,7 @@ import { unboundTables } from './unbound-tables';
 // `executionDefaults` entirely rather than emit an empty object.
 describe('temporal per-codec preset lowering', () => {
   const interpretTemporal = (schema: string) => {
-    return interpretPslDocumentToSqlContract(schema, {
+    return interpretPostgresSchema(schema, {
       scalarColumnDescriptors: postgresScalarTypeDescriptors,
       controlMutationDefaults: builtinControlMutationDefaults,
       authoringContributions: postgresTemporalContributions,

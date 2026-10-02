@@ -1,1 +1,6 @@
-export { contractSourceContextFromControlStack } from '../test';
+export {
+  type BoundPslSchema,
+  bindPslSchema,
+  contractSourceContextFromControlStack,
+  type SqlContextInput,
+} from '../test';

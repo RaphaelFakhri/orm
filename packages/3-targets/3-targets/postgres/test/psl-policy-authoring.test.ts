@@ -17,12 +17,14 @@ import type { AuthoringTypeConstructorDescriptor } from '@internal/framework-com
 import { createDataTypeLookup, emptyCodecLookup } from '@internal/framework-components/codec';
 import { assembleAuthoringContributions } from '@internal/framework-components/control';
 import { buildSymbolTable, createBinder, interpretExtensionBlocks } from '@internal/psl-parser';
+import { withSeedDiagnostics } from '@internal/psl-parser/interpret';
 import { parse } from '@internal/psl-parser/syntax';
-import { interpretPslSqlSources } from '@internal/sql-contract-psl';
+import { interpretPslDocumentToSqlContract } from '@internal/sql-contract-psl';
 import {
   describeUnsupportedSqlAttribute,
   sqlAttributeSpecs,
 } from '@internal/sql-contract-psl/attribute-specs';
+import { type BoundPslSchema, bindPslSchema } from '@internal/sql-contract-psl/test';
 import { postgresDataTypes } from '@internal/target-postgres/data-types';
 import { createSqlContract } from '@repo/test-utils';
 import { describe, expect, it } from 'vitest';
@@ -230,7 +232,7 @@ namespace public {
       ]),
     );
 
-  function contextFor(): Parameters<typeof interpretPslSqlSources>[0]['context'] {
+  function contextFor(): BoundPslSchema['context'] {
     return {
       composedExtensions: [],
       composedExtensionContracts: new Map(),
@@ -249,14 +251,22 @@ namespace public {
   }
 
   function interpret(text: string) {
-    const { document, sources } = parse(text, 'psl-policy-authoring.test.psl');
-    return interpretPslSqlSources({
-      documents: [document],
-      sources,
+    const bound = bindPslSchema(text, {
+      sourceId: 'psl-policy-authoring.test.psl',
       context: contextFor(),
-      target: postgresTarget,
-      createNamespace: postgresCreateNamespace,
     });
+    return withSeedDiagnostics(
+      interpretPslDocumentToSqlContract({
+        documents: bound.documents,
+        sources: bound.sources,
+        symbolTable: bound.symbolTable,
+        binder: bound.binder,
+        ...bound.contextInput,
+        target: postgresTarget,
+        createNamespace: postgresCreateNamespace,
+      }),
+      bound.seedDiagnostics,
+    );
   }
 
   it('reads a policy expression as a JSON string, and keeps any other backslash sequence as written', () => {
@@ -279,13 +289,22 @@ namespace public {
 
     expect(diagnostics).toEqual([]);
 
-    const result = interpretPslSqlSources({
-      documents: [document],
-      sources,
+    const bound = bindPslSchema(source, {
+      sourceId: 'psl-policy-authoring.test.psl',
       context: contextFor(),
-      target: postgresTarget,
-      createNamespace: postgresCreateNamespace,
     });
+    const result = withSeedDiagnostics(
+      interpretPslDocumentToSqlContract({
+        documents: bound.documents,
+        sources: bound.sources,
+        symbolTable: bound.symbolTable,
+        binder: bound.binder,
+        ...bound.contextInput,
+        target: postgresTarget,
+        createNamespace: postgresCreateNamespace,
+      }),
+      bound.seedDiagnostics,
+    );
 
     expect(result.ok).toBe(true);
     if (!result.ok) return;

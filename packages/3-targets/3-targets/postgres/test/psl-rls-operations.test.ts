@@ -15,13 +15,15 @@ import type { Contract } from '@internal/contract/types';
 import { createDataTypeLookup, emptyCodecLookup } from '@internal/framework-components/codec';
 import { assembleAuthoringContributions } from '@internal/framework-components/control';
 import { buildSymbolTable, createBinder, interpretExtensionBlocks } from '@internal/psl-parser';
+import { withSeedDiagnostics } from '@internal/psl-parser/interpret';
 import { parse } from '@internal/psl-parser/syntax';
 import type { SqlStorage } from '@internal/sql-contract/types';
-import { interpretPslSqlSources } from '@internal/sql-contract-psl';
+import { interpretPslDocumentToSqlContract } from '@internal/sql-contract-psl';
 import {
   describeUnsupportedSqlAttribute,
   sqlAttributeSpecs,
 } from '@internal/sql-contract-psl/attribute-specs';
+import { bindPslSchema } from '@internal/sql-contract-psl/test';
 import { postgresDataTypes } from '@internal/target-postgres/data-types';
 import { describe, expect, it } from 'vitest';
 import {
@@ -96,9 +98,8 @@ function interpretWithSymbolDiagnostics(source: string) {
       binder: blockResolutionBinder(symbolTable, sources),
     }).diagnostics,
   ];
-  const result = interpretPslSqlSources({
-    documents: [document],
-    sources,
+  const bound = bindPslSchema(source, {
+    sourceId: 'psl-rls-operations.test.psl',
     context: {
       composedExtensions: [],
       composedExtensionContracts: new Map(),
@@ -114,9 +115,19 @@ function interpretWithSymbolDiagnostics(source: string) {
       resolvedInputs: [],
       capabilities: { sql: { scalarList: true } },
     },
-    target: postgresTarget,
-    createNamespace: postgresCreateNamespace,
   });
+  const result = withSeedDiagnostics(
+    interpretPslDocumentToSqlContract({
+      documents: bound.documents,
+      sources: bound.sources,
+      symbolTable: bound.symbolTable,
+      binder: bound.binder,
+      ...bound.contextInput,
+      target: postgresTarget,
+      createNamespace: postgresCreateNamespace,
+    }),
+    bound.seedDiagnostics,
+  );
   return { result, symbolTableDiagnostics: diagnostics };
 }
 

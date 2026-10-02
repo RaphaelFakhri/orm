@@ -42,9 +42,12 @@ import {
   type DiagnosticSource,
   diagnosticSource,
   type PslDiagnosticCollector,
-  typeReferenceNode,
 } from '@internal/psl-parser';
-import { instantiatePslFieldPreset, mapPslHelperArgs } from '@internal/psl-parser/interpret';
+import {
+  instantiatePslFieldPreset,
+  mapPslHelperArgs,
+  reportPresetNotCalled,
+} from '@internal/psl-parser/interpret';
 import {
   ArrayLiteralAst,
   type FieldAttributeAst,
@@ -366,7 +369,7 @@ export type ResolveFieldTypeResult =
 
 export function resolveFieldTypeDescriptor(input: {
   readonly field: FieldSymbol;
-  readonly binder?: Binder;
+  readonly typeReferenceResolved: boolean;
   readonly enumTypeDescriptors: ReadonlyMap<string, ColumnDescriptor>;
   readonly namedTypeDescriptors: ReadonlyMap<string, ColumnDescriptor>;
   readonly scalarColumnDescriptors: ReadonlyMap<string, ColumnDescriptor>;
@@ -402,17 +405,20 @@ export function resolveFieldTypeDescriptor(input: {
   if (input.field.malformedType) {
     return { ok: false, alreadyReported: true };
   }
-  const typeReferenceResolved = ((): boolean => {
-    if (input.binder === undefined) {
-      return true;
+  const { typeReferenceResolved } = input;
+  if (input.field.typeConstructor === undefined && input.field.typeNamespaceId !== undefined) {
+    const presetPath = [input.field.typeNamespaceId, input.field.typeName];
+    if (getAuthoringFieldPreset(input.authoringContributions, presetPath) !== undefined) {
+      reportPresetNotCalled({
+        entityLabel: input.entityLabel,
+        presetPath: presetPath.join('.'),
+        source,
+        span: input.field.span,
+        diagnostics: input.diagnostics,
+      });
+      return { ok: false, alreadyReported: true };
     }
-    const node = typeReferenceNode(input.field);
-    if (node === undefined) {
-      return true;
-    }
-    const resolution = input.binder.symbolForNode(node);
-    return resolution !== undefined && resolution.kind !== 'unresolved';
-  })();
+  }
   if (input.field.typeConstructor) {
     // Field presets carry richer semantics than type constructors, so a field preset match is the complete answer. Shared composition rejects exact cross-registry collisions before PSL resolution can observe them.
     const presetDescriptor = getAuthoringFieldPreset(

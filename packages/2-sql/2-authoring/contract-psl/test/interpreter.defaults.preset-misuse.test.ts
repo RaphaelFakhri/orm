@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   builtinControlMutationDefaults,
-  interpretPslDocumentToSqlContract,
+  interpretPostgresSchema,
 } from './interpreter-defaults-support';
 
 // Field-preset misuse cases. The preset is a complete field declaration —
@@ -23,8 +23,31 @@ describe('field-preset misuse', () => {
     },
   } as const;
 
+  it('rejects a field preset written without a call with PSL_PRESET_NOT_CALLED', () => {
+    const result = interpretPostgresSchema(
+      `model Bad {
+id Int @id
+example temporal.exampleField
+}`,
+      {
+        controlMutationDefaults: builtinControlMutationDefaults,
+        authoringContributions: syntheticPresetContributions,
+      },
+    );
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.failure.diagnostics.map(({ code, message }) => ({ code, message }))).toEqual([
+      {
+        code: 'PSL_PRESET_NOT_CALLED',
+        message:
+          'Field "Bad.example" uses field preset "temporal.exampleField" without calling it. Write temporal.exampleField().',
+      },
+    ]);
+  });
+
   it('rejects optional field-preset call with PSL_PRESET_NOT_OPTIONAL', () => {
-    const result = interpretPslDocumentToSqlContract(
+    const result = interpretPostgresSchema(
       `model Bad {
 id Int @id
 example temporal.exampleField()?
@@ -48,7 +71,7 @@ example temporal.exampleField()?
   });
 
   it('rejects field-preset call combined with @default(...) with PSL_PRESET_AND_DEFAULT_CONFLICT', () => {
-    const result = interpretPslDocumentToSqlContract(
+    const result = interpretPostgresSchema(
       `model Bad {
 id Int @id
 example temporal.exampleField() @default(now())
@@ -72,7 +95,7 @@ example temporal.exampleField() @default(now())
   });
 
   it('rejects field-preset call combined with @id when preset does not contribute id', () => {
-    const result = interpretPslDocumentToSqlContract(
+    const result = interpretPostgresSchema(
       `model Bad {
 id Int @id
 example temporal.exampleField() @id
@@ -96,7 +119,7 @@ example temporal.exampleField() @id
   });
 
   it('rejects a field-preset call with an unregistered namespace with PSL_UNRESOLVED_REFERENCE', () => {
-    const result = interpretPslDocumentToSqlContract(
+    const result = interpretPostgresSchema(
       `model Bad {
 id Int @id
 ts weather.updatedAt()
@@ -120,7 +143,7 @@ ts weather.updatedAt()
   });
 
   it('rejects extra positional argument to a zero-arg preset (AC5a)', () => {
-    const result = interpretPslDocumentToSqlContract(
+    const result = interpretPostgresSchema(
       `model Bad {
 id Int @id
 example temporal.exampleField(123)
@@ -145,7 +168,7 @@ example temporal.exampleField(123)
   });
 
   it('rejects list-of preset call with PSL_PRESET_NOT_LIST (AC5f)', () => {
-    const result = interpretPslDocumentToSqlContract(
+    const result = interpretPostgresSchema(
       `model Bad {
 id Int @id
 example temporal.exampleField()[]
@@ -172,7 +195,7 @@ example temporal.exampleField()[]
     // A namespaced callee fails the funcCall spec before reaching the registry, so the rejection
     // is a syntax error rather than a generator-applicability error.
 
-    const result = interpretPslDocumentToSqlContract(
+    const result = interpretPostgresSchema(
       `model Bad {
 id Int @id
 ts DateTime @default(temporal.updatedAt())
@@ -200,7 +223,7 @@ ts DateTime @default(temporal.updatedAt())
     // failure mode so a future parser refactor can't silently accept the
     // ambiguous form and let the interpreter pick one.
 
-    const result = interpretPslDocumentToSqlContract(
+    const result = interpretPostgresSchema(
       `model Bad {
 id Int @id
 example temporal.updatedAt() temporal.createdAt()
@@ -216,7 +239,7 @@ example temporal.updatedAt() temporal.createdAt()
   });
 
   it('reports an unknown preset name in a registered field namespace as a single unresolved reference', () => {
-    const result = interpretPslDocumentToSqlContract(
+    const result = interpretPostgresSchema(
       `model Bad {
 id Int @id
 example audit.foo()
@@ -240,7 +263,7 @@ example audit.foo()
   });
 
   it('keeps the binder voice for a bare name in a registered field namespace', () => {
-    const result = interpretPslDocumentToSqlContract(
+    const result = interpretPostgresSchema(
       `model Bad {
 id Int @id
 example audit.foo

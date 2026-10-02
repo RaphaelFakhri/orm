@@ -4,9 +4,12 @@ import pgvectorPack from '@internal/extension-pgvector/pack';
 import sqlFamilyControl from '@internal/family-sql/control';
 import { createControlStack } from '@internal/framework-components/control';
 import { defineContract, field, model, nativeEnum, pg } from '@internal/postgres/contract-builder';
-import { parse } from '@internal/psl-parser/syntax';
-import { interpretPslSqlSources } from '@internal/sql-contract-psl';
-import { contractSourceContextFromControlStack } from '@internal/sql-contract-psl/test';
+import { withSeedDiagnostics } from '@internal/psl-parser/interpret';
+import { interpretPslDocumentToSqlContract } from '@internal/sql-contract-psl';
+import {
+  bindPslSchema,
+  contractSourceContextFromControlStack,
+} from '@internal/sql-contract-psl/test';
 import postgresControl from '@internal/target-postgres/control';
 import postgresPack from '@internal/target-postgres/pack';
 import { postgresCreateNamespace } from '@internal/target-postgres/types';
@@ -25,15 +28,23 @@ const stack = createControlStack({
 });
 
 function interpretWithRealPacks(schema: string) {
-  const { document, sources } = parse(schema, 'real-packs-parity.prisma');
-  return interpretPslSqlSources({
-    documents: [document],
-    sources,
+  const bound = bindPslSchema(schema, {
+    sourceId: 'real-packs-parity.prisma',
     context: contractSourceContextFromControlStack(stack),
-    target: postgresPack,
-    composedExtensionPackRefs: [pgvectorPack],
-    createNamespace: postgresCreateNamespace,
   });
+  return withSeedDiagnostics(
+    interpretPslDocumentToSqlContract({
+      documents: bound.documents,
+      sources: bound.sources,
+      symbolTable: bound.symbolTable,
+      binder: bound.binder,
+      ...bound.contextInput,
+      target: postgresPack,
+      composedExtensionPackRefs: [pgvectorPack],
+      createNamespace: postgresCreateNamespace,
+    }),
+    bound.seedDiagnostics,
+  );
 }
 
 describe('TS and PSL authoring parity with real packs', () => {

@@ -2,12 +2,13 @@ import { ContractValidationError } from '@internal/contract/contract-validation-
 import paradedbPack from '@internal/extension-paradedb/pack';
 import type { AuthoringTypeConstructorDescriptor } from '@internal/framework-components/authoring';
 import { createDataTypeLookup, emptyCodecLookup } from '@internal/framework-components/codec';
-import { parse } from '@internal/psl-parser/syntax';
-import { interpretPslSqlSources } from '@internal/sql-contract-psl';
+import { withSeedDiagnostics } from '@internal/psl-parser/interpret';
+import { interpretPslDocumentToSqlContract } from '@internal/sql-contract-psl';
 import {
   describeUnsupportedSqlAttribute,
   sqlAttributeSpecs,
 } from '@internal/sql-contract-psl/attribute-specs';
+import { bindPslSchema } from '@internal/sql-contract-psl/test';
 import { postgresDataTypes } from '@internal/target-postgres/data-types';
 // postgresPack is used directly in interpretPslDocumentToSqlContract (not in defineContract).
 import postgresPack from '@internal/target-postgres/pack';
@@ -30,10 +31,8 @@ const scalarTypeConstructors: Record<string, AuthoringTypeConstructorDescriptor>
 const postgresDataTypeLookup = createDataTypeLookup(postgresDataTypes);
 
 function interpret(schema: string) {
-  const { document, sources } = parse(schema, 'index-type-options.prisma');
-  return interpretPslSqlSources({
-    documents: [document],
-    sources,
+  const bound = bindPslSchema(schema, {
+    sourceId: 'index-type-options.prisma',
     context: {
       composedExtensions: [paradedbPack.id],
       composedExtensionContracts: new Map(),
@@ -53,10 +52,20 @@ function interpret(schema: string) {
       resolvedInputs: [],
       capabilities: { sql: { scalarList: true } },
     },
-    target: postgresPack,
-    composedExtensionPackRefs: [paradedbPack],
-    createNamespace: postgresCreateNamespace,
   });
+  return withSeedDiagnostics(
+    interpretPslDocumentToSqlContract({
+      documents: bound.documents,
+      sources: bound.sources,
+      symbolTable: bound.symbolTable,
+      binder: bound.binder,
+      ...bound.contextInput,
+      target: postgresPack,
+      composedExtensionPackRefs: [paradedbPack],
+      createNamespace: postgresCreateNamespace,
+    }),
+    bound.seedDiagnostics,
+  );
 }
 
 describe('PSL @@index type and options — integration with real paradedb pack', () => {

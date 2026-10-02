@@ -72,6 +72,7 @@ import {
   enumMemberAttributeDiagnostics,
   fkRelationPairKey,
   type InvalidFkPairing,
+  reportPresetNotCalled,
   unsupportedBlockDiagnostic,
 } from '@internal/psl-parser/interpret';
 import {
@@ -1170,10 +1171,12 @@ function resolveNonRelationField(
       undefined;
     if (isPreset) {
       if (field.typeConstructor === undefined) {
-        presetContext.diagnostics.push({
-          code: 'PSL_UNRESOLVED_REFERENCE',
-          message: `Cannot find type "${resolution.symbol.path.join('.')}"`,
-          ...diagnosticSource(presetContext.sources, field.node.syntax).at(field.span),
+        reportPresetNotCalled({
+          entityLabel: `Field "${ownerName}.${field.name}"`,
+          presetPath: resolution.symbol.path.join('.'),
+          source: diagnosticSource(presetContext.sources, field.node.syntax),
+          span: field.span,
+          diagnostics: presetContext.diagnostics,
         });
         return undefined;
       }

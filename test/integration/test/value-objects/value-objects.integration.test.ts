@@ -11,16 +11,18 @@ import type { AuthoringTypeConstructorDescriptor } from '@internal/framework-com
 import { createDataTypeLookup, emptyCodecLookup } from '@internal/framework-components/codec';
 import {
   describeUnsupportedMongoAttribute,
-  interpretPslMongoSources,
+  interpretPslDocumentToMongoContract,
   mongoAttributeSpecs,
 } from '@internal/mongo-contract-psl';
+import { bindPslSchema as bindMongoPslSchema } from '@internal/mongo-contract-psl/test';
 import { mongoOrm } from '@internal/mongo-orm';
-import { parse } from '@internal/psl-parser/syntax';
-import { interpretPslSqlSources } from '@internal/sql-contract-psl';
+import { withSeedDiagnostics } from '@internal/psl-parser/interpret';
+import { interpretPslDocumentToSqlContract } from '@internal/sql-contract-psl';
 import {
   describeUnsupportedSqlAttribute,
   sqlAttributeSpecs,
 } from '@internal/sql-contract-psl/attribute-specs';
+import { bindPslSchema as bindSqlPslSchema } from '@internal/sql-contract-psl/test';
 import { postgresDataTypes } from '@internal/target-postgres/data-types';
 import { postgresCreateNamespace } from '@internal/target-postgres/types';
 import { describe, expect, it } from 'vitest';
@@ -91,10 +93,8 @@ function interpretMongoPsl(schema: string) {
         { kind: 'typeConstructor' as const, output: { codecId, nativeType: codecId } },
       ]),
     );
-  const { document, sources } = parse(schema, 'mongo-value-objects.prisma');
-  return interpretPslMongoSources({
-    documents: [document],
-    sources,
+  const bound = bindMongoPslSchema(schema, {
+    sourceId: 'mongo-value-objects.prisma',
     context: {
       composedExtensions: [],
       composedExtensionContracts: new Map(),
@@ -115,6 +115,16 @@ function interpretMongoPsl(schema: string) {
       capabilities: {},
     },
   });
+  return withSeedDiagnostics(
+    interpretPslDocumentToMongoContract({
+      documents: bound.documents,
+      sources: bound.sources,
+      symbolTable: bound.symbolTable,
+      binder: bound.binder,
+      ...bound.contextInput,
+    }),
+    bound.seedDiagnostics,
+  );
 }
 
 const postgresScalarAuthoringTypes = Object.fromEntries(
@@ -128,11 +138,9 @@ const postgresScalarAuthoringTypes = Object.fromEntries(
 );
 
 function interpretSqlPsl(schema: string) {
-  const { document, sources } = parse(schema, 'sql-value-objects.prisma');
   const postgresDataTypeLookup = createDataTypeLookup(postgresDataTypes);
-  return interpretPslSqlSources({
-    documents: [document],
-    sources,
+  const bound = bindSqlPslSchema(schema, {
+    sourceId: 'sql-value-objects.prisma',
     context: {
       composedExtensions: [],
       composedExtensionContracts: new Map(),
@@ -154,9 +162,19 @@ function interpretSqlPsl(schema: string) {
       resolvedInputs: [],
       capabilities: { sql: { scalarList: true } },
     },
-    target: postgresTarget,
-    createNamespace: postgresCreateNamespace,
   });
+  return withSeedDiagnostics(
+    interpretPslDocumentToSqlContract({
+      documents: bound.documents,
+      sources: bound.sources,
+      symbolTable: bound.symbolTable,
+      binder: bound.binder,
+      ...bound.contextInput,
+      target: postgresTarget,
+      createNamespace: postgresCreateNamespace,
+    }),
+    bound.seedDiagnostics,
+  );
 }
 
 function modelsAtDefaultNamespace(contract: Contract) {

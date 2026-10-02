@@ -1,11 +1,5 @@
 import { readFile } from 'node:fs/promises';
-import type {
-  ContractConfig,
-  ContractSourceContext,
-  ContractSourceDiagnostic,
-  ContractSourceDiagnostics,
-} from '@internal/config/config-types';
-import type { Contract } from '@internal/contract/types';
+import type { ContractConfig, ContractSourceDiagnostic } from '@internal/config/config-types';
 import type { AuthoringTypeNamespace } from '@internal/framework-components/authoring';
 import { collectScalarTypeConstructors } from '@internal/framework-components/authoring';
 import {
@@ -16,11 +10,9 @@ import {
 } from '@internal/psl-parser';
 import type { PslInterpretCapable } from '@internal/psl-parser/interpret';
 import { withSeedDiagnostics } from '@internal/psl-parser/interpret';
-import type { DocumentAst, PslSources } from '@internal/psl-parser/syntax';
 import { parse } from '@internal/psl-parser/syntax';
 import { assertDefined } from '@internal/utils/assertions';
 import { ifDefined } from '@internal/utils/defined';
-import type { Result } from '@internal/utils/result';
 import { notOk } from '@internal/utils/result';
 
 import { interpretPslDocumentToMongoContract } from './interpreter';
@@ -34,58 +26,6 @@ export interface MongoContractOptions {
 function collectScalarTypeCodecIds(namespace: AuthoringTypeNamespace): ReadonlyMap<string, string> {
   return new Map(
     [...collectScalarTypeConstructors(namespace)].map(([name, output]) => [name, output.codecId]),
-  );
-}
-
-export interface InterpretPslMongoSourcesInput {
-  readonly documents: readonly DocumentAst[];
-  readonly sources: PslSources;
-  readonly context: ContractSourceContext;
-  /** The target's default codec ids for an `enum` block that omits `@@type`. */
-  readonly enumInferenceCodecs?: { readonly text: string; readonly int: string };
-}
-
-/**
- * Builds the symbol table and binder for `documents`/`sources` against
- * `context`, folds their diagnostics in as seed diagnostics, and interprets
- * the result to a Mongo contract. This is the sequence `mongoContract`'s
- * `load()` runs once it has read and parsed a schema's files; every other
- * caller that only needs the interpreter's output from PSL sources — rather
- * than from an already-open `ContractSourceProvider` — should call this
- * instead of assembling the sequence itself.
- */
-export function interpretPslMongoSources(
-  input: InterpretPslMongoSourcesInput,
-): Result<Contract, ContractSourceDiagnostics> {
-  const { documents, sources, context } = input;
-  const { symbolTable, diagnostics: symbolTableDiagnostics } = buildSymbolTable({
-    documents,
-    sources,
-  });
-  const { binder, diagnostics: binderDiagnostics } = createProjectBinder({
-    symbolTable,
-    sources,
-    context,
-  });
-  const interpreted = interpretPslDocumentToMongoContract({
-    documents,
-    symbolTable,
-    sources,
-    binder,
-    seedDiagnostics: [],
-    scalarTypeCodecIds: collectScalarTypeCodecIds(context.authoringContributions.type),
-    controlMutationDefaults: {
-      ...context.controlMutationDefaults,
-      dataTypeEntries: context.authoringContributions.dataTypes,
-    },
-    codecLookup: context.codecLookup,
-    authoringContributions: context.authoringContributions,
-    ...ifDefined('enumInferenceCodecs', input.enumInferenceCodecs),
-    ...ifDefined('reportWarning', context.reportWarning),
-  });
-  return withSeedDiagnostics(
-    interpreted,
-    mapPslDiagnostics([...symbolTableDiagnostics, ...binderDiagnostics], sources),
   );
 }
 
@@ -181,14 +121,21 @@ export function mongoContract(schemaPath: string, options?: MongoContractOptions
         ),
       ];
 
+      const { symbolTable, diagnostics: symbolTableDiagnostics } = buildSymbolTable({
+        documents,
+        sources,
+      });
+      const { binder, diagnostics: binderDiagnostics } = createProjectBinder({
+        symbolTable,
+        sources,
+        context,
+      });
       return withSeedDiagnostics(
-        interpretPslMongoSources({
-          documents,
-          sources,
-          context,
-          ...ifDefined('enumInferenceCodecs', options?.enumInferenceCodecs),
-        }),
-        seedDiagnostics,
+        this.interpret({ documents, sources, symbolTable, binder }, context),
+        [
+          ...seedDiagnostics,
+          ...mapPslDiagnostics([...symbolTableDiagnostics, ...binderDiagnostics], sources),
+        ],
       );
     },
   };

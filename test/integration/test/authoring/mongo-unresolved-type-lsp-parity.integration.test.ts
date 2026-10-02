@@ -1,6 +1,7 @@
 import { pathToFileURL } from 'node:url';
-import { interpretPslMongoSources } from '@internal/mongo-contract-psl';
-import { parse } from '@internal/psl-parser/syntax';
+import { interpretPslDocumentToMongoContract } from '@internal/mongo-contract-psl';
+import { bindPslSchema } from '@internal/mongo-contract-psl/test';
+import { withSeedDiagnostics } from '@internal/psl-parser/interpret';
 import { join } from 'pathe';
 import { describe, expect, it } from 'vitest';
 import { resolveConfigInputs } from '../../../../packages/1-framework/3-tooling/language-server/src/config-resolution';
@@ -31,12 +32,17 @@ describe('the language server and the provider agree on Mongo earlier-name wordi
 
     // Provider path: the same sequence `mongoContract`'s `load()` runs,
     // against the same `context` the language server resolved.
-    const { document, sources } = parse(schema, uri);
-    const providerResult = interpretPslMongoSources({
-      documents: [document],
-      sources,
-      context: interpretation.context,
-    });
+    const bound = bindPslSchema(schema, { sourceId: uri, context: interpretation.context });
+    const providerResult = withSeedDiagnostics(
+      interpretPslDocumentToMongoContract({
+        documents: bound.documents,
+        sources: bound.sources,
+        symbolTable: bound.symbolTable,
+        binder: bound.binder,
+        ...bound.contextInput,
+      }),
+      bound.seedDiagnostics,
+    );
     expect(providerResult.ok).toBe(false);
     if (providerResult.ok) return;
     const providerMessage = providerResult.failure.diagnostics.find(

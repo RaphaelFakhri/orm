@@ -217,22 +217,19 @@ model Post {
     ]);
   });
 
-  it.each(['temporal.createdAt', 'weather.updatedAt'])(
-    'reports unresolved bare %s without a preset diagnostic',
-    (name) => {
-      expect(
-        diagnosticsOf(`model Post {\n  id ObjectId @id @map("_id")\n  value ${name}\n}`).map(
-          ({ code, message, sourceId }) => ({ code, message, sourceId }),
-        ),
-      ).toEqual([
-        {
-          code: 'PSL_UNRESOLVED_REFERENCE',
-          message: `Cannot find type "${name}"`,
-          sourceId: 'schema.prisma',
-        },
-      ]);
-    },
-  );
+  it('reports unresolved bare weather.updatedAt without a preset diagnostic', () => {
+    expect(
+      diagnosticsOf(
+        `model Post {\n  id ObjectId @id @map("_id")\n  value weather.updatedAt\n}`,
+      ).map(({ code, message, sourceId }) => ({ code, message, sourceId })),
+    ).toEqual([
+      {
+        code: 'PSL_UNRESOLVED_REFERENCE',
+        message: 'Cannot find type "weather.updatedAt"',
+        sourceId: 'schema.prisma',
+      },
+    ]);
+  });
 
   it('rejects an optional preset field with PSL_PRESET_NOT_OPTIONAL', () => {
     expect(
@@ -268,6 +265,22 @@ model Post {
       start: { offset: idOffset, line: 3 },
       end: { offset: idOffset + '@id'.length, line: 3 },
     });
+  });
+
+  it('rejects a field preset written without a call with PSL_PRESET_NOT_CALLED', () => {
+    expect(
+      diagnosticsOf(`model Post {
+  id        ObjectId          @id @map("_id")
+  createdAt temporal.createdAt
+}
+`).map(({ code, message }) => ({ code, message })),
+    ).toEqual([
+      {
+        code: 'PSL_PRESET_NOT_CALLED',
+        message:
+          'Field "Post.createdAt" uses field preset "temporal.createdAt" without calling it. Write temporal.createdAt().',
+      },
+    ]);
   });
 
   it('reports a misspelled preset name as a single unresolved reference', () => {

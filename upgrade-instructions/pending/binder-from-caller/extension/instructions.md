@@ -2,7 +2,7 @@
 changes:
   - id: psl-interpret-requires-a-binder
     summary: |
-      `PslInterpretInput`, `InterpretPslDocumentToSqlContractInput`, and `InterpretPslDocumentToMongoContractInput` all require a `binder`. A `PslInterpretCapable.interpret` implementation, or direct caller of `interpretPslDocumentToSqlContract` / `interpretPslDocumentToMongoContract`, must build it with `createProjectBinder` (or use the new `interpretPslSqlSources` / `interpretPslMongoSources`, which build it internally) and pass it in; it no longer builds its own.
+      `PslInterpretInput`, `InterpretPslDocumentToSqlContractInput`, and `InterpretPslDocumentToMongoContractInput` all require a `binder`. A `PslInterpretCapable.interpret` implementation, or direct caller of `interpretPslDocumentToSqlContract` / `interpretPslDocumentToMongoContract`, must pass it in; the interpreter no longer builds its own. An `interpret` implementation receives it as `input.binder`; a caller that starts from parsed documents builds it with `createProjectBinder`.
     detection:
       glob: "**/*.{ts,mts,cts}"
       matches:
@@ -42,30 +42,27 @@ The PSL binder — the pass that resolves every name a schema writes to the symb
 
 ## `interpret` now takes a `binder`
 
-`PslInterpretInput` (the input to `PslInterpretCapable.interpret`), and the lower-level `InterpretPslDocumentToSqlContractInput` / `InterpretPslDocumentToMongoContractInput`, all gained a required `binder: Binder` field. Build it with `createProjectBinder` from `@internal/psl-parser`, from the same `symbolTable`, `sources`, and `ContractSourceContext` the interpreter already receives:
+`PslInterpretInput` (the input to `PslInterpretCapable.interpret`), and the lower-level `InterpretPslDocumentToSqlContractInput` / `InterpretPslDocumentToMongoContractInput`, all gained a required `binder: Binder` field. A `PslInterpretCapable.interpret` implementation receives the binder as `input.binder` and passes it to the interpreter:
 
 ```diff
-+import { createProjectBinder } from '@internal/psl-parser';
-
- async function interpret(input, context) {
-+  const { binder } = createProjectBinder({
-+    symbolTable: input.symbolTable,
-+    sources: input.sources,
-+    context,
-+  });
+ interpret(input, context) {
    return interpretPslDocumentToSqlContract({
      documents: input.documents,
      symbolTable: input.symbolTable,
      sources: input.sources,
-+    binder,
++    binder: input.binder,
      // ...
    });
  }
 ```
 
-If the call site already has `documents`, `sources`, and a `context` but no symbol table or binder yet — the shape `mongoContract`'s and `prismaContract`'s own `load()` start from — call the new `interpretPslSqlSources` (from `@internal/sql-contract-psl/provider`) or `interpretPslMongoSources` (from `@internal/mongo-contract-psl/provider`) instead of assembling the symbol table, binder, and interpreter call by hand. Both build the symbol table and the binder, fold their diagnostics in as seed diagnostics, and interpret in one call:
+A caller that starts from parsed `documents` and `sources` and a `ContractSourceContext`, the way `prismaContract`'s and `mongoContract`'s own `load()` do, builds the symbol table and the binder itself with `buildSymbolTable` and `createProjectBinder` from `@internal/psl-parser`, passes the binder to the interpreter, and adds the diagnostics of both to the result with `withSeedDiagnostics` from `@internal/psl-parser/interpret`:
 
 ```diff
+-import { buildSymbolTable } from '@internal/psl-parser';
++import { buildSymbolTable, createProjectBinder, mapPslDiagnostics } from '@internal/psl-parser';
++import { withSeedDiagnostics } from '@internal/psl-parser/interpret';
+
 -const { symbolTable } = buildSymbolTable({ documents, sources });
 -const result = interpretPslDocumentToSqlContract({
 -  documents,
@@ -76,7 +73,21 @@ If the call site already has `documents`, `sources`, and a `context` but no symb
 -  authoringContributions: context.authoringContributions,
 -  // ...
 -});
-+const result = interpretPslSqlSources({ documents, sources, context, target, createNamespace });
++const { symbolTable, diagnostics: symbolTableDiagnostics } = buildSymbolTable({ documents, sources });
++const { binder, diagnostics: binderDiagnostics } = createProjectBinder({ symbolTable, sources, context });
++const result = withSeedDiagnostics(
++  interpretPslDocumentToSqlContract({
++    documents,
++    symbolTable,
++    sources,
++    binder,
++    target,
++    createNamespace,
++    authoringContributions: context.authoringContributions,
++    // ...
++  }),
++  mapPslDiagnostics([...symbolTableDiagnostics, ...binderDiagnostics], sources),
++);
 ```
 
 ## Two diagnostics folded into `PSL_UNRESOLVED_REFERENCE`

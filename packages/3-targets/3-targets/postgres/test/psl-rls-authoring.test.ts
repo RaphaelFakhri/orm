@@ -16,13 +16,15 @@ import type { AuthoringTypeConstructorDescriptor } from '@internal/framework-com
 import { createDataTypeLookup, emptyCodecLookup } from '@internal/framework-components/codec';
 import { assembleAuthoringContributions } from '@internal/framework-components/control';
 import { buildSymbolTable, createBinder, interpretExtensionBlocks } from '@internal/psl-parser';
+import { withSeedDiagnostics } from '@internal/psl-parser/interpret';
 import { parse } from '@internal/psl-parser/syntax';
 import type { SqlStorage } from '@internal/sql-contract/types';
-import { interpretPslSqlSources } from '@internal/sql-contract-psl';
+import { interpretPslDocumentToSqlContract } from '@internal/sql-contract-psl';
 import {
   describeUnsupportedSqlAttribute,
   sqlAttributeSpecs,
 } from '@internal/sql-contract-psl/attribute-specs';
+import { type BoundPslSchema, bindPslSchema } from '@internal/sql-contract-psl/test';
 import { postgresDataTypes } from '@internal/target-postgres/data-types';
 import { createSqlContract } from '@repo/test-utils';
 import { describe, expect, it } from 'vitest';
@@ -86,9 +88,7 @@ const scalarTypeConstructors: Record<string, AuthoringTypeConstructorDescriptor>
     ]),
   );
 
-function contextFor(
-  authoringContributions: typeof assembled,
-): Parameters<typeof interpretPslSqlSources>[0]['context'] {
+function contextFor(authoringContributions: typeof assembled): BoundPslSchema['context'] {
   return {
     composedExtensions: [],
     composedExtensionContracts: new Map(),
@@ -128,13 +128,22 @@ function interpretWithSymbolDiagnostics(
   const authoringContributions = options?.withoutModelAttributes
     ? { ...assembled, modelAttributes: {} }
     : assembled;
-  const result = interpretPslSqlSources({
-    documents: [document],
-    sources,
+  const bound = bindPslSchema(source, {
+    sourceId: 'psl-rls-authoring.test.psl',
     context: contextFor(authoringContributions),
-    target: postgresTarget,
-    createNamespace: postgresCreateNamespace,
   });
+  const result = withSeedDiagnostics(
+    interpretPslDocumentToSqlContract({
+      documents: bound.documents,
+      sources: bound.sources,
+      symbolTable: bound.symbolTable,
+      binder: bound.binder,
+      ...bound.contextInput,
+      target: postgresTarget,
+      createNamespace: postgresCreateNamespace,
+    }),
+    bound.seedDiagnostics,
+  );
   return { result, symbolTableDiagnostics: diagnostics };
 }
 

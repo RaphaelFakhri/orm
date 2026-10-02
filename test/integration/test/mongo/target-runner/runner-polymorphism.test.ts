@@ -8,12 +8,13 @@ import { buildFabricatedMigrationEdge } from '@internal/migration-tools/aggregat
 import type { MongoContract } from '@internal/mongo-contract';
 import {
   describeUnsupportedMongoAttribute,
-  interpretPslMongoSources,
+  interpretPslDocumentToMongoContract,
   mongoAttributeSpecs,
 } from '@internal/mongo-contract-psl';
+import { bindPslSchema } from '@internal/mongo-contract-psl/test';
 import type { AnyMongoMigrationOperation } from '@internal/mongo-query-ast/control';
 import { MongoSchemaIR } from '@internal/mongo-schema-ir';
-import { parse } from '@internal/psl-parser/syntax';
+import { withSeedDiagnostics } from '@internal/psl-parser/interpret';
 import {
   MongoMigrationPlanner,
   MongoMigrationRunner,
@@ -118,7 +119,6 @@ const polymorphicSchema = `
 `;
 
 function makeContractFromPsl(): MongoContract {
-  const { document, sources } = parse(polymorphicSchema, 'polymorphic-schema.prisma');
   const scalarTypeConstructors: Record<string, AuthoringTypeConstructorDescriptor> =
     Object.fromEntries(
       [...mongoScalarTypeDescriptors].map(([name, codecId]) => [
@@ -126,9 +126,8 @@ function makeContractFromPsl(): MongoContract {
         { kind: 'typeConstructor' as const, output: { codecId, nativeType: codecId } },
       ]),
     );
-  const result = interpretPslMongoSources({
-    documents: [document],
-    sources,
+  const bound = bindPslSchema(polymorphicSchema, {
+    sourceId: 'polymorphic-schema.prisma',
     context: {
       composedExtensions: [],
       composedExtensionContracts: new Map(),
@@ -149,6 +148,16 @@ function makeContractFromPsl(): MongoContract {
       capabilities: {},
     },
   });
+  const result = withSeedDiagnostics(
+    interpretPslDocumentToMongoContract({
+      documents: bound.documents,
+      sources: bound.sources,
+      symbolTable: bound.symbolTable,
+      binder: bound.binder,
+      ...bound.contextInput,
+    }),
+    bound.seedDiagnostics,
+  );
   if (!result.ok) {
     throw new Error(
       `PSL interpretation failed: ${JSON.stringify(result.failure.diagnostics, null, 2)}`,

@@ -1,12 +1,13 @@
 import type { AuthoringTypeConstructorDescriptor } from '@internal/framework-components/authoring';
 import { createDataTypeLookup, emptyCodecLookup } from '@internal/framework-components/codec';
 import { assembleAuthoringContributions } from '@internal/framework-components/control';
-import { parse } from '@internal/psl-parser/syntax';
-import { interpretPslSqlSources } from '@internal/sql-contract-psl';
+import { withSeedDiagnostics } from '@internal/psl-parser/interpret';
+import { interpretPslDocumentToSqlContract } from '@internal/sql-contract-psl';
 import {
   describeUnsupportedSqlAttribute,
   sqlAttributeSpecs,
 } from '@internal/sql-contract-psl/attribute-specs';
+import { bindPslSchema } from '@internal/sql-contract-psl/test';
 import { postgresDataTypes } from '@internal/target-postgres/data-types';
 import { type } from 'arktype';
 import { describe, expect, it } from 'vitest';
@@ -45,10 +46,8 @@ const scalarTypeConstructors: Record<string, AuthoringTypeConstructorDescriptor>
   );
 
 function interpret(source: string) {
-  const { document, sources } = parse(source, 'index-types.test.psl');
-  return interpretPslSqlSources({
-    documents: [document],
-    sources,
+  const bound = bindPslSchema(source, {
+    sourceId: 'index-types.test.psl',
     context: {
       composedExtensions: [],
       composedExtensionContracts: new Map(),
@@ -64,9 +63,19 @@ function interpret(source: string) {
       resolvedInputs: [],
       capabilities: {},
     },
-    target: postgresTargetDescriptorMeta,
-    createNamespace: postgresCreateNamespace,
   });
+  return withSeedDiagnostics(
+    interpretPslDocumentToSqlContract({
+      documents: bound.documents,
+      sources: bound.sources,
+      symbolTable: bound.symbolTable,
+      binder: bound.binder,
+      ...bound.contextInput,
+      target: postgresTargetDescriptorMeta,
+      createNamespace: postgresCreateNamespace,
+    }),
+    bound.seedDiagnostics,
+  );
 }
 
 function modelWithIndexType(indexType: string): string {

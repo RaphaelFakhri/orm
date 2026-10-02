@@ -27,7 +27,7 @@ const testIndexPack = {
 
 describe('interpretPslDocumentToSqlContract', () => {
   const builtinControlMutationDefaults = createBuiltinLikeControlMutationDefaults();
-  const interpretPslDocumentToSqlContract = (
+  const interpretPostgresSchema = (
     schema: string,
     input: Omit<
       InterpretPslDocumentToSqlContractInput,
@@ -99,7 +99,7 @@ describe('interpretPslDocumentToSqlContract', () => {
   });
 
   it('does not synthesise capabilities the target did not contribute', () => {
-    const result = interpretPslDocumentToSqlContract(
+    const result = interpretPostgresSchema(
       `model User {
   id Int @id
   email String
@@ -207,7 +207,7 @@ describe('interpretPslDocumentToSqlContract', () => {
   });
 
   it('populates roots from models', () => {
-    const result = interpretPslDocumentToSqlContract(
+    const result = interpretPostgresSchema(
       `model User {
   id Int @id
   email String
@@ -243,7 +243,7 @@ model Comment {
   });
 
   it('builds sql contract ir from simple psl schema', () => {
-    const result = interpretPslDocumentToSqlContract(
+    const result = interpretPostgresSchema(
       `model User {
   id Int @id
   email String
@@ -292,7 +292,7 @@ model Comment {
   });
 
   it('emits sql model with no @id and no @@id', () => {
-    const result = interpretPslDocumentToSqlContract(
+    const result = interpretPostgresSchema(
       `model IdlessThing {
   email String @unique
   token String
@@ -342,7 +342,7 @@ model Comment {
   });
 
   it('emits composite model id as primary key', () => {
-    const result = interpretPslDocumentToSqlContract(
+    const result = interpretPostgresSchema(
       `model CompositeThing {
   email String
   token String
@@ -374,7 +374,7 @@ model Comment {
   });
 
   it('emits mapped composite model id name and columns', () => {
-    const result = interpretPslDocumentToSqlContract(
+    const result = interpretPostgresSchema(
       `model CompositeThing {
   email String @map("email_address")
   token String @map("api_token")
@@ -410,7 +410,7 @@ model Comment {
   });
 
   it('names the storage table after the model verbatim when there is no @@map', () => {
-    const result = interpretPslDocumentToSqlContract(
+    const result = interpretPostgresSchema(
       `model UserProfile {
   id Int @id
 }
@@ -430,7 +430,7 @@ model Comment {
   });
 
   it('maps @@map and @map to storage table and column names', () => {
-    const result = interpretPslDocumentToSqlContract(
+    const result = interpretPostgresSchema(
       `model Team {
   id Int @id @map("team_id")
   @@map("org_team")
@@ -534,7 +534,7 @@ model AuditLog {
   @@map("audit_log")
 }
 `;
-      const result = interpretPslDocumentToSqlContract(printed, {
+      const result = interpretPostgresSchema(printed, {
         controlMutationDefaults: builtinControlMutationDefaults,
       });
       expect(result.ok).toBe(true);
@@ -558,7 +558,7 @@ model OrderItem {
   @@map("order_item")
 }
 `;
-      const result = interpretPslDocumentToSqlContract(printed, {
+      const result = interpretPostgresSchema(printed, {
         controlMutationDefaults: builtinControlMutationDefaults,
       });
       expect(result.ok).toBe(true);
@@ -583,7 +583,7 @@ model OrderItem {
   });
 
   it('maps model-level composite primary keys to storage columns', () => {
-    const result = interpretPslDocumentToSqlContract(
+    const result = interpretPostgresSchema(
       `model Membership {
   orgId String @map("org_id")
   userId String @map("user_id")
@@ -617,7 +617,7 @@ model OrderItem {
 
   describe('@@index type and options', () => {
     it('lowers @@index([body], type: "bm25", options: { key_field: "id" }) to an IR index node with type and options', () => {
-      const result = interpretPslDocumentToSqlContract(
+      const result = interpretPostgresSchema(
         `model Doc {
   id Int @id
   body String
@@ -656,7 +656,7 @@ model OrderItem {
     });
 
     it('accepts a multi-key options object with string-literal leaves', () => {
-      const result = interpretPslDocumentToSqlContract(
+      const result = interpretPostgresSchema(
         `model Doc {
   id Int @id
   body String
@@ -686,7 +686,7 @@ model OrderItem {
     });
 
     it('rejects a non-string-literal leaf in options (boolean)', () => {
-      const result = interpretPslDocumentToSqlContract(
+      const result = interpretPostgresSchema(
         `model Doc {
   id Int @id
   body String
@@ -704,7 +704,7 @@ model OrderItem {
     });
 
     it('rejects a non-string-literal leaf in options (number)', () => {
-      const result = interpretPslDocumentToSqlContract(
+      const result = interpretPostgresSchema(
         `model Doc {
   id Int @id
   body String
@@ -722,7 +722,7 @@ model OrderItem {
     });
 
     it('rejects an options argument with no surrounding type argument', () => {
-      const result = interpretPslDocumentToSqlContract(
+      const result = interpretPostgresSchema(
         `model Doc {
   id Int @id
   body String
@@ -742,7 +742,7 @@ model OrderItem {
     });
 
     it('rejects a malformed options object literal', () => {
-      const result = interpretPslDocumentToSqlContract(
+      const result = interpretPostgresSchema(
         `model Doc {
   id Int @id
   body String
@@ -764,7 +764,7 @@ model OrderItem {
     });
 
     it('accepts @@index without type or options (existing behaviour unchanged)', () => {
-      const result = interpretPslDocumentToSqlContract(
+      const result = interpretPostgresSchema(
         `model Doc {
   id Int @id
   body String
@@ -785,7 +785,7 @@ model OrderItem {
 
   describe('per-target namespace resolution', () => {
     it('Postgres leaves implicit top-level declarations on the late-bound default slot (TS/PSL byte parity for single-namespace contracts)', () => {
-      const result = interpretPslDocumentToSqlContract(
+      const result = interpretPostgresSchema(
         `model User {
   id Int @id
 }
@@ -804,7 +804,7 @@ model OrderItem {
     });
 
     it('Postgres lowers `namespace unbound { … }` to the late-binding sentinel slot', () => {
-      const result = interpretPslDocumentToSqlContract(
+      const result = interpretPostgresSchema(
         `namespace unbound {
   model Tenant {
     id Int @id
@@ -825,7 +825,7 @@ model OrderItem {
     });
 
     it('Postgres lowers named `namespace auth { … }` to its eponymous schema slot', () => {
-      const result = interpretPslDocumentToSqlContract(
+      const result = interpretPostgresSchema(
         `namespace auth {
   model User {
     id Int @id
@@ -847,7 +847,7 @@ model OrderItem {
     });
 
     it('Postgres routes a mixed top-level + multi-namespace document into the right slots', () => {
-      const result = interpretPslDocumentToSqlContract(
+      const result = interpretPostgresSchema(
         `model Post {
   id Int @id
 }

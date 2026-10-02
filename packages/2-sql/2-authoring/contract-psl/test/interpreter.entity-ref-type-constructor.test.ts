@@ -491,6 +491,7 @@ model AuthSession {
     const diagnostics = createPslDiagnosticCollector(sources);
     const result = resolveFieldTypeDescriptor({
       field,
+      typeReferenceResolved: true,
       enumTypeDescriptors: new Map(),
       namedTypeDescriptors: new Map(),
       scalarColumnDescriptors: postgresScalarTypeDescriptors,

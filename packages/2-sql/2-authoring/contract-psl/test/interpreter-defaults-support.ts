@@ -12,7 +12,7 @@ import {
 } from './fixtures';
 
 export const builtinControlMutationDefaults = createBuiltinLikeControlMutationDefaults();
-export const interpretPslDocumentToSqlContract = (
+export const interpretPostgresSchema = (
   schema: string,
   input: Omit<
     InterpretPslDocumentToSqlContractInput,

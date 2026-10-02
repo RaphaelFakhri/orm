@@ -8,11 +8,12 @@ import { UNBOUND_NAMESPACE_ID } from '@internal/framework-components/ir';
 import type { MongoContract } from '@internal/mongo-contract';
 import {
   describeUnsupportedMongoAttribute,
-  interpretPslMongoSources,
+  interpretPslDocumentToMongoContract,
   mongoAttributeSpecs,
 } from '@internal/mongo-contract-psl';
+import { bindPslSchema } from '@internal/mongo-contract-psl/test';
 import type { MongoMigrationPlanOperation } from '@internal/mongo-query-ast/control';
-import { parse } from '@internal/psl-parser/syntax';
+import { withSeedDiagnostics } from '@internal/psl-parser/interpret';
 import {
   MongoMigrationPlanner,
   MongoMigrationRunner,
@@ -66,7 +67,6 @@ function pslToContract(schema: string): MongoContract {
     ['ObjectId', 'mongo/objectId@1'],
     ['Double', 'mongo/double@1'],
   ]);
-  const { document, sources } = parse(schema, 'mongo-migration-schema.prisma');
   const scalarTypeConstructors: Record<string, AuthoringTypeConstructorDescriptor> =
     Object.fromEntries(
       [...scalarTypeCodecIds].map(([name, codecId]) => [
@@ -74,9 +74,8 @@ function pslToContract(schema: string): MongoContract {
         { kind: 'typeConstructor' as const, output: { codecId, nativeType: codecId } },
       ]),
     );
-  const result = interpretPslMongoSources({
-    documents: [document],
-    sources,
+  const bound = bindPslSchema(schema, {
+    sourceId: 'mongo-migration-schema.prisma',
     context: {
       composedExtensions: [],
       composedExtensionContracts: new Map(),
@@ -97,6 +96,16 @@ function pslToContract(schema: string): MongoContract {
       capabilities: {},
     },
   });
+  const result = withSeedDiagnostics(
+    interpretPslDocumentToMongoContract({
+      documents: bound.documents,
+      sources: bound.sources,
+      symbolTable: bound.symbolTable,
+      binder: bound.binder,
+      ...bound.contextInput,
+    }),
+    bound.seedDiagnostics,
+  );
   if (!result.ok) {
     throw new Error(`PSL interpretation failed: ${JSON.stringify(result)}`);
   }

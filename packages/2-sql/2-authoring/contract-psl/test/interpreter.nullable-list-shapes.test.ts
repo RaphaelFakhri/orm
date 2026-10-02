@@ -16,7 +16,7 @@ import {
 
 describe('interpretPslDocumentToSqlContract value objects and list fields', () => {
   const builtinControlMutationDefaults = createBuiltinLikeControlMutationDefaults();
-  const interpretPslDocumentToSqlContract = (
+  const interpretPostgresSchema = (
     schema: string,
     input: Omit<
       InterpretPslDocumentToSqlContractInput,
@@ -48,7 +48,7 @@ describe('interpretPslDocumentToSqlContract value objects and list fields', () =
     });
 
   it('preserves list and element nullability for scalar list fields inside composite types', () => {
-    const result = interpretPslDocumentToSqlContract(
+    const result = interpretPostgresSchema(
       `type Address {
   requiredElements String[]
   nullableElementValues String?[]
@@ -97,7 +97,7 @@ model User {
   });
 
   it('lowers the scalar-list nullability matrix to exact domain and storage shapes', () => {
-    const result = interpretPslDocumentToSqlContract(
+    const result = interpretPostgresSchema(
       `model User {
   id Int @id
   requiredElements String[]
@@ -186,7 +186,7 @@ model User {
   });
 
   it('lowers nullable value object list elements to domain metadata without storage list metadata', () => {
-    const result = interpretPslDocumentToSqlContract(
+    const result = interpretPostgresSchema(
       `type Address {
   street String
   city String

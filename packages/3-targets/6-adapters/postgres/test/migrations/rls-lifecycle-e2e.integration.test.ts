@@ -9,13 +9,14 @@ import {
   issueOutcome,
   type MigrationOperationPolicy,
 } from '@internal/framework-components/control';
-import { parse } from '@internal/psl-parser/syntax';
+import { withSeedDiagnostics } from '@internal/psl-parser/interpret';
 import type { SqlStorage } from '@internal/sql-contract/types';
-import { interpretPslSqlSources } from '@internal/sql-contract-psl';
+import { interpretPslDocumentToSqlContract } from '@internal/sql-contract-psl';
 import {
   describeUnsupportedSqlAttribute,
   sqlAttributeSpecs,
 } from '@internal/sql-contract-psl/attribute-specs';
+import { bindPslSchema } from '@internal/sql-contract-psl/test';
 import type { SqlSchemaIRNode } from '@internal/sql-schema-ir/types';
 import { postgresScalarAuthoringTypes } from '@internal/target-postgres/control';
 import { postgresDataTypes } from '@internal/target-postgres/data-types';
@@ -155,11 +156,8 @@ function buildContractFromPsl(psl: string): Contract<SqlStorage> {
       ]),
     );
 
-  const { document, sources } = parse(psl, 'rls-lifecycle-e2e.integration.test.psl');
-
-  const result = interpretPslSqlSources({
-    documents: [document],
-    sources,
+  const bound = bindPslSchema(psl, {
+    sourceId: 'rls-lifecycle-e2e.integration.test.psl',
     context: {
       composedExtensions: [],
       composedExtensionContracts: new Map(),
@@ -175,17 +173,27 @@ function buildContractFromPsl(psl: string): Contract<SqlStorage> {
       resolvedInputs: [],
       capabilities: { sql: { scalarList: true } },
     },
-    target: {
-      kind: 'target' as const,
-      familyId: 'sql' as const,
-      targetId: 'postgres' as const,
-      id: 'postgres',
-      version: postgresTargetDescriptor.version,
-      capabilities: {},
-      defaultNamespaceId: 'public',
-    },
-    createNamespace: postgresCreateNamespace,
   });
+  const result = withSeedDiagnostics(
+    interpretPslDocumentToSqlContract({
+      documents: bound.documents,
+      sources: bound.sources,
+      symbolTable: bound.symbolTable,
+      binder: bound.binder,
+      ...bound.contextInput,
+      target: {
+        kind: 'target' as const,
+        familyId: 'sql' as const,
+        targetId: 'postgres' as const,
+        id: 'postgres',
+        version: postgresTargetDescriptor.version,
+        capabilities: {},
+        defaultNamespaceId: 'public',
+      },
+      createNamespace: postgresCreateNamespace,
+    }),
+    bound.seedDiagnostics,
+  );
 
   if (!result.ok) throw new Error(`PSL interpretation failed: ${JSON.stringify(result)}`);
   return result.value as Contract<SqlStorage>;

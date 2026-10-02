@@ -3,13 +3,14 @@ import { createDataTypeLookup, emptyCodecLookup } from '@internal/framework-comp
 import type { TargetPackRef } from '@internal/framework-components/components';
 import { assembleAuthoringContributions } from '@internal/framework-components/control';
 import { UNBOUND_NAMESPACE_ID } from '@internal/framework-components/ir';
-import { parse } from '@internal/psl-parser/syntax';
+import { withSeedDiagnostics } from '@internal/psl-parser/interpret';
 import type { SqlStorage } from '@internal/sql-contract/types';
-import { interpretPslSqlSources } from '@internal/sql-contract-psl';
+import { interpretPslDocumentToSqlContract } from '@internal/sql-contract-psl';
 import {
   describeUnsupportedSqlAttribute,
   sqlAttributeSpecs,
 } from '@internal/sql-contract-psl/attribute-specs';
+import { bindPslSchema } from '@internal/sql-contract-psl/test';
 import { postgresDataTypes } from '@internal/target-postgres/data-types';
 import {
   PostgresSchema,
@@ -44,10 +45,8 @@ const scalarTypeConstructors: Record<string, AuthoringTypeConstructorDescriptor>
 const emptyAuthoringContributions = assembleAuthoringContributions([]);
 
 function emit(schema: string) {
-  const { document, sources } = parse(schema, 'psl-namespace-qualifier-routing.test.psl');
-  return interpretPslSqlSources({
-    documents: [document],
-    sources,
+  const bound = bindPslSchema(schema, {
+    sourceId: 'psl-namespace-qualifier-routing.test.psl',
     context: {
       composedExtensions: [],
       composedExtensionContracts: new Map(),
@@ -63,9 +62,19 @@ function emit(schema: string) {
       resolvedInputs: [],
       capabilities: { sql: { scalarList: true } },
     },
-    target: postgresTargetPackRef,
-    createNamespace: postgresCreateNamespace,
   });
+  return withSeedDiagnostics(
+    interpretPslDocumentToSqlContract({
+      documents: bound.documents,
+      sources: bound.sources,
+      symbolTable: bound.symbolTable,
+      binder: bound.binder,
+      ...bound.contextInput,
+      target: postgresTargetPackRef,
+      createNamespace: postgresCreateNamespace,
+    }),
+    bound.seedDiagnostics,
+  );
 }
 
 /**
