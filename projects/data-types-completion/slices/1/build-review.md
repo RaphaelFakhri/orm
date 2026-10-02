@@ -27,6 +27,7 @@ Reviewer-maintained. Contract: `projects/data-types-completion/design.md` sectio
 | review fixes 1 | 2 (`c409a672b8`, `ca0de95478`) | SATISFIED: S1-rf1-R1-1 and S1-rf1-R1-2 closed, no new finding |
 | review fixes 2 | 1 (`5a6f37bfaa..7bece37e1a`) | ANOTHER ROUND NEEDED: 1 must-fix, 2 low |
 | review fixes 2 | 2 (`9d4437193f`, `6b99abad7d`) | SATISFIED: S1-rf2-R1-1 to S1-rf2-R1-3 closed, no new finding |
+| review fixes 3 | 1 (`c3f36b3369..e5641a42ce`, after the merge of `main`) | ANOTHER ROUND NEEDED: 1 low |
 
 ## Findings log
 
@@ -252,7 +253,37 @@ Reviewer-maintained. Contract: `projects/data-types-completion/design.md` sectio
 
 All 19 items of `wip/briefs/review-fixes-1.md` are built as written. Code review F01 to F09 and system design F01, F03 to F09 and F11 to F15 are closed. Details in the round note.
 
+### S1-rf3-R1-1 (low): the codec authoring guide does not list the new codec check
+
+- Where: `docs/reference/codec-authoring-guide.md`, "Assembly is strict" (items 1 to 8), and the paragraph under "Declaring a data type" that ends "has no name to write".
+- What is wrong: `2e2bfb4018` makes assembly refuse a SQL stack in which a codec represents a data type that is not a `SqlDataType`. Extension authors read this guide to learn what assembly refuses, and its list stops at item 8. The earlier paragraph still describes the old failure, a column whose type has no name to write when a migration is planned, which the check now prevents.
+- Change: add item 9 to the second list: in a SQL stack, a codec represents a data type not declared with `sqlDataType`; `sql/expression` is the one data type no column has. Replace the "has no name to write" sentence with one saying that a SQL stack in which a codec represents such a type is refused at assembly.
+
 ## Round notes
+
+### Review fixes 3, round 1
+
+Scope: `c3f36b3369..e5641a42ce`, 10 commits, against `wip/briefs/s1-review-fixes-3.md` and the round 3 findings (SD-F01 to SD-F07, CR-F01 to CR-F04).
+
+Item by item:
+- 0: `07218254e0` copies spec, design, plan, design notes, deferred and `slices/1` from the slice 2 branch; slice 1 had no `handover.md`. Against `bot/tml-3388-data-type-in-contract` today, the copies differ only by this round's edits and by `slices/1/pr-body.md` (referral below).
+- 1 (CI journey): `3005905d76`. On `main` the journey's `VarChar(0)` was refused by the adapter's length hook, which slice 1 deleted. It is now refused by step 1 of `renderSqlTypeName` (design 2.3) with `CONTRACT.TYPE_PARAMS_INVALID` and `meta: { dataType: 'pg/varchar', parameters: ['length'] }`, which is the error 2.3 asks for. The journey still tests its purpose: `db init`, `db update` and `migration plan` each exit 2 with the library's structured error, not `CLI.UNEXPECTED`, and the scenario (a contract emitted earlier or edited by hand) still arises. The example in the `caught-errors.ts` doc comment follows the new code. Red first: the CI failure on the merged tip.
+- CR-F01: `bf366aa6ef`. The unit test pins `numeric(10,0)`, `numeric(10,2)` and `character(1)`; the integration test applies `Numeric(10)` and `Numeric(10, 2)`, verifies strictly and plans no change. Design 3.4 is amended. Rule 6 is in `sqlDataType` with three tests, and design 2.2 states it. Every Postgres, SQLite, pgvector and postgis declaration runs rule 6 when its module loads, and their tests pass. `pg/enum` (kind claim) and `pg/text-array` (no texts) are exempt; the probes of `pg/numeric`, `pg/char`, `pg/bit` and `postgis/geometry` each meet a written text. One existing test fixture changed `srid?` to `srid` to satisfy the rule; that test is about `display`, so it loses nothing. The commit is typed `test:` although it adds rule 6.
+- CR-F02, SD-F07: `40c9c40fba`. `sqlDataType` spreads the framework declaration; `MongoDataTypeSpec` extends `DataTypeSpec`; one test per factory compares the result without its family facts with the output of `dataType`, using `casts` and `toCanonicalForm`.
+- CR-F04: `d7a12317fe`.
+- SD-F06: `c43866f20f`. The ranges are inline in `pgNumericParams`; `numeric-limits.ts` and its `./codecs` export are gone; the guide's example now shows a scale from -1000.
+- SD-F04: `904a16c23c`. ADR 241 (lines 11, 15, 63, 79 and the example) and ADR 254 line 214 state the rule and the reason. The Postgres comment is restored. SQLite's `type-constructors.ts` is a move with no content change. The adapter's set is `postgresPslTypeConstructors`. Neither set is exported anywhere new.
+- SD-F03, SD-F05: `2e2bfb4018`. One function takes `declaredDataTypes` and `codecDescriptors` and runs the collision, `sql/expression` cast and codec checks; the Postgres control adapter uses `stack.dataTypeLookup`. No shipped codec trips the codec check. Every codec of the Postgres and SQLite targets, arktype-json (`pg/jsonb`), pgvector and postgis names a `sqlDataType` declaration, and paradedb and supabase have no codecs. A probe (`wip/rv3/assembly-probe.mjs`) runs `family.create` on the Postgres stack with arktype-json, pgvector, postgis and paradedb (43 codecs, 29 data types) and on the SQLite stack (12 codecs, 10 data types) without error. The guide does not list the check: S1-rf3-R1-1.
+- SD-F01: `57d1139066`. Both files moved with their tests; new entry `@internal/sql-contract/data-type-support` with tsdown, README and the three public shells; no re-export left in `relational-core/src/exports/ast.ts`; every user of the 14 names imports the new entry. `codec-helpers.ts` is mapped shared, and everything both targets' `data-types.ts` and `data-type-entries.ts` import is now shared. The deferred line is gone. The two new upgrade changes are accurate: at `bot/data-types-completion` every listed name was exported from `@internal/sql-relational-core/ast` and both constants from `@internal/target-postgres/codecs`, and `pgNumericParams` is exported from `./data-types`. `git diff c3f36b3369..e5641a42ce -- packages/3-extensions examples` is empty, so not rerunning the upgrade validation is right.
+- SD-F02 and the document edits: `e5641a42ce`. Design 1, 2.2, 3.2, 3.4, 5.2, 10.4, 12.1 and 12.2, and spec 6, 7, the non-goals and "Closes", as asked. `design-notes.md` is unchanged in the range, and the edits keep Will's rulings: a data type never parses or prints SQL value literals (Q14, TML-3283), SQLite's column types are what SQLite stores, and constructors are defined in the target and contributed by the adapter.
+
+Mutations, each restored and the tree clean afterwards: removing the codec loop fails 3 tests; removing the call in `createSqlFamilyInstance` fails 4 (collision, codec, and both `sql/expression` cast cases); removing rule 6 fails 1; copying the fields one by one again fails 2; dropping `normalize` in `schemaTypeText` fails the new unit test.
+
+Rules: no `any`, no bare `as` in production code, no test name with "should"; the new doc comments are the ones the findings asked for. No `contract.json`, `contract.d.ts` or golden changed. Every commit carries both sign-offs and no AI attribution.
+
+Checks at `e5641a42ce`, logs under `wip/review-s1-merge/wip/rv3/`: 15 touched or affected unit test files, run one at a time, pass (478 tests). Typecheck passes in mongo-contract, sql-contract, relational-core, family-sql, target-postgres, target-sqlite, adapter-postgres, cli and the integration package. `lint:deps` (no violations), `lint:agent` and `check:upgrade-coverage --mode pr --prev bot/data-types-completion` exit 0. `stale-contract-default.e2e.test.ts` passes (2 tests, in both the integration and packaging projects) and `psl-defaults-apply-and-verify.integration.test.ts` passes (16). The implementer's `test:packages` run failed only tests that fail under load or in this environment (three tarball tests on a pnpm trust policy, telemetry, two language server files, the adapter round trip); each rerun alone passed, except the tarball tests, which fail before any code of this repository runs.
+
+Referral (orchestrator): `slices/1/pr-body.md` on this branch is older than the description published on the slice 2 branch (`45bee502b9`). It lacks the codec check under "Assembly checks" and the `Numeric(10)` line under the behaviour changes. Copy the published text over if the slice 1 pull request carries `projects/`.
 
 ### Review fixes, round 2
 
