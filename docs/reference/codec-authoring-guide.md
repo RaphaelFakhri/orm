@@ -491,7 +491,7 @@ export const postgisGeometry = sqlDataType('postgis/geometry', {
 ```ts
 export const pgNumericParams = arktype({
   'precision?': 'number.integer >= 1 & number.integer <= 1000',
-  'scale?': 'number.integer >= 0 & number.integer <= 1000',
+  'scale?': 'number.integer >= -1000 & number.integer <= 1000',
 }).narrow(
   (params, ctx) =>
     params.scale === undefined ||

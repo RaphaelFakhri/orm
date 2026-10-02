@@ -32,7 +32,6 @@ import {
 import { structuredError } from '@internal/utils/structured-error';
 import { type as arktype } from 'arktype';
 import { canonicalUuid, fitsFloat4, pgIntervalCanonical } from './codec-helpers';
-import { NUMERIC_PRECISION_RANGE, NUMERIC_SCALE_RANGE } from './numeric-limits';
 import { quoteIdentifier } from './sql-utils';
 
 /** A cast between two types that store the same shape: the value is already the form this type stores. */
@@ -80,13 +79,10 @@ const catalog = (text: string): SqlTypeText => ({ text, catalog: true });
 const writtenAndCatalog = (text: string): SqlTypeText => ({ text, written: true, catalog: true });
 const claimsOnly = (text: string): SqlTypeText => ({ text });
 
+/** The precision and scale of `numeric`. PostgreSQL 15 and later take a negative scale and one above the precision. */
 export const pgNumericParams = arktype({
-  'precision?': arktype('number.integer')
-    .atLeast(NUMERIC_PRECISION_RANGE.min)
-    .atMost(NUMERIC_PRECISION_RANGE.max),
-  'scale?': arktype('number.integer')
-    .atLeast(NUMERIC_SCALE_RANGE.min)
-    .atMost(NUMERIC_SCALE_RANGE.max),
+  'precision?': 'number.integer >= 1 & number.integer <= 1000',
+  'scale?': 'number.integer >= -1000 & number.integer <= 1000',
 }).narrow(
   (params, ctx) =>
     params.scale === undefined ||
