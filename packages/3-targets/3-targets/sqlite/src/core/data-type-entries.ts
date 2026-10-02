@@ -14,7 +14,7 @@ import {
   createNumberClassifier,
   parseJsonBody,
   signedRange,
-} from '@internal/sql-relational-core/ast';
+} from '@internal/sql-contract/data-type-support';
 import { sqliteInteger, sqliteReal, sqliteText } from './data-types';
 
 const classifySqliteNumber = createNumberClassifier({

@@ -8,7 +8,7 @@
 import type { JsonValue } from '@internal/contract/types';
 import type { Cast, DataType } from '@internal/framework-components/codec';
 import { sqlDataType } from '@internal/sql-contract/data-type';
-import { integerTextCanonicalForm } from '@internal/sql-relational-core/ast';
+import { integerTextCanonicalForm } from '@internal/sql-contract/data-type-support';
 import { structuredError } from '@internal/utils/structured-error';
 import { type as arktype } from 'arktype';
 

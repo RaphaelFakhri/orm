@@ -176,23 +176,52 @@ function checkKindClaim<Params extends SqlTypeParams>(
 
 const identity = <Params>(params: Params): Params => params;
 
+function acceptsParams<Params extends SqlTypeParams>(
+  type: SqlDataType<Params>,
+  params: SqlTypeParams,
+): params is Params {
+  return type.params === undefined || !(type.params(params) instanceof arktype.errors);
+}
+
+function checkNormalFormsWritten<Params extends SqlTypeParams>(type: SqlDataType<Params>): void {
+  const written = new Set(
+    type.sql.texts
+      .filter((text) => text.written === true)
+      .map((text) => placeholderSetOf(text.text)),
+  );
+  if (written.size === 0) return;
+  const probes = [
+    {},
+    ...type.sql.texts.map((text) =>
+      Object.fromEntries(placeholdersOf(text.text).map((name) => [name, 1])),
+    ),
+  ];
+  for (const probe of probes) {
+    if (!acceptsParams(type, probe)) continue;
+    const normalKeys = presentKeys(type.sql.normalize(probe));
+    if (!written.has([...normalKeys].sort().join(','))) {
+      refuseDeclaration(
+        type.id,
+        `the parameters ${formatKeys(Object.keys(probe))} have the normal form ${formatKeys(normalKeys)}, which no written text takes.`,
+      );
+    }
+  }
+}
+
 /** Declare a SQL data type, refusing a declaration that breaks a rule of the module. */
 export function sqlDataType<Params extends SqlTypeParams = SqlTypeParams>(
   id: string,
   spec: SqlDataTypeSpec<Params>,
 ): SqlDataType<Params> {
-  const declared = dataType(id, spec);
+  const { params: _untypedParams, ...declared } = dataType(id, spec);
   const texts = spec.texts ?? [];
   const paramKeys = paramKeysOf(declared.id, spec.params);
   for (const text of texts) checkText(declared.id, text, paramKeys);
   checkMarks(declared.id, texts);
   checkKindClaim(declared.id, spec);
-  return {
-    id: declared.id,
+  const type: SqlDataType<Params> = {
+    ...declared,
     ...ifDefined('params', spec.params),
-    casts: declared.casts,
-    ...ifDefined('listCast', declared.listCast),
-    ...ifDefined('toCanonicalForm', declared.toCanonicalForm),
     sql: {
       texts,
       claimsKind: spec.claimsKind,
@@ -201,8 +230,11 @@ export function sqlDataType<Params extends SqlTypeParams = SqlTypeParams>(
       fromReported: spec.fromReported,
     },
   };
+  checkNormalFormsWritten(type);
+  return type;
 }
 
+/** Whether `type` is a data type a SQL column can have. `sql/expression` is the one data type no column has. */
 export function isSqlDataType(type: DataType): type is SqlDataType {
   return 'sql' in type;
 }

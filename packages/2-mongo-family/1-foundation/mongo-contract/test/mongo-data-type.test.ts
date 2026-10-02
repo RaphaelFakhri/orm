@@ -1,3 +1,4 @@
+import type { JsonValue } from '@internal/contract/types';
 import { type DataType, dataType } from '@internal/framework-components/codec';
 import { type } from 'arktype';
 import { describe, expect, it } from 'vitest';
@@ -27,6 +28,16 @@ describe('mongoDataType', () => {
     });
     expect(declared.params).toBe(params);
     expect(declared.casts[text.id]?.('x')).toBe('x');
+  });
+
+  it('keeps every field of the framework declaration', () => {
+    const text = mongoDataType('demo/text', { bsonTypes: ['string'] });
+    const casts = { [text.id]: (value: JsonValue) => value };
+    const toCanonicalForm = (value: JsonValue) => value;
+    const declared = mongoDataType('demo/kept', { bsonTypes: ['string'], casts, toCanonicalForm });
+    expect(Object.fromEntries(Object.entries(declared).filter(([key]) => key !== 'mongo'))).toEqual(
+      dataType('demo/kept', { casts, toCanonicalForm }),
+    );
   });
 
   it('validates its id like every data type', () => {

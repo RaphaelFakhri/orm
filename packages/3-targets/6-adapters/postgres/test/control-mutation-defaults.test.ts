@@ -6,7 +6,7 @@ import { describe, expect, it } from 'vitest';
 import {
   createPostgresDefaultFunctionRegistry,
   createPostgresMutationDefaultGeneratorDescriptors,
-  postgresAuthoringTypes,
+  postgresPslTypeConstructors,
 } from '../src/core/control-mutation-defaults';
 import postgresAdapterDescriptor from '../src/exports/control';
 import runtimeAdapterDescriptor from '../src/exports/runtime';
@@ -202,8 +202,8 @@ describe('postgres runtime mutation default generators', () => {
 
 describe('the adapter authoring contribution', () => {
   it('contributes the scalar and native type constructors', () => {
-    expect(postgresAdapterDescriptor.authoring?.type).toBe(postgresAuthoringTypes);
-    expect(Object.keys(postgresAuthoringTypes)).toEqual([
+    expect(postgresAdapterDescriptor.authoring?.type).toBe(postgresPslTypeConstructors);
+    expect(Object.keys(postgresPslTypeConstructors)).toEqual([
       ...Object.keys(postgresScalarAuthoringTypes),
       ...Object.keys(postgresNativeAuthoringTypes),
     ]);

@@ -115,6 +115,7 @@ describe('SqlControlFamilyInstance OperationPreviewCapable', () => {
       extensionIds: [],
       dataTypeLookup: createDataTypeLookup([]),
       declaredDataTypes: [],
+      codecDescriptors: [],
       // biome-ignore lint/suspicious/noExplicitAny: minimal stub
     } as any;
     return sqlFamilyDescriptor.create(stack);

@@ -436,7 +436,7 @@ An extension's codec does the same. `arktype/json@1` stores a `jsonb` column and
 
 `dataType(id, spec)` from `@internal/framework-components/codec` declares a data type with its casts and, optionally, its parameters. The id is `owner/name` in lower case and carries no version; a versioned id such as `pg/int8@1` names a codec, and `dataType` refuses anything that is not the `owner/name` shape.
 
-A SQL data type is declared with `sqlDataType(id, spec)` from `@internal/sql-contract/data-type`. It takes the same `params`, `casts` and `listCast`, and adds how the database writes and reports the type. Migrations, schema verification and PostgreSQL's parameter casts all read the type's name from this declaration, and from nowhere else. A SQL column whose codec represents a type declared with plain `dataType` has no name to write. A Mongo data type is declared with `mongoDataType(id, { bsonTypes })` instead; see [Target-owned Mongo codecs](#target-owned-mongo-codecs).
+A SQL data type is declared with `sqlDataType(id, spec)` from `@internal/sql-contract/data-type`. It takes the same `params`, `casts` and `listCast`, and adds how the database writes and reports the type. Migrations, schema verification and PostgreSQL's parameter casts all read the type's name from this declaration, and from nowhere else. In a SQL stack every codec must represent a type declared with `sqlDataType`, because a codec is how a column stores its values; assembly refuses a codec that represents a type declared with plain `dataType` (item 9 under [Assembly is strict](#assembly-is-strict)). The SQL family's own `sql/expression` is such a plain type: it is the type of a written SQL expression, and no codec or column has it. A Mongo data type is declared with `mongoDataType(id, { bsonTypes })` instead; see [Target-owned Mongo codecs](#target-owned-mongo-codecs).
 
 ```ts
 import { sqlDataType } from '@internal/sql-contract/data-type';
@@ -493,7 +493,7 @@ export const postgisGeometry = sqlDataType('postgis/geometry', {
 ```ts
 export const pgNumericParams = arktype({
   'precision?': 'number.integer >= 1 & number.integer <= 1000',
-  'scale?': 'number.integer >= 0 & number.integer <= 1000',
+  'scale?': 'number.integer >= -1000 & number.integer <= 1000',
 }).narrow(
   (params, ctx) =>
     params.scale === undefined ||
@@ -516,7 +516,7 @@ export const pgNumeric = sqlDataType('pg/numeric', {
 });
 ```
 
-A column with `{ precision: 10 }` is written `numeric(10)`, and one with `{ precision: 10, scale: 2 }` is written `numeric(10,2)`. Parameters that fail the schema, or that no `written` text takes, are refused with `CONTRACT.TYPE_PARAMS_INVALID`. A placeholder is written only with an integer value; any other value is refused with the same code, so a parameter can never write other SQL into a migration. `normalize` returns the normal form of a type's parameters, so that two ways of writing the same database type compare equal: PostgreSQL reports `numeric(10)` as `numeric(10,0)`. A type without `normalize` keeps its parameters as they are.
+A column with `{ precision: 10 }` is written `numeric(10)`, and one with `{ precision: 10, scale: 2 }` is written `numeric(10,2)`. Parameters that fail the schema, or that no `written` text takes, are refused with `CONTRACT.TYPE_PARAMS_INVALID`. A placeholder is written only with an integer value; any other value is refused with the same code, so a parameter can never write other SQL into a migration. `normalize` returns the normal form of a type's parameters, so that two ways of writing the same database type compare equal: PostgreSQL reports `numeric(10)` as `numeric(10,0)`. A type without `normalize` keeps its parameters as they are. Schema verification writes the contract's side with the normal form, so every normal form needs a `written` text with exactly its parameters, and `sqlDataType` refuses a declaration whose `normalize` gives parameters that no `written` text takes.
 
 A codec's `paramsSchema` is its data type's `params`, referenced and never restated, so a bound has one home:
 
@@ -666,6 +666,7 @@ Type constructors, field presets and SQL declarations are checked at assembly to
 7. **A type constructor maps an argument onto a parameter** that neither the codec's data type's `params` nor the codec's own parameters declare.
 8. **Two type constructors of one data type are both marked `inferred`.**
 9. **Two SQL data types claim the same reported type**: a claiming text of one matches a claiming text of the other, or both claim the same kind.
+10. **A codec in a SQL stack represents a data type that is not a SQL data type** (declared with plain `dataType` rather than `sqlDataType`). The error names the codec, its data type and the data type's contributor.
 
 The reverse of the fourth is not required: a type may be reachable only through casts. These checks span packs, which is why they run at assembly — `pgvector/vector` taking `pg/numeric` values is valid only when the Postgres target that owns `pg/numeric` is in the stack. Within a pack, refer to a type by its constant rather than by string, so a misspelt id fails to compile.
 

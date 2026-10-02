@@ -29,11 +29,11 @@ import {
   type ToCanonicalForm,
 } from '@internal/framework-components/codec';
 import { canonicalizeJson } from '@internal/framework-components/utils';
+import { canonicalDateTime } from '@internal/sql-contract/data-type-support';
 import {
   BinaryExpr,
   CaseExpr,
   CastExpr,
-  canonicalDateTime,
   FunctionCallExpr,
   LiteralExpr,
   NullCheckExpr,

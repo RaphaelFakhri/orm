@@ -1,8 +1,8 @@
 /**
  * Journey: a contract.json an earlier version emitted, or one edited by hand, can hold what this
- * version's codecs refuse: a literal default, such as a uuid in upper case, or a column's type
- * parameters. The commands that render DDL from it report the library's own error, not an
- * unexpected failure of the command.
+ * version refuses: a literal default its codec refuses, such as a uuid in upper case, or type
+ * parameters its data type refuses. The commands that render DDL from it report the library's own
+ * error, not an unexpected failure of the command.
  */
 import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -123,7 +123,7 @@ withTempDir(({ createTempDir }) => {
     );
 
     it(
-      'reports type parameters the data type refuses as its error, not an unexpected one',
+      'reports type parameters the data type refuses as a contract error, not an unexpected one',
       async () => {
         const ctx = setupJourney({
           connectionString: db.connectionString,

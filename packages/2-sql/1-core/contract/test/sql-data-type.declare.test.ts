@@ -1,3 +1,4 @@
+import type { JsonValue } from '@internal/contract/types';
 import { dataType } from '@internal/framework-components/codec';
 import { InternalError } from '@internal/utils/internal-error';
 import { type } from 'arktype';
@@ -57,6 +58,19 @@ describe('sqlDataType', () => {
     expect(declared.params).toBe(params);
     expect(declared.casts[int4.id]?.(1)).toBe('1');
     expect(declared.listCast?.of).toEqual(['t/int4']);
+  });
+
+  it('keeps every field of the framework declaration', () => {
+    const casts = { [int4.id]: (value: JsonValue) => value };
+    const toCanonicalForm = (value: JsonValue) => value;
+    const declared = sqlDataType('t/kept', {
+      casts,
+      toCanonicalForm,
+      texts: [{ text: 'kept', written: true, catalog: true }],
+    });
+    expect(Object.fromEntries(Object.entries(declared).filter(([key]) => key !== 'sql'))).toEqual(
+      dataType('t/kept', { casts, toCanonicalForm }),
+    );
   });
 
   it('validates its id like every data type', () => {
@@ -182,7 +196,7 @@ describe('sqlDataType', () => {
 
     it('allows a display that differs in case only', () => {
       const declared = sqlDataType('t/ok', {
-        params: type({ 'srid?': 'number' }),
+        params: type({ srid: 'number' }),
         texts: [
           {
             text: 'geometry(geometry,{srid})',
@@ -221,6 +235,43 @@ describe('sqlDataType', () => {
           name: 'status',
         }),
       ).toEqual({ typeName: 'status' });
+    });
+  });
+
+  describe('rule 6: every normal form has a written text', () => {
+    const lengthParams = type({ 'length?': 'number.integer >= 1' });
+    const lengthOneWhenBare = (params: { readonly length?: number }) =>
+      params.length === undefined ? { ...params, length: 1 } : params;
+
+    it('refuses a normal form whose parameters only a catalog text takes, naming them', () => {
+      expect(() =>
+        sqlDataType('t/bad', {
+          params: lengthParams,
+          texts: [
+            { text: 'bit', written: true },
+            { text: 'bit({length})', catalog: true },
+          ],
+          normalize: lengthOneWhenBare,
+        }),
+      ).toThrow(/t\/bad.*\[length\]/);
+    });
+
+    it('accepts a normal form that a written text takes', () => {
+      const declared = sqlDataType('t/ok', {
+        params: lengthParams,
+        texts: [
+          { text: 'bit', written: true },
+          { text: 'bit({length})', written: true, catalog: true },
+        ],
+        normalize: lengthOneWhenBare,
+      });
+      expect(declared.sql.normalize({})).toEqual({ length: 1 });
+    });
+
+    it('exempts a type that is never written', () => {
+      expect(sqlDataType('t/never-written', { texts: [{ text: 'anyarray' }] }).sql.texts).toEqual([
+        { text: 'anyarray' },
+      ]);
     });
   });
 });

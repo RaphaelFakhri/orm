@@ -18,7 +18,7 @@ import type {
   PslModelAttribute,
   PslTypeConstructorCall,
 } from '@internal/framework-components/psl-ast';
-import { escapePslString } from '@internal/sql-relational-core/ast';
+import { escapePslString } from '@internal/sql-contract/data-type-support';
 import {
   composeCheckWirePrefix,
   computeCheckContentHash,

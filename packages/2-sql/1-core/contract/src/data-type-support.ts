@@ -15,8 +15,8 @@ import {
   isNonFiniteText,
   type ToCanonicalForm,
 } from '@internal/framework-components/codec';
-import { numeralText } from '@internal/sql-contract/data-type';
 import { structuredError } from '@internal/utils/structured-error';
+import { numeralText } from './numeral-text';
 
 const INTEGER_TEXT = /^-?\d+$/;
 const DECIMAL_TEXT = /^-?\d+\.\d+$/;

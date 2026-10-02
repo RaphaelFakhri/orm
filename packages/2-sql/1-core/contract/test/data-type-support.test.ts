@@ -9,7 +9,7 @@ import {
   parseJsonBody,
   printJsonBody,
   signedRange,
-} from '../../src/ast/data-type-support';
+} from '../src/data-type-support';
 
 const small = dataTypeId('demo/small');
 const large = dataTypeId('demo/large');
