@@ -840,7 +840,7 @@ Or read our docs at https://www.prisma.io/docs/concepts/components/prisma-client
         timeout: options?.timeout ?? this._engineConfig.transactionOptions.timeout,
         isolationLevel: options?.isolationLevel ?? this._engineConfig.transactionOptions.isolationLevel,
         // Re-use the underlying transaction in the engine by reusing the same transaction id.
-        newTxId: isNested ? itxContext.txId : options.newTxId,
+        newTxId: isNested ? itxContext.txId : undefined,
       }
       let info: Transaction.InteractiveTransactionInfo<unknown>
       try {
